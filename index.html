@@ -330,7 +330,7 @@ function viewLogin(){
 }
 function bindLogin(){
   $("#lg-google").onclick = () => { const pv = new firebase.auth.GoogleAuthProvider(); pv.setCustomParameters({prompt:"select_account"});
-    S.auth.signInWithPopup(pv).catch(e => { if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) S.auth.signInWithRedirect(pv).catch(authErr); else authErr(e); }); };
+    S.auth.signInWithPopup(pv).catch(e => { if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment" || e.code === "auth/web-storage-unsupported")) { const el = $("#lg-msg"); const m = "Este navegador no deja entrar con Google. Copia el enlace y ábrelo directo en Safari o Chrome, o entra con tu correo y contraseña."; if (el){ el.className = "banner bad"; el.textContent = m; } else toast(m); } else authErr(e); }); };
   let mode = "in"; $("#lg-form").querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { mode = b.dataset.mode; });
   $("#lg-form").onsubmit = e => { e.preventDefault(); const em = $("#lg-email").value.trim(), pw = $("#lg-pass").value;
     (mode === "up" ? S.auth.createUserWithEmailAndPassword(em, pw) : S.auth.signInWithEmailAndPassword(em, pw)).catch(authErr); };
