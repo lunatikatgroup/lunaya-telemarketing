@@ -110,7 +110,7 @@ tr.total td{font-weight:800;border-bottom:0}
 .day.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.day.on span,.day.on small{color:var(--line)}
 .appt{border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--card);border-radius:12px;padding:11px 13px;cursor:pointer;text-align:left;width:100%;display:grid;gap:2px}
 .appt.hecha{border-left-color:var(--good)}.appt.no_se_hizo,.appt.cancelada{border-left-color:var(--muted)}
-.appt .h{font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.hora{background:var(--accent);color:#fff;border-radius:8px;padding:3px 9px;font-size:14px;font-weight:800;white-space:nowrap}
+.appt .h{font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.appt .dia{font-weight:700;font-size:13px;color:var(--accent)}.appt .dia::first-letter{text-transform:uppercase}.hora{background:var(--accent);color:#fff;border-radius:8px;padding:3px 9px;font-size:14px;font-weight:800;white-space:nowrap}
 .note{font-size:13px;color:var(--muted)}
 .empty{color:var(--muted);text-align:center;padding:18px 8px}
 .banner{border-radius:12px;padding:12px 14px;font-weight:600}
@@ -654,12 +654,13 @@ function unreadTotal(){ return Object.values(S.appts||{}).reduce((n,a)=>n+unread
 function chatHtml(a){ const ms = a.chat||[]; return ms.length ? ms.map(m => `<div class="msg ${m.by===S.uid?"mine":""}"><div class="mh">${esc(memberName(m.by))} · ${fmt(m.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}</div><div>${esc(m.text)}</div></div>`).join("") : `<div class="note">Aún no hay mensajes. Escribe aquí para hablar sobre esta cita.</div>`; }
 function refreshChat(){ const id = S.openAppt, el = document.getElementById("chat-list"); if (!id || !el) return; const a = S.appts[id]; if (!a) return; el.innerHTML = chatHtml(a); el.scrollTop = el.scrollHeight; markSeen(id); }
 function markSeen(id){ const a = S.appts[id]; if (!a || !unread(a)) return; S.db.doc("apptp/"+id).update({["seen."+S.uid]: Date.now()}).catch(()=>{}); }
-const horaTxt = ms => `${fmt(ms,{hour:"numeric",minute:"2-digit"})} · ${fmt(ms,{weekday:"short",day:"numeric",month:"short"})}`;
+const horaTxt = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
+const diaTxt = ms => `<div class="dia">${fmt(ms,{weekday:"long",day:"numeric",month:"long"})}</div>`;
 function apptItem(id,a){
-  if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(a.when)}</span> Horario ocupado</span><span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
+  if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(a.when)}</span> Horario ocupado</span>${diaTxt(a.when)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
-  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(a.when)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div><div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
+  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(a.when)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(a.when)}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
 }
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
