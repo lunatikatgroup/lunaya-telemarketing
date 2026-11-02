@@ -656,11 +656,11 @@ function refreshChat(){ const id = S.openAppt, el = document.getElementById("cha
 function markSeen(id){ const a = S.appts[id]; if (!a || !unread(a)) return; S.db.doc("apptp/"+id).update({["seen."+S.uid]: Date.now()}).catch(()=>{}); }
 const horaTxt = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
 const diaTxt = ms => `<div class="dia">${fmt(ms,{weekday:"long",day:"numeric",month:"long"})}</div>`;
-function apptItem(id,a){
-  if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(a.when)}</span> Horario ocupado</span>${diaTxt(a.when)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
+function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
+  if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
-  const tg = a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
-  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(a.when)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(a.when)}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
+  const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
+  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
 }
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
@@ -668,9 +668,9 @@ function viewCitas(r){
   const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (!S.f.aSocio || a.socioId===S.f.aSocio);
   const all = Object.entries(S.appts).filter(vis);
   const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
-  const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds).length;
+  const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds || (a.segWhen && !a.sale && laDate(a.segWhen)===ds)).length;
     return `<button class="day ${ds===day?"on":""}" data-day="${ds}"><span>${names[i]}</span><b>${+ds.slice(8)}</b><small>${n||"·"}</small></button>`; }).join("");
-  const list = all.filter(([,a])=>laDate(a.when)===day).sort((a,b)=>a[1].when-b[1].when);
+  const list = [...all.filter(([,a])=>laDate(a.when)===day).map(([id,a])=>[id,a,false]), ...all.filter(([,a])=>a.segWhen && !a.sale && laDate(a.segWhen)===day).map(([id,a])=>[id,a,true])].sort((x,y)=>(x[2]?x[1].segWhen:x[1].when)-(y[2]?y[1].segWhen:y[1].when));
   const pend = all.filter(([,a])=>a.status==="agendada" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
   let h = r==="tele" ? worldBar() : "";
   h += `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row"><button class="btn small ghost" data-wk="-7" aria-label="Semana anterior">←</button><button class="btn small ghost" data-wk="0">Hoy</button><button class="btn small ghost" data-wk="7" aria-label="Semana siguiente">→</button></div>
@@ -679,7 +679,7 @@ function viewCitas(r){
     ${isDist() && grp.length>1?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Mis citas y las de mi grupo</option>${grp.map(id=>`<option value="${id}" ${S.f.aSocio===id?"selected":""}>${esc(memberName(id))}</option>`).join("")}</select>`:""}
     ${r==="admin"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
     <div class="week">${week}</div></div>
-    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a])=>apptItem(id,a)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
+    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
   if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
   return h;
 }
@@ -694,11 +694,13 @@ function openAppt(id){
   const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.teleId===S.uid || a.socioId===S.uid;
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego</div>
+    ${a.segWhen && !a.sale ? `<div class="banner warn">🔁 Seguimiento: <b>${fmtWhen(a.segWhen)}</b> · si ese día vende, marca “Demo con venta”</div>` : ""}
     ${a._priv?"":`<div class="banner">🔒 Los datos del cliente y los mensajes de esta cita son privados: solo los ven ${esc(memberName(a.socioId))} y ${esc(memberName(a.teleId))}. Aquí ves solo el resultado.</div>`}
     <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
     ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
     ${canResult?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
-      <button class="opt ${a.status==="hecha"&&!a.sale?"on":""}" data-ar="hecha">Demo hecha, sin venta</button>
+      <button class="opt ${a.status==="hecha"&&!a.sale&&!a.segWhen?"on":""}" data-ar="hecha">Demo hecha, sin venta</button>
+      <button class="opt ${a.status==="hecha"&&!a.sale&&a.segWhen?"on":""}" data-ar="seguimiento">🔁 Demo hecha, dar seguimiento</button>
       <button class="opt ${a.sale?"on":""}" data-ar="venta">Demo con venta</button>
       <button class="opt ${a.status==="no_se_hizo"?"on":""}" data-ar="no_se_hizo">No se hizo</button>
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
@@ -714,9 +716,11 @@ function openAppt(id){
     $("#chat-in") && ($("#chat-in").onkeydown = e => { if (e.key==="Enter"){ e.preventDefault(); send(); } });
     const save = async upd => { try { await chain("appt:"+id, () => S.db.doc("appts/"+id).update(upd)); closeModal(); toast("Guardado"); } catch(e){ writeErr(e); } };
     document.querySelectorAll("[data-ar]").forEach(b => b.onclick = () => { const k = b.dataset.ar;
+      if (k==="seguimiento"){ const w = a.segWhen || (Date.now()+2*864e5); $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Día del seguimiento<input class="i" type="date" id="sg-d" value="${laDate(w)}"></label><label class="f">Hora<input class="i" type="time" id="sg-t" value="${a.segWhen?laTime(w):"18:00"}"></label><div style="align-self:end"><button class="btn" id="sg-save">Guardar seguimiento</button></div></div>`;
+        $("#sg-save").onclick = () => { const d=$("#sg-d").value, t=$("#sg-t").value; if (!d||!t){ toast("Elige el día y la hora"); return; } save({status:"hecha", sale:false, amount:0, segWhen:laToMs(d,t), resultAt:Date.now(), resultBy:S.uid}); }; return; }
       if (k==="venta"){ $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Monto de la venta (USD)<input class="i" type="number" min="0" step="0.01" id="ar-amt" value="${a.amount||""}"></label><div style="align-self:end"><button class="btn" id="ar-save">Guardar venta</button></div></div>`; $("#ar-amt").focus();
         $("#ar-save").onclick = () => { const amt = +$("#ar-amt").value; if (!(amt>0)){ toast("Escribe el monto de la venta"); return; } save({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt:Date.now(), resultBy:S.uid}); }; }
-      else save({status:k, sale:false, amount:0, resultAt:Date.now(), resultBy:S.uid}); });
+      else save({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
     $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=$("#ap-time").value; if (d&&t) save({when:laToMs(d,t), status:"agendada", sale:false, amount:0}); });
     $("#ap-del") && ($("#ap-del").onclick = function(){ if (this.dataset.sure){ chain("appt:"+id, async () => { await S.db.doc("apptp/"+id).delete().catch(()=>{}); await S.db.doc("appts/"+id).delete(); }).then(()=>{ closeModal(); toast("Cita borrada"); }, writeErr); } else { this.dataset.sure="1"; this.textContent="Toca otra vez para borrar"; this.classList.add("danger"); } });
