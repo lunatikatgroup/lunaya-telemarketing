@@ -652,7 +652,7 @@ function openAppt(id){
   const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.teleId===S.uid || a.socioId===S.uid;
   openModal(`<h3>${esc(a.client)}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego</div>
-    <div>${a.phone?`<div><b>${esc(a.phone)}</b></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
+    <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
     ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
     ${canResult?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
       <button class="opt ${a.status==="hecha"&&!a.sale?"on":""}" data-ar="hecha">Demo hecha, sin venta</button>
