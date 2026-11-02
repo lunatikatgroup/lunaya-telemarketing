@@ -689,6 +689,16 @@ function gcalUrl(a){
   const q = new URLSearchParams({action:"TEMPLATE", text:`Demostración · ${a.client||"Cliente"}`, dates:`${z(a.when)}/${z(a.when+2*3600e3)}`, details, location:[a.address,a.city].filter(Boolean).join(", "), ctz:TZ});
   return "https://calendar.google.com/calendar/render?" + q.toString();
 }
+const famOf = m => !m ? "" : m.tipo===DIST ? m.id : (m.upline || "dir");
+function canTransfer(a){ return a._priv && (a.socioId===S.uid || role()==="admin" || (isDist() && S.members[a.socioId]?.upline===S.uid)); }
+function transferTargets(a){ const f = famOf({id:a.socioId, ...(S.members[a.socioId]||{})});
+  return socios().filter(m => m.id!==a.socioId && (role()==="admin" || famOf(m)===f || (isDist() && (m.id===S.uid || m.upline===S.uid)))); }
+async function transferAppt(id, to){
+  const a = S.appts[id], m = S.members[to]; if (!a || !m) return;
+  const now = Date.now(), from = memberName(a.socioId);
+  await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`🔀 Cita transferida de ${from} a ${m.name}`})});
+  await S.db.doc("appts/"+id).update({socioId:to, transferredFrom:a.socioId, transferredAt:now, transferredBy:S.uid});
+}
 function openAppt(id){
   const a = S.appts[id]; if (!a) return; const r = role();
   const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.teleId===S.uid || a.socioId===S.uid;
@@ -707,6 +717,7 @@ function openAppt(id){
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
       ${a.sale?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha"><input class="i" type="time" id="ap-time" value="${laTime(a.when)}" aria-label="Hora"><button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
+    ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
     ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a.status==="agendada" && r==="tele" && a.teleId===S.uid ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Pasar al Google Calendar de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">Al abrirse, elige el calendario de ${esc(memberName(a.socioId))} en la lista de calendarios y guarda. Funciona si ${esc(memberName(a.socioId))} te compartió su calendario con permiso para hacer cambios.</p>` : ""}
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
     <div class="row">${r==="admin"||a.teleId===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
@@ -728,6 +739,9 @@ function openAppt(id){
       $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; $("#ar-note") && $("#ar-note").focus();
       $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
+    $("#tr-go") && ($("#tr-go").onclick = function(){ const to = $("#tr-to").value; if (!to){ toast("Elige a quién transferir la cita"); return; }
+      if (!this.dataset.sure){ this.dataset.sure="1"; this.textContent = "Toca otra vez para pasarla a "+memberName(to); this.classList.add("danger"); return; }
+      chain("appt:"+id, () => transferAppt(id, to)).then(() => { closeModal(); toast("Cita transferida a "+memberName(to)); }, writeErr); });
     $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=$("#ap-time").value; if (d&&t) save({when:laToMs(d,t), status:"agendada", sale:false, amount:0}); });
     $("#ap-del") && ($("#ap-del").onclick = function(){ if (this.dataset.sure){ chain("appt:"+id, async () => { await S.db.doc("apptp/"+id).delete().catch(()=>{}); await S.db.doc("appts/"+id).delete(); }).then(()=>{ closeModal(); toast("Cita borrada"); }, writeErr); } else { this.dataset.sure="1"; this.textContent="Toca otra vez para borrar"; this.classList.add("danger"); } });
   });

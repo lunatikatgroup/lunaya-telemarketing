@@ -68,7 +68,8 @@ service cloud.firestore {
       allow read: if isMember();
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid && noClientData();
       allow update: if noClientData() && (isAdmin()
-         || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid)));
+         || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid))
+         || (isDist() && get(memberPath(resource.data.socioId)).data.get('upline', '') == request.auth.uid));
       allow delete: if isAdmin() || (isMember() && resource.data.teleId == request.auth.uid);
     }
 
@@ -84,11 +85,17 @@ service cloud.firestore {
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid
          && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
          && request.resource.data.get('up', '') == socioDoc().get('upline', '');
+      // Cambios normales: no se toca a quién pertenece la cita.
+      // Transferencia: la hace el socio dueño, su distribuidor o Dirección; la privacidad se recalcula para el nuevo socio.
       allow update: if (involved() || upline() || (isAdmin() && resource.data.dir == true))
-         && request.resource.data.socioId == resource.data.socioId
          && request.resource.data.teleId == resource.data.teleId
-         && request.resource.data.dir == resource.data.dir
-         && request.resource.data.get('up', '') == resource.data.get('up', '');
+         && ((request.resource.data.socioId == resource.data.socioId
+              && request.resource.data.dir == resource.data.dir
+              && request.resource.data.get('up', '') == resource.data.get('up', ''))
+          || (request.resource.data.socioId != resource.data.socioId
+              && (resource.data.socioId == request.auth.uid || upline() || isAdmin())
+              && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
+              && request.resource.data.get('up', '') == socioDoc().get('upline', '')));
       allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
     }
 
