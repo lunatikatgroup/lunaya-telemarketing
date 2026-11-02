@@ -9,5 +9,5 @@ window.LUNAYA_CONFIG = {
     messagingSenderId: "56098105935",
     appId: "1:56098105935:web:342c4060cbb6c1bb3c583a"
   },
-  owners: ["lunatikatgroup@gmail.com", "lunatikat.prestige@gmail.com"]
+  owners: ["lunatikatgroup@gmail.com"]
 };

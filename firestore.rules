@@ -7,7 +7,7 @@ service cloud.firestore {
     // Correos de la dirección principal (los mismos de config.js)
     function isOwnerEmail() {
       return signedIn() && request.auth.token.email != null
-        && request.auth.token.email.lower() in ['lunatikatgroup@gmail.com', 'lunatikat.prestige@gmail.com'];
+        && request.auth.token.email.lower() in ['lunatikatgroup@gmail.com'];
     }
     function memberPath(uid) { return /databases/$(database)/documents/members/$(uid); }
     function hasDoc() { return signedIn() && exists(memberPath(request.auth.uid)); }
