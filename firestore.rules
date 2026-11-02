@@ -16,6 +16,8 @@ service cloud.firestore {
     function isAdmin() { return isOwnerEmail() || myRole() == 'admin'; }
     function isMember() { return isAdmin() || myRole() in ['tele', 'socio']; }
     function isLeader() { return myRole() == 'tele' && meData().get('lider', false) == true; }
+    // Distribuidor: maneja su propio grupo (emprendedores y telemarketers que él invita)
+    function isDist() { return myRole() == 'socio' && meData().get('tipo', '') == 'Socio distribuidor'; }
 
     function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
     // Una invitación válida y sin usar que corresponde al rol que se está pidiendo
@@ -25,6 +27,7 @@ service cloud.firestore {
         && exists(invitePath(data.inviteCode))
         && get(invitePath(data.inviteCode)).data.status == 'enviada'
         && get(invitePath(data.inviteCode)).data.memberRole == data.role
+        && data.get('upline', '') == get(invitePath(data.inviteCode)).data.get('upline', '')
         && data.get('lider', false) == false;
     }
 
@@ -45,16 +48,19 @@ service cloud.firestore {
 
     match /invites/{code} {
       allow get: if signedIn();
-      allow list: if isAdmin() || isLeader();
+      allow list: if isAdmin() || isLeader() || (isDist() && resource.data.invitedBy == request.auth.uid);
       allow create: if request.resource.data.status == 'enviada'
          && request.resource.data.invitedBy == request.auth.uid
-         && (isAdmin() || (isLeader() && request.resource.data.memberRole != 'admin'));
+         && ((isAdmin() && request.resource.data.get('upline', '') == '')
+             || (isLeader() && request.resource.data.memberRole != 'admin' && request.resource.data.get('upline', '') == '')
+             || (isDist() && request.resource.data.role in ['emprendedor', 'tele']
+                 && request.resource.data.upline == request.auth.uid));
       allow update: if isAdmin()
          || (signedIn() && resource.data.status == 'enviada'
              && request.resource.data.status == 'aceptada'
              && request.resource.data.uid == request.auth.uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'acceptedAt', 'uid']));
-      allow delete: if isAdmin() || (isLeader() && resource.data.invitedBy == request.auth.uid);
+      allow delete: if isAdmin() || ((isLeader() || isDist()) && resource.data.invitedBy == request.auth.uid);
     }
 
     function noClientData() { return !request.resource.data.keys().hasAny(['client', 'phone', 'city', 'address', 'notes', 'chat', 'seen']); }
@@ -68,16 +74,21 @@ service cloud.firestore {
 
     // Datos privados de cada cita (cliente, teléfono, dirección, notas y mensajes).
     // Solo los ven el socio de la cita y la telemarketer que la agendó.
-    // Dirección solo los ve si el socio es emprendedor (dir == true), nunca si es distribuidor.
+    // Dirección solo los ve si el socio es emprendedor suyo (dir == true), nunca si es distribuidor
+    // o emprendedor de un distribuidor. El distribuidor ve los de su grupo (up == su uid).
     match /apptp/{id} {
       function involved() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid); }
-      allow read: if involved() || (isAdmin() && resource.data.dir == true);
+      function upline() { return signedIn() && resource.data.get('up', '') != '' && resource.data.get('up', '') == request.auth.uid; }
+      function socioDoc() { return get(memberPath(request.resource.data.socioId)).data; }
+      allow read: if involved() || upline() || (isAdmin() && resource.data.dir == true);
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid
-         && request.resource.data.dir == (get(memberPath(request.resource.data.socioId)).data.get('tipo', '') != 'Socio distribuidor');
-      allow update: if (involved() || (isAdmin() && resource.data.dir == true))
+         && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
+         && request.resource.data.get('up', '') == socioDoc().get('upline', '');
+      allow update: if (involved() || upline() || (isAdmin() && resource.data.dir == true))
          && request.resource.data.socioId == resource.data.socioId
          && request.resource.data.teleId == resource.data.teleId
-         && request.resource.data.dir == resource.data.dir;
+         && request.resource.data.dir == resource.data.dir
+         && request.resource.data.get('up', '') == resource.data.get('up', '');
       allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
     }
 

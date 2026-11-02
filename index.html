@@ -211,6 +211,11 @@ function av(id, size=28){ const m = S.members[id]; const fs = Math.round(size*0.
 const who = (id, size=28, bold=true) => `<span class="nm-av">${av(id,size)}${bold?`<b>${esc(memberName(id))}</b>`:esc(memberName(id))}</span>`;
 const byRole = r => Object.entries(S.members).filter(([,m]) => m.role === r).map(([id,m]) => ({id,...m})).sort((a,b) => (a.name||"").localeCompare(b.name||""));
 const socios = () => [...byRole("admin"), ...byRole("socio")];
+const DIST = "Socio distribuidor";
+const isDist = () => role()==="socio" && S.me?.tipo===DIST;
+const grupoDe = uid => Object.entries(S.members).filter(([,m]) => m.upline===uid && m.role!=="baja").map(([id,m]) => ({id,...m}));
+/* Socios para los que puede llamar una telemarketer: las de un distribuidor solo trabajan su grupo */
+const sociosPara = t => t && t.upline ? socios().filter(s => s.id===t.upline || s.upline===t.upline) : socios();
 const role = () => S.isOwner ? "admin" : (S.me?.role === "baja" ? "pendiente" : (S.me?.role || "nuevo"));
 const worldOk = () => !!(S.world && S.members[S.world] && ["socio","admin"].includes(S.members[S.world].role));
 function toast(msg, action){ document.querySelectorAll(".toast").forEach(t=>t.remove()); const t = document.createElement("div"); t.className="toast"; t.innerHTML = `<span>${esc(msg)}</span>`; if (action){ const b = document.createElement("button"); b.textContent = action.label; b.onclick = () => { t.remove(); action.fn(); }; t.appendChild(b); } document.body.appendChild(t); setTimeout(()=>t.remove(), action?6000:2600); }
@@ -291,6 +296,10 @@ function subscribeAll(){
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
   else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
+  if (S.me?.role === "socio" && S.me?.tipo === "Socio distribuidor"){
+    S.unsub.push(S.db.collection("invites").where("invitedBy", "==", S.uid).onSnapshot(s => { S.invites = {}; s.docs.forEach(d => S.invites[d.id] = d.data()); render(); }, e => console.log(e)));
+    S.unsub.push(S.db.collection("apptp").where("up", "==", S.uid).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs.up = m; mergeAppts(); render(); }, e => console.log(e)));
+  }
   if (S.isOwner || S.me?.role === "admin" || S.me?.lider)
     S.unsub.push(S.db.collection("invites").onSnapshot(s => { S.invites = {}; s.docs.forEach(d => S.invites[d.id] = d.data()); render(); }, e => console.log(e)));
 }
@@ -307,7 +316,7 @@ async function acceptInvite(code){
     const snap = await S.db.doc("invites/"+c).get();
     if (!snap.exists || snap.data().status === "aceptada"){ inviteDone = false; return false; }
     const v = snap.data();
-    await S.db.doc("members/"+S.uid).set({name: S.me?.name || v.name || S.authUser?.displayName || "", phone: S.me?.phone || v.phone || "", email: S.email, role: MEMBER_ROLE(v.role), tipo: (v.role==="tele"||v.role==="admin") ? "" : INV_ROLES[v.role], lider:false, joinedAt: Date.now(), invitedBy: v.invitedBy || "", inviteCode: c});
+    await S.db.doc("members/"+S.uid).set({name: S.me?.name || v.name || S.authUser?.displayName || "", phone: S.me?.phone || v.phone || "", email: S.email, role: MEMBER_ROLE(v.role), tipo: (v.role==="tele"||v.role==="admin") ? "" : INV_ROLES[v.role], lider:false, joinedAt: Date.now(), invitedBy: v.invitedBy || "", upline: v.upline || "", inviteCode: c});
     await S.db.doc("invites/"+c).update({status:"aceptada", acceptedAt:Date.now(), uid:S.uid});
     clearCode(); toast("¡Bienvenida al equipo!"); return true;
   } catch(e){ inviteDone = false; console.log(e); return false; }
@@ -346,6 +355,7 @@ function bindLogin(){
 }
 
 /* ===== Navegación ===== */
+const ICONS_LIDER = '<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM1 20c0-3.3 3.6-6 8-6s8 2.7 8 6v1H1zm16.5-5.9c3 .4 5.5 2.2 5.5 4.9v1h-4.5v-1c0-1.9-.4-3.5-1-4.9z" fill="currentColor"/>';
 const ICONS = {
   hoy:'<path d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z" fill="currentColor"/>',
   registrar:'<path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/>',
@@ -353,12 +363,13 @@ const ICONS = {
   pagos:'<path d="M12 1v2.1C9.2 3.5 7 5.2 7 7.8c0 2.9 2.5 4 5.2 4.7 2.4.6 3.3 1.2 3.3 2.4 0 1.3-1.3 2.1-3.3 2.1-2.2 0-3.4-1-3.6-2.5H6.2c.2 2.7 2.3 4.4 5.8 4.8V23h2v-2.1c2.9-.4 4.9-2.1 4.9-4.6 0-3.1-2.6-4.1-5.4-4.8-2.3-.6-3.1-1.1-3.1-2.2 0-1.1 1.1-1.9 2.9-1.9 1.8 0 2.8.9 3 2.2h2.6c-.2-2.4-1.9-4.1-4.9-4.5V1z" fill="currentColor"/>',
   ranking:'<path d="M7 2h10v2h4v3a5 5 0 0 1-4.6 5A5 5 0 0 1 13 15.9V19h4v3H7v-3h4v-3.1A5 5 0 0 1 7.6 12 5 5 0 0 1 3 7V4h4zm0 4H5v1a3 3 0 0 0 2 2.8zm10 0v3.8A3 3 0 0 0 19 7V6z" fill="currentColor"/>',
   lider:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>',
+  grupo:ICONS_LIDER,
   equipo:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>'
 };
 function tabsFor(r){
   if (r==="admin") return [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"]];
   if (r==="tele") return S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"]];
-  if (r==="socio") return [["hoy","Hoy"],["citas","Mis citas"],["ranking","Ranking"]];
+  if (r==="socio") return isDist() ? [["hoy","Hoy"],["citas","Citas"],["grupo","Mi grupo"],["ranking","Ranking"]] : [["hoy","Hoy"],["citas","Mis citas"],["ranking","Ranking"]];
   return [];
 }
 function go(v){ S.view = v; try { history.replaceState(null,"","#"+v); } catch { location.hash = v; } render(); window.scrollTo(0,0); }
@@ -394,8 +405,8 @@ function sueldoDe(t, r, base){
   const dias = a <= b ? workDays(a, b) : 0;
   return {sueldo: total ? base * dias / total : 0, dias, total};
 }
-function commissions(r){
-  const c = com(); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0])];
+function commissions(r, up=""){
+  const c = com(); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0])].filter(t => (t.upline||"")===up);
   /* la comisión se paga sobre ventas aprobadas */
   const rows = teles.map(t => { const e = teleEval(t.id, r); return {t, monto:e.montoAprob, ventas:e.aprob, pend:e.pend, cancel:e.cancel}; });
   const teamMonto = rows.reduce((s,x)=>s+x.monto,0);
@@ -423,7 +434,7 @@ function render(){
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
   if (needsWorld && !worldOk()) html += worldPicker();
-  else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, pagos:viewPagos, equipo:viewEquipo, lider:viewLider, ranking:viewRanking}[S.view])(r);
+  else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:viewPagos, equipo:viewEquipo, lider:viewLider, ranking:viewRanking}[S.view])(r);
   main.innerHTML = html; bindCommon(); refreshChat();
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); if (sel && "setSelectionRange" in el) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
@@ -482,7 +493,7 @@ function bindDrive(){
 /* ===== Elegir socio ===== */
 function worldPicker(){
   const t0 = range("hoy");
-  const cards = socios().map(s => { const e = teleEval(S.uid, t0, s.id); const next = Object.values(S.appts).filter(a => a.socioId===s.id && a.status==="agendada" && a.when >= Date.now()).length;
+  const cards = sociosPara(S.me).map(s => { const e = teleEval(S.uid, t0, s.id); const next = Object.values(S.appts).filter(a => a.socioId===s.id && a.status==="agendada" && a.when >= Date.now()).length;
     return `<button class="item" data-world="${s.id}"><div><div class="t nm-av">${av(s.id,32)}${esc(s.name)}${s.role==="admin"?" · dirección":""}</div><div class="m">Hoy: ${e.calls} llamadas · ${e.citas} citas · ${next} citas próximas</div></div><span class="pill acc">Entrar</span></button>`; }).join("");
   return `<div class="card"><h2>¿Para qué socio vas a llamar?</h2><p class="note" style="margin-top:-6px">Cada socio es independiente: lo que registres aquí solo cuenta para esa persona. Cambia de socio cuando termines con su base.</p>${cards?`<div class="list">${cards}</div>`:`<div class="empty">Aún no hay socios aprobados.</div>`}</div>`;
 }
@@ -511,7 +522,7 @@ function viewHoy(r){
     h += `<div class="card"><h2>Tu efectividad ${periodChips()}</h2>${evalTiles(e)}${e.sinRes?`<p class="note">${e.sinRes} cita(s) tuyas aún no tienen resultado del socio.</p>`:""}</div>`;
     const per = socios().map(s => ({s, e:teleEval(S.uid, rg, s.id)})).filter(x => x.e.calls || x.e.citas || x.e.demos);
     h += `<div class="card"><h2>Por socio<span class="note">${PLABEL[S.f.period]}</span></h2>${per.length?evalTable(per.map(x=>({name:x.s.name, e:x.e, id:x.s.id})), true):`<div class="empty">Sin actividad en este periodo.</div>`}</div>`;
-    const mine = commissions(range(S.f.period==="mesant"?"mesant":"mes")).find(x => x.t.id===S.uid);
+    const mine = commissions(range(S.f.period==="mesant"?"mesant":"mes"), S.me?.upline||"").find(x => x.t.id===S.uid);
     if (mine) h += `<div class="card"><h2>Tu comisión<span class="note">${S.f.period==="mesant"?"Mes anterior":"Este mes"}</span></h2><div class="tiles">
       <div class="tile"><b>${money(mine.sueldo)}</b><span>Sueldo acumulado</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile"><b>${money(mine.own)}</b><span>${com().pct}% de tus ventas aprobadas</span><small>${money(mine.monto)} aprobado${mine.pend?` · ${mine.pend} pendiente(s)`:""}</small></div>
       ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.total)}</b><span>Total</span></div></div>
@@ -628,7 +639,7 @@ function openCitaForm(src){
         const ref = S.db.collection("appts").doc(); const sm = S.members[S.world] || {};
         await ref.set({when:laToMs(d,t), socioId:S.world, teleId:S.uid, source:src, status:"agendada", sale:false, amount:0, createdAt:at});
         await S.db.doc("apptp/"+ref.id).set({client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(),
-          socioId:S.world, teleId:S.uid, dir: sm.tipo !== "Socio distribuidor", createdAt:at});
+          socioId:S.world, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:at});
         await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
         closeModal(); toast("Cita guardada"); S.flash = "cita"; setTimeout(() => { if (S.appts[ref.id]) openAppt(ref.id); }, 400); setTimeout(()=>{ S.flash=null; render(); }, 600);
       } catch(e){ $("#c-save").disabled = false; writeErr(e); }
@@ -651,7 +662,8 @@ function apptItem(id,a){
 }
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
-  const vis = ([,a]) => r==="socio" ? a.socioId===S.uid : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (!S.f.aSocio || a.socioId===S.f.aSocio);
+  const grp = isDist() ? [S.uid, ...grupoDe(S.uid).filter(m=>m.role==="socio").map(m=>m.id)] : [S.uid];
+  const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (!S.f.aSocio || a.socioId===S.f.aSocio);
   const all = Object.entries(S.appts).filter(vis);
   const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
   const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds).length;
@@ -662,6 +674,7 @@ function viewCitas(r){
   h += `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row"><button class="btn small ghost" data-wk="-7" aria-label="Semana anterior">←</button><button class="btn small ghost" data-wk="0">Hoy</button><button class="btn small ghost" data-wk="7" aria-label="Semana siguiente">→</button></div>
     <b style="font-family:var(--serif);font-size:19px">${fmt(laToMs(mon,"12:00"),{day:"numeric",month:"short"})} – ${fmt(laToMs(addDays(mon,6),"12:00"),{day:"numeric",month:"short"})}</b></div>
     ${r==="tele"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar citas"><option value="">Mis citas + horarios ocupados del socio</option><option value="_me" ${S.f.aSocio==="_me"?"selected":""}>Solo mis citas</option></select>`:""}
+    ${isDist() && grp.length>1?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Mis citas y las de mi grupo</option>${grp.map(id=>`<option value="${id}" ${S.f.aSocio===id?"selected":""}>${esc(memberName(id))}</option>`).join("")}</select>`:""}
     ${r==="admin"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
     <div class="week">${week}</div></div>
     <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a])=>apptItem(id,a)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
@@ -722,10 +735,10 @@ function viewPagos(){
   h += comCard(p);
   return h;
 }
-function comCard(p){
+function comCard(p, up=""){
   const c = com();
   if (p==="semana" || p==="hoy") return `<div class="card"><h2>Comisiones</h2><p class="note">Las comisiones se calculan por mes. Elige “Este mes” o “Mes anterior”.</p></div>`;
-  const rows = commissions(range(p)); const tot = rows.reduce((s,x)=>s+x.total,0);
+  const rows = commissions(range(p), up); const tot = rows.reduce((s,x)=>s+x.total,0);
   return `<div class="card"><h2>Comisiones de telemarketing<span class="note">${PLABEL[p]}</span></h2>${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Ventas aprobadas</th><th class="n">Volumen aprobado</th><th class="n">Pendientes</th><th class="n">Canceladas</th><th class="n">Sueldo</th><th class="n">${c.pct}% propio</th><th class="n">${c.liderPct}% líder</th><th class="n">Total</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.t.name)}</b>${x.t.lider?' <span class="tag tg-warn">líder</span>':""}</td><td class="n">${x.ventas}</td><td class="n">${money(x.monto)}</td><td class="n">${x.pend}</td><td class="n">${x.cancel}</td><td class="n">${money(x.sueldo)}<div class="note">${x.dias}/${x.diasMes} días</div></td><td class="n">${money(x.own)}</td><td class="n">${x.t.lider?money(x.lead):"—"}</td><td class="n"><b>${money(x.total)}</b></td></tr>`).join("")}<tr class="total"><td colspan="8">Total a pagar</td><td class="n">${money(tot)}</td></tr></tbody></table></div>
     <p class="note">Sueldo de ${money(c.sueldo)} al mes, que se va acumulando por cada día laboral (lunes a sábado) desde su fecha de inicio; el mes completo da ${money(c.sueldo)}. Más ${c.pct}% de las ventas aprobadas que salieron de sus citas. La líder suma ${c.liderPct}% de todas las ventas aprobadas del equipo de telemarketing. La venta cuenta en el mes de la demostración.</p>`:`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}</div>`;
 }
@@ -755,14 +768,14 @@ function viewRanking(){
 /* ===== Invitaciones (directora y líder) ===== */
 function inviteCard(){
   const isAdmin = role()==="admin";
-  const list = Object.entries(S.invites).filter(([,v]) => isAdmin || v.invitedBy===S.uid).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
+  const list = Object.entries(S.invites).filter(([,v]) => isAdmin ? !v.upline : v.invitedBy===S.uid).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
   const pendShare = list.filter(([,v]) => v.status!=="aceptada");
   return `<div class="card"><h2>Invitar personas</h2>
     <form id="inv-form" class="grid2">
       <label class="f">Nombre<input class="i" id="inv-name" autocomplete="off"></label>
       <label class="f">Correo (opcional)<input class="i" id="inv-email" type="email" inputmode="email" autocomplete="off"></label>
       <label class="f">WhatsApp (con código de país)<input class="i" id="inv-phone" inputmode="tel" placeholder="+58 412 555 1234"></label>
-      <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
+      <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => !isDist() || k!=="distribuidor").map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
       <div><button class="btn" type="submit">Crear invitación</button></div>
     </form>
 
@@ -794,6 +807,19 @@ function viewLider(){
   return h;
 }
 
+/* ===== MI GRUPO (distribuidor) ===== */
+function viewGrupo(){
+  if (!isDist()) return `<div class="card empty">Esta pantalla es para distribuidores.</div>`;
+  const rg = range(S.f.period); const g = grupoDe(S.uid);
+  const emps = [{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")].map(m => ({name:m.name+(m.id===S.uid?" (tú)":""), e:teleEval(null, rg, m.id), id:m.id}));
+  let h = `<div class="card"><h2>Mi grupo ${periodChips()}</h2><p class="note" style="margin-top:-6px">Tú manejas a tus emprendedores y telemarketers. Solo tú y la telemarketer de cada cita ven los datos de los clientes de tu grupo.</p></div>`;
+  h += `<div class="card"><h2>Emprendedores</h2>${evalTable(emps, false)}</div>`;
+  const teles = g.filter(m => m.role==="tele").map(t => ({name:t.name, e:teleEval(t.id, rg), id:t.id}));
+  if (teles.length){ h += `<div class="card"><h2>Mis telemarketers</h2>${evalTable(teles, true)}</div>`; h += comCard(S.f.period==="mesant" ? "mesant" : "mes", S.uid); }
+  h += inviteCard();
+  return h;
+}
+
 /* ===== EQUIPO (directora) ===== */
 function viewEquipo(){
   const pend = Object.entries(S.members).filter(([,m])=>m.role==="pendiente");
@@ -801,7 +827,7 @@ function viewEquipo(){
   const c = com(); const sid = S.config.sheetId || "";
   let h = driveCard() + inviteCard();
   h += `<div class="card"><h2>Solicitudes de acceso</h2>${pend.length?`<div class="list">${pend.map(([id,m])=>`<div class="item" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(m.name)}</div><div class="m">Pidió entrar como ${esc(INV_ROLES[m.wantedRole]||"socio")}${m.phone?" · "+esc(m.phone):""}</div></div><div class="row">${Object.entries(INV_ROLES).map(([k,l])=>`<button class="btn small ${k===(m.wantedRole||"tele")?"":"ghost"}" data-approve="${id}" data-role="${k}">${k===(m.wantedRole||"tele")?"Aprobar":"Como "+l.toLowerCase()}</button>`).join("")}</div></div>`).join("")}</div>`:`<div class="empty">No hay solicitudes pendientes. Quien entra con un enlace de invitación queda registrado solo.</div>`}</div>`;
-  h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td>${who(id,30)}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label><label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
+  h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td>${who(id,30)}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.upline?` <span class="tag tg-warn">grupo de ${esc(memberName(m.upline))}</span>`:""}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label><label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += `<div class="card"><h2>Comisiones</h2><div class="grid2">
     <label class="f">Sueldo fijo mensual (USD)<input class="i" type="number" min="0" id="k-sueldo" value="${c.sueldo}"></label>
     <label class="f">% sobre sus ventas<input class="i" type="number" min="0" step="0.1" id="k-pct" value="${c.pct}"></label>
@@ -951,7 +977,8 @@ function bindCommon(){
     if (!name){ toast("Escribe el nombre de la persona"); return; }
     if (rl==="admin" && role()!=="admin") return;
     if (email && Object.values(S.invites).some(v => v.email===email && v.status!=="aceptada")){ toast("Ese correo ya tiene una invitación pendiente"); return; }
-    try { const code = newCode(); await S.db.doc("invites/"+code).set({name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, createdAt:Date.now(), status:"enviada"}); invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid}); } catch(err){ writeErr(err); } };
+    try { const code = newCode(); if (isDist() && !["emprendedor","tele"].includes(rl)) return;
+      await S.db.doc("invites/"+code).set({name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, upline: isDist() ? S.uid : "", createdAt:Date.now(), status:"enviada"}); invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid}); } catch(err){ writeErr(err); } };
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
   all("[data-lider]", c => c.onchange = async () => { try { await S.db.doc("members/"+c.dataset.lider).update({lider:c.checked}); toast(c.checked?"Marcada como líder":"Ya no es líder"); } catch(e){ writeErr(e); } });
