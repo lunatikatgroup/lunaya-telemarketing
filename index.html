@@ -275,12 +275,18 @@ function startData(){
     render();
   }, onErr));
 }
+const PRIV_KEYS = ["client","phone","city","address","notes","chat","seen"];
+function mergeAppts(){ const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, _priv:true} : {...x, _priv:false}; }); }
+const cName = a => a._priv ? (a.client||"Cliente") : "Cliente privado";
 function subscribeAll(){
   if (S.subscribed) return; S.subscribed = true;
   const from = addMonths(today().slice(0,8)+"01", -1);
   const loadTimer = setTimeout(() => { if (!S.loaded.appts){ S.timedOut = true; render(); } }, 12000);
   S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; render(); }, onErr));
-  S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.appts = {}; s.docs.forEach(d => S.appts[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; render(); }, onErr));
+  S.apub = {}; S.privs = {};
+  S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.apub = {}; s.docs.forEach(d => S.apub[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; mergeAppts(); render(); }, onErr));
+  const privQ = [["teleId", S.uid], ["socioId", S.uid]]; if (S.isOwner || S.me?.role === "admin") privQ.push(["dir", true]);
+  privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; mergeAppts(); render(); }, e => console.log(e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
@@ -607,8 +613,10 @@ function openCitaForm(src){
       if (!name || !d || !t){ toast("Falta el nombre, la fecha o la hora"); return; }
       const at = Date.now(); $("#c-save").disabled = true;
       try {
-        const ref = await S.db.collection("appts").add({client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(),
-          when:laToMs(d,t), socioId:S.world, teleId:S.uid, source:src, status:"agendada", sale:false, amount:0, createdAt:at});
+        const ref = S.db.collection("appts").doc(); const sm = S.members[S.world] || {};
+        await ref.set({when:laToMs(d,t), socioId:S.world, teleId:S.uid, source:src, status:"agendada", sale:false, amount:0, createdAt:at});
+        await S.db.doc("apptp/"+ref.id).set({client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(),
+          socioId:S.world, teleId:S.uid, dir: sm.tipo !== "Socio distribuidor", createdAt:at});
         await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
         closeModal(); toast("Cita guardada"); S.flash = "cita"; setTimeout(() => { if (S.appts[ref.id]) openAppt(ref.id); }, 400); setTimeout(()=>{ S.flash=null; render(); }, 600);
       } catch(e){ $("#c-save").disabled = false; writeErr(e); }
@@ -617,17 +625,17 @@ function openCitaForm(src){
 }
 
 /* ===== CITAS ===== */
-function canChat(a){ return role()==="admin" || a.socioId===S.uid || a.teleId===S.uid; }
+function canChat(a){ return !!a._priv; }
 function unread(a){ if (!a || !canChat(a)) return 0; const seen = (a.seen&&a.seen[S.uid])||0; return (a.chat||[]).filter(m => m.by!==S.uid && m.at>seen).length; }
 function unreadTotal(){ return Object.values(S.appts||{}).reduce((n,a)=>n+unread(a),0); }
 function chatHtml(a){ const ms = a.chat||[]; return ms.length ? ms.map(m => `<div class="msg ${m.by===S.uid?"mine":""}"><div class="mh">${esc(memberName(m.by))} · ${fmt(m.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}</div><div>${esc(m.text)}</div></div>`).join("") : `<div class="note">Aún no hay mensajes. Escribe aquí para hablar sobre esta cita.</div>`; }
 function refreshChat(){ const id = S.openAppt, el = document.getElementById("chat-list"); if (!id || !el) return; const a = S.appts[id]; if (!a) return; el.innerHTML = chatHtml(a); el.scrollTop = el.scrollHeight; markSeen(id); }
-function markSeen(id){ const a = S.appts[id]; if (!a || !unread(a)) return; S.db.doc("appts/"+id).update({["seen."+S.uid]: Date.now()}).catch(()=>{}); }
+function markSeen(id){ const a = S.appts[id]; if (!a || !unread(a)) return; S.db.doc("apptp/"+id).update({["seen."+S.uid]: Date.now()}).catch(()=>{}); }
 function apptItem(id,a){
   if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h">${fmtWhen(a.when)} · Horario ocupado</span><span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
-  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h">${fmtWhen(a.when)} · ${esc(a.client)}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div><div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
+  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h">${fmtWhen(a.when)} · ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div><div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
 }
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
@@ -657,8 +665,9 @@ function gcalUrl(a){
 function openAppt(id){
   const a = S.appts[id]; if (!a) return; const r = role();
   const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.teleId===S.uid || a.socioId===S.uid;
-  openModal(`<h3>${esc(a.client)}</h3>
+  openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego</div>
+    ${a._priv?"":`<div class="banner">🔒 Los datos del cliente y los mensajes de esta cita son privados: solo los ven ${esc(memberName(a.socioId))} y ${esc(memberName(a.teleId))}. Aquí ves solo el resultado.</div>`}
     <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
     ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
     ${canResult?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
@@ -668,12 +677,12 @@ function openAppt(id){
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
       ${a.sale?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha"><input class="i" type="time" id="ap-time" value="${laTime(a.when)}" aria-label="Hora"><button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
-    ${a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a.status==="agendada" && r==="tele" && a.teleId===S.uid ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Pasar al Google Calendar de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">Al abrirse, elige el calendario de ${esc(memberName(a.socioId))} en la lista de calendarios y guarda. Funciona si ${esc(memberName(a.socioId))} te compartió su calendario con permiso para hacer cambios.</p>` : ""}
+    ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a.status==="agendada" && r==="tele" && a.teleId===S.uid ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Pasar al Google Calendar de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">Al abrirse, elige el calendario de ${esc(memberName(a.socioId))} en la lista de calendarios y guarda. Funciona si ${esc(memberName(a.socioId))} te compartió su calendario con permiso para hacer cambios.</p>` : ""}
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
     <div class="row">${r==="admin"||a.teleId===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     S.openAppt = id; refreshChat();
     const send = () => { const inp = $("#chat-in"); const t = (inp.value||"").trim(); if (!t) return; inp.value = ""; const now = Date.now();
-      S.db.doc("appts/"+id).update({chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:t}), ["seen."+S.uid]: now}).catch(e => { inp.value = t; writeErr(e); }); };
+      S.db.doc("apptp/"+id).update({chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:t}), ["seen."+S.uid]: now}).catch(e => { inp.value = t; writeErr(e); }); };
     $("#chat-send") && ($("#chat-send").onclick = send);
     $("#chat-in") && ($("#chat-in").onkeydown = e => { if (e.key==="Enter"){ e.preventDefault(); send(); } });
     const save = async upd => { try { await chain("appt:"+id, () => S.db.doc("appts/"+id).update(upd)); closeModal(); toast("Guardado"); } catch(e){ writeErr(e); } };
@@ -683,7 +692,7 @@ function openAppt(id){
       else save({status:k, sale:false, amount:0, resultAt:Date.now(), resultBy:S.uid}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
     $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=$("#ap-time").value; if (d&&t) save({when:laToMs(d,t), status:"agendada", sale:false, amount:0}); });
-    $("#ap-del") && ($("#ap-del").onclick = function(){ if (this.dataset.sure){ chain("appt:"+id, () => S.db.doc("appts/"+id).delete()).then(()=>{ closeModal(); toast("Cita borrada"); }, writeErr); } else { this.dataset.sure="1"; this.textContent="Toca otra vez para borrar"; this.classList.add("danger"); } });
+    $("#ap-del") && ($("#ap-del").onclick = function(){ if (this.dataset.sure){ chain("appt:"+id, async () => { await S.db.doc("apptp/"+id).delete().catch(()=>{}); await S.db.doc("appts/"+id).delete(); }).then(()=>{ closeModal(); toast("Cita borrada"); }, writeErr); } else { this.dataset.sure="1"; this.textContent="Toca otra vez para borrar"; this.classList.add("danger"); } });
   });
 }
 
@@ -695,7 +704,7 @@ function viewPagos(){
   const total = live.reduce((s,[,a])=>s+(+a.amount||0),0);
   const aprob = sales.filter(([,a]) => a.saleStatus==="aprobada"); const tAprob = aprob.reduce((s,[,a])=>s+(+a.amount||0),0);
   let h = `<div class="card"><h2>Ventas del territorio ${periodChips(["semana","mes","mesant"])}</h2><div class="tiles"><div class="tile"><b>${live.length}</b><span>Cantidad de ventas</span><small>${sales.length-live.length} canceladas</small></div><div class="tile"><b>${aprob.length}</b><span>Ventas aprobadas</span><small>${money(tAprob)}</small></div><div class="tile"><b>${live.length-aprob.length}</b><span>Pendientes de aprobación</span></div><div class="tile acc"><b>${money(total)}</b><span>Volumen de ventas</span><small>sin canceladas</small></div></div></div>`;
-  h += `<div class="card"><h2>Detalle de ventas</h2>${sales.length?`<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th>Telemarketer</th><th>Estado</th><th class="n">Monto</th></tr></thead><tbody>${sales.map(([id,a])=>{ const st=a.saleStatus||"pendiente"; return `<tr data-appt="${id}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(a.client)}</b>${a.city?`<div class="note">${esc(a.city)}</div>`:""}</td><td>${esc(memberName(a.socioId))}</td><td>${esc(memberName(a.teleId))}</td><td><span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">${SALE_ST[st]}</span></td><td class="n">${money(a.amount)}</td></tr>`; }).join("")}<tr class="total"><td colspan="5">Total sin canceladas</td><td class="n">${money(total)}</td></tr></tbody></table></div><p class="note">Toca una venta para marcarla como aprobada o cancelada.</p>`:`<div class="empty">No hay ventas registradas en este periodo.</div>`}</div>`;
+  h += `<div class="card"><h2>Detalle de ventas</h2>${sales.length?`<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th>Telemarketer</th><th>Estado</th><th class="n">Monto</th></tr></thead><tbody>${sales.map(([id,a])=>{ const st=a.saleStatus||"pendiente"; return `<tr data-appt="${id}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(cName(a))}</b>${a.city?`<div class="note">${esc(a.city)}</div>`:""}</td><td>${esc(memberName(a.socioId))}</td><td>${esc(memberName(a.teleId))}</td><td><span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">${SALE_ST[st]}</span></td><td class="n">${money(a.amount)}</td></tr>`; }).join("")}<tr class="total"><td colspan="5">Total sin canceladas</td><td class="n">${money(total)}</td></tr></tbody></table></div><p class="note">Toca una venta para marcarla como aprobada o cancelada.</p>`:`<div class="empty">No hay ventas registradas en este periodo.</div>`}</div>`;
   const ss = socios().map(s => { const e = teleEval(null, rg, s.id); return {s, e}; });
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);

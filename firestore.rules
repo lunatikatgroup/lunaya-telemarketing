@@ -57,12 +57,28 @@ service cloud.firestore {
       allow delete: if isAdmin() || (isLeader() && resource.data.invitedBy == request.auth.uid);
     }
 
+    function noClientData() { return !request.resource.data.keys().hasAny(['client', 'phone', 'city', 'address', 'notes', 'chat', 'seen']); }
     match /appts/{id} {
       allow read: if isMember();
-      allow create: if isMember() && request.resource.data.teleId == request.auth.uid;
-      allow update: if isAdmin()
-         || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid));
+      allow create: if isMember() && request.resource.data.teleId == request.auth.uid && noClientData();
+      allow update: if noClientData() && (isAdmin()
+         || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid)));
       allow delete: if isAdmin() || (isMember() && resource.data.teleId == request.auth.uid);
+    }
+
+    // Datos privados de cada cita (cliente, teléfono, dirección, notas y mensajes).
+    // Solo los ven el socio de la cita y la telemarketer que la agendó.
+    // Dirección solo los ve si el socio es emprendedor (dir == true), nunca si es distribuidor.
+    match /apptp/{id} {
+      function involved() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid); }
+      allow read: if involved() || (isAdmin() && resource.data.dir == true);
+      allow create: if isMember() && request.resource.data.teleId == request.auth.uid
+         && request.resource.data.dir == (get(memberPath(request.resource.data.socioId)).data.get('tipo', '') != 'Socio distribuidor');
+      allow update: if (involved() || (isAdmin() && resource.data.dir == true))
+         && request.resource.data.socioId == resource.data.socioId
+         && request.resource.data.teleId == resource.data.teleId
+         && request.resource.data.dir == resource.data.dir;
+      allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
     }
 
     // Registro diario de llamadas: cada persona escribe solo el suyo (id = fecha_uid)
