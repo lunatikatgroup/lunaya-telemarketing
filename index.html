@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lunaya Telemarketing</title>
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-title" content="Lunaya TM">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#e8dcc6">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: fondo crema cálido, tarjetas blancas, acento terracota; barra inferior fija para usar con el pulgar */
+  --bg:#e8dcc6; --card:#fffdf8; --ink:#1f1e1d; --muted:#6f6a5e; --line:#dfd3bc; --soft:#f4ecdd;
+  --accent:#d97757; --accent-ink:#ffffff; --accent-soft:#f6e3da; --deep:#3d3929;
+  --good:#3f7d4e; --good-bg:#e5efe2; --warn:#a3651a; --warn-bg:#f8ecd6; --bad:#b4442f; --bad-bg:#f7e1db;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif; --body:"Manrope",system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#262624; --card:#30302e; --ink:#f3f1ea; --muted:#a8a69c; --line:#43423e; --soft:#3a3936;
+  --accent-soft:#4a3329; --deep:#e8e4d6; --good:#8cc79a; --good-bg:#2c3a2e; --warn:#e6b46a; --warn-bg:#40331f; --bad:#f09a86; --bad-bg:#45291f; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#262624; --card:#30302e; --ink:#f3f1ea; --muted:#a8a69c; --line:#43423e; --soft:#3a3936;
+  --accent-soft:#4a3329; --deep:#e8e4d6; --good:#8cc79a; --good-bg:#2c3a2e; --warn:#e6b46a; --warn-bg:#40331f; --bad:#f09a86; --bad-bg:#45291f; color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+header.top{padding:20px 16px 6px;max-width:980px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:12px;padding-bottom:14px;margin-bottom:12px;border-bottom:1.5px solid var(--line)}
+.brand svg{width:38px;height:38px;color:var(--accent);flex:none}
+.brand .bn{font-family:var(--serif);font-weight:700;font-size:38px;line-height:1;letter-spacing:.08em;color:var(--ink)}
+.me-big{background:none;border:0;cursor:pointer;display:grid;justify-items:center;gap:2px;padding:0;color:var(--ink)}
+.me-big .av{box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--accent)}
+.me-big .me-nm{font-family:var(--serif);font-weight:700;font-size:15px;line-height:1.15;max-width:120px;text-align:center;text-wrap:balance;margin-top:4px}
+.me-big small{font-size:11.5px;font-weight:700;color:var(--accent)}
+.brand .bs{font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-top:4px}
+h1{font-family:var(--serif);font-weight:700;font-size:24px;line-height:1.1;margin:8px 0 4px;text-wrap:balance;text-transform:uppercase;letter-spacing:.02em}
+.sub{color:var(--muted);margin:0;font-size:14.5px}
+.who{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:700;background:var(--soft);color:var(--ink);white-space:nowrap}
+.pill.acc{background:var(--accent-soft);color:var(--accent)}
+.av{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;flex:none;background:var(--accent-soft);color:var(--accent);font-weight:800;vertical-align:middle}
+.av img{width:100%;height:100%;object-fit:cover;display:block}
+.nm-av{display:inline-flex;align-items:center;gap:8px}
+button.pill{border:0;cursor:pointer}
+main{max-width:980px;margin:0 auto;padding:12px 16px 110px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+main>*{min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2 .note{text-transform:none;letter-spacing:0;font-family:var(--body);font-weight:600}
+.card h2{font-family:var(--serif);font-weight:700;font-size:19px;text-transform:uppercase;letter-spacing:.03em;margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));gap:10px}
+.tile{background:var(--soft);border-radius:12px;padding:12px}
+.tile b{display:block;font-family:var(--serif);font-weight:600;font-size:30px;line-height:1.05;font-variant-numeric:tabular-nums}
+.tile span{font-size:12px;color:var(--muted);font-weight:700}
+.tile small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.tile.acc{background:var(--accent);color:var(--accent-ink)}.tile.acc span,.tile.acc small{color:#fde9e0}
+.tile.alert{background:var(--bad-bg)}.tile.alert b,.tile.alert span{color:var(--bad)}
+.bar{height:7px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--accent)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 13px;font-size:13.5px;font-weight:600;cursor:pointer}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:var(--accent-ink);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.dark{background:var(--ink);color:var(--bg)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.small{padding:7px 12px;font-size:13.5px}
+.btn.danger{background:var(--bad);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+label.f{display:grid;gap:5px;font-size:12.5px;font-weight:700;color:var(--muted)}
+input.i,select.i,textarea.i{width:100%;border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:10px 12px;font-size:15px;font-weight:500;color:var(--ink)}
+textarea.i{min-height:70px;resize:vertical}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.total td{font-weight:800;border-bottom:0}
+.tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.tg-good{background:var(--good-bg);color:var(--good)}.tg-warn{background:var(--warn-bg);color:var(--warn)}.tg-bad{background:var(--bad-bg);color:var(--bad)}.tg-mute{background:var(--soft);color:var(--muted)}
+.pct-good{color:var(--good);font-weight:800}.pct-mid{color:var(--warn);font-weight:800}.pct-low{color:var(--bad);font-weight:800}
+.list{display:grid;gap:8px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;text-align:left;width:100%}
+.item .t{font-weight:700;font-size:16px}.item .m{color:var(--muted);font-size:13px}
+.world{background:var(--deep);color:var(--bg);border-color:var(--deep)}
+.world .nm{font-family:var(--serif);font-weight:700;font-size:23px;line-height:1.1;text-transform:uppercase}
+.tally{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:640px){.tally{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tb{border:1.5px solid var(--line);background:var(--card);border-radius:14px;padding:16px 14px;text-align:left;cursor:pointer;display:grid;gap:4px;min-height:92px;transition:transform .08s}
+.tb:active{transform:scale(.97)}
+.tb .l{font-weight:800;font-size:16px}
+.tb .c{font-family:var(--serif);font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.tb .h{font-size:12px;color:var(--muted)}
+.tb.cita{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.tb.cita .h{color:#fde9e0}
+.tb.flash{outline:3px solid var(--accent)}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.day{border:1px solid var(--line);border-radius:12px;padding:8px 2px;text-align:center;background:var(--card);cursor:pointer}
+.day b{display:block;font-family:var(--serif);font-size:22px;line-height:1.1}
+.day span{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase}
+.day small{display:block;font-size:11px;color:var(--muted)}
+.day.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.day.on span,.day.on small{color:var(--line)}
+.appt{border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--card);border-radius:12px;padding:11px 13px;cursor:pointer;text-align:left;width:100%;display:grid;gap:2px}
+.appt.hecha{border-left-color:var(--good)}.appt.no_se_hizo,.appt.cancelada{border-left-color:var(--muted)}
+.appt .h{font-weight:800}
+.note{font-size:13px;color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:18px 8px}
+.banner{border-radius:12px;padding:12px 14px;font-weight:600}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.banner.good{background:var(--good-bg);color:var(--good)}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav.bottom button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:11.5px;font-weight:700;padding:6px 6px;border-radius:10px;cursor:pointer;min-width:54px;flex:1;max-width:96px}
+nav.bottom button.on{color:var(--accent);background:var(--accent-soft)}
+nav.bottom svg{width:22px;height:22px}
+.modal-bg{position:fixed;inset:0;background:rgba(31,30,29,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.modal{background:var(--card);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));display:grid;gap:12px}
+@media (min-width:700px){.modal-bg{align-items:center}.modal{border-radius:20px}}
+.modal h3{font-family:var(--serif);font-weight:700;font-size:21px;margin:0;text-transform:uppercase;letter-spacing:.02em}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.opt{border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:12px;font-weight:700;cursor:pointer;text-align:left}
+.opt.on{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:92px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%;display:flex;gap:12px;align-items:center}
+.toast button{background:none;border:0;color:var(--accent);font-weight:800;cursor:pointer}
+.rank{display:grid;gap:6px}
+.rank div{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;background:var(--soft)}
+.rank .pos{font-family:var(--serif);font-size:19px;width:26px;color:var(--muted)}
+.rank .me{outline:2px solid var(--accent)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 3a8.5 8.5 0 1 0 6.4 14.1A7 7 0 0 1 14.5 3z" fill="currentColor"/></svg><div style="flex:1;min-width:0"><div class="bn">LUNAYA</div><div class="bs">Sistema de telemarketing</div></div><div id="me-slot"></div></div>
+  <h1 id="title">Cargando…</h1>
+  <p class="sub" id="subtitle">Conectando con el equipo.</p>
+  <div class="who" id="who"></div>
+</header>
+<main id="main"><div class="card empty">Cargando…</div></main>
+<nav class="bottom" id="nav" hidden></nav>
+<div id="modal"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+/* ===== Constantes ===== */
+const TZ = "America/Los_Angeles";
+const DEFAULT_SOURCES = ["Referencias","4/14","Abordajes","Clientes del sistema","Redes sociales","Otro"];
+const RESULTS = [
+  ["no_contesto","No contestó"],["buzon","Buzón / apagado"],["volver","Llamar después"],
+  ["no_interesa","No le interesa"],["no_califica","No califica"],["cita","Cita"]
+];
+const RLABEL = Object.fromEntries(RESULTS);
+const CONTACT = new Set(["volver","no_interesa","no_califica","cita"]);
+const APPT_ST = {agendada:"Agendada", hecha:"Demostración hecha", no_se_hizo:"No se hizo", cancelada:"Cancelada"};
+const ROLE = {admin:"Dirección", tele:"Telemarketer", socio:"Socio", pendiente:"Pendiente"};
+const DEF_COM = {sueldo:200, pct:2, liderPct:1};
+const APP_URL = location.origin + location.pathname;
+const INV_ROLES = {tele:"Telemarketer", distribuidor:"Socio distribuidor", emprendedor:"Emprendedor"};
+
+/* ===== Estado ===== */
+const S = {
+  db:null, auth:null, authUser:null, email:"", owners:[], unsub:[], subscribed:false, pendingCode:"", uid:null, me:null, isOwner:false, canWrite:null,
+  members:{}, appts:{}, logs:{}, config:{}, invites:{}, drives:{}, loaded:{me:false, members:false, appts:false, logs:false},
+  view:"hoy", f:{period:"mes", day:null, aSocio:"", source:""}, world:"", timedOut:false, flash:null
+};
+try { S.world = localStorage.getItem("ly-world") || ""; S.f.source = localStorage.getItem("ly-src") || ""; } catch {}
+const writeChains = {};
+
+/* ===== Utilidades ===== */
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const digits = p => String(p||"").replace(/\D/g,"");
+function partsLA(ms){ const o = {}; new Intl.DateTimeFormat("en-US",{timeZone:TZ,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date(ms)).forEach(p => o[p.type] = p.value); return o; }
+function tzOff(ms){ const p = partsLA(ms); return Date.UTC(+p.year, +p.month-1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(ms/1000)*1000; }
+function laToMs(d, t){ const [y,m,da] = d.split("-").map(Number); const [h,mi] = (t||"00:00").split(":").map(Number); const g = Date.UTC(y,m-1,da,h,mi); const ms = g - tzOff(g); return g - tzOff(ms); }
+const laDate = ms => { const p = partsLA(ms); return `${p.year}-${p.month}-${p.day}`; };
+const laTime = ms => { const p = partsLA(ms); return `${p.hour}:${p.minute}`; };
+function addDays(d, n){ const [y,m,da] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1,da+n,12)).toISOString().slice(0,10); }
+function addMonths(d, n){ const [y,m] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1+n,1,12)).toISOString().slice(0,10); }
+const fmt = (ms, o) => new Intl.DateTimeFormat("es-US",{timeZone:TZ,...o}).format(new Date(ms));
+const fmtWhen = ms => fmt(ms,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+const today = () => laDate(Date.now());
+function mondayOf(d){ const [y,m,da] = d.split("-").map(Number); const dow = (new Date(Date.UTC(y,m-1,da,12)).getUTCDay()+6)%7; return addDays(d,-dow); }
+function range(p){
+  const t = today();
+  if (p==="hoy") return [laToMs(t,"00:00"), laToMs(addDays(t,1),"00:00")];
+  if (p==="semana"){ const mo = mondayOf(t); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
+  if (p==="mesant"){ const f = addMonths(t.slice(0,8)+"01",-1); return [laToMs(f,"00:00"), laToMs(t.slice(0,8)+"01","00:00")]; }
+  const f = t.slice(0,8)+"01"; return [laToMs(f,"00:00"), laToMs(addMonths(f,1),"00:00")];
+}
+const PLABEL = {hoy:"Hoy", semana:"Esta semana", mes:"Este mes", mesant:"Mes anterior"};
+const money = n => "$" + (Math.round((n||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2});
+const pctN = (a,b) => b ? Math.round(a*100/b) : null;
+function pctHtml(a,b,good=50,mid=30){ const p = pctN(a,b); if (p===null) return `<span class="note">—</span>`; return `<span class="${p>=good?"pct-good":p>=mid?"pct-mid":"pct-low"}">${p}%</span>`; }
+const sources = () => (S.config.sources && S.config.sources.length) ? S.config.sources : DEFAULT_SOURCES;
+const com = () => ({...DEF_COM, ...(S.config.comision||{})});
+const memberName = id => S.members[id]?.name || "—";
+function av(id, size=28){ const m = S.members[id]; const fs = Math.round(size*0.4);
+  if (m?.photo && /^data:image\/(jpeg|png|webp);base64,/.test(m.photo)) return `<span class="av" style="width:${size}px;height:${size}px"><img src="${m.photo}" alt=""></span>`;
+  const ini = (m?.name||"?").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  return `<span class="av" style="width:${size}px;height:${size}px;font-size:${fs}px">${esc(ini)}</span>`; }
+const who = (id, size=28, bold=true) => `<span class="nm-av">${av(id,size)}${bold?`<b>${esc(memberName(id))}</b>`:esc(memberName(id))}</span>`;
+const byRole = r => Object.entries(S.members).filter(([,m]) => m.role === r).map(([id,m]) => ({id,...m})).sort((a,b) => (a.name||"").localeCompare(b.name||""));
+const socios = () => [...byRole("admin"), ...byRole("socio")];
+const role = () => S.isOwner ? "admin" : (S.me?.role || "nuevo");
+const worldOk = () => !!(S.world && S.members[S.world] && ["socio","admin"].includes(S.members[S.world].role));
+function toast(msg, action){ document.querySelectorAll(".toast").forEach(t=>t.remove()); const t = document.createElement("div"); t.className="toast"; t.innerHTML = `<span>${esc(msg)}</span>`; if (action){ const b = document.createElement("button"); b.textContent = action.label; b.onclick = () => { t.remove(); action.fn(); }; t.appendChild(b); } document.body.appendChild(t); setTimeout(()=>t.remove(), action?6000:2600); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function allRefs(){ const out = []; for (const d of Object.values(S.logs)) for (const r of (d.refs||[])) out.push({...r, teleId:r.teleId||d.teleId}); return out; }
+function allCalls(){ const out = []; for (const d of Object.values(S.logs)) for (const c of (d.calls||[])) out.push(c); return out; }
+const inR = (ms, [a,b]) => ms >= a && ms < b;
+
+/* ===== Escrituras ===== */
+function chain(key, fn){ const p = (writeChains[key] || Promise.resolve()).then(fn, fn); writeChains[key] = p.catch(()=>{}); return p; }
+function writeErr(e){
+  console.log("db error", e);
+  if (e && e.code === "permission-denied") toast("No tienes permiso para hacer esto. Si crees que es un error, avísale a Katerine.");
+  else if (e && e.code === "resource-exhausted") toast("La app llegó al límite diario del plan gratis. Se libera mañana; avísale a Katerine.");
+  else toast("No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
+}
+function logCall(call){
+  const date = laDate(call.at); const id = `${date}_${S.uid}`;
+  return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:[...(d.calls||[]), call]}); });
+}
+function logRefs(n, source){
+  const at = Date.now(), date = laDate(at), id = `${date}_${S.uid}`;
+  return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:d.calls||[], refs:[...(d.refs||[]), {at, socioId:S.world, teleId:S.uid, n, source}]}); });
+}
+function removeRef(at){
+  const id = `${laDate(at)}_${S.uid}`;
+  return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, refs:(d.refs||[]).filter(r => r.at !== at)}); });
+}
+function undoCall(at){
+  const id = `${laDate(at)}_${S.uid}`;
+  return chain("log:"+id, async () => { const d = S.logs[id] || {}; const cur = d.calls || []; const next = cur.filter(c => c.at !== at); if (next.length !== cur.length) await S.db.doc("calllog/"+id).set({...d, date:laDate(at), teleId:S.uid, calls:next}); });
+}
+
+/* ===== Arranque (Firebase) ===== */
+const onErr = e => { console.log(e); if (e && e.code === "permission-denied") return; S.timedOut = true; render(); };
+function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.subscribed = false;
+  S.members = {}; S.appts = {}; S.logs = {}; S.config = {}; S.invites = {}; S.drives = {}; S.me = null; S.loaded = {me:false, members:false, appts:false, logs:false}; inviteDone = false; ownerDone = false; }
+function boot(){
+  const cfg = window.LUNAYA_CONFIG || {};
+  if (!window.firebase || !cfg.firebase || !cfg.firebase.apiKey){ S.setup = true; render(); return; }
+  firebase.initializeApp(cfg.firebase); S.auth = firebase.auth(); S.db = firebase.firestore();
+  S.owners = (cfg.owners || []).map(x => String(x).trim().toLowerCase());
+  const hm = location.hash.match(/^#unirme-([A-Za-z0-9]{6})$/);
+  if (hm){ S.pendingCode = hm[1].toUpperCase(); try { localStorage.setItem("ly-code", S.pendingCode); } catch {} try { history.replaceState(null, "", location.pathname); } catch {} }
+  else { try { S.pendingCode = localStorage.getItem("ly-code") || ""; } catch {} const h = location.hash.slice(1); if (h) S.view = h; }
+  S.auth.getRedirectResult().catch(authErr);
+  S.auth.onAuthStateChanged(u => {
+    teardown();
+    if (!u){ S.authUser = null; S.uid = null; render(); return; }
+    S.authUser = u; S.uid = u.uid; S.email = (u.email || "").toLowerCase(); S.isOwner = S.owners.includes(S.email);
+    startData(); render();
+  });
+  window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (v && v !== S.view && !v.startsWith("unirme-")){ S.view = v; render(); } });
+}
+function startData(){
+  S.unsub.push(S.db.doc("members/"+S.uid).onSnapshot(s => {
+    S.me = s.exists ? s.data() : null; if (S.me) S.members[S.uid] = S.me; S.loaded.me = true;
+    if (S.isOwner && (!S.me || S.me.role !== "admin")) ensureOwner();
+    const active = S.isOwner || (S.me && ["admin","tele","socio"].includes(S.me.role));
+    if (active && !S.subscribed) subscribeAll();
+    if (!active && S.pendingCode && !inviteDone) acceptInvite(S.pendingCode).then(ok => { if (!ok && !inviteDone && S.pendingCode){ toast("Ese enlace de invitación ya se usó o no existe. Pide uno nuevo."); clearCode(); render(); } });
+    render();
+  }, onErr));
+}
+function subscribeAll(){
+  if (S.subscribed) return; S.subscribed = true;
+  const from = addMonths(today().slice(0,8)+"01", -1);
+  const loadTimer = setTimeout(() => { if (!S.loaded.appts){ S.timedOut = true; render(); } }, 12000);
+  S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; render(); }, onErr));
+  S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.appts = {}; s.docs.forEach(d => S.appts[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; render(); }, onErr));
+  S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
+  S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
+  if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
+  else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
+  if (S.isOwner || S.me?.role === "admin" || S.me?.lider)
+    S.unsub.push(S.db.collection("invites").onSnapshot(s => { S.invites = {}; s.docs.forEach(d => S.invites[d.id] = d.data()); render(); }, e => console.log(e)));
+}
+const clearCode = () => { S.pendingCode = ""; try { localStorage.removeItem("ly-code"); } catch {} };
+const MEMBER_ROLE = r => r==="tele" ? "tele" : r==="admin" ? "admin" : "socio";
+/* Invitación por enlace o código: entra directo con el rol de la invitación */
+let inviteDone = false;
+async function acceptInvite(code){
+  if (inviteDone || S.isOwner || !S.uid || !code) return false;
+  if (S.me && S.me.role !== "pendiente") return false;
+  const c = String(code).trim().toUpperCase(); if (!/^[A-Z0-9]{6}$/.test(c)) return false;
+  inviteDone = true;
+  try {
+    const snap = await S.db.doc("invites/"+c).get();
+    if (!snap.exists || snap.data().status === "aceptada"){ inviteDone = false; return false; }
+    const v = snap.data();
+    await S.db.doc("members/"+S.uid).set({name: S.me?.name || v.name || S.authUser?.displayName || "", phone: S.me?.phone || v.phone || "", email: S.email, role: MEMBER_ROLE(v.role), tipo: (v.role==="tele"||v.role==="admin") ? "" : INV_ROLES[v.role], lider:false, joinedAt: Date.now(), invitedBy: v.invitedBy || "", inviteCode: c});
+    await S.db.doc("invites/"+c).update({status:"aceptada", acceptedAt:Date.now(), uid:S.uid});
+    clearCode(); toast("¡Bienvenida al equipo!"); return true;
+  } catch(e){ inviteDone = false; console.log(e); return false; }
+}
+const newCode = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let c = ""; for (let i=0;i<6;i++) c += A[Math.floor(Math.random()*A.length)]; return c; };
+let ownerDone = false;
+async function ensureOwner(){
+  if (!S.isOwner || ownerDone || !S.uid) return; ownerDone = true;
+  const cur = S.me || {};
+  try { await S.db.doc("members/"+S.uid).set({...cur, name: cur.name || S.authUser?.displayName || "Katerine", email: cur.email || S.email, role:"admin", joinedAt: cur.joinedAt || Date.now()}); } catch(e){ console.log(e); ownerDone = false; }
+}
+
+/* ===== Inicio de sesión ===== */
+const AUTH_MSG = {"auth/invalid-credential":"Correo o contraseña incorrectos.","auth/invalid-login-credentials":"Correo o contraseña incorrectos.","auth/wrong-password":"Correo o contraseña incorrectos.","auth/user-not-found":"No hay una cuenta con ese correo. Toca “Crear cuenta”.","auth/email-already-in-use":"Ese correo ya tiene cuenta. Toca “Entrar”.","auth/weak-password":"La contraseña debe tener al menos 6 caracteres.","auth/invalid-email":"Ese correo no es válido.","auth/too-many-requests":"Demasiados intentos. Espera unos minutos.","auth/unauthorized-domain":"Este enlace todavía no está autorizado en Firebase. Avísale a Katerine.","auth/network-request-failed":"Sin conexión. Revisa tu internet."};
+function authErr(e){ if (!e || !e.code || e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") return; const el = $("#lg-msg"); const m = AUTH_MSG[e.code] || "No se pudo entrar. Intenta de nuevo."; if (el){ el.className = "banner bad"; el.textContent = m; } else toast(m); }
+function viewLogin(){
+  return `${S.pendingCode?`<div class="banner good">Tienes una invitación al equipo. Entra con Google o crea tu cuenta con tu correo y quedas registrada automáticamente.</div>`:""}
+  <div class="card" style="max-width:460px;margin:0 auto;width:100%"><h2>Entrar a Lunaya</h2>
+    <button class="btn dark" id="lg-google" style="width:100%"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3zM12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22zM6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2zM12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.8 9.4 6 12 6z"/></svg>Entrar con Google</button>
+    <div class="note" style="text-align:center;margin:12px 0">o con tu correo</div>
+    <form id="lg-form" style="display:grid;gap:10px">
+      <label class="f">Correo<input class="i" id="lg-email" type="email" inputmode="email" autocomplete="email" required></label>
+      <label class="f">Contraseña<input class="i" id="lg-pass" type="password" autocomplete="current-password" minlength="6" required></label>
+      <div class="row"><button class="btn" type="submit" data-mode="in">Entrar</button><button class="btn ghost" type="submit" data-mode="up">Crear cuenta</button><button class="btn small ghost" type="button" id="lg-reset">Olvidé mi contraseña</button></div>
+    </form>
+    <div id="lg-msg" class="note" style="margin-top:10px"></div></div>`;
+}
+function bindLogin(){
+  $("#lg-google").onclick = () => { const pv = new firebase.auth.GoogleAuthProvider(); pv.setCustomParameters({prompt:"select_account"});
+    S.auth.signInWithPopup(pv).catch(e => { if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) S.auth.signInWithRedirect(pv).catch(authErr); else authErr(e); }); };
+  let mode = "in"; $("#lg-form").querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { mode = b.dataset.mode; });
+  $("#lg-form").onsubmit = e => { e.preventDefault(); const em = $("#lg-email").value.trim(), pw = $("#lg-pass").value;
+    (mode === "up" ? S.auth.createUserWithEmailAndPassword(em, pw) : S.auth.signInWithEmailAndPassword(em, pw)).catch(authErr); };
+  $("#lg-reset").onclick = () => { const em = $("#lg-email").value.trim(); if (!em){ authErr({code:"auth/invalid-email"}); return; }
+    S.auth.sendPasswordResetEmail(em).then(() => { const el = $("#lg-msg"); el.className = "banner good"; el.textContent = "Te mandamos un correo para cambiar tu contraseña."; }, authErr); };
+}
+
+/* ===== Navegación ===== */
+const ICONS = {
+  hoy:'<path d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z" fill="currentColor"/>',
+  registrar:'<path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/>',
+  citas:'<path d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zm-2 7h14v10H5z" fill="currentColor"/>',
+  pagos:'<path d="M12 1v2.1C9.2 3.5 7 5.2 7 7.8c0 2.9 2.5 4 5.2 4.7 2.4.6 3.3 1.2 3.3 2.4 0 1.3-1.3 2.1-3.3 2.1-2.2 0-3.4-1-3.6-2.5H6.2c.2 2.7 2.3 4.4 5.8 4.8V23h2v-2.1c2.9-.4 4.9-2.1 4.9-4.6 0-3.1-2.6-4.1-5.4-4.8-2.3-.6-3.1-1.1-3.1-2.2 0-1.1 1.1-1.9 2.9-1.9 1.8 0 2.8.9 3 2.2h2.6c-.2-2.4-1.9-4.1-4.9-4.5V1z" fill="currentColor"/>',
+  ranking:'<path d="M7 2h10v2h4v3a5 5 0 0 1-4.6 5A5 5 0 0 1 13 15.9V19h4v3H7v-3h4v-3.1A5 5 0 0 1 7.6 12 5 5 0 0 1 3 7V4h4zm0 4H5v1a3 3 0 0 0 2 2.8zm10 0v3.8A3 3 0 0 0 19 7V6z" fill="currentColor"/>',
+  lider:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>',
+  equipo:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>'
+};
+function tabsFor(r){
+  if (r==="admin") return [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"]];
+  if (r==="tele") return S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"]];
+  if (r==="socio") return [["hoy","Hoy"],["citas","Mis citas"],["ranking","Ranking"]];
+  return [];
+}
+function go(v){ S.view = v; try { history.replaceState(null,"","#"+v); } catch { location.hash = v; } render(); window.scrollTo(0,0); }
+function setWorld(id){ S.world = id || ""; try { localStorage.setItem("ly-world", S.world); } catch {} render(); window.scrollTo(0,0); }
+
+/* ===== Métricas ===== */
+function teleEval(teleId, r, socioId){
+  const calls = allCalls().filter(c => inR(c.at, r) && (!teleId || c.teleId===teleId) && (!socioId || c.socioId===socioId));
+  const ap = Object.values(S.appts).filter(a => (!teleId || a.teleId===teleId) && (!socioId || a.socioId===socioId));
+  const agendadas = ap.filter(a => inR(a.createdAt||0, r));
+  const held = ap.filter(a => inR(a.when||0, r) && a.when <= Date.now() && a.status !== "cancelada");
+  const conRes = held.filter(a => a.status !== "agendada");
+  const demos = held.filter(a => a.status==="hecha");
+  const allSales = demos.filter(a => a.sale);
+  const ss = a => a.saleStatus || "pendiente";
+  const ventas = allSales.filter(a => ss(a) !== "cancelada");
+  const aprob = allSales.filter(a => ss(a) === "aprobada");
+  const sum = l => l.reduce((s,a)=>s+(+a.amount||0),0);
+  const refs = allRefs().filter(x => inR(x.at, r) && (!teleId || x.teleId===teleId) && (!socioId || x.socioId===socioId)).reduce((t,x)=>t+(+x.n||0),0);
+  return {referidos:refs, calls:calls.length, contacts:calls.filter(c=>CONTACT.has(c.result)).length, citas:agendadas.length,
+    pasadas:held.length, conRes:conRes.length, sinRes:held.length-conRes.length, demos:demos.length, ventas:ventas.length,
+    monto:sum(ventas), aprob:aprob.length, montoAprob:sum(aprob), pend:ventas.length-aprob.length, cancel:allSales.length-ventas.length};
+}
+const SALE_ST = {pendiente:"Pendiente de aprobación", aprobada:"Aprobada", cancelada:"Cancelada"};
+function commissions(r){
+  const c = com(); const teles = byRole("tele");
+  /* la comisión se paga sobre ventas aprobadas */
+  const rows = teles.map(t => { const e = teleEval(t.id, r); return {t, monto:e.montoAprob, ventas:e.aprob, pend:e.pend, cancel:e.cancel}; });
+  const teamMonto = rows.reduce((s,x)=>s+x.monto,0);
+  return rows.map(x => { const own = x.monto * c.pct/100; const lead = x.t.lider ? teamMonto * c.liderPct/100 : 0;
+    return {...x, sueldo:c.sueldo, own, lead, total:c.sueldo+own+lead}; });
+}
+
+/* ===== Render ===== */
+function render(){
+  const ae = document.activeElement; const fid = ae && ae.id; const sel = (ae && "selectionStart" in ae) ? [ae.selectionStart, ae.selectionEnd] : null;
+  if ($("#modal").innerHTML) { /* no tocar el modal abierto */ }
+  const r = role(); renderHeader(r); bindHeader();
+  const main = $("#main");
+  if (S.setup){ $("#nav").hidden = true; main.innerHTML = `<div class="card"><h2>Falta configurar</h2><p>La app todavía no tiene su conexión con Firebase. Completa el archivo <b>config.js</b>.</p></div>`; return; }
+  if (!S.auth){ main.innerHTML = `<div class="card empty">Cargando…</div>`; $("#nav").hidden = true; return; }
+  if (!S.authUser){ $("#nav").hidden = true; main.innerHTML = viewLogin(); bindLogin(); return; }
+  if (!S.loaded.me){ $("#nav").hidden = true; main.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
+  if (r==="nuevo" || r==="pendiente"){ $("#nav").hidden = true; main.innerHTML = viewJoin(); bindJoin(); return; }
+  if (!S.loaded.members || !S.loaded.appts){ main.innerHTML = S.timedOut ? `<div class="card"><div class="banner warn">La app está tardando en responder. Revisa tu conexión; se actualiza sola cuando conecte.</div></div>` : `<div class="card empty">Cargando…</div>`; return; }
+  const tabs = tabsFor(r); if (!tabs.some(t => t[0]===S.view)) S.view = "hoy";
+  $("#nav").hidden = false;
+  $("#nav").innerHTML = tabs.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${l}</button>`).join("");
+  $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
+  const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
+  if (needsWorld && !worldOk()) html += worldPicker();
+  else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, pagos:viewPagos, equipo:viewEquipo, lider:viewLider, ranking:viewRanking}[S.view])(r);
+  main.innerHTML = html; bindCommon();
+  if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); if (sel && "setSelectionRange" in el) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
+}
+function bindHeader(){
+  const slot = document.getElementById("me-slot");
+  if (slot) slot.innerHTML = S.me ? `<button class="me-big" id="me-btn" aria-label="Mi perfil">${av(S.uid,72)}<span class="me-nm">${esc(S.me.name||"")}</span><small>${S.me.photo?"✎ Editar perfil":"📷 Poner foto"}</small></button>` : "";
+  const b = document.getElementById("me-btn"); if (b) b.onclick = openProfile; }
+function renderHeader(r){
+  const first = (S.me?.name||"").split(" ")[0];
+  const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla."};
+  if (!S.authUser){ $("#title").textContent = "Bienvenida"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunatikat."; $("#who").innerHTML = ""; return; }
+  if (r==="nuevo"||r==="pendiente"){ $("#title").textContent = "Bienvenida a Lunaya"; $("#subtitle").textContent = "Registra tu nombre para entrar."; }
+  else { $("#title").textContent = T[S.view] || ""; $("#subtitle").textContent = Sb[S.view] || ""; }
+  $("#who").innerHTML = S.me ? `<span class="pill acc">${esc(ROLE[r]||"")}${S.me.lider?" · líder":""}</span>` : "";
+}
+function periodChips(opts=["hoy","semana","mes","mesant"]){ return `<div class="chips">${opts.map(p => `<button class="chip ${S.f.period===p?"on":""}" data-period="${p}">${PLABEL[p]}</button>`).join("")}</div>`; }
+
+/* ===== Registro de acceso ===== */
+function viewJoin(){
+  const m = S.me;
+  if (m && m.role==="pendiente") return `<div class="card"><h2>Solicitud enviada</h2><p>Hola ${esc(m.name)}. Katerine tiene que aprobar tu acceso como <b>${esc(INV_ROLES[m.wantedRole]||"socio")}</b>. Cuando lo haga, esta pantalla cambia sola.</p></div>`;
+  return `<div class="card"><h2>¿Tienes un código de invitación?</h2><form id="jcode" class="row"><input class="i" id="j-code" placeholder="Ej.: K7M2QX" autocomplete="off" style="max-width:220px;text-transform:uppercase"><button class="btn" type="submit">Entrar con código</button></form><p class="note">Con el código entras directo, sin esperar aprobación.</p><button class="btn small ghost" id="j-out" type="button">Salir (${esc(S.email)})</button></div>
+  <div class="card"><h2>Sin código: pide acceso</h2><form id="join" class="grid2">
+    <label class="f">Tu nombre<input class="i" id="j-name" required autocomplete="name"></label>
+    <label class="f">Teléfono / WhatsApp<input class="i" id="j-phone" inputmode="tel"></label>
+    <label class="f">Mi función<select class="i" id="j-role">${Object.entries(INV_ROLES).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}</select></label>
+    <div style="align-self:end"><button class="btn" type="submit">Enviar solicitud</button></div></form></div>`;
+}
+function bindJoin(){
+  const f = $("#join"); const jo = $("#j-out"); if (jo) jo.onclick = () => S.auth.signOut(); if (!f) return;
+  if (S.authUser?.displayName && !$("#j-name").value) $("#j-name").value = S.authUser.displayName;
+  const fc = $("#jcode"); if (fc) fc.onsubmit = async e => { e.preventDefault(); const ok = await acceptInvite($("#j-code").value); if (!ok && !inviteDone) toast("Ese código no existe o ya se usó. Revísalo con quien te invitó."); };
+  f.onsubmit = async e => { e.preventDefault(); const name = $("#j-name").value.trim(); if (!name) return;
+    try { await S.db.doc("members/"+S.uid).set({name, phone:$("#j-phone").value.trim(), wantedRole:$("#j-role").value, role:"pendiente", email:S.email, joinedAt:Date.now()}); } catch(err){ writeErr(err); } };
+}
+
+/* ===== Drive de cada socio (solo el socio y las telemarketers) ===== */
+const driveOk = u => /^https:\/\/(drive|docs)\.google\.com\//.test(String(u||"").trim());
+function driveCard(){
+  const d = S.drives[S.uid];
+  return `<div class="card"><h2>Mi base de datos en Drive</h2>
+    <p class="note" style="margin-top:-6px">Solo tú y las telemarketers ven este enlace. La dirección no lo ve.</p>
+    ${d?.url ? `<div class="row"><a class="btn" href="${esc(d.url)}" target="_blank" rel="noopener">📂 Abrir mi Drive</a><a class="btn ghost" href="${esc(d.url)}" target="_blank" rel="noopener">⬆ Subir base nueva</a><button class="btn small ghost" id="dr-edit">Cambiar enlace</button></div>
+      <p class="note">Para subir: se abre tu carpeta, toca <b>+</b> → <b>Subir</b> y elige el archivo.</p>` : ""}
+    <form id="dr-form" class="row" ${d?.url?"hidden":""} style="margin-top:8px"><input class="i" id="dr-url" placeholder="Pega el enlace de tu carpeta de Google Drive" value="${esc(d?.url||"")}" style="flex:1;min-width:220px"><button class="btn" type="submit">Guardar</button></form>
+    ${d?.url?"":`<p class="note">En Google Drive, abre la carpeta de tu base → <b>Compartir</b> → agrega el correo de cada telemarketer como <b>Editor</b> → <b>Copiar enlace</b> y pégalo aquí.</p>`}</div>`;
+}
+function bindDrive(){
+  const f = document.getElementById("dr-form"); if (!f) return;
+  const ed = document.getElementById("dr-edit"); if (ed) ed.onclick = () => { f.hidden = false; $("#dr-url").focus(); };
+  f.onsubmit = async e => { e.preventDefault(); const url = $("#dr-url").value.trim();
+    if (!driveOk(url)){ toast("Pega un enlace de Google Drive (empieza con https://drive.google.com)"); return; }
+    try { await S.db.doc("drives/"+S.uid).set({url, updatedAt:Date.now()}); toast("Enlace guardado"); } catch(err){ writeErr(err); } };
+}
+
+/* ===== Elegir socio ===== */
+function worldPicker(){
+  const t0 = range("hoy");
+  const cards = socios().map(s => { const e = teleEval(S.uid, t0, s.id); const next = Object.values(S.appts).filter(a => a.socioId===s.id && a.status==="agendada" && a.when >= Date.now()).length;
+    return `<button class="item" data-world="${s.id}"><div><div class="t nm-av">${av(s.id,32)}${esc(s.name)}${s.role==="admin"?" · dirección":""}</div><div class="m">Hoy: ${e.calls} llamadas · ${e.citas} citas · ${next} citas próximas</div></div><span class="pill acc">Entrar</span></button>`; }).join("");
+  return `<div class="card"><h2>¿Para qué socio vas a llamar?</h2><p class="note" style="margin-top:-6px">Cada socio es independiente: lo que registres aquí solo cuenta para esa persona. Cambia de socio cuando termines con su base.</p>${cards?`<div class="list">${cards}</div>`:`<div class="empty">Aún no hay socios aprobados.</div>`}</div>`;
+}
+function worldBar(){ return `<div class="card world"><div class="row" style="justify-content:space-between"><div><div class="eyebrow" style="color:var(--accent)">Llamando para</div><div class="nm nm-av">${av(S.world,34)}${esc(memberName(S.world))}</div></div><div class="row">${S.drives[S.world]?.url ? `<a class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" href="${esc(S.drives[S.world].url)}" target="_blank" rel="noopener">📂 Base en Drive</a>` : (role()==="tele" ? `<span class="note" style="color:var(--line)">Sin Drive todavía</span>` : "")}<button class="btn small" data-act="world">Cambiar socio</button></div></div>${S.drives[S.world]?.url ? `<p class="note" style="color:var(--line);margin:8px 0 0">Para subir contactos nuevos: abre el Drive y toca <b>+</b> → <b>Subir</b>.</p>` : ""}</div>`; }
+
+/* ===== HOY ===== */
+function evalTiles(e, showCalls=true){
+  return `<div class="tiles">
+    ${showCalls?`<div class="tile"><b>${e.calls}</b><span>Llamadas</span></div><div class="tile"><b>${e.contacts}</b><span>Contactos</span><small>${pctN(e.contacts,e.calls)??"—"}${e.calls?"%":""} de llamadas</small></div>`:""}
+    <div class="tile"><b>${e.citas}</b><span>Citas agendadas</span>${showCalls?`<small>${pctN(e.citas,e.contacts)??"—"}${e.contacts?"%":""} de contactos</small>`:""}</div>
+    <div class="tile"><b>${e.demos}</b><span>Demostraciones</span><small>${pctN(e.demos,e.conRes)??"—"}${e.conRes?"%":""} de citas</small></div>
+    <div class="tile"><b>${e.ventas}</b><span>Cantidad de ventas</span><small>${pctN(e.ventas,e.demos)??"—"}${e.demos?"%":""} de demostraciones</small></div>
+    <div class="tile"><b>${e.aprob}</b><span>Ventas aprobadas</span><small>${e.pend} pendientes · ${e.cancel} canceladas</small></div>
+    <div class="tile acc"><b>${money(e.monto)}</b><span>Volumen de ventas</span><small>${money(e.montoAprob)} aprobado</small></div></div>`;
+}
+function viewHoy(r){
+  const rg = range(S.f.period); let h = "";
+  if (r==="tele"){
+    const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
+    h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
+      <div class="tile"><b>${d.calls}</b><span>Llamadas hoy</span><div class="bar"><i style="width:${Math.min(100,d.calls*100/mL)}%"></i></div></div>
+      <div class="tile"><b>${d.contacts}</b><span>Contactos hoy</span></div>
+      <div class="tile"><b>${d.citas}</b><span>Citas hoy</span><div class="bar"><i style="width:${Math.min(100,d.citas*100/mC)}%"></i></div></div></div>
+      <div class="row" style="margin-top:12px"><button class="btn" data-go2="registrar">Registrar llamadas</button></div></div>`;
+    const e = teleEval(S.uid, rg);
+    h += `<div class="card"><h2>Tu efectividad ${periodChips()}</h2>${evalTiles(e)}${e.sinRes?`<p class="note">${e.sinRes} cita(s) tuyas aún no tienen resultado del socio.</p>`:""}</div>`;
+    const per = socios().map(s => ({s, e:teleEval(S.uid, rg, s.id)})).filter(x => x.e.calls || x.e.citas || x.e.demos);
+    h += `<div class="card"><h2>Por socio<span class="note">${PLABEL[S.f.period]}</span></h2>${per.length?evalTable(per.map(x=>({name:x.s.name, e:x.e, id:x.s.id})), true):`<div class="empty">Sin actividad en este periodo.</div>`}</div>`;
+    const mine = commissions(range(S.f.period==="mesant"?"mesant":"mes")).find(x => x.t.id===S.uid);
+    if (mine) h += `<div class="card"><h2>Tu comisión<span class="note">${S.f.period==="mesant"?"Mes anterior":"Este mes"}</span></h2><div class="tiles">
+      <div class="tile"><b>${money(mine.sueldo)}</b><span>Sueldo fijo</span></div><div class="tile"><b>${money(mine.own)}</b><span>${com().pct}% de tus ventas aprobadas</span><small>${money(mine.monto)} aprobado${mine.pend?` · ${mine.pend} pendiente(s)`:""}</small></div>
+      ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.total)}</b><span>Total</span></div></div>
+      <p class="note">Las ventas pendientes suman a tu comisión cuando quedan aprobadas.</p></div>`;
+  } else if (r==="socio"){
+    const pend = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.when < Date.now()-3600e3);
+    if (pend.length) h += `<div class="banner bad">Tienes ${pend.length} cita(s) sin resultado. Márcalas para que los números del equipo cuadren.</div>`;
+    const up = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.when >= Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when).slice(0,5);
+    h += `<div class="card"><h2>Próximas citas</h2>${up.length?`<div class="list">${up.map(([id,a])=>apptItem(id,a)).join("")}</div>`:`<div class="empty">No tienes citas próximas.</div>`}</div>`;
+    const e = socioEval(S.uid, rg);
+    h += `<div class="card"><h2>Tus resultados ${periodChips()}</h2><div class="tiles">
+      <div class="tile"><b>${e.referidos}</b><span>Referidos</span></div>
+      <div class="tile"><b>${e.citas}</b><span>Citas</span></div>
+      <div class="tile"><b>${e.demos}</b><span>Demostraciones</span></div>
+      <div class="tile"><b>${e.ventas}</b><span>Cantidad de ventas</span></div>
+      <div class="tile"><b>${e.aprob}</b><span>Ventas aprobadas</span></div>
+      <div class="tile acc"><b>${money(e.monto)}</b><span>Volumen de ventas</span></div>
+      <div class="tile"><b>${e.ventas?money(e.monto/e.ventas):"—"}</b><span>Venta promedio</span></div>
+      <div class="tile"><b>${pctN(e.ventas,e.demos)??"—"}${e.demos?"%":""}</b><span>% efectividad demo → venta</span></div></div></div>`;
+    h += driveCard();
+  } else {
+    const e = teleEval(null, rg); const sinRes = Object.values(S.appts).filter(a => a.status==="agendada" && a.when < Date.now()-3600e3).length;
+    h += `<div class="card"><h2>Territorio ${periodChips()}</h2>${evalTiles(e)}${sinRes?`<div class="banner warn" style="margin-top:12px">${sinRes} cita(s) pasadas sin resultado. Los socios deben marcarlas.</div>`:""}</div>`;
+    const teles = byRole("tele").map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
+    h += `<div class="card"><h2>Evaluación de telemarketers ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}
+      <p class="note">% efectividad cita → demo: de cada 100 citas que agendó (y que ya pasaron), cuántas se convirtieron en demostración.</p></div>`;
+    h += socioEvalCard(rg);
+    const hoyT = byRole("tele").map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
+    if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
+  }
+  return h;
+}
+/* Evaluación del socio: citas que TUVO en el periodo (por fecha de la cita), no las que se agendaron */
+function socioEval(id, r){
+  const ap = Object.values(S.appts).filter(a => a.socioId===id && inR(a.when||0, r));
+  const past = ap.filter(a => a.when <= Date.now());
+  const demos = past.filter(a => a.status==="hecha"), noHizo = past.filter(a => a.status==="no_se_hizo"), canc = past.filter(a => a.status==="cancelada"), sinRes = past.filter(a => a.status==="agendada");
+  const sales = demos.filter(a => a.sale), ventas = sales.filter(a => (a.saleStatus||"pendiente")!=="cancelada"), aprob = sales.filter(a => a.saleStatus==="aprobada");
+  const sum = l => l.reduce((t,a)=>t+(+a.amount||0),0);
+  return {referidos:allRefs().filter(x => x.socioId===id && inR(x.at, r)).reduce((t,x)=>t+(+x.n||0),0), citas:ap.length, proximas:ap.length-past.length, pasadas:past.length, demos:demos.length, noHizo:noHizo.length, canc:canc.length, sinRes:sinRes.length,
+    ventas:ventas.length, aprob:aprob.length, ventCanc:sales.length-ventas.length, monto:sum(ventas), montoAprob:sum(aprob), conRes:past.length-sinRes.length};
+}
+function socioEvalCard(rg){
+  const rows = socios().map(s => ({s, e:socioEval(s.id, rg)}));
+  const tot = rows.reduce((t,x)=>{ for (const k in x.e) t[k]=(t[k]||0)+x.e[k]; return t; },{});
+  const tr = (n, e, cls="") => `<tr class="${cls}"><td>${n}</td><td class="n">${e.referidos}</td><td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${money(e.monto)}</td><td class="n">${e.ventas?money(e.monto/e.ventas):"—"}</td><td class="n">${pctHtml(e.ventas,e.demos,40,20)}</td></tr>`;
+  return `<div class="card"><h2>Evaluación de socios ${periodChips()}</h2><p class="note" style="margin-top:-6px">Distribuidores y emprendedores, según la fecha de cada cita.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Referidos</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Volumen de ventas</th><th class="n">Venta promedio</th><th class="n">% efectividad demo → venta</th></tr></thead>
+    <tbody>${rows.map(x => tr(`${who(x.s.id,28)}${x.s.tipo?`<div class="note">${esc(x.s.tipo)}</div>`:x.s.role==="admin"?`<div class="note">Dirección</div>`:""}`, x.e)).join("")}${rows.length>1?tr("Total", tot, "total"):""}</tbody></table></div>
+    <p class="note">Referidos: los que el socio le pasó a las telemarketers para trabajar (los anotan ellas). % efectividad demo → venta: de cada 100 demostraciones, cuántas cerraron en venta.</p></div>`;
+}
+function evalTable(rows, calls){
+  const tot = rows.reduce((t,x)=>{ for (const k in x.e) t[k]=(t[k]||0)+x.e[k]; return t; },{});
+  const tr = (n,e,cls="",id) => `<tr class="${cls}"><td>${cls?n:id?`<span class="nm-av">${av(id,26)}<b>${esc(n)}</b></span>`:`<b>${esc(n)}</b>`}</td>${calls?`<td class="n">${e.referidos}</td><td class="n">${e.calls}</td><td class="n">${e.contacts}</td>`:""}<td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${e.cancel}</td><td class="n">${money(e.monto)}</td>${calls?`<td class="n">${pctHtml(e.citas,e.contacts,30,15)}</td>`:""}<td class="n">${pctHtml(e.demos,e.conRes,60,40)}</td></tr>`;
+  return `<div class="tbl-wrap"><table><thead><tr><th>Nombre</th>${calls?`<th class="n">Referidos recibidos</th><th class="n">Llamadas</th><th class="n">Contactos</th>`:""}<th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Ventas canceladas</th><th class="n">Volumen de ventas</th>${calls?`<th class="n">% efectividad contacto → cita</th>`:""}<th class="n">% efectividad cita → demo</th></tr></thead><tbody>${rows.map(x=>tr(x.name,x.e,"",x.id)).join("")}${rows.length>1?tr("Total",tot,"total"):""}</tbody></table></div>`;
+}
+function rankTele(){
+  const r = range("mes"); const list = byRole("tele").map(t => ({...t, e:teleEval(t.id, r)})).sort((a,b)=>b.e.ventas-a.e.ventas||b.e.demos-a.e.demos||b.e.citas-a.e.citas);
+  if (!list.length) return "";
+  return `<div class="card"><h2>Ranking del mes</h2><div class="rank">${list.map((t,i)=>`<div class="${t.id===S.uid?"me":""}"><span class="pos">${i+1}</span><span style="flex:1"><b>${esc(t.name)}</b></span><span class="note">${t.e.citas} citas · ${t.e.demos} demos</span><b>${t.e.ventas} ventas</b></div>`).join("")}</div></div>`;
+}
+function rankSocio(){
+  const r = range("mes"); const list = byRole("socio").map(s => ({...s, e:socioEval(s.id, r)})).sort((a,b)=>b.e.monto-a.e.monto||b.e.demos-a.e.demos);
+  if (!list.length) return "";
+  return `<div class="card"><h2>Ranking de socios · mes</h2><div class="rank">${list.map((s,i)=>`<div class="${s.id===S.uid?"me":""}"><span class="pos">${i+1}</span><span style="flex:1"><b>${esc(s.name)}</b></span><span class="note">${s.e.demos} demos</span><b>${s.e.ventas} ventas</b></div>`).join("")}</div></div>`;
+}
+
+/* ===== REGISTRAR ===== */
+function viewRegistrar(){
+  const t0 = range("hoy");
+  const mine = allCalls().filter(c => c.teleId===S.uid && c.socioId===S.world && inR(c.at, t0));
+  const cnt = k => mine.filter(c => c.result===k).length;
+  const src = sources().includes(S.f.source) ? S.f.source : sources()[0];
+  const last = mine.sort((a,b)=>b.at-a.at)[0];
+  const myRefs = allRefs().filter(x => x.teleId===S.uid && x.socioId===S.world && inR(x.at, t0)).sort((a,b)=>b.at-a.at);
+  const wk = range("semana"), mo = range("mes");
+  const sumR = rg => allRefs().filter(x => x.teleId===S.uid && x.socioId===S.world && inR(x.at, rg)).reduce((t,x)=>t+(+x.n||0),0);
+  const refCard = `<div class="card"><h2>Referidos recibidos<span class="note">Hoy ${sumR(t0)} · semana ${sumR(wk)} · mes ${sumR(mo)}</span></h2>
+    <p class="note" style="margin-top:-6px">Cuando ${esc(memberName(S.world))} te mande referidos para trabajar, anota cuántos son.</p>
+    <form id="ref-form" class="row"><input class="i" type="number" min="1" step="1" id="ref-n" placeholder="Cantidad" style="max-width:130px" aria-label="Cantidad de referidos"><button class="btn" type="submit">Agregar referidos</button></form>
+    ${myRefs.length?`<div class="hist" style="margin-top:10px">${myRefs.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> referidos · ${esc(x.source||"")} · ${fmt(x.at,{hour:"numeric",minute:"2-digit"})}</span><button class="btn small ghost" data-unref="${x.at}">Quitar</button></div>`).join("")}</div>`:""}</div>`;
+  return worldBar() + refCard + `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Fuente de la base que estás llamando</div><div class="chips">${sources().map(s=>`<button class="chip ${s===src?"on":""}" data-src="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>
+  <div class="card"><h2>¿Qué pasó en la llamada?<span class="note">${mine.length} hoy para este socio</span></h2>
+    <div class="tally">${RESULTS.map(([k,l]) => `<button class="tb ${k==="cita"?"cita":""} ${S.flash===k?"flash":""}" data-res="${k}"><span class="l">${l}</span><span class="c">${cnt(k)}</span><span class="h">${k==="cita"?"Abre la ficha de la cita":"Se guarda al tocar"}</span></button>`).join("")}</div>
+    ${last?`<div class="row" style="margin-top:12px;justify-content:space-between"><span class="note">Último: ${RLABEL[last.result]} · ${fmt(last.at,{hour:"numeric",minute:"2-digit"})}</span>${last.result!=="cita"?`<button class="btn small ghost" data-undo="${last.at}">Deshacer último</button>`:""}</div>`:""}
+  </div>`;
+}
+async function tapResult(k){
+  if (S.canWrite === false) return;
+  const src = sources().includes(S.f.source) ? S.f.source : sources()[0];
+  if (k === "cita") return openCitaForm(src);
+  const at = Date.now();
+  try { await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:k}); S.flash = k; setTimeout(()=>{ S.flash=null; render(); }, 600); toast(`${RLABEL[k]} · guardado`, {label:"Deshacer", fn:()=>undoCall(at).catch(writeErr)}); }
+  catch(e){ writeErr(e); }
+}
+function openCitaForm(src){
+  const tomorrow = addDays(today(),1);
+  openModal(`<h3>Nueva cita para ${esc(memberName(S.world))}</h3><p class="note" style="margin:0">Fuente: ${esc(src)}. Hora de San Diego.</p>
+    <div class="grid2">
+      <label class="f">Nombre del cliente<input class="i" id="c-name" autocomplete="off"></label>
+      <label class="f">Teléfono<input class="i" id="c-phone" inputmode="tel" autocomplete="off"></label>
+      <label class="f">Ciudad<input class="i" id="c-city"></label>
+      <label class="f">Dirección<input class="i" id="c-addr"></label>
+      <label class="f">Fecha<input class="i" type="date" id="c-date" value="${tomorrow}"></label>
+      <label class="f">Hora<input class="i" type="time" id="c-time" value="18:00"></label>
+      <label class="f" style="grid-column:1/-1">Notas para el socio<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
+    </div>
+    <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#c-save").onclick = async () => {
+      const name = $("#c-name").value.trim(), d = $("#c-date").value, t = $("#c-time").value;
+      if (!name || !d || !t){ toast("Falta el nombre, la fecha o la hora"); return; }
+      const at = Date.now(); $("#c-save").disabled = true;
+      try {
+        const ref = await S.db.collection("appts").add({client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(),
+          when:laToMs(d,t), socioId:S.world, teleId:S.uid, source:src, status:"agendada", sale:false, amount:0, createdAt:at});
+        await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
+        closeModal(); toast("Cita guardada"); S.flash = "cita"; setTimeout(() => { if (S.appts[ref.id]) openAppt(ref.id); }, 400); setTimeout(()=>{ S.flash=null; render(); }, 600);
+      } catch(e){ $("#c-save").disabled = false; writeErr(e); }
+    };
+  });
+}
+
+/* ===== CITAS ===== */
+function apptItem(id,a){
+  if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h">${fmtWhen(a.when)} · Horario ocupado</span><span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
+  const st = a.saleStatus||"pendiente";
+  const tg = a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
+  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h">${fmtWhen(a.when)} · ${esc(a.client)}</span>${tg}</div><div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
+}
+function viewCitas(r){
+  const day = S.f.day || today(); const mon = mondayOf(day);
+  const vis = ([,a]) => r==="socio" ? a.socioId===S.uid : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (!S.f.aSocio || a.socioId===S.f.aSocio);
+  const all = Object.entries(S.appts).filter(vis);
+  const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds).length;
+    return `<button class="day ${ds===day?"on":""}" data-day="${ds}"><span>${names[i]}</span><b>${+ds.slice(8)}</b><small>${n||"·"}</small></button>`; }).join("");
+  const list = all.filter(([,a])=>laDate(a.when)===day).sort((a,b)=>a[1].when-b[1].when);
+  const pend = all.filter(([,a])=>a.status==="agendada" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
+  let h = r==="tele" ? worldBar() : "";
+  h += `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row"><button class="btn small ghost" data-wk="-7" aria-label="Semana anterior">←</button><button class="btn small ghost" data-wk="0">Hoy</button><button class="btn small ghost" data-wk="7" aria-label="Semana siguiente">→</button></div>
+    <b style="font-family:var(--serif);font-size:19px">${fmt(laToMs(mon,"12:00"),{day:"numeric",month:"short"})} – ${fmt(laToMs(addDays(mon,6),"12:00"),{day:"numeric",month:"short"})}</b></div>
+    ${r==="tele"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar citas"><option value="">Mis citas + horarios ocupados del socio</option><option value="_me" ${S.f.aSocio==="_me"?"selected":""}>Solo mis citas</option></select>`:""}
+    ${r==="admin"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
+    <div class="week">${week}</div></div>
+    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a])=>apptItem(id,a)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
+  if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
+  return h;
+}
+function gcalUrl(a){
+  const z = ms => new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+  const details = [a.phone?`Teléfono: ${a.phone}`:"", a.notes?`Notas: ${a.notes}`:"", `Agendó: ${memberName(a.teleId)} · Lunaya`].filter(Boolean).join("\n");
+  const q = new URLSearchParams({action:"TEMPLATE", text:`Demostración · ${a.client||"Cliente"}`, dates:`${z(a.when)}/${z(a.when+2*3600e3)}`, details, location:[a.address,a.city].filter(Boolean).join(", "), ctz:TZ});
+  return "https://calendar.google.com/calendar/render?" + q.toString();
+}
+function openAppt(id){
+  const a = S.appts[id]; if (!a) return; const r = role();
+  const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.teleId===S.uid || a.socioId===S.uid;
+  openModal(`<h3>${esc(a.client)}</h3>
+    <div class="note">${fmtWhen(a.when)} · hora San Diego</div>
+    <div>${a.phone?`<div><b>${esc(a.phone)}</b></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
+    ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
+    ${canResult?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
+      <button class="opt ${a.status==="hecha"&&!a.sale?"on":""}" data-ar="hecha">Demo hecha, sin venta</button>
+      <button class="opt ${a.sale?"on":""}" data-ar="venta">Demo con venta</button>
+      <button class="opt ${a.status==="no_se_hizo"?"on":""}" data-ar="no_se_hizo">No se hizo</button>
+      <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
+      ${a.sale?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
+    ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha"><input class="i" type="time" id="ap-time" value="${laTime(a.when)}" aria-label="Hora"><button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
+    ${a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a.status==="agendada" && r==="tele" && a.teleId===S.uid ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Pasar al Google Calendar de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">Al abrirse, elige el calendario de ${esc(memberName(a.socioId))} en la lista de calendarios y guarda. Funciona si ${esc(memberName(a.socioId))} te compartió su calendario con permiso para hacer cambios.</p>` : ""}
+    <div class="row">${r==="admin"||a.teleId===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const save = async upd => { try { await chain("appt:"+id, () => S.db.doc("appts/"+id).update(upd)); closeModal(); toast("Guardado"); } catch(e){ writeErr(e); } };
+    document.querySelectorAll("[data-ar]").forEach(b => b.onclick = () => { const k = b.dataset.ar;
+      if (k==="venta"){ $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Monto de la venta (USD)<input class="i" type="number" min="0" step="0.01" id="ar-amt" value="${a.amount||""}"></label><div style="align-self:end"><button class="btn" id="ar-save">Guardar venta</button></div></div>`; $("#ar-amt").focus();
+        $("#ar-save").onclick = () => { const amt = +$("#ar-amt").value; if (!(amt>0)){ toast("Escribe el monto de la venta"); return; } save({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt:Date.now(), resultBy:S.uid}); }; }
+      else save({status:k, sale:false, amount:0, resultAt:Date.now(), resultBy:S.uid}); });
+    document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
+    $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=$("#ap-time").value; if (d&&t) save({when:laToMs(d,t), status:"agendada", sale:false, amount:0}); });
+    $("#ap-del") && ($("#ap-del").onclick = function(){ if (this.dataset.sure){ chain("appt:"+id, () => S.db.doc("appts/"+id).delete()).then(()=>{ closeModal(); toast("Cita borrada"); }, writeErr); } else { this.dataset.sure="1"; this.textContent="Toca otra vez para borrar"; this.classList.add("danger"); } });
+  });
+}
+
+/* ===== PAGOS (directora) ===== */
+function viewPagos(){
+  const p = ["semana","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
+  const sales = Object.entries(S.appts).filter(([,a]) => a.sale && inR(a.when||0, rg)).sort((a,b)=>a[1].when-b[1].when);
+  const live = sales.filter(([,a]) => (a.saleStatus||"pendiente")!=="cancelada");
+  const total = live.reduce((s,[,a])=>s+(+a.amount||0),0);
+  const aprob = sales.filter(([,a]) => a.saleStatus==="aprobada"); const tAprob = aprob.reduce((s,[,a])=>s+(+a.amount||0),0);
+  let h = `<div class="card"><h2>Ventas del territorio ${periodChips(["semana","mes","mesant"])}</h2><div class="tiles"><div class="tile"><b>${live.length}</b><span>Cantidad de ventas</span><small>${sales.length-live.length} canceladas</small></div><div class="tile"><b>${aprob.length}</b><span>Ventas aprobadas</span><small>${money(tAprob)}</small></div><div class="tile"><b>${live.length-aprob.length}</b><span>Pendientes de aprobación</span></div><div class="tile acc"><b>${money(total)}</b><span>Volumen de ventas</span><small>sin canceladas</small></div></div></div>`;
+  h += `<div class="card"><h2>Detalle de ventas</h2>${sales.length?`<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th>Telemarketer</th><th>Estado</th><th class="n">Monto</th></tr></thead><tbody>${sales.map(([id,a])=>{ const st=a.saleStatus||"pendiente"; return `<tr data-appt="${id}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(a.client)}</b>${a.city?`<div class="note">${esc(a.city)}</div>`:""}</td><td>${esc(memberName(a.socioId))}</td><td>${esc(memberName(a.teleId))}</td><td><span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">${SALE_ST[st]}</span></td><td class="n">${money(a.amount)}</td></tr>`; }).join("")}<tr class="total"><td colspan="5">Total sin canceladas</td><td class="n">${money(total)}</td></tr></tbody></table></div><p class="note">Toca una venta para marcarla como aprobada o cancelada.</p>`:`<div class="empty">No hay ventas registradas en este periodo.</div>`}</div>`;
+  const ss = socios().map(s => { const e = teleEval(null, rg, s.id); return {s, e}; });
+  h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
+  h += comCard(p);
+  return h;
+}
+function comCard(p){
+  const c = com();
+  if (p==="semana" || p==="hoy") return `<div class="card"><h2>Comisiones</h2><p class="note">Las comisiones se calculan por mes. Elige “Este mes” o “Mes anterior”.</p></div>`;
+  const rows = commissions(range(p)); const tot = rows.reduce((s,x)=>s+x.total,0);
+  return `<div class="card"><h2>Comisiones de telemarketing<span class="note">${PLABEL[p]}</span></h2>${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Ventas aprobadas</th><th class="n">Volumen aprobado</th><th class="n">Pendientes</th><th class="n">Canceladas</th><th class="n">Sueldo</th><th class="n">${c.pct}% propio</th><th class="n">${c.liderPct}% líder</th><th class="n">Total</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.t.name)}</b>${x.t.lider?' <span class="tag tg-warn">líder</span>':""}</td><td class="n">${x.ventas}</td><td class="n">${money(x.monto)}</td><td class="n">${x.pend}</td><td class="n">${x.cancel}</td><td class="n">${money(x.sueldo)}</td><td class="n">${money(x.own)}</td><td class="n">${x.t.lider?money(x.lead):"—"}</td><td class="n"><b>${money(x.total)}</b></td></tr>`).join("")}<tr class="total"><td colspan="8">Total a pagar</td><td class="n">${money(tot)}</td></tr></tbody></table></div>
+    <p class="note">Sueldo fijo ${money(c.sueldo)} al mes + ${c.pct}% de las ventas aprobadas que salieron de sus citas. La líder suma ${c.liderPct}% de todas las ventas aprobadas del equipo de telemarketing. La venta cuenta en el mes de la demostración.</p>`:`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}</div>`;
+}
+/* ===== RANKING (todos) ===== */
+function board(title, list, metrics, sortKey){
+  const max = Math.max(1, ...list.map(x => x[sortKey]));
+  const medal = i => i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1);
+  if (!list.length) return `<div class="card"><h2>${title}</h2><div class="empty">Todavía no hay personas en este grupo.</div></div>`;
+  return `<div class="card"><h2>${title}</h2><div class="list">${list.map((x,i)=>`<div class="item" style="cursor:default;display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;gap:6px;${x.id===S.uid?"outline:2px solid var(--accent)":""}">
+    <div class="row" style="justify-content:space-between"><div class="row"><span style="font-family:var(--serif);font-weight:700;font-size:20px;width:30px;text-align:center">${medal(i)}</span><span class="t nm-av">${av(x.id,34)}${esc(x.name)}${x.id===S.uid?' <span class="note">(tú)</span>':""}</span></div><b style="font-family:var(--serif);font-size:20px">${sortKey==="monto"?money(x.monto):x[sortKey]}</b></div>
+    <div class="bar" style="margin-top:0"><i style="width:${Math.round(x[sortKey]*100/max)}%"></i></div>
+    <div class="row note" style="gap:14px">${metrics.map(([k,l])=>`<span><b style="color:var(--ink)">${k==="monto"?money(x[k]):x[k]}</b> ${l}</span>`).join("")}</div></div>`).join("")}</div></div>`;
+}
+function viewRanking(){
+  const p = ["semana","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
+  const teles = byRole("tele").map(t => { const e = teleEval(t.id, rg); return {id:t.id, name:t.name, citas:e.citas, demos:e.demos, ventas:e.ventas, monto:e.monto}; }).sort((a,b)=>b.monto-a.monto||b.ventas-a.ventas||b.demos-a.demos||b.citas-a.citas);
+  const soc = socios().map(s => { const e = socioEval(s.id, rg); return {id:s.id, name:s.name, referidos:e.referidos, citas:e.citas, demos:e.demos, ventas:e.ventas, monto:e.monto}; }).sort((a,b)=>b.monto-a.monto||b.ventas-a.ventas||b.demos-a.demos||b.referidos-a.referidos);
+  const since = Date.now() - 30*864e5;
+  const feed = Object.values(S.appts).filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada" && (a.resultAt||a.when) >= since).sort((a,b)=>(b.resultAt||b.when)-(a.resultAt||a.when)).slice(0,15);
+  let h = `<div class="card"><h2>Periodo ${periodChips(["semana","mes","mesant"])}</h2><p class="note" style="margin:-6px 0 0">Se ordena por volumen de ventas. Las comisiones de cada persona son privadas y no salen aquí.</p></div>`;
+  h += `<div class="card"><h2>Últimas ventas</h2>${feed.length?`<div class="list">${feed.map(a=>`<div class="item" style="cursor:default"><div><div class="t nm-av">${av(a.socioId,34)}<span>🔥 ${esc(memberName(a.socioId))} vendió ${money(a.amount)}</span></div><div class="m">Cita de ${esc(memberName(a.teleId))}${a.city?" · "+esc(a.city):""}</div></div><span class="note">${fmt(a.resultAt||a.when,{day:"numeric",month:"short"})}</span></div>`).join("")}</div>`:`<div class="empty">Todavía no hay ventas este mes. ¡La primera puede ser la tuya!</div>`}</div>`;
+  h += board("Telemarketers", teles, [["citas","citas"],["demos","demostraciones"],["ventas","ventas"]], "monto");
+  h += board("Distribuidores y emprendedores", soc, [["referidos","referidos"],["citas","citas"],["demos","demostraciones"],["ventas","ventas"]], "monto");
+  return h;
+}
+
+/* ===== Invitaciones (directora y líder) ===== */
+function inviteCard(){
+  const isAdmin = role()==="admin";
+  const list = Object.entries(S.invites).filter(([,v]) => isAdmin || v.invitedBy===S.uid).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
+  const pendShare = list.filter(([,v]) => v.status!=="aceptada");
+  return `<div class="card"><h2>Invitar personas</h2>
+    <form id="inv-form" class="grid2">
+      <label class="f">Nombre<input class="i" id="inv-name" autocomplete="off"></label>
+      <label class="f">Correo (opcional)<input class="i" id="inv-email" type="email" inputmode="email" autocomplete="off"></label>
+      <label class="f">WhatsApp (con código de país)<input class="i" id="inv-phone" inputmode="tel" placeholder="+58 412 555 1234"></label>
+      <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
+      <div><button class="btn" type="submit">Crear invitación</button></div>
+    </form>
+
+    ${list.length ? `<div class="tbl-wrap" style="margin-top:12px"><table><thead><tr><th>Persona</th><th>Rol</th>${isAdmin?"<th>Invitó</th>":""}<th>Estado</th><th></th></tr></thead><tbody>${list.map(([id,v])=>`<tr><td><b>${esc(v.name)}</b><div class="note">${esc(v.email||"")}${v.email?" · ":""}código <b>${esc(v.code||"")}</b></div></td><td>${esc(v.role==="admin"?"Dirección":(INV_ROLES[v.role]||""))}</td>${isAdmin?`<td class="note">${esc(memberName(v.invitedBy))}</td>`:""}<td>${v.status==="aceptada"?`<span class="tag tg-good">Ya entró</span>`:`<span class="tag tg-warn">Pendiente</span>`}</td><td>${v.status!=="aceptada"?`<div class="row"><button class="btn small ghost" data-inv-send="${id}">Enviar mensaje</button><button class="btn small ghost" data-inv-del="${id}">Borrar</button></div>`:""}</td></tr>`).join("")}</tbody></table></div>` : ""}
+  </div>`;
+}
+function inviteLink(v){ return `${APP_URL}#unirme-${v.code}`; }
+function inviteText(v){
+  return `Hola ${v.name}, te invito a unirte a Lunaya, el sistema del equipo Lunatikat Group, como ${v.role==="admin"?"parte de la dirección":(INV_ROLES[v.role]||"parte del equipo")}.\n\n1. Abre este enlace: ${inviteLink(v)}\n2. Entra con tu cuenta de Google o crea tu usuario con tu correo.\n\nListo, quedas registrada automáticamente. Si te pide código, es: ${v.code}\n— ${memberName(v.invitedBy)}`;
+}
+function openInviteMsg(id, data){
+  const v = data || S.invites[id]; if (!v) return; const txt = inviteText(v); const ph = digits(v.phone);
+  openModal(`<h3>Invitación para ${esc(v.name)}</h3>
+    <textarea class="i" id="inv-txt" style="min-height:190px" readonly>${esc(txt)}</textarea>
+    <div class="row">${ph?`<a class="btn" href="https://wa.me/${ph}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>`:""}<button class="btn ${ph?"ghost":""}" id="inv-copy">Copiar mensaje</button><button class="btn ghost" data-close>Listo</button></div>
+    <p class="note">El enlace sirve una sola vez. Cuando la persona entre, la invitación queda marcada como “Ya entró”.</p>`, () => {
+    $("#inv-copy").onclick = async () => { try { await navigator.clipboard.writeText(txt); toast("Mensaje copiado"); } catch { $("#inv-txt").select(); toast("Mantén presionado el texto para copiarlo"); } };
+  });
+}
+function viewLider(){
+  if (!S.me?.lider && !S.isOwner) return `<div class="card empty">Esta pantalla es solo para la líder del equipo.</div>`;
+  const rg = range(S.f.period);
+  const teles = byRole("tele").map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
+  let h = `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
+  const hoyT = byRole("tele").map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
+  h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
+  h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
+  h += inviteCard();
+  return h;
+}
+
+/* ===== EQUIPO (directora) ===== */
+function viewEquipo(){
+  const pend = Object.entries(S.members).filter(([,m])=>m.role==="pendiente");
+  const active = Object.entries(S.members).filter(([,m])=>m.role!=="pendiente").sort((a,b)=>(a[1].role||"").localeCompare(b[1].role||"")||(a[1].name||"").localeCompare(b[1].name||""));
+  const c = com(); const sid = S.config.sheetId || "";
+  let h = driveCard() + inviteCard();
+  h += `<div class="card"><h2>Solicitudes de acceso</h2>${pend.length?`<div class="list">${pend.map(([id,m])=>`<div class="item" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(m.name)}</div><div class="m">Pidió entrar como ${esc(INV_ROLES[m.wantedRole]||"socio")}${m.phone?" · "+esc(m.phone):""}</div></div><div class="row">${Object.entries(INV_ROLES).map(([k,l])=>`<button class="btn small ${k===(m.wantedRole||"tele")?"":"ghost"}" data-approve="${id}" data-role="${k}">${k===(m.wantedRole||"tele")?"Aprobar":"Como "+l.toLowerCase()}</button>`).join("")}</div></div>`).join("")}</div>`:`<div class="empty">No hay solicitudes pendientes. Quien entra con un enlace de invitación queda registrado solo.</div>`}</div>`;
+  h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td>${who(id,30)}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
+  h += `<div class="card"><h2>Comisiones</h2><div class="grid2">
+    <label class="f">Sueldo fijo mensual (USD)<input class="i" type="number" min="0" id="k-sueldo" value="${c.sueldo}"></label>
+    <label class="f">% sobre sus ventas<input class="i" type="number" min="0" step="0.1" id="k-pct" value="${c.pct}"></label>
+    <label class="f">% extra de la líder sobre todo el equipo<input class="i" type="number" min="0" step="0.1" id="k-lider" value="${c.liderPct}"></label></div>
+    <div class="row" style="margin-top:10px"><button class="btn small" data-act="comision">Guardar comisiones</button></div></div>`;
+  h += `<div class="card"><h2>Metas y fuentes</h2><div class="grid2"><label class="f">Llamadas por día<input class="i" type="number" min="1" id="m-l" value="${+S.config.metaLlamadas||80}"></label><label class="f">Citas por día<input class="i" type="number" min="1" id="m-c" value="${+S.config.metaCitas||4}"></label></div>
+    <label class="f" style="margin-top:10px">Fuentes (separadas por coma)<input class="i" id="m-src" value="${esc(sources().join(", "))}"></label>
+    <div class="row" style="margin-top:10px"><button class="btn small" data-act="metas">Guardar</button></div></div>`;
+  h += `<div class="card"><h2>Reportes y respaldo</h2><p class="note" style="margin-top:-6px">Se descargan como archivo de Excel (CSV) a tu iPad o teléfono. Puedes abrirlos con Google Sheets, Numbers o Excel, o guardarlos en tu Drive.</p>
+    <div class="eyebrow">Reporte del mes</div><p class="note">Territorio, telemarketers, socios, ventas y comisiones.</p>
+    <div class="row"><button class="btn" data-act="export">Este mes</button><button class="btn ghost" data-act="export-prev">Mes anterior</button></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <div class="eyebrow">Respaldo completo</div><p class="note">Todas las citas con datos del cliente y resultado, y el registro diario de llamadas y referidos de cada telemarketer, desde el primer día. Hazlo una vez por semana.</p>
+    <div class="row"><button class="btn dark" data-act="backup">Descargar citas</button><button class="btn dark" data-act="backup-calls">Descargar llamadas</button></div>
+    <div id="g-status" class="note" style="margin-top:10px">${S.config.lastBackup?`Último respaldo: ${fmtWhen(S.config.lastBackup)}`:""}</div></div>`;
+  return h;
+}
+
+/* ===== Reportes y respaldo (CSV) ===== */
+function gStatus(msg, cls){ const el = $("#g-status"); if (el){ el.className = cls ? "banner "+cls : "note"; el.textContent = msg; } }
+function csvDownload(name, rows){
+  const cell = v => { const t = v == null ? "" : String(v); return /[",\n;]/.test(t) ? `"${t.replace(/"/g,'""')}"` : t; };
+  const txt = "﻿" + rows.map(r => r.map(cell).join(",")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([txt], {type:"text/csv;charset=utf-8"}));
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+function doExport(p){
+  const rg = range(p); const label = fmt(rg[0]+864e5,{month:"long",year:"numeric"}); const d = ms => fmt(ms,{year:"numeric",month:"2-digit",day:"2-digit"});
+  const pc = (a,b) => b ? Math.round(a*100/b)+"%" : "";
+  const head = ["Nombre","Referidos","Llamadas","Contactos","Citas","Demostraciones","Cant. de ventas","Ventas aprobadas","Volumen de ventas","% contacto→cita","% cita→demo","% demo→venta"];
+  const row = (n,e) => [n,e.referidos,e.calls,e.contacts,e.citas,e.demos,e.ventas,e.aprob,e.monto,pc(e.citas,e.contacts),pc(e.demos,e.conRes),pc(e.ventas,e.demos)];
+  const sales = Object.values(S.appts).filter(a => a.sale && inR(a.when||0, rg)).sort((a,b)=>a.when-b.when);
+  const cm = commissions(rg); const c = com();
+  const rows = [["Lunaya · Reporte de "+label], ["Generado", fmtWhen(Date.now())], [],
+    ["TERRITORIO"], head, row("Territorio", teleEval(null, rg)), [],
+    ["TELEMARKETERS"], head, ...byRole("tele").map(t => row(t.name, teleEval(t.id, rg))), [],
+    ["SOCIOS (por fecha de la cita)"], ["Socio","Referidos","Citas","Demostraciones","Cant. de ventas","Ventas aprobadas","Volumen de ventas","Venta promedio","% demo→venta"],
+      ...socios().map(s => { const e = socioEval(s.id, rg); return [s.name, e.referidos, e.citas, e.demos, e.ventas, e.aprob, e.monto, e.ventas?Math.round(e.monto/e.ventas):"", pc(e.ventas,e.demos)]; }), [],
+    ["VENTAS"], ["Fecha","Cliente","Ciudad","Socio","Telemarketer","Estado","Monto"], ...sales.map(a => [d(a.when), a.client||"", a.city||"", memberName(a.socioId), memberName(a.teleId), SALE_ST[a.saleStatus||"pendiente"], +a.amount||0]), [],
+    ["COMISIONES"], ["Telemarketer","Líder","Ventas aprobadas","Volumen aprobado","Sueldo",c.pct+"% propio",c.liderPct+"% líder","Total"], ...cm.map(x => [x.t.name, x.t.lider?"Sí":"", x.ventas, x.monto, x.sueldo, x.own, x.lead, x.total]), ["Total","","","","","","",cm.reduce((s,x)=>s+x.total,0)]];
+  csvDownload(`Lunaya-reporte-${laDate(rg[0]+864e5).slice(0,7)}.csv`, rows); gStatus(`Reporte de ${label} descargado.`, "good");
+}
+const BK_CITAS_HEAD = ["Creada","Fecha cita","Cliente","Teléfono","Ciudad","Dirección","Socio","Telemarketer","Fuente","Estado cita","Venta","Estado venta","Monto","Notas","ID"];
+const BK_CALLS_HEAD = ["Fecha","Telemarketer","Socio","Fuente","Total","No contestó","Buzón / apagado","Llamar después","No le interesa","No califica","Cita","Referidos recibidos"];
+async function doBackup(kind){
+  const d = ms => ms ? fmt(ms,{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+  try {
+    if (kind === "citas"){
+      const citas = Object.entries(S.appts).sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0)).map(([id,a]) => [d(a.createdAt), d(a.when), a.client||"", a.phone||"", a.city||"", a.address||"", memberName(a.socioId), memberName(a.teleId), a.source||"", APPT_ST[a.status]||"", a.sale?"Sí":"No", a.sale?SALE_ST[a.saleStatus||"pendiente"]:"", +a.amount||0, a.notes||"", id]);
+      csvDownload(`Lunaya-citas-${today()}.csv`, [BK_CITAS_HEAD, ...citas]); gStatus(`${citas.length} citas descargadas.`, "good");
+    } else {
+      gStatus("Leyendo todo el historial…");
+      const logs = (await S.db.collection("calllog").get()).docs.map(x => x.data());
+      const agg = {};
+      const slot = (L, x) => { const k = [L.date, L.teleId, x.socioId||"", x.source||""].join("|"); return (agg[k] ||= {date:L.date, tele:L.teleId, socio:x.socioId, src:x.source||"", n:{}, refs:0}); };
+      for (const L of logs){ for (const c of (L.calls||[])){ const g = slot(L, c); g.n[c.result] = (g.n[c.result]||0)+1; } for (const r of (L.refs||[])) slot(L, r).refs += (+r.n||0); }
+      const calls = Object.values(agg).sort((a,b)=>a.date.localeCompare(b.date)).map(x => [x.date, memberName(x.tele), memberName(x.socio), x.src, Object.values(x.n).reduce((s,v)=>s+v,0), ...RESULTS.map(([k])=>x.n[k]||0), x.refs]);
+      csvDownload(`Lunaya-llamadas-${today()}.csv`, [BK_CALLS_HEAD, ...calls]); gStatus(`${calls.length} filas de llamadas descargadas.`, "good");
+    }
+    await S.db.doc("config/main").set({...S.config, lastBackup:Date.now()});
+  } catch(e){ console.log(e); gStatus("No se pudo preparar el respaldo. Intenta de nuevo.", "bad"); }
+}
+
+/* ===== Mi perfil: foto ===== */
+function loadImg(src){ return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src; }); }
+function openProfile(){
+  const m = S.me || {}; let photo = m.photo || ""; let crop = null; /* {img, z, ox, oy} */
+  const SZ = 240, OUT = 360;
+  openModal(`<h3>Mi perfil</h3><div class="row note" style="margin-top:-6px"><span class="pill acc">${esc(ROLE[role()]||"")}${m.lider?" · líder":""}${m.tipo?" · "+esc(m.tipo):""}</span>${m.joinedAt?`<span>En el equipo desde ${fmt(m.joinedAt,{day:"numeric",month:"long",year:"numeric"})}</span>`:""}</div>
+    <div style="display:grid;justify-items:center;gap:10px">
+      <div id="pf-stage" style="width:${SZ}px;height:${SZ}px;border-radius:50%;overflow:hidden;background:var(--soft);touch-action:none;cursor:grab;box-shadow:0 0 0 4px var(--accent)">
+        <canvas id="pf-cv" width="${OUT}" height="${OUT}" style="width:${SZ}px;height:${SZ}px;display:block"></canvas></div>
+      <div id="pf-tools" class="note" hidden style="width:${SZ+40}px;text-align:center">Arrastra la foto para centrar tu cara
+        <label class="row" style="justify-content:center;margin-top:6px">− <input type="range" id="pf-zoom" min="1" max="4" step="0.01" value="1" style="flex:1" aria-label="Acercar o alejar"> +</label></div>
+      <div class="row" style="justify-content:center"><label class="btn small" style="cursor:pointer">${photo?"Cambiar foto":"Elegir foto"}<input type="file" id="pf-file" accept="image/*" hidden></label>${photo?`<button class="btn small ghost" id="pf-rm">Quitar foto</button>`:""}</div>
+    </div>
+    <div class="grid2"><label class="f">Nombre<input class="i" id="pf-name" value="${esc(m.name||"")}"></label><label class="f">Teléfono / WhatsApp<input class="i" id="pf-phone" inputmode="tel" value="${esc(m.phone||"")}"></label><label class="f">Correo de contacto<input class="i" id="pf-email" type="email" inputmode="email" value="${esc(m.email||"")}"></label></div>
+    <p class="note" style="margin:0">Entras con: <b>${esc(S.email)}</b></p>
+    <div class="row"><button class="btn" id="pf-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button><button class="btn small ghost" id="pf-out" style="margin-left:auto">Cerrar sesión</button></div>`, () => {
+    $("#pf-out").onclick = () => { closeModal(); S.auth.signOut(); };
+    const cv = $("#pf-cv"), ctx = cv.getContext("2d");
+    const draw = () => { ctx.clearRect(0,0,OUT,OUT);
+      if (crop){ const {img} = crop; const base = OUT / Math.min(img.width, img.height); const sc = base * crop.z; const w = img.width*sc, h = img.height*sc;
+        crop.ox = Math.min(OUT/2, Math.max(OUT/2 - w, crop.ox)); crop.oy = Math.min(OUT/2, Math.max(OUT/2 - h, crop.oy));
+        ctx.fillStyle = "#f4ecdd"; ctx.fillRect(0,0,OUT,OUT);
+        ctx.drawImage(img, crop.ox, crop.oy, w, h); }
+      else if (photo){ loadImg(photo).then(img => { if (!crop) ctx.drawImage(img, 0, 0, OUT, OUT); }); }
+      else { ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--accent-soft"); ctx.fillRect(0,0,OUT,OUT); } };
+    const startCrop = img => { const base = OUT / Math.min(img.width, img.height);
+      crop = {img, z:1, ox:(OUT - img.width*base)/2, oy:(OUT - img.height*base)/2}; $("#pf-zoom").value = 1; $("#pf-tools").hidden = false; draw(); };
+    draw();
+    $("#pf-file").onchange = e => { const f = e.target.files[0]; if (!f) return; const url = URL.createObjectURL(f);
+      loadImg(url).then(startCrop).catch(() => toast("No se pudo leer esa imagen. Prueba con otra foto.")); };
+    if (photo) loadImg(photo).then(startCrop).catch(()=>{});
+    $("#pf-zoom").oninput = e => { if (!crop) return; const {img} = crop; const base = OUT / Math.min(img.width, img.height);
+      const old = base*crop.z, nz = +e.target.value, nw = base*nz; const cx = OUT/2, cy = OUT/2;
+      crop.ox = cx - (cx - crop.ox) * nw/old; crop.oy = cy - (cy - crop.oy) * nw/old; crop.z = nz; draw(); };
+    let drag = null; const k = OUT / SZ;
+    const st = $("#pf-stage");
+    st.onpointerdown = e => { if (!crop) return; drag = {x:e.clientX, y:e.clientY, ox:crop.ox, oy:crop.oy}; st.setPointerCapture(e.pointerId); st.style.cursor = "grabbing"; };
+    st.onpointermove = e => { if (!drag) return; crop.ox = drag.ox + (e.clientX-drag.x)*k; crop.oy = drag.oy + (e.clientY-drag.y)*k; draw(); };
+    st.onpointerup = st.onpointercancel = () => { drag = null; st.style.cursor = "grab"; };
+    $("#pf-rm") && ($("#pf-rm").onclick = () => { photo = ""; crop = null; $("#pf-tools").hidden = true; draw(); });
+    $("#pf-save").onclick = async () => { const name = $("#pf-name").value.trim(); if (!name){ toast("Escribe tu nombre"); return; }
+      let out = photo; if (crop){ const c2 = document.createElement("canvas"); c2.width = c2.height = 240; c2.getContext("2d").drawImage(cv, 0, 0, 240, 240); out = c2.toDataURL("image/jpeg", 0.85); }
+      try { $("#pf-save").disabled = true; await S.db.doc("members/"+S.uid).update({name, phone:$("#pf-phone").value.trim(), email:$("#pf-email").value.trim(), photo:out}); closeModal(); toast("Perfil guardado"); } catch(e){ $("#pf-save").disabled = false; writeErr(e); } };
+  });
+}
+
+/* ===== Modal ===== */
+function openModal(html, bind){ $("#modal").innerHTML = `<div class="modal-bg" id="mbg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`; $("#mbg").onclick = e => { if (e.target.id==="mbg") closeModal(); }; $("#modal").querySelectorAll("[data-close]").forEach(b=>b.onclick=closeModal); bind && bind(); }
+function closeModal(){ $("#modal").innerHTML = ""; }
+
+/* ===== Eventos ===== */
+function bindCommon(){
+  bindDrive();
+  const m = $("#main");
+  const all = (sel, fn) => m.querySelectorAll(sel).forEach(fn);
+  all("[data-period]", b => b.onclick = () => { S.f.period = b.dataset.period; render(); });
+  all("[data-go2]", b => b.onclick = () => go(b.dataset.go2));
+  all("[data-world]", b => b.onclick = () => setWorld(b.dataset.world));
+  all("[data-appt]", b => b.onclick = () => openAppt(b.dataset.appt));
+  all("[data-day]", b => b.onclick = () => { S.f.day = b.dataset.day; render(); });
+  all("[data-wk]", b => b.onclick = () => { const n = +b.dataset.wk; S.f.day = n ? addDays(S.f.day||today(), n) : today(); render(); });
+  all("[data-src]", b => b.onclick = () => { S.f.source = b.dataset.src; try { localStorage.setItem("ly-src", S.f.source); } catch {} render(); });
+  all("[data-res]", b => b.onclick = () => tapResult(b.dataset.res));
+  const rf = m.querySelector("#ref-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = Math.round(+$("#ref-n").value||0); if (n<1){ toast("Escribe cuántos referidos recibiste"); return; }
+    const src = sources().includes(S.f.source) ? S.f.source : sources()[0];
+    try { await logRefs(n, src); toast(`${n} referidos anotados para ${memberName(S.world)}`); } catch(err){ writeErr(err); } };
+  all("[data-unref]", b => b.onclick = () => removeRef(+b.dataset.unref).then(()=>toast("Quitado"), writeErr));
+  all("[data-undo]", b => b.onclick = () => undoCall(+b.dataset.undo).then(()=>toast("Registro deshecho"), writeErr));
+  const af = m.querySelector("#a-filter"); if (af) af.onchange = e => { S.f.aSocio = e.target.value; render(); };
+  all("[data-act]", b => b.onclick = async () => { const a = b.dataset.act;
+    if (a==="world") setWorld("");
+    else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
+    else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
+    else if (a==="export") doExport("mes");
+    else if (a==="export-prev") doExport("mesant");
+    else if (a==="backup") doBackup("citas");
+    else if (a==="backup-calls") doBackup("calls");
+  });
+  all("[data-approve]", b => b.onclick = async () => { const k = b.dataset.role; try { await S.db.doc("members/"+b.dataset.approve).update({role: k==="tele"?"tele":"socio", tipo: k==="tele"?"":INV_ROLES[k], approvedAt:Date.now()}); toast("Acceso aprobado"); } catch(e){ writeErr(e); } });
+  all("[data-inv-send]", b => b.onclick = () => openInviteMsg(b.dataset.invSend));
+  all("[data-inv-del]", b => b.onclick = function(){ if (this.dataset.sure){ S.db.doc("invites/"+this.dataset.invDel).delete().then(()=>toast("Invitación borrada"), writeErr); } else { this.dataset.sure="1"; this.textContent="¿Seguro?"; this.classList.add("danger"); } });
+  const invf = m.querySelector("#inv-form"); if (invf) invf.onsubmit = async e => { e.preventDefault();
+    const name = $("#inv-name").value.trim(), email = $("#inv-email").value.trim().toLowerCase(), phone = $("#inv-phone").value.trim(), rl = $("#inv-role").value;
+    if (!name){ toast("Escribe el nombre de la persona"); return; }
+    if (rl==="admin" && role()!=="admin") return;
+    if (email && Object.values(S.invites).some(v => v.email===email && v.status!=="aceptada")){ toast("Ese correo ya tiene una invitación pendiente"); return; }
+    try { const code = newCode(); await S.db.doc("invites/"+code).set({name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, createdAt:Date.now(), status:"enviada"}); invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid}); } catch(err){ writeErr(err); } };
+  all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera") await S.db.doc("members/"+id).delete(); else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
+  all("[data-lider]", c => c.onchange = async () => { try { await S.db.doc("members/"+c.dataset.lider).update({lider:c.checked}); toast(c.checked?"Marcada como líder":"Ya no es líder"); } catch(e){ writeErr(e); } });
+  all("[data-rename]", b => b.onclick = () => { const id = b.dataset.rename; openModal(`<h3>Renombrar</h3><input class="i" id="rn" value="${esc(S.members[id]?.name||"")}"><div class="row"><button class="btn" id="rn-s">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => { $("#rn-s").onclick = async () => { const n = $("#rn").value.trim(); if (!n) return; try { await S.db.doc("members/"+id).update({name:n}); closeModal(); } catch(e){ writeErr(e); } }; }); });
+}
+
+boot();
+</script>
+</body>
+</html>
