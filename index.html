@@ -415,7 +415,7 @@ function bindHeader(){
 function renderHeader(r){
   const first = (S.me?.name||"").split(" ")[0];
   const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla."};
-  if (!S.authUser){ $("#title").textContent = "Bienvenida"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunatikat."; $("#who").innerHTML = ""; return; }
+  if (!S.authUser){ $("#title").textContent = "Bienvenida"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunaya."; $("#who").innerHTML = ""; return; }
   if (r==="nuevo"||r==="pendiente"){ $("#title").textContent = "Bienvenida a Lunaya"; $("#subtitle").textContent = "Registra tu nombre para entrar."; }
   else { $("#title").textContent = T[S.view] || ""; $("#subtitle").textContent = Sb[S.view] || ""; }
   $("#who").innerHTML = S.me ? `<span class="pill acc">${esc(ROLE[r]||"")}${S.me.lider?" · líder":""}</span>` : "";
@@ -737,7 +737,7 @@ function inviteCard(){
 }
 function inviteLink(v){ return `${APP_URL}#unirme-${v.code}`; }
 function inviteText(v){
-  return `Hola ${v.name}, te invito a unirte a Lunaya, el sistema del equipo Lunatikat Group, como ${v.role==="admin"?"parte de la dirección":(INV_ROLES[v.role]||"parte del equipo")}.\n\n1. Abre este enlace: ${inviteLink(v)}\n2. Entra con tu cuenta de Google o crea tu usuario con tu correo.\n\nListo, quedas registrada automáticamente. Si te pide código, es: ${v.code}\n— ${memberName(v.invitedBy)}`;
+  return `Hola ${v.name}, te invito a unirte a Lunaya, el sistema de telemarketing del equipo Lunaya, como ${v.role==="admin"?"parte de la dirección":(INV_ROLES[v.role]||"parte del equipo")}.\n\n1. Abre este enlace: ${inviteLink(v)}\n2. Entra con tu cuenta de Google o crea tu usuario con tu correo.\n\nListo, quedas registrada automáticamente. Si te pide código, es: ${v.code}\n— ${memberName(v.invitedBy)}`;
 }
 function openInviteMsg(id, data){
   const v = data || S.invites[id]; if (!v) return; const txt = inviteText(v); const ph = digits(v.phone);
