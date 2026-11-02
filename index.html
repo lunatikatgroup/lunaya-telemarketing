@@ -316,9 +316,9 @@ async function acceptInvite(code){
     const snap = await S.db.doc("invites/"+c).get();
     if (!snap.exists || snap.data().status === "aceptada"){ inviteDone = false; return false; }
     const v = snap.data();
-    await S.db.doc("members/"+S.uid).set({name: S.me?.name || v.name || S.authUser?.displayName || "", phone: S.me?.phone || v.phone || "", email: S.email, role: MEMBER_ROLE(v.role), tipo: (v.role==="tele"||v.role==="admin") ? "" : INV_ROLES[v.role], lider:false, joinedAt: Date.now(), invitedBy: v.invitedBy || "", upline: v.upline || "", inviteCode: c});
+    await S.db.doc("members/"+S.uid).set({name: S.me?.name || v.name || S.authUser?.displayName || "", phone: S.me?.phone || v.phone || "", email: S.email, role: MEMBER_ROLE(v.role), tipo: (v.role==="tele"||v.role==="admin") ? "" : INV_ROLES[v.role], lider:false, joinedAt: Date.now(), invitedBy: v.invitedBy || "", upline: v.upline || "", genero: v.genero || "", inviteCode: c});
     await S.db.doc("invites/"+c).update({status:"aceptada", acceptedAt:Date.now(), uid:S.uid});
-    clearCode(); toast("¡Bienvenida al equipo!"); return true;
+    clearCode(); toast(v.genero==="h" ? "¡Bienvenido al equipo!" : v.genero==="m" ? "¡Bienvenida al equipo!" : "¡Te damos la bienvenida al equipo!"); return true;
   } catch(e){ inviteDone = false; console.log(e); return false; }
 }
 const newCode = () => { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let c = ""; for (let i=0;i<6;i++) c += A[Math.floor(Math.random()*A.length)]; return c; };
@@ -333,7 +333,7 @@ async function ensureOwner(){
 const AUTH_MSG = {"auth/invalid-credential":"Correo o contraseña incorrectos.","auth/invalid-login-credentials":"Correo o contraseña incorrectos.","auth/wrong-password":"Correo o contraseña incorrectos.","auth/user-not-found":"No hay una cuenta con ese correo. Toca “Crear cuenta”.","auth/email-already-in-use":"Ese correo ya tiene cuenta. Toca “Entrar”.","auth/weak-password":"La contraseña debe tener al menos 6 caracteres.","auth/invalid-email":"Ese correo no es válido.","auth/too-many-requests":"Demasiados intentos. Espera unos minutos.","auth/unauthorized-domain":"Este enlace todavía no está autorizado en Firebase. Avísale a Katerine.","auth/network-request-failed":"Sin conexión. Revisa tu internet."};
 function authErr(e){ if (!e || !e.code || e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request") return; const el = $("#lg-msg"); const m = AUTH_MSG[e.code] || "No se pudo entrar. Intenta de nuevo."; if (el){ el.className = "banner bad"; el.textContent = m; } else toast(m); }
 function viewLogin(){
-  return `${S.pendingCode?`<div class="banner good">Tienes una invitación al equipo. Entra con Google o crea tu cuenta con tu correo y quedas registrada automáticamente.</div>`:""}
+  return `${S.pendingCode?`<div class="banner good">Tienes una invitación al equipo. Entra con Google o crea tu cuenta con tu correo y quedas dentro automáticamente.</div>`:""}
   <div class="card" style="max-width:460px;margin:0 auto;width:100%"><h2>Entrar a Lunaya</h2>
     <button class="btn dark" id="lg-google" style="width:100%"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3zM12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22zM6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2zM12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.8 9.4 6 12 6z"/></svg>Entrar con Google</button>
     <div class="note" style="text-align:center;margin:12px 0">o con tu correo</div>
@@ -445,8 +445,8 @@ function bindHeader(){
 function renderHeader(r){
   const first = (S.me?.name||"").split(" ")[0];
   const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla."};
-  if (!S.authUser){ $("#title").textContent = "Bienvenida"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunaya."; $("#who").innerHTML = ""; return; }
-  if (r==="nuevo"||r==="pendiente"){ $("#title").textContent = "Bienvenida a Lunaya"; $("#subtitle").textContent = "Registra tu nombre para entrar."; }
+  if (!S.authUser){ $("#title").textContent = "Bienvenidos"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunaya."; $("#who").innerHTML = ""; return; }
+  if (r==="nuevo"||r==="pendiente"){ $("#title").textContent = "Te damos la bienvenida a Lunaya"; $("#subtitle").textContent = "Registra tu nombre para entrar."; }
   else { $("#title").textContent = T[S.view] || ""; $("#subtitle").textContent = Sb[S.view] || ""; }
   $("#who").innerHTML = S.me ? `<span class="pill acc">${esc(ROLE[r]||"")}${S.me.lider?" · líder":""}</span>` : "";
 }
@@ -787,6 +787,7 @@ function inviteCard(){
       <label class="f">Nombre<input class="i" id="inv-name" autocomplete="off"></label>
       <label class="f">Correo (opcional)<input class="i" id="inv-email" type="email" inputmode="email" autocomplete="off"></label>
       <label class="f">WhatsApp (con código de país)<input class="i" id="inv-phone" inputmode="tel" placeholder="+58 412 555 1234"></label>
+      <label class="f">Es<select class="i" id="inv-gen"><option value="m">Mujer (bienvenida)</option><option value="h">Hombre (bienvenido)</option></select></label>
       <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => !isDist() || k!=="distribuidor").map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
       <div><button class="btn" type="submit">Crear invitación</button></div>
     </form>
@@ -796,7 +797,7 @@ function inviteCard(){
 }
 function inviteLink(v){ return `${APP_URL}#unirme-${v.code}`; }
 function inviteText(v){
-  return `Hola ${v.name}, te invito a unirte a Lunaya, el sistema de telemarketing del equipo Lunaya, como ${v.role==="admin"?"parte de la dirección":(INV_ROLES[v.role]||"parte del equipo")}.\n\n1. Abre este enlace: ${inviteLink(v)}\n2. Entra con tu cuenta de Google o crea tu usuario con tu correo.\n\nListo, quedas registrada automáticamente. Si te pide código, es: ${v.code}\n— ${memberName(v.invitedBy)}`;
+  return `Hola ${v.name}, te invito a unirte a Lunaya, el sistema de telemarketing del equipo Lunaya, como ${v.role==="admin"?"parte de la dirección":(INV_ROLES[v.role]||"parte del equipo")}.\n\n1. Abre este enlace: ${inviteLink(v)}\n2. Entra con tu cuenta de Google o crea tu usuario con tu correo.\n\nListo, quedas ${v.genero==="h"?"registrado":v.genero==="m"?"registrada":"registrado(a)"} automáticamente. Si te pide código, es: ${v.code}\n— ${memberName(v.invitedBy)}`;
 }
 function openInviteMsg(id, data){
   const v = data || S.invites[id]; if (!v) return; const txt = inviteText(v); const ph = digits(v.phone);
@@ -985,12 +986,12 @@ function bindCommon(){
   all("[data-inv-send]", b => b.onclick = () => openInviteMsg(b.dataset.invSend));
   all("[data-inv-del]", b => b.onclick = function(){ if (this.dataset.sure){ S.db.doc("invites/"+this.dataset.invDel).delete().then(()=>toast("Invitación borrada"), writeErr); } else { this.dataset.sure="1"; this.textContent="¿Seguro?"; this.classList.add("danger"); } });
   const invf = m.querySelector("#inv-form"); if (invf) invf.onsubmit = async e => { e.preventDefault();
-    const name = $("#inv-name").value.trim(), email = $("#inv-email").value.trim().toLowerCase(), phone = $("#inv-phone").value.trim(), rl = $("#inv-role").value;
+    const genero = $("#inv-gen") ? $("#inv-gen").value : "", name = $("#inv-name").value.trim(), email = $("#inv-email").value.trim().toLowerCase(), phone = $("#inv-phone").value.trim(), rl = $("#inv-role").value;
     if (!name){ toast("Escribe el nombre de la persona"); return; }
     if (rl==="admin" && role()!=="admin") return;
     if (email && Object.values(S.invites).some(v => v.email===email && v.status!=="aceptada")){ toast("Ese correo ya tiene una invitación pendiente"); return; }
     try { const code = newCode(); if (isDist() && !["emprendedor","tele"].includes(rl)) return;
-      await S.db.doc("invites/"+code).set({name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, upline: isDist() ? S.uid : "", createdAt:Date.now(), status:"enviada"}); invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid}); } catch(err){ writeErr(err); } };
+      await S.db.doc("invites/"+code).set({name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, upline: isDist() ? S.uid : "", genero, createdAt:Date.now(), status:"enviada"}); invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid, genero}); } catch(err){ writeErr(err); } };
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
   all("[data-lider]", c => c.onchange = async () => { try { await S.db.doc("members/"+c.dataset.lider).update({lider:c.checked}); toast(c.checked?"Marcada como líder":"Ya no es líder"); } catch(e){ writeErr(e); } });
