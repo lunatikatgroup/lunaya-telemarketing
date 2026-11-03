@@ -556,6 +556,8 @@ function viewHoy(r){
   return h;
 }
 /* Evaluación del socio: citas que TUVO en el periodo (por fecha de la cita), no las que se agendaron */
+/* Origen de la cita: telemarketing, propia del socio, o Dirección/otro */
+function origenDe(a){ if (a.origen) return a.origen; const t = S.members[a.teleId]; if (t && (t.role==="tele" || t.prevRole==="tele")) return "tm"; return a.teleId===a.socioId ? "propia" : "dir"; }
 function socioEval(id, r){
   const ap = Object.values(S.appts).filter(a => a.socioId===id && inR(a.when||0, r));
   const past = ap.filter(a => a.when <= Date.now());
@@ -563,16 +565,20 @@ function socioEval(id, r){
   const sales = demos.filter(a => a.sale), ventas = sales.filter(a => (a.saleStatus||"pendiente")!=="cancelada"), aprob = sales.filter(a => a.saleStatus==="aprobada");
   const sum = l => l.reduce((t,a)=>t+(+a.amount||0),0);
   return {referidos:allRefs().filter(x => x.socioId===id && inR(x.at, r)).reduce((t,x)=>t+(+x.n||0),0), citas:ap.length, proximas:ap.length-past.length, pasadas:past.length, demos:demos.length, noHizo:noHizo.length, canc:canc.length, sinRes:sinRes.length,
-    ventas:ventas.length, aprob:aprob.length, ventCanc:sales.length-ventas.length, monto:sum(ventas), montoAprob:sum(aprob), conRes:past.length-sinRes.length};
+    ventas:ventas.length, aprob:aprob.length, ventCanc:sales.length-ventas.length, monto:sum(ventas), montoAprob:sum(aprob), conRes:past.length-sinRes.length,
+    citasTM:ap.filter(a=>origenDe(a)==="tm").length, citasProp:ap.filter(a=>origenDe(a)!=="tm").length,
+    ventasTM:ventas.filter(a=>origenDe(a)==="tm").length, montoTM:sum(ventas.filter(a=>origenDe(a)==="tm")),
+    ventasProp:ventas.filter(a=>origenDe(a)!=="tm").length, montoProp:sum(ventas.filter(a=>origenDe(a)!=="tm"))};
 }
-function socioEvalCard(rg){
-  const rows = socios().map(s => ({s, e:socioEval(s.id, rg)}));
+function socioEvalCard(rg){ return socioTableCard(socios(), rg, "Evaluación de socios", "Distribuidores y emprendedores, según la fecha de cada cita."); }
+function socioTableCard(list, rg, title, sub){
+  const rows = list.map(s => ({s, e:socioEval(s.id, rg)}));
   const tot = rows.reduce((t,x)=>{ for (const k in x.e) t[k]=(t[k]||0)+x.e[k]; return t; },{});
-  const tr = (n, e, cls="") => `<tr class="${cls}"><td>${n}</td><td class="n">${e.referidos}</td><td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${money(e.monto)}</td><td class="n">${e.ventas?money(e.monto/e.ventas):"—"}</td><td class="n">${pctHtml(e.ventas,e.demos,40,20)}</td></tr>`;
-  return `<div class="card"><h2>Evaluación de socios ${periodChips()}</h2><p class="note" style="margin-top:-6px">Distribuidores y emprendedores, según la fecha de cada cita.</p>
-    <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Referidos</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Volumen de ventas</th><th class="n">Venta promedio</th><th class="n">% efectividad demo → venta</th></tr></thead>
+  const tr = (n, e, cls="") => `<tr class="${cls}"><td>${n}</td><td class="n">${e.referidos}</td><td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${money(e.monto)}</td><td class="n">${e.ventas?money(e.monto/e.ventas):"—"}</td><td class="n">${pctHtml(e.ventas,e.demos,40,20)}</td><td class="n">${e.ventasTM} <span class="note">· ${money(e.montoTM)}</span><div class="note">de ${e.citasTM} citas</div></td><td class="n">${e.ventasProp} <span class="note">· ${money(e.montoProp)}</span><div class="note">de ${e.citasProp} citas</div></td><td class="n"><b>${e.ventas?Math.round(e.ventasTM*100/e.ventas)+"%":"—"}</b></td></tr>`;
+  return `<div class="card"><h2>${title} ${periodChips()}</h2><p class="note" style="margin-top:-6px">${sub}</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Referidos</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Volumen de ventas</th><th class="n">Venta promedio</th><th class="n">% efectividad demo → venta</th><th class="n">📞 Ventas de telemarketing</th><th class="n">🙋 Ventas propias</th><th class="n">% de sus ventas que vienen de telemarketing</th></tr></thead>
     <tbody>${rows.map(x => tr(`${who(x.s.id,28)}${x.s.tipo?`<div class="note">${esc(x.s.tipo)}</div>`:x.s.role==="admin"?`<div class="note">Dirección</div>`:""}`, x.e)).join("")}${rows.length>1?tr("Total", tot, "total"):""}</tbody></table></div>
-    <p class="note">Referidos: los que el socio le pasó a las telemarketers para trabajar (los anotan ellas). % efectividad demo → venta: de cada 100 demostraciones, cuántas cerraron en venta.</p></div>`;
+    <p class="note">Referidos: los que el socio le pasó a las telemarketers para trabajar (los anotan ellas). % efectividad demo → venta: de cada 100 demostraciones, cuántas cerraron en venta. 📞 Ventas de telemarketing: salieron de citas que agendaron las telemarketers. 🙋 Ventas propias: de citas que el socio consiguió por su cuenta (o que agendó Dirección).</p></div>`;
 }
 function evalTable(rows, calls){
   const tot = rows.reduce((t,x)=>{ for (const k in x.e) t[k]=(t[k]||0)+x.e[k]; return t; },{});
@@ -618,9 +624,9 @@ async function tapResult(k){
   try { await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:k}); S.flash = k; setTimeout(()=>{ S.flash=null; render(); }, 600); toast(`${RLABEL[k]} · guardado`, {label:"Deshacer", fn:()=>undoCall(at).catch(writeErr)}); }
   catch(e){ writeErr(e); }
 }
-function openCitaForm(src){
-  const tomorrow = addDays(today(),1);
-  openModal(`<h3>Nueva cita para ${esc(memberName(S.world))}</h3><p class="note" style="margin:0">Fuente: ${esc(src)}. Hora de San Diego.</p>
+function openCitaForm(src, own){
+  const tomorrow = addDays(today(),1); const socio = own ? S.uid : S.world;
+  openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>` : `<p class="note" style="margin:0">Fuente: ${esc(src)}. Hora de San Diego.</p>`}
     <div class="grid2">
       <label class="f">Nombre del cliente<input class="i" id="c-name" autocomplete="off"></label>
       <label class="f">Teléfono<input class="i" id="c-phone" inputmode="tel" autocomplete="off"></label>
@@ -628,7 +634,7 @@ function openCitaForm(src){
       <label class="f">Dirección<input class="i" id="c-addr"></label>
       <label class="f">Fecha<input class="i" type="date" id="c-date" value="${tomorrow}"></label>
       <label class="f">Hora<input class="i" type="time" id="c-time" value="18:00"></label>
-      <label class="f" style="grid-column:1/-1">Notas para el socio<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
+      <label class="f" style="grid-column:1/-1">${own?"Notas":"Notas para el socio"}<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
     </div>
     <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     $("#c-save").onclick = async () => {
@@ -636,11 +642,11 @@ function openCitaForm(src){
       if (!name || !d || !t){ toast("Falta el nombre, la fecha o la hora"); return; }
       const at = Date.now(); $("#c-save").disabled = true;
       try {
-        const ref = S.db.collection("appts").doc(); const sm = S.members[S.world] || {};
-        await ref.set({when:laToMs(d,t), socioId:S.world, teleId:S.uid, source:src, status:"agendada", sale:false, amount:0, createdAt:at});
+        const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if (own) src = $("#c-src").value;
+        await ref.set({when:laToMs(d,t), socioId:socio, teleId:S.uid, source:src, origen: own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at});
         await S.db.doc("apptp/"+ref.id).set({client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(),
-          socioId:S.world, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:at});
-        await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
+          socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:at});
+        if (!own) await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
         closeModal(); toast("Cita guardada"); S.flash = "cita"; setTimeout(() => { if (S.appts[ref.id]) openAppt(ref.id); }, 400); setTimeout(()=>{ S.flash=null; render(); }, 600);
       } catch(e){ $("#c-save").disabled = false; writeErr(e); }
     };
@@ -679,6 +685,7 @@ function viewCitas(r){
     ${isDist() && grp.length>1?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Mis citas y las de mi grupo</option>${grp.map(id=>`<option value="${id}" ${S.f.aSocio===id?"selected":""}>${esc(memberName(id))}</option>`).join("")}</select>`:""}
     ${r==="admin"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
     <div class="week">${week}</div></div>
+    ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
     <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
   if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
   return h;
@@ -840,7 +847,7 @@ function viewGrupo(){
   const rg = range(S.f.period); const g = grupoDe(S.uid);
   const emps = [{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")].map(m => ({name:m.name+(m.id===S.uid?" (tú)":""), e:teleEval(null, rg, m.id), id:m.id}));
   let h = `<div class="card"><h2>Mi grupo ${periodChips()}</h2><p class="note" style="margin-top:-6px">Tú manejas a tus emprendedores y telemarketers. Solo tú y la telemarketer de cada cita ven los datos de los clientes de tu grupo.</p></div>`;
-  h += `<div class="card"><h2>Emprendedores</h2>${evalTable(emps, false)}</div>`;
+  h += socioTableCard([{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")], rg, "Emprendedores", "Tus ventas y las de tu grupo, separadas por de dónde salió la cita.").replace(/<div class="chips">[\s\S]*?<\/div>/, "");
   const teles = g.filter(m => m.role==="tele").map(t => ({name:t.name, e:teleEval(t.id, rg), id:t.id}));
   if (teles.length){ h += `<div class="card"><h2>Mis telemarketers</h2>${evalTable(teles, true)}</div>`; h += comCard(S.f.period==="mesant" ? "mesant" : "mes", S.uid); }
   h += inviteCard();
@@ -977,6 +984,7 @@ function bindCommon(){
   all("[data-go2]", b => b.onclick = () => go(b.dataset.go2));
   all("[data-world]", b => b.onclick = () => setWorld(b.dataset.world));
   all("[data-appt]", b => b.onclick = () => openAppt(b.dataset.appt));
+  const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
   all("[data-day]", b => b.onclick = () => { S.f.day = b.dataset.day; render(); });
   all("[data-wk]", b => b.onclick = () => { const n = +b.dataset.wk; S.f.day = n ? addDays(S.f.day||today(), n) : today(); render(); });
   all("[data-src]", b => b.onclick = () => { S.f.source = b.dataset.src; try { localStorage.setItem("ly-src", S.f.source); } catch {} render(); });
