@@ -557,7 +557,11 @@ function viewHoy(r){
 }
 /* Evaluación del socio: citas que TUVO en el periodo (por fecha de la cita), no las que se agendaron */
 /* Origen de la cita: telemarketing, propia del socio, o Dirección/otro */
-function origenDe(a){ if (a.origen) return a.origen; const t = S.members[a.teleId]; if (t && (t.role==="tele" || t.prevRole==="tele")) return "tm"; return a.teleId===a.socioId ? "propia" : "dir"; }
+function origenDe(a){ const t = S.members[a.teleId]; if (a.origen==="tm" || (t && (t.role==="tele" || t.prevRole==="tele"))) return "tm";
+  if (a.transferredFrom && a.transferredFrom!==a.socioId) return "asig"; return a.teleId===a.socioId ? "propia" : "asig"; }
+/* Quién le dio la cita al socio (telemarketer, quien se la transfirió o quien la agendó) */
+function dadorDe(a){ const o = origenDe(a); return o==="tm" ? a.teleId : o==="asig" ? (a.transferredFrom && a.transferredFrom!==a.socioId ? a.transferredFrom : a.teleId) : a.socioId; }
+function origenTxt(a){ const o = origenDe(a); return o==="tm" ? `📞 Telemarketing · ${memberName(a.teleId)}` : o==="asig" ? `🤝 Asignada por ${memberName(dadorDe(a))}` : "🙋 Propia"; }
 function socioEval(id, r){
   const ap = Object.values(S.appts).filter(a => a.socioId===id && inR(a.when||0, r));
   const past = ap.filter(a => a.when <= Date.now());
@@ -566,19 +570,18 @@ function socioEval(id, r){
   const sum = l => l.reduce((t,a)=>t+(+a.amount||0),0);
   return {referidos:allRefs().filter(x => x.socioId===id && inR(x.at, r)).reduce((t,x)=>t+(+x.n||0),0), citas:ap.length, proximas:ap.length-past.length, pasadas:past.length, demos:demos.length, noHizo:noHizo.length, canc:canc.length, sinRes:sinRes.length,
     ventas:ventas.length, aprob:aprob.length, ventCanc:sales.length-ventas.length, monto:sum(ventas), montoAprob:sum(aprob), conRes:past.length-sinRes.length,
-    citasTM:ap.filter(a=>origenDe(a)==="tm").length, citasProp:ap.filter(a=>origenDe(a)!=="tm").length,
-    ventasTM:ventas.filter(a=>origenDe(a)==="tm").length, montoTM:sum(ventas.filter(a=>origenDe(a)==="tm")),
-    ventasProp:ventas.filter(a=>origenDe(a)!=="tm").length, montoProp:sum(ventas.filter(a=>origenDe(a)!=="tm"))};
+    ...["tm","asig","propia"].reduce((o,k) => { const c = ap.filter(a=>origenDe(a)===k), v = ventas.filter(a=>origenDe(a)===k); o["c_"+k]=c.length; o["v_"+k]=v.length; o["m_"+k]=sum(v); return o; }, {}),
+    dadores: ap.filter(a=>origenDe(a)==="asig").reduce((o,a)=>{ const d = dadorDe(a); o[d]=(o[d]||0)+1; return o; }, {})};
 }
 function socioEvalCard(rg){ return socioTableCard(socios(), rg, "Evaluación de socios", "Distribuidores y emprendedores, según la fecha de cada cita."); }
 function socioTableCard(list, rg, title, sub){
   const rows = list.map(s => ({s, e:socioEval(s.id, rg)}));
-  const tot = rows.reduce((t,x)=>{ for (const k in x.e) t[k]=(t[k]||0)+x.e[k]; return t; },{});
-  const tr = (n, e, cls="") => `<tr class="${cls}"><td>${n}</td><td class="n">${e.referidos}</td><td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${money(e.monto)}</td><td class="n">${e.ventas?money(e.monto/e.ventas):"—"}</td><td class="n">${pctHtml(e.ventas,e.demos,40,20)}</td><td class="n">${e.ventasTM} <span class="note">· ${money(e.montoTM)}</span><div class="note">de ${e.citasTM} citas</div></td><td class="n">${e.ventasProp} <span class="note">· ${money(e.montoProp)}</span><div class="note">de ${e.citasProp} citas</div></td><td class="n"><b>${e.ventas?Math.round(e.ventasTM*100/e.ventas)+"%":"—"}</b></td></tr>`;
+  const tot = rows.reduce((t,x)=>{ for (const k in x.e) if (k!=="dadores") t[k]=(t[k]||0)+x.e[k]; return t; },{});
+  const tr = (n, e, cls="") => `<tr class="${cls}"><td>${n}</td><td class="n">${e.referidos}</td><td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${money(e.monto)}</td><td class="n">${e.ventas?money(e.monto/e.ventas):"—"}</td><td class="n">${pctHtml(e.ventas,e.demos,40,20)}</td>${["tm","asig","propia"].map(k=>`<td class="n">${e["v_"+k]||0} <span class="note">· ${money(e["m_"+k]||0)}</span><div class="note">de ${e["c_"+k]||0} citas</div>${k==="asig"&&e.dadores&&Object.keys(e.dadores).length?`<div class="note">${Object.entries(e.dadores).map(([d,n])=>`${esc(memberName(d))} (${n})`).join(", ")}</div>`:""}</td>`).join("")}<td class="n"><b>${e.ventas?Math.round((e.v_tm||0)*100/e.ventas)+"%":"—"}</b></td></tr>`;
   return `<div class="card"><h2>${title} ${periodChips()}</h2><p class="note" style="margin-top:-6px">${sub}</p>
-    <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Referidos</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Volumen de ventas</th><th class="n">Venta promedio</th><th class="n">% efectividad demo → venta</th><th class="n">📞 Ventas de telemarketing</th><th class="n">🙋 Ventas propias</th><th class="n">% de sus ventas que vienen de telemarketing</th></tr></thead>
+    <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Referidos</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Volumen de ventas</th><th class="n">Venta promedio</th><th class="n">% efectividad demo → venta</th><th class="n">📞 Ventas de telemarketing</th><th class="n">🤝 Ventas de citas asignadas</th><th class="n">🙋 Ventas propias</th><th class="n">% de sus ventas que vienen de telemarketing</th></tr></thead>
     <tbody>${rows.map(x => tr(`${who(x.s.id,28)}${x.s.tipo?`<div class="note">${esc(x.s.tipo)}</div>`:x.s.role==="admin"?`<div class="note">Dirección</div>`:""}`, x.e)).join("")}${rows.length>1?tr("Total", tot, "total"):""}</tbody></table></div>
-    <p class="note">Referidos: los que el socio le pasó a las telemarketers para trabajar (los anotan ellas). % efectividad demo → venta: de cada 100 demostraciones, cuántas cerraron en venta. 📞 Ventas de telemarketing: salieron de citas que agendaron las telemarketers. 🙋 Ventas propias: de citas que el socio consiguió por su cuenta (o que agendó Dirección).</p></div>`;
+    <p class="note">Referidos: los que el socio le pasó a las telemarketers para trabajar (los anotan ellas). % efectividad demo → venta: de cada 100 demostraciones, cuántas cerraron en venta. 📞 Ventas de telemarketing: salieron de citas que agendaron las telemarketers. 🤝 Asignadas: citas que le dio otra persona del equipo (Dirección u otro socio), con el nombre de quién se las dio. 🙋 Propias: citas que el socio consiguió por su cuenta.</p></div>`;
 }
 function evalTable(rows, calls){
   const tot = rows.reduce((t,x)=>{ for (const k in x.e) t[k]=(t[k]||0)+x.e[k]; return t; },{});
@@ -666,7 +669,7 @@ function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
   if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
-  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))}</div></button>`;
+  return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
 }
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
@@ -710,7 +713,7 @@ function openAppt(id){
   const a = S.appts[id]; if (!a) return; const r = role();
   const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.teleId===S.uid || a.socioId===S.uid;
   openModal(`<h3>${esc(cName(a))}</h3>
-    <div class="note">${fmtWhen(a.when)} · hora San Diego</div>
+    <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b></div>
     ${a.resNote && a.status!=="agendada" ? `<div class="banner">📝 <b>Qué pasó:</b> ${esc(a.resNote)}</div>` : ""}
     ${a.segWhen && !a.sale ? `<div class="banner warn">🔁 Seguimiento: <b>${fmtWhen(a.segWhen)}</b> · si ese día vende, marca “Demo con venta”</div>` : ""}
     ${a._priv?"":`<div class="banner">🔒 Los datos del cliente y los mensajes de esta cita son privados: solo los ven ${esc(memberName(a.socioId))} y ${esc(memberName(a.teleId))}. Aquí ves solo el resultado.</div>`}
