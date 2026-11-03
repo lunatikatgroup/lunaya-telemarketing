@@ -69,7 +69,9 @@ service cloud.firestore {
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid && noClientData();
       allow update: if noClientData() && (isAdmin()
          || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid))
-         || (isDist() && get(memberPath(resource.data.socioId)).data.get('upline', '') == request.auth.uid));
+         || (isDist() && get(memberPath(resource.data.socioId)).data.get('upline', '') == request.auth.uid)
+         // La líder de telemarketing puede aprobar o cancelar ventas (solo el estado de la venta)
+         || (isLeader() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saleStatus', 'saleStatusAt', 'saleStatusBy'])));
       allow delete: if isAdmin() || (isMember() && resource.data.teleId == request.auth.uid);
     }
 

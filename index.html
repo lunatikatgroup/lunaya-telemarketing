@@ -762,7 +762,7 @@ function openAppt(id){
       <button class="opt ${a.sale?"on":""}" data-ar="venta">Demo con venta</button>
       <button class="opt ${a.status==="no_se_hizo"?"on":""}" data-ar="no_se_hizo">No se hizo</button>
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
-      ${a.sale && r!=="tele"?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
+      ${a.sale && (r!=="tele" || S.me?.lider)?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha"><input class="i" type="time" id="ap-time" value="${laTime(a.when)}" aria-label="Hora"><button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
     ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
@@ -871,6 +871,12 @@ function openInviteMsg(id, data){
     $("#inv-copy").onclick = async () => { try { await navigator.clipboard.writeText(txt); toast("Mensaje copiado"); } catch { $("#inv-txt").select(); toast("Mantén presionado el texto para copiarlo"); } };
   });
 }
+/* La líder aprueba o cancela las ventas de telemarketing (solo números, sin datos del cliente) */
+function ventasLider(p){
+  const rg = range(p); const ids = new Set(byRole("tele").filter(t=>!t.upline).map(t=>t.id).concat(byRole("baja").map(t=>t.id)));
+  const l = Object.entries(S.appts).filter(([,a]) => a.sale && ids.has(a.teleId) && inR(a.when||0, rg)).sort((x,y)=>y[1].when-x[1].when);
+  return `<div class="card"><h2>Ventas por aprobar<span class="note">${PLABEL[p]}</span></h2>${l.length?`<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Telemarketer</th><th class="n">Monto</th><th>Estado</th></tr></thead><tbody>${l.map(([id,a])=>{ const st=a.saleStatus||"pendiente"; return `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(memberName(a.socioId))}</td><td>${esc(memberName(a.teleId))}</td><td class="n"><b>${money(a.amount)}</b></td><td><div class="row" style="gap:4px;flex-wrap:nowrap">${Object.entries(SALE_ST).map(([k,lb])=>`<button class="btn small ${st===k?"":"ghost"}" data-ss2="${id}|${k}">${k==="pendiente"?"Pendiente":lb}</button>`).join("")}</div></td></tr>`; }).join("")}</tbody></table></div><p class="note">Solo aprobadas cuentan para comisión.</p>`:`<div class="empty">No hay ventas en este periodo.</div>`}</div>`;
+}
 function viewLider(){
   if (!S.me?.lider && !S.isOwner) return `<div class="card empty">Esta pantalla es solo para la líder del equipo.</div>`;
   const rg = range(S.f.period);
@@ -878,6 +884,7 @@ function viewLider(){
   let h = `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
   const hoyT = byRole("tele").map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
+  h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
   h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
   h += inviteCard();
   return h;
@@ -1026,6 +1033,7 @@ function bindCommon(){
   all("[data-go2]", b => b.onclick = () => go(b.dataset.go2));
   all("[data-world]", b => b.onclick = () => setWorld(b.dataset.world));
   all("[data-appt]", b => b.onclick = () => openAppt(b.dataset.appt));
+  document.querySelectorAll("[data-ss2]").forEach(b => b.onclick = async () => { const [id,k] = b.dataset.ss2.split("|"); try { await S.db.doc("appts/"+id).update({saleStatus:k, saleStatusAt:Date.now(), saleStatusBy:S.uid}); toast("Venta: "+SALE_ST[k]); } catch(e){ writeErr(e); } });
   document.querySelectorAll("[data-pend]").forEach(b => b.onclick = () => openAppt(b.dataset.pend));
   const nb2 = document.getElementById("noti-on"); if (nb2) nb2.onclick = async () => { S.notiAsked = true; try { await Notification.requestPermission(); } catch {} render(); if (notiOk()) toast("Avisos activados"); };
   vigilar();
