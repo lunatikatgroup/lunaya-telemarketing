@@ -251,7 +251,7 @@ function undoCall(at){
 
 /* ===== Arranque (Firebase) ===== */
 const onErr = e => { console.log(e); if (e && e.code === "permission-denied") return; S.timedOut = true; render(); };
-function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.subscribed = false;
+function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.subscribed = false; S.invSub = false;
   S.members = {}; S.appts = {}; S.logs = {}; S.config = {}; S.invites = {}; S.drives = {}; S.me = null; S.loaded = {me:false, members:false, appts:false, logs:false}; inviteDone = false; ownerDone = false; }
 function boot(){
   const cfg = window.LUNAYA_CONFIG || {};
@@ -275,7 +275,7 @@ function startData(){
     S.me = s.exists ? s.data() : null; if (S.me) S.members[S.uid] = S.me; S.loaded.me = true;
     if (S.isOwner && (!S.me || S.me.role !== "admin")) ensureOwner();
     const active = S.isOwner || (S.me && ["admin","tele","socio"].includes(S.me.role));
-    if (active && !S.subscribed) subscribeAll();
+    if (active && !S.subscribed) subscribeAll(); else if (active) subInvites();
     if (!active && S.pendingCode && !inviteDone) acceptInvite(S.pendingCode).then(ok => { if (!ok && !inviteDone && S.pendingCode){ toast("Ese enlace de invitación ya se usó o no existe. Pide uno nuevo."); clearCode(); render(); } });
     render();
   }, onErr));
@@ -310,7 +310,11 @@ function subscribeAll(){
     S.unsub.push(S.db.collection("invites").where("invitedBy", "==", S.uid).onSnapshot(s => { S.invites = {}; s.docs.forEach(d => S.invites[d.id] = d.data()); render(); }, e => console.log(e)));
     S.unsub.push(S.db.collection("apptp").where("up", "==", S.uid).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs.up = m; mergeAppts(); render(); }, e => console.log(e)));
   }
-  if (S.isOwner || S.me?.role === "admin" || S.me?.lider)
+  subInvites();
+}
+/* Invitaciones: Dirección y la líder (aunque la marquen líder después de entrar) */
+function subInvites(){
+  if (S.invSub || !(S.isOwner || S.me?.role === "admin" || (S.me?.role === "tele" && S.me?.lider))) return; S.invSub = true;
     S.unsub.push(S.db.collection("invites").onSnapshot(s => { S.invites = {}; s.docs.forEach(d => S.invites[d.id] = d.data()); render(); }, e => console.log(e)));
 }
 const clearCode = () => { S.pendingCode = ""; try { localStorage.removeItem("ly-code"); } catch {} };
@@ -826,7 +830,7 @@ function inviteCard(){
       <label class="f">Correo (opcional)<input class="i" id="inv-email" type="email" inputmode="email" autocomplete="off"></label>
       <label class="f">WhatsApp (con código de país)<input class="i" id="inv-phone" inputmode="tel" placeholder="+58 412 555 1234"></label>
       <label class="f">Es<select class="i" id="inv-gen"><option value="m">Mujer (bienvenida)</option><option value="h">Hombre (bienvenido)</option></select></label>
-      <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => !isDist() || k!=="distribuidor").map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
+      <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => role()==="tele" ? k==="tele" : (!isDist() || k!=="distribuidor")).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
       <div><button class="btn" type="submit">Crear invitación</button></div>
     </form>
 
@@ -1029,7 +1033,7 @@ function bindCommon(){
     if (!name){ toast("Escribe el nombre de la persona"); return; }
     if (rl==="admin" && role()!=="admin") return;
     if (email && Object.values(S.invites).some(v => v.email===email && v.status!=="aceptada")){ toast("Ese correo ya tiene una invitación pendiente"); return; }
-    try { const code = newCode(); if (isDist() && !["emprendedor","tele"].includes(rl)) return;
+    try { const code = newCode(); if (isDist() && !["emprendedor","tele"].includes(rl)) return; if (role()==="tele" && rl!=="tele") return;
       await S.db.doc("invites/"+code).set({name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, upline: (isDist() || (role()==="admin" && rl==="emprendedor")) ? S.uid : "", genero, createdAt:Date.now(), status:"enviada"}); invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid, genero}); } catch(err){ writeErr(err); } };
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
