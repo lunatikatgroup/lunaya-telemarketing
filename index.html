@@ -236,9 +236,9 @@ function logCall(call){
   const date = laDate(call.at); const id = `${date}_${S.uid}`;
   return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:[...(d.calls||[]), call]}); });
 }
-function logRefs(n, source, day){
+function logRefs(n, source, day, socioId){
   const at = (!day || day===today()) ? Date.now() : laToMs(day, "12:00"), date = laDate(at), id = `${date}_${S.uid}`;
-  return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:d.calls||[], refs:[...(d.refs||[]), {at, socioId:S.world, teleId:S.uid, n, source}]}); });
+  return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:d.calls||[], refs:[...(d.refs||[]), {at, socioId:socioId||S.world, teleId:S.uid, n, source}]}); });
 }
 function removeRef(at){
   const id = `${laDate(at)}_${S.uid}`;
@@ -492,6 +492,15 @@ function bindJoin(){
 
 /* ===== Drive de cada socio (solo el socio y las telemarketers) ===== */
 const driveOk = u => /^https:\/\/(drive|docs)\.google\.com\//.test(String(u||"").trim());
+/* El socio también puede anotar los referidos que entregó (se ve quién anotó cada uno para no duplicar) */
+function socioRefCard(){
+  const sumR = rg => allRefs().filter(x => x.socioId===S.uid && inR(x.at, rg)).reduce((t,x)=>t+(+x.n||0),0);
+  const l = allRefs().filter(x => x.socioId===S.uid && x.at >= laToMs(addDays(today(),-7),"00:00")).sort((a,b)=>b.at-a.at);
+  return `<div class="card"><h2>Referidos entregados<span class="note">Hoy ${sumR(range("hoy"))} · semana ${sumR(range("semana"))} · mes ${sumR(range("mes"))}</span></h2>
+    <p class="note" style="margin-top:-6px">Anota cuántos referidos le pasaste a las telemarketers. Si la telemarketer ya los anotó, no los repitas (abajo ves quién anotó cada uno).</p>
+    <form id="sref-form" class="row"><input class="i" type="number" min="1" step="1" id="sref-n" placeholder="Cantidad" style="max-width:130px"><input class="i" type="date" id="sref-d" value="${today()}" max="${today()}" min="${addMonths(today().slice(0,8)+"01",-1)}" style="max-width:170px"><select class="i" id="sref-s" style="max-width:190px">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select><button class="btn" type="submit">Agregar referidos</button></form>
+    ${l.length?`<div class="hist" style="margin-top:10px">${l.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> referidos · ${esc(x.source||"")} · ${fmt(x.at,{weekday:"short",day:"numeric",month:"short"})} · anotó ${x.teleId===S.uid?"tú":esc(memberName(x.teleId))}</span>${x.teleId===S.uid?`<button class="btn small ghost" data-unref="${x.at}">Quitar</button>`:""}</div>`).join("")}</div>`:""}</div>`;
+}
 function driveCard(){
   const d = S.drives[S.uid];
   return `<div class="card"><h2>Mi base de datos en Drive</h2>
@@ -560,7 +569,7 @@ function viewHoy(r){
       <div class="tile acc"><b>${money(e.monto)}</b><span>Volumen de ventas</span></div>
       <div class="tile"><b>${e.ventas?money(e.monto/e.ventas):"—"}</b><span>Venta promedio</span></div>
       <div class="tile"><b>${pctN(e.ventas,e.demos)??"—"}${e.demos?"%":""}</b><span>% efectividad demo → venta</span></div></div></div>`;
-    h += driveCard();
+    h += socioRefCard() + driveCard();
   } else {
     const e = teleEval(null, rg); const sinRes = Object.values(S.appts).filter(a => a.status==="agendada" && a.when < Date.now()-3600e3).length;
     h += `<div class="card"><h2>Territorio ${periodChips()}</h2>${evalTiles(e)}${sinRes?`<div class="banner warn" style="margin-top:12px">${sinRes} cita(s) pasadas sin resultado. Los socios deben marcarlas.</div>`:""}</div>`;
@@ -1053,6 +1062,9 @@ function bindCommon(){
   all("[data-wk]", b => b.onclick = () => { const n = +b.dataset.wk; S.f.day = n ? addDays(S.f.day||today(), n) : today(); render(); });
   all("[data-src]", b => b.onclick = () => { S.f.source = b.dataset.src; try { localStorage.setItem("ly-src", S.f.source); } catch {} render(); });
   all("[data-res]", b => b.onclick = () => tapResult(b.dataset.res));
+  const srf = m.querySelector("#sref-form"); if (srf) srf.onsubmit = async e => { e.preventDefault(); const n = Math.round(+$("#sref-n").value||0); if (n<1){ toast("Escribe cuántos referidos entregaste"); return; }
+    const dd = $("#sref-d").value || today(); if (dd > today()){ toast("Ese día todavía no llega"); return; }
+    try { await logRefs(n, $("#sref-s").value, dd, S.uid); toast(`${n} referidos anotados`); } catch(err){ writeErr(err); } };
   const rf = m.querySelector("#ref-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = Math.round(+$("#ref-n").value||0); if (n<1){ toast("Escribe cuántos referidos recibiste"); return; }
     const src = sources().includes(S.f.source) ? S.f.source : sources()[0];
     const dd = ($("#ref-d")?.value) || today(); if (dd > today()){ toast("No puedes anotar referidos de un día que no ha llegado"); return; }
