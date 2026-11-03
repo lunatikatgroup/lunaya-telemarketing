@@ -301,7 +301,7 @@ function subscribeAll(){
   S.apub = {}; S.privs = {};
   S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.apub = {}; s.docs.forEach(d => S.apub[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; mergeAppts(); render(); setTimeout(migrarGrupos, 1500); }, onErr));
   const privQ = [["teleId", S.uid], ["socioId", S.uid]]; if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
-  privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; mergeAppts(); render(); }, e => console.log(e))));
+  privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; (S.privLoaded = S.privLoaded||{})[f] = true; mergeAppts(); render(); }, e => console.log(e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
@@ -452,6 +452,7 @@ function render(){
   if (needsWorld && !worldOk()) html += worldPicker();
   else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:viewPagos, equipo:viewEquipo, lider:viewLider, ranking:viewRanking}[S.view])(r);
   main.innerHTML = html; bindCommon(); refreshChat();
+  if (S.openAppt && S.appts[S.openAppt] && !!S.appts[S.openAppt]._priv !== S.openPrivState && !document.querySelector(".modal input:focus,.modal textarea:focus")) openAppt(S.openAppt);
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); if (sel && "setSelectionRange" in el) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
 function bindHeader(){
@@ -749,13 +750,14 @@ async function transferAppt(id, to){
   await S.db.doc("appts/"+id).update({socioId:to, transferredFrom:a.socioId, transferredAt:now, transferredBy:S.uid});
 }
 function openAppt(id){
-  const a = S.appts[id]; if (!a) return; const r = role();
+  const a = S.appts[id]; if (!a) return; S.openPrivState = !!a._priv; const r = role();
   const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid); const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid;
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b></div>
     ${a.status!=="agendada" && (a.resNote || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado puesto por ${esc(memberName(a.resultBy))}</div>`:""}</div>` : ""}
     ${a.segWhen && !a.sale ? `<div class="banner warn">🔁 Seguimiento: <b>${fmtWhen(a.segWhen)}</b> · si ese día vende, marca “Demo con venta”</div>` : ""}
-    ${a._priv?"":`<div class="banner">🔒 Los datos del cliente y los mensajes de esta cita son privados: solo los ven ${esc(memberName(a.socioId))} y ${esc(memberName(a.teleId))}. Aquí ves solo el resultado.</div>`}
+    ${!a._priv && a.agendo===S.uid && S.privLoaded?.teleId ? `<div class="banner warn">⚠️ Los datos del cliente de esta cita no se guardaron (pasó con una versión anterior de la app). <button class="btn small" id="fix-priv">Completar datos del cliente</button></div>` : ""}
+    ${a._priv || a.agendo===S.uid ?"":`<div class="banner">🔒 Los datos del cliente y los mensajes de esta cita son privados: solo los ven ${esc(memberName(a.socioId))} y ${esc(memberName(a.teleId))}. Aquí ves solo el resultado.</div>`}
     <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
     ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
     ${canResult?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
@@ -789,6 +791,10 @@ function openAppt(id){
       $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; $("#ar-note") && $("#ar-note").focus();
       $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
+    $("#fix-priv") && ($("#fix-priv").onclick = () => { const sm = S.members[a.socioId]||{};
+      openModal(`<h3>Datos del cliente</h3><div class="grid2"><label class="f">Nombre del cliente<input class="i" id="fx-name"></label><label class="f">Teléfono<input class="i" id="fx-phone" inputmode="tel"></label><label class="f">Ciudad<input class="i" id="fx-city"></label><label class="f">Dirección<input class="i" id="fx-addr"></label><label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="fx-notes"></textarea></label></div><div class="row"><button class="btn" id="fx-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+        $("#fx-save").onclick = async () => { const n = $("#fx-name").value.trim(); if (!n){ toast("Escribe el nombre del cliente"); return; }
+          try { await S.db.doc("apptp/"+id).set({client:n, phone:$("#fx-phone").value.trim(), city:$("#fx-city").value.trim(), address:$("#fx-addr").value.trim(), notes:$("#fx-notes").value.trim(), socioId:a.socioId, teleId:a.agendo, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:a.createdAt||Date.now()}); closeModal(); toast("Datos guardados"); setTimeout(()=>openAppt(id), 500); } catch(e){ writeErr(e); } }; }); });
     $("#cr-save") && ($("#cr-save").onclick = () => { const v = $("#cr-sel").value; save({teleCredit: v || null, origen: v ? "tm" : (a.agendo===a.socioId ? "propia" : "dir")}); });
     $("#tr-go") && ($("#tr-go").onclick = function(){ const to = $("#tr-to").value; if (!to){ toast("Elige a quién transferir la cita"); return; }
       if (!this.dataset.sure){ this.dataset.sure="1"; this.textContent = "Toca otra vez para pasarla a "+memberName(to); this.classList.add("danger"); return; }
