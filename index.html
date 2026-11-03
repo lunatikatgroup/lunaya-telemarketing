@@ -680,7 +680,7 @@ function sinReporte(){ const r = role(); const now = Date.now();
   return Object.entries(S.appts||{}).filter(([,a]) => a.status==="agendada" && a.when < now-PEND_MS &&
     (a.socioId===S.uid || (r==="tele" && a.teleId===S.uid))).sort((x,y)=>x[1].when-y[1].when); }
 function pendBanner(){ const l = sinReporte(); if (!l.length) return ""; const r = role(); const a = l[0][1];
-  return `<div class="banner bad" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div>⏰ <b>${l.length===1?"Tienes 1 cita sin reportar":`Tienes ${l.length} citas sin reportar`}</b><div class="note" style="color:inherit">${r==="tele"?`Recuérdale al socio que ponga el resultado. La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`:`¿Qué pasó? La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`}</div></div>${r==="tele"?"":`<button class="btn small" data-pend="${l[0][0]}">Reportar ahora</button>`}</div>`; }
+  return `<div class="banner bad" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div>⏰ <b>${l.length===1?"Tienes 1 cita sin reportar":`Tienes ${l.length} citas sin reportar`}</b><div class="note" style="color:inherit">${r==="tele"?`Si el socio ya te contó qué pasó, repórtalo tú. La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`:`¿Qué pasó? La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`}</div></div>${r==="tele" && a.agendo!==S.uid?"":`<button class="btn small" data-pend="${l[0][0]}">Reportar ahora</button>`}</div>`; }
 /* Avisos del teléfono mientras la app está abierta (no necesitan servidor) */
 function notiOk(){ try { return "Notification" in window && Notification.permission==="granted"; } catch { return false; } }
 function avisar(t, b){ if (!notiOk()) return; try { new Notification(t, {body:b, icon:"icon-192.png", tag:t}); } catch {} }
@@ -748,10 +748,10 @@ async function transferAppt(id, to){
 }
 function openAppt(id){
   const a = S.appts[id]; if (!a) return; const r = role();
-  const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid;
+  const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid); const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid;
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b></div>
-    ${a.resNote && a.status!=="agendada" ? `<div class="banner">📝 <b>Qué pasó:</b> ${esc(a.resNote)}</div>` : ""}
+    ${a.status!=="agendada" && (a.resNote || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado puesto por ${esc(memberName(a.resultBy))}</div>`:""}</div>` : ""}
     ${a.segWhen && !a.sale ? `<div class="banner warn">🔁 Seguimiento: <b>${fmtWhen(a.segWhen)}</b> · si ese día vende, marca “Demo con venta”</div>` : ""}
     ${a._priv?"":`<div class="banner">🔒 Los datos del cliente y los mensajes de esta cita son privados: solo los ven ${esc(memberName(a.socioId))} y ${esc(memberName(a.teleId))}. Aquí ves solo el resultado.</div>`}
     <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
@@ -762,7 +762,7 @@ function openAppt(id){
       <button class="opt ${a.sale?"on":""}" data-ar="venta">Demo con venta</button>
       <button class="opt ${a.status==="no_se_hizo"?"on":""}" data-ar="no_se_hizo">No se hizo</button>
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
-      ${a.sale?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
+      ${a.sale && r!=="tele"?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha"><input class="i" type="time" id="ap-time" value="${laTime(a.when)}" aria-label="Hora"><button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
     ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
