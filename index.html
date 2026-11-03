@@ -723,10 +723,27 @@ function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
   const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
   return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
 }
+/* Territorio: resumen por socio o por telemarketer (hoy, semana, mes) */
+function terrResumen(){
+  const modo = S.f.tmode==="tele" ? "tele" : "socio";
+  const H = range("hoy"), W = range("semana"), M = range("mes");
+  const list = modo==="tele" ? [...byRole("tele"), ...byRole("baja").filter(t=>t.prevRole==="tele")] : socios();
+  const rows = list.map(m => { const ev = rg => modo==="tele" ? teleEval(m.id, rg) : socioEval(m.id, rg);
+    const h = ev(H), w = ev(W), mo = ev(M); return {m, h:h.citas, w:w.citas, mo:mo.citas, demos:mo.demos, ventas:mo.ventas, monto:mo.monto}; })
+    .filter(x => x.mo || x.w || x.h || modo==="tele").sort((a,b)=>b.mo-a.mo||b.w-a.w);
+  const sel = modo==="tele" ? S.f.aTele : S.f.aSocio;
+  const tot = rows.reduce((t,x)=>({h:t.h+x.h,w:t.w+x.w,mo:t.mo+x.mo,demos:t.demos+x.demos,ventas:t.ventas+x.ventas,monto:t.monto+x.monto}),{h:0,w:0,mo:0,demos:0,ventas:0,monto:0});
+  return `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Citas del territorio</h2><div class="chips"><button class="chip ${modo==="socio"?"on":""}" data-tmode="socio">👥 Por socio</button><button class="chip ${modo==="tele"?"on":""}" data-tmode="tele">📞 Por telemarketer</button></div></div>
+    <p class="note" style="margin-top:0">${modo==="tele"?"Citas que agendó cada telemarketer (según el día en que la sacó).":"Citas de cada socio (según el día de la cita)."} Toca un nombre para ver solo sus citas en el calendario.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>${modo==="tele"?"Telemarketer":"Socio"}</th><th class="n">Hoy</th><th class="n">Semana</th><th class="n">Mes</th><th class="n">Demos (mes)</th><th class="n">Ventas (mes)</th><th class="n">Volumen (mes)</th></tr></thead><tbody>
+    ${rows.map(x=>`<tr data-tsel="${x.m.id}" style="cursor:pointer;${sel===x.m.id?"background:var(--accent-soft,#f6d9cc)":""}"><td><span class="nm-av">${av(x.m.id,26)}<b>${esc(x.m.name)}</b></span></td><td class="n">${x.h}</td><td class="n">${x.w}</td><td class="n"><b>${x.mo}</b></td><td class="n">${x.demos}</td><td class="n">${x.ventas}</td><td class="n">${money(x.monto)}</td></tr>`).join("")}
+    ${rows.length>1?`<tr class="total"><td>Total</td><td class="n">${tot.h}</td><td class="n">${tot.w}</td><td class="n">${tot.mo}</td><td class="n">${tot.demos}</td><td class="n">${tot.ventas}</td><td class="n">${money(tot.monto)}</td></tr>`:""}</tbody></table></div>
+    ${sel?`<button class="btn small ghost" data-tsel="" style="margin-top:8px">Ver todas las citas otra vez</button>`:""}</div>`;
+}
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
   const grp = isDist() ? [S.uid, ...grupoDe(S.uid).filter(m=>m.role==="socio").map(m=>m.id)] : [S.uid];
-  const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (S.f.cview!=="terr" ? a.socioId===S.uid : (!S.f.aSocio || a.socioId===S.f.aSocio));
+  const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (S.f.cview!=="terr" ? a.socioId===S.uid : ((!S.f.aSocio || a.socioId===S.f.aSocio) && (!S.f.aTele || a.teleId===S.f.aTele)));
   const all = Object.entries(S.appts).filter(vis);
   const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
   const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds || (a.segWhen && !a.sale && laDate(a.segWhen)===ds)).length;
@@ -735,6 +752,7 @@ function viewCitas(r){
   const pend = all.filter(([,a])=>a.status==="agendada" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
   let h = r==="tele" ? worldBar() : "";
   if (r==="admin") h += `<div class="chips" style="margin-bottom:12px"><button class="chip ${S.f.cview!=="terr"?"on":""}" data-cview="mias">📅 Mis citas</button><button class="chip ${S.f.cview==="terr"?"on":""}" data-cview="terr">🗺️ Territorio</button></div>`;
+  if (r==="admin" && S.f.cview==="terr") h += terrResumen();
   h += `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row"><button class="btn small ghost" data-wk="-7" aria-label="Semana anterior">←</button><button class="btn small ghost" data-wk="0">Hoy</button><button class="btn small ghost" data-wk="7" aria-label="Semana siguiente">→</button></div>
     <b style="font-family:var(--serif);font-size:19px">${fmt(laToMs(mon,"12:00"),{day:"numeric",month:"short"})} – ${fmt(laToMs(addDays(mon,6),"12:00"),{day:"numeric",month:"short"})}</b></div>
     ${r==="tele"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar citas"><option value="">Mis citas + horarios ocupados del socio</option><option value="_me" ${S.f.aSocio==="_me"?"selected":""}>Solo mis citas</option></select>`:""}
@@ -1059,7 +1077,9 @@ function bindCommon(){
   document.querySelectorAll("[data-pend]").forEach(b => b.onclick = () => openAppt(b.dataset.pend));
   const nb2 = document.getElementById("noti-on"); if (nb2) nb2.onclick = async () => { S.notiAsked = true; try { await Notification.requestPermission(); } catch {} render(); if (notiOk()) toast("Avisos activados"); };
   vigilar();
-  document.querySelectorAll("[data-cview]").forEach(b => b.onclick = () => { S.f.cview = b.dataset.cview; S.f.aSocio = ""; render(); });
+  document.querySelectorAll("[data-cview]").forEach(b => b.onclick = () => { S.f.cview = b.dataset.cview; S.f.aSocio = ""; S.f.aTele = ""; render(); });
+  document.querySelectorAll("[data-tmode]").forEach(b => b.onclick = () => { S.f.tmode = b.dataset.tmode; S.f.aSocio = ""; S.f.aTele = ""; render(); });
+  document.querySelectorAll("[data-tsel]").forEach(b => b.onclick = () => { const v = b.dataset.tsel; if (S.f.tmode==="tele"){ S.f.aTele = S.f.aTele===v ? "" : v; S.f.aSocio = ""; } else { S.f.aSocio = S.f.aSocio===v ? "" : v; S.f.aTele = ""; } render(); });
   const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
   all("[data-day]", b => b.onclick = () => { S.f.day = b.dataset.day; render(); });
   all("[data-wk]", b => b.onclick = () => { const n = +b.dataset.wk; S.f.day = n ? addDays(S.f.day||today(), n) : today(); render(); });
