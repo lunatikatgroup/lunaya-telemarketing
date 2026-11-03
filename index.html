@@ -236,8 +236,8 @@ function logCall(call){
   const date = laDate(call.at); const id = `${date}_${S.uid}`;
   return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:[...(d.calls||[]), call]}); });
 }
-function logRefs(n, source){
-  const at = Date.now(), date = laDate(at), id = `${date}_${S.uid}`;
+function logRefs(n, source, day){
+  const at = (!day || day===today()) ? Date.now() : laToMs(day, "12:00"), date = laDate(at), id = `${date}_${S.uid}`;
   return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:d.calls||[], refs:[...(d.refs||[]), {at, socioId:S.world, teleId:S.uid, n, source}]}); });
 }
 function removeRef(at){
@@ -624,13 +624,13 @@ function viewRegistrar(){
   const cnt = k => mine.filter(c => c.result===k).length;
   const src = sources().includes(S.f.source) ? S.f.source : sources()[0];
   const last = mine.sort((a,b)=>b.at-a.at)[0];
-  const myRefs = allRefs().filter(x => x.teleId===S.uid && x.socioId===S.world && inR(x.at, t0)).sort((a,b)=>b.at-a.at);
+  const myRefs = allRefs().filter(x => x.teleId===S.uid && x.socioId===S.world && x.at >= laToMs(addDays(today(),-7),"00:00")).sort((a,b)=>b.at-a.at);
   const wk = range("semana"), mo = range("mes");
   const sumR = rg => allRefs().filter(x => x.teleId===S.uid && x.socioId===S.world && inR(x.at, rg)).reduce((t,x)=>t+(+x.n||0),0);
   const refCard = `<div class="card"><h2>Referidos recibidos<span class="note">Hoy ${sumR(t0)} · semana ${sumR(wk)} · mes ${sumR(mo)}</span></h2>
     <p class="note" style="margin-top:-6px">Cuando ${esc(memberName(S.world))} te mande referidos para trabajar, anota cuántos son.</p>
-    <form id="ref-form" class="row"><input class="i" type="number" min="1" step="1" id="ref-n" placeholder="Cantidad" style="max-width:130px" aria-label="Cantidad de referidos"><button class="btn" type="submit">Agregar referidos</button></form>
-    ${myRefs.length?`<div class="hist" style="margin-top:10px">${myRefs.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> referidos · ${esc(x.source||"")} · ${fmt(x.at,{hour:"numeric",minute:"2-digit"})}</span><button class="btn small ghost" data-unref="${x.at}">Quitar</button></div>`).join("")}</div>`:""}</div>`;
+    <form id="ref-form" class="row"><input class="i" type="number" min="1" step="1" id="ref-n" placeholder="Cantidad" style="max-width:130px" aria-label="Cantidad de referidos"><input class="i" type="date" id="ref-d" value="${today()}" max="${today()}" min="${addMonths(today().slice(0,8)+"01",-1)}" style="max-width:170px" aria-label="Día en que los recibiste"><button class="btn" type="submit">Agregar referidos</button></form>
+    ${myRefs.length?`<div class="hist" style="margin-top:10px">${myRefs.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> referidos · ${esc(x.source||"")} · ${laDate(x.at)===today()?fmt(x.at,{hour:"numeric",minute:"2-digit"}):fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</span><button class="btn small ghost" data-unref="${x.at}">Quitar</button></div>`).join("")}</div>`:""}</div>`;
   return worldBar() + refCard + `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Fuente de la base que estás llamando</div><div class="chips">${sources().map(s=>`<button class="chip ${s===src?"on":""}" data-src="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>
   <div class="card"><h2>¿Qué pasó en la llamada?<span class="note">${mine.length} hoy para este socio</span></h2>
     <div class="tally">${RESULTS.map(([k,l]) => `<button class="tb ${k==="cita"?"cita":""} ${S.flash===k?"flash":""}" data-res="${k}"><span class="l">${l}</span><span class="c">${cnt(k)}</span><span class="h">${k==="cita"?"Abre la ficha de la cita":"Se guarda al tocar"}</span></button>`).join("")}</div>
@@ -1055,7 +1055,8 @@ function bindCommon(){
   all("[data-res]", b => b.onclick = () => tapResult(b.dataset.res));
   const rf = m.querySelector("#ref-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = Math.round(+$("#ref-n").value||0); if (n<1){ toast("Escribe cuántos referidos recibiste"); return; }
     const src = sources().includes(S.f.source) ? S.f.source : sources()[0];
-    try { await logRefs(n, src); toast(`${n} referidos anotados para ${memberName(S.world)}`); } catch(err){ writeErr(err); } };
+    const dd = ($("#ref-d")?.value) || today(); if (dd > today()){ toast("No puedes anotar referidos de un día que no ha llegado"); return; }
+    try { await logRefs(n, src, dd); toast(`${n} referidos anotados para ${memberName(S.world)}${dd===today()?"":" ("+fmt(laToMs(dd,"12:00"),{weekday:"long",day:"numeric"})+")"}`); } catch(err){ writeErr(err); } };
   all("[data-unref]", b => b.onclick = () => removeRef(+b.dataset.unref).then(()=>toast("Quitado"), writeErr));
   all("[data-undo]", b => b.onclick = () => undoCall(+b.dataset.undo).then(()=>toast("Registro deshecho"), writeErr));
   const af = m.querySelector("#a-filter"); if (af) af.onchange = e => { S.f.aSocio = e.target.value; render(); };
