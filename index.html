@@ -281,7 +281,7 @@ function startData(){
   }, onErr));
 }
 const PRIV_KEYS = ["client","phone","city","address","notes","chat","seen","resNote"];
-function mergeAppts(){ const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, _priv:true} : {...x, _priv:false}; }); }
+function mergeAppts(){ const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, _priv:true} : {...x, _priv:false}; }); }
 const cName = a => a._priv ? (a.client||"Cliente") : "Cliente privado";
 function subscribeAll(){
   if (S.subscribed) return; S.subscribed = true;
@@ -557,10 +557,10 @@ function viewHoy(r){
 }
 /* Evaluación del socio: citas que TUVO en el periodo (por fecha de la cita), no las que se agendaron */
 /* Origen de la cita: telemarketing, propia del socio, o Dirección/otro */
-function origenDe(a){ const t = S.members[a.teleId]; if (a.origen==="tm" || (t && (t.role==="tele" || t.prevRole==="tele"))) return "tm";
-  if (a.transferredFrom && a.transferredFrom!==a.socioId) return "asig"; return a.teleId===a.socioId ? "propia" : "asig"; }
+function origenDe(a){ const t = S.members[a.teleId]; if (a.teleCredit || a.origen==="tm" || (t && (t.role==="tele" || t.prevRole==="tele"))) return "tm";
+  if (a.transferredFrom && a.transferredFrom!==a.socioId) return "asig"; return (a.agendo||a.teleId)===a.socioId ? "propia" : "asig"; }
 /* Quién le dio la cita al socio (telemarketer, quien se la transfirió o quien la agendó) */
-function dadorDe(a){ const o = origenDe(a); return o==="tm" ? a.teleId : o==="asig" ? (a.transferredFrom && a.transferredFrom!==a.socioId ? a.transferredFrom : a.teleId) : a.socioId; }
+function dadorDe(a){ const o = origenDe(a); return o==="tm" ? a.teleId : o==="asig" ? (a.transferredFrom && a.transferredFrom!==a.socioId ? a.transferredFrom : (a.agendo||a.teleId)) : a.socioId; }
 function origenTxt(a){ const o = origenDe(a); return o==="tm" ? `📞 Telemarketing · ${memberName(a.teleId)}` : o==="asig" ? `🤝 Asignada por ${memberName(dadorDe(a))}` : "🙋 Propia"; }
 function socioEval(id, r){
   const ap = Object.values(S.appts).filter(a => a.socioId===id && inR(a.when||0, r));
@@ -627,9 +627,11 @@ async function tapResult(k){
   try { await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:k}); S.flash = k; setTimeout(()=>{ S.flash=null; render(); }, 600); toast(`${RLABEL[k]} · guardado`, {label:"Deshacer", fn:()=>undoCall(at).catch(writeErr)}); }
   catch(e){ writeErr(e); }
 }
+const telesPara = sid => { const m = S.members[sid]||{}; const fam = m.tipo===DIST ? sid : (m.upline||""); return byRole("tele").filter(t => !t.upline || t.upline===fam); };
+const creditSel = (sid, cur) => `<label class="f">¿Quién sacó esta cita?<select class="i" id="c-cred"><option value="">Yo mismo (cita propia)</option>${telesPara(sid).map(t=>`<option value="${t.id}" ${cur===t.id?"selected":""}>📞 ${esc(t.name)} (telemarketing)</option>`).join("")}</select></label>`;
 function openCitaForm(src, own){
   const tomorrow = addDays(today(),1); const socio = own ? S.uid : S.world;
-  openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>` : `<p class="note" style="margin:0">Fuente: ${esc(src)}. Hora de San Diego.</p>`}
+  openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>${creditSel(S.uid,"")}` : `<p class="note" style="margin:0">Fuente: ${esc(src)}. Hora de San Diego.</p>`}
     <div class="grid2">
       <label class="f">Nombre del cliente<input class="i" id="c-name" autocomplete="off"></label>
       <label class="f">Teléfono<input class="i" id="c-phone" inputmode="tel" autocomplete="off"></label>
@@ -645,8 +647,8 @@ function openCitaForm(src, own){
       if (!name || !d || !t){ toast("Falta el nombre, la fecha o la hora"); return; }
       const at = Date.now(); $("#c-save").disabled = true;
       try {
-        const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if (own) src = $("#c-src").value;
-        await ref.set({when:laToMs(d,t), socioId:socio, teleId:S.uid, source:src, origen: own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at});
+        const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if (own) src = $("#c-src").value; const cred = own && $("#c-cred") ? $("#c-cred").value : "";
+        await ref.set({when:laToMs(d,t), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at});
         await S.db.doc("apptp/"+ref.id).set({client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(),
           socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:at});
         if (!own) await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
@@ -666,7 +668,7 @@ function markSeen(id){ const a = S.appts[id]; if (!a || !unread(a)) return; S.db
 const horaTxt = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
 const diaTxt = ms => `<div class="dia">${fmt(ms,{weekday:"long",day:"numeric",month:"long"})}</div>`;
 function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
-  if (role()==="tele" && a.teleId!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
+  if (role()==="tele" && a.teleId!==S.uid && a.agendo!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
   return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
@@ -711,7 +713,7 @@ async function transferAppt(id, to){
 }
 function openAppt(id){
   const a = S.appts[id]; if (!a) return; const r = role();
-  const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.teleId===S.uid || a.socioId===S.uid;
+  const canResult = r==="admin" || a.socioId===S.uid; const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid;
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b></div>
     ${a.resNote && a.status!=="agendada" ? `<div class="banner">📝 <b>Qué pasó:</b> ${esc(a.resNote)}</div>` : ""}
@@ -727,10 +729,11 @@ function openAppt(id){
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
       ${a.sale?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha"><input class="i" type="time" id="ap-time" value="${laTime(a.when)}" aria-label="Hora"><button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
+    ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
     ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
     ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a.status==="agendada" && r==="tele" && a.teleId===S.uid ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Pasar al Google Calendar de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">Al abrirse, elige el calendario de ${esc(memberName(a.socioId))} en la lista de calendarios y guarda. Funciona si ${esc(memberName(a.socioId))} te compartió su calendario con permiso para hacer cambios.</p>` : ""}
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
-    <div class="row">${r==="admin"||a.teleId===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    <div class="row">${r==="admin"||a.agendo===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     S.openAppt = id; refreshChat();
     const send = () => { const inp = $("#chat-in"); const t = (inp.value||"").trim(); if (!t) return; inp.value = ""; const now = Date.now();
       S.db.doc("apptp/"+id).update({chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:t}), ["seen."+S.uid]: now}).catch(e => { inp.value = t; writeErr(e); }); };
@@ -749,6 +752,7 @@ function openAppt(id){
       $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; $("#ar-note") && $("#ar-note").focus();
       $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
+    $("#cr-save") && ($("#cr-save").onclick = () => { const v = $("#cr-sel").value; save({teleCredit: v || null, origen: v ? "tm" : (a.agendo===a.socioId ? "propia" : "dir")}); });
     $("#tr-go") && ($("#tr-go").onclick = function(){ const to = $("#tr-to").value; if (!to){ toast("Elige a quién transferir la cita"); return; }
       if (!this.dataset.sure){ this.dataset.sure="1"; this.textContent = "Toca otra vez para pasarla a "+memberName(to); this.classList.add("danger"); return; }
       chain("appt:"+id, () => transferAppt(id, to)).then(() => { closeModal(); toast("Cita transferida a "+memberName(to)); }, writeErr); });
