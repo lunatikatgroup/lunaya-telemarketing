@@ -710,7 +710,7 @@ function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
   const grp = isDist() ? [S.uid, ...grupoDe(S.uid).filter(m=>m.role==="socio").map(m=>m.id)] : [S.uid];
-  const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (!S.f.aSocio || a.socioId===S.f.aSocio);
+  const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (S.f.cview!=="terr" ? a.socioId===S.uid : (!S.f.aSocio || a.socioId===S.f.aSocio));
   const all = Object.entries(S.appts).filter(vis);
   const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
   const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds || (a.segWhen && !a.sale && laDate(a.segWhen)===ds)).length;
@@ -718,11 +718,12 @@ function viewCitas(r){
   const list = [...all.filter(([,a])=>laDate(a.when)===day).map(([id,a])=>[id,a,false]), ...all.filter(([,a])=>a.segWhen && !a.sale && laDate(a.segWhen)===day).map(([id,a])=>[id,a,true])].sort((x,y)=>(x[2]?x[1].segWhen:x[1].when)-(y[2]?y[1].segWhen:y[1].when));
   const pend = all.filter(([,a])=>a.status==="agendada" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
   let h = r==="tele" ? worldBar() : "";
+  if (r==="admin") h += `<div class="chips" style="margin-bottom:12px"><button class="chip ${S.f.cview!=="terr"?"on":""}" data-cview="mias">📅 Mis citas</button><button class="chip ${S.f.cview==="terr"?"on":""}" data-cview="terr">🗺️ Territorio</button></div>`;
   h += `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row"><button class="btn small ghost" data-wk="-7" aria-label="Semana anterior">←</button><button class="btn small ghost" data-wk="0">Hoy</button><button class="btn small ghost" data-wk="7" aria-label="Semana siguiente">→</button></div>
     <b style="font-family:var(--serif);font-size:19px">${fmt(laToMs(mon,"12:00"),{day:"numeric",month:"short"})} – ${fmt(laToMs(addDays(mon,6),"12:00"),{day:"numeric",month:"short"})}</b></div>
     ${r==="tele"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar citas"><option value="">Mis citas + horarios ocupados del socio</option><option value="_me" ${S.f.aSocio==="_me"?"selected":""}>Solo mis citas</option></select>`:""}
     ${isDist() && grp.length>1?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Mis citas y las de mi grupo</option>${grp.map(id=>`<option value="${id}" ${S.f.aSocio===id?"selected":""}>${esc(memberName(id))}</option>`).join("")}</select>`:""}
-    ${r==="admin"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
+    ${r==="admin" && S.f.cview==="terr"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
     <div class="week">${week}</div></div>
     ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
     <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
@@ -1028,6 +1029,7 @@ function bindCommon(){
   document.querySelectorAll("[data-pend]").forEach(b => b.onclick = () => openAppt(b.dataset.pend));
   const nb2 = document.getElementById("noti-on"); if (nb2) nb2.onclick = async () => { S.notiAsked = true; try { await Notification.requestPermission(); } catch {} render(); if (notiOk()) toast("Avisos activados"); };
   vigilar();
+  document.querySelectorAll("[data-cview]").forEach(b => b.onclick = () => { S.f.cview = b.dataset.cview; S.f.aSocio = ""; render(); });
   const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
   all("[data-day]", b => b.onclick = () => { S.f.day = b.dataset.day; render(); });
   all("[data-wk]", b => b.onclick = () => { const n = +b.dataset.wk; S.f.day = n ? addDays(S.f.day||today(), n) : today(); render(); });
