@@ -51,7 +51,7 @@ service cloud.firestore {
       allow list: if isAdmin() || isLeader() || (isDist() && resource.data.invitedBy == request.auth.uid);
       allow create: if request.resource.data.status == 'enviada'
          && request.resource.data.invitedBy == request.auth.uid
-         && ((isAdmin() && request.resource.data.get('upline', '') == '')
+         && ((isAdmin() && (request.resource.data.get('upline', '') == '' || (request.resource.data.role == 'emprendedor' && request.resource.data.upline == request.auth.uid)))
              || (isLeader() && request.resource.data.memberRole != 'admin' && request.resource.data.get('upline', '') == '')
              || (isDist() && request.resource.data.role in ['emprendedor', 'tele']
                  && request.resource.data.upline == request.auth.uid));
@@ -75,19 +75,19 @@ service cloud.firestore {
 
     // Datos privados de cada cita (cliente, teléfono, dirección, notas y mensajes).
     // Solo los ven el socio de la cita y la telemarketer que la agendó.
-    // Dirección solo los ve si el socio es emprendedor suyo (dir == true), nunca si es distribuidor
-    // o emprendedor de un distribuidor. El distribuidor ve los de su grupo (up == su uid).
+    // Cada director (Dirección) ve solo los de sus propios emprendedores (up == su uid); nunca los de
+    // distribuidores ni de otro director. El distribuidor ve los de su grupo (up == su uid).
     match /apptp/{id} {
       function involved() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid); }
       function upline() { return signedIn() && resource.data.get('up', '') != '' && resource.data.get('up', '') == request.auth.uid; }
       function socioDoc() { return get(memberPath(request.resource.data.socioId)).data; }
-      allow read: if involved() || upline() || (isAdmin() && resource.data.dir == true);
+      allow read: if involved() || upline();
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid
          && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
          && request.resource.data.get('up', '') == socioDoc().get('upline', '');
       // Cambios normales: no se toca a quién pertenece la cita.
       // Transferencia: la hace el socio dueño, su distribuidor o Dirección; la privacidad se recalcula para el nuevo socio.
-      allow update: if (involved() || upline() || (isAdmin() && resource.data.dir == true))
+      allow update: if ((involved() || upline())
          && request.resource.data.teleId == resource.data.teleId
          && ((request.resource.data.socioId == resource.data.socioId
               && request.resource.data.dir == resource.data.dir
@@ -95,7 +95,13 @@ service cloud.firestore {
           || (request.resource.data.socioId != resource.data.socioId
               && (resource.data.socioId == request.auth.uid || upline() || isAdmin())
               && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
-              && request.resource.data.get('up', '') == socioDoc().get('upline', '')));
+              && request.resource.data.get('up', '') == socioDoc().get('upline', ''))))
+         // Separar Dirección: un director pasa a ver las citas de sus emprendedores (up = su grupo)
+         || (isAdmin() && resource.data.get('up', '') == ''
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['up', 'dir'])
+             && request.resource.data.up == request.auth.uid
+             && socioDoc().get('upline', '') == request.auth.uid
+             && request.resource.data.dir == false);
       allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
     }
 
