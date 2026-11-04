@@ -82,6 +82,17 @@ service cloud.firestore {
     // Solo los ven el socio de la cita y la telemarketer que la agendó.
     // Cada director (Dirección) ve solo los de sus propios emprendedores (up == su uid); nunca los de
     // distribuidores ni de otro director. El distribuidor ve los de su grupo (up == su uid).
+    // Historial de cada cliente por teléfono, dentro de un territorio (fam = director o distribuidor).
+    // Lo ven las telemarketers, el dueño del territorio y los socios de su grupo.
+    match /hist/{id} {
+      allow read: if isMember() && (resource == null || myRole() == 'tele'
+         || resource.data.fam == request.auth.uid || meData().get('upline', '') == resource.data.fam);
+      allow create, update: if isMember()
+         && request.resource.data.keys().hasOnly(['fam', 'tel', 'name', 'v'])
+         && id == request.resource.data.fam + '_' + request.resource.data.tel;
+      allow delete: if isAdmin();
+    }
+
     match /apptp/{id} {
       // Involucrados: el socio de la cita, quien la agendó y quien se la dio (transfirió) a otro
       function involved() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid || resource.data.get('dador', '') == request.auth.uid); }
