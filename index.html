@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041216"></script>
-<script src="juego.js?v=202611041216"></script>
+<script src="demo.js?v=202611041314"></script>
+<script src="juego.js?v=202611041314"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041216";
+const APP_VER = "202611041314";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -525,6 +525,23 @@ function openRuta(uid){ const m = S.members[uid] || {}; const r = m.ruta || {};
     <div class="row"><button class="btn" id="rt-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     $("#rt-ok").onclick = async () => { const d = $("#rt-d").value || today();
       try { await S.db.doc("members/"+uid).update({ruta:{solo:Math.max(0,+$("#rt-s").value||0), acomp:Math.max(0,+$("#rt-a").value||0), desde:laToMs(d,"00:00"), by:S.uid, at:Date.now()}}); closeModal(); toast("Ruta actualizada"); } catch(e){ writeErr(e); } }; }); }
+/* ===== Meta semanal de citas de la telemarketer (lunes a sábado): asegura su garantizado del mes ===== */
+const metaSem = () => +S.config.metaCitasSem || 10;
+function semRango(k){ const mo = addDays(mondayOf(today()), -7*k); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
+function semTxt(k){ const mo = addDays(mondayOf(today()), -7*k); return fmt(laToMs(mo,"12:00"),{day:"numeric",month:"short"}); }
+function citasSem(tid, k){ return teleEval(tid, semRango(k)).citas; }
+function metaSemCard(tid){ const M = metaSem(), v = citasSem(tid, 0); const hoy = today(), sab = addDays(mondayOf(hoy), 5); const quedan = hoy > sab ? 0 : workDays(hoy, sab); const falta = Math.max(0, M - v);
+  const hist = [1,2,3,4].map(k => ({k, v: citasSem(tid, k)}));
+  return `<div class="card"><h2>${tid===S.uid?"Tu meta de la semana":"Meta de la semana · "+esc(memberName(tid))}<span class="note">${M} citas mínimo</span></h2>
+    <div class="row" style="justify-content:space-between;align-items:baseline"><b style="font-family:var(--serif);font-size:34px">${v} <span class="note" style="font-size:15px">de ${M} citas</span></b>${v>=M?'<span class="tag tg-good">✅ Meta cumplida</span>':`<span class="tag ${quedan && falta/quedan<=2?"tg-warn":"tg-bad"}">Faltan ${falta}</span>`}</div>
+    <div class="bar" style="height:12px"><i style="width:${Math.min(100, v*100/M)}%;${v>=M?"background:var(--good)":""}"></i></div>
+    <p class="note" style="margin:6px 0 10px">${v>=M ? "¡Bien! Todo lo que saques de más suma para tu comisión." : quedan ? `Te quedan ${quedan} día(s) de trabajo esta semana: necesitas ${Math.ceil(falta/quedan)} cita(s) por día.` : "La semana ya cerró."} Las 10 citas semanales son las que aseguran tu garantizado del mes.</p>
+    <div class="row" style="gap:6px">${hist.map(h => `<span class="tag ${h.v>=M?"tg-good":"tg-bad"}">Sem. ${semTxt(h.k)}: ${h.v}${h.v>=M?" ✓":" ✗"}</span>`).join("")}</div></div>`; }
+function metaSemEquipoCard(){ const M = metaSem(); const tl = telesLunaya(); if (!tl.length) return "";
+  return `<div class="card"><h2>Meta semanal de citas<span class="note">${M} por telemarketer</span></h2><p class="note" style="margin-top:-6px">Citas agendadas de lunes a sábado. Las 10 semanales aseguran el garantizado del mes.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Esta semana</th>${[1,2,3,4].map(k => `<th class="n">${semTxt(k)}</th>`).join("")}<th class="n">Cumplió</th></tr></thead><tbody>${tl.map(t => { const h = [0,1,2,3,4].map(k => citasSem(t.id, k)); const ok = h.slice(1).filter(v => v>=M).length;
+      return `<tr><td><b>${esc(t.name)}</b></td>${h.map((v,i) => `<td class="n"><span class="${v>=M?"pct-good":i===0?"pct-mid":"pct-low"}">${v}</span></td>`).join("")}<td class="n"><b class="${ok>=3?"pct-good":ok>=2?"pct-mid":"pct-low"}">${ok} de 4</b></td></tr>`; }).join("")}</tbody></table></div>
+    <p class="note" style="margin-bottom:0">Verde = cumplió ${M}. "Cumplió" cuenta las últimas 4 semanas completas.</p></div>`; }
 /* ===== Embudo semanal del socio: números → citas → demostraciones → ventas =====
    Meta del equipo (la pone Dirección): 120 números a la semana → 30–50 citas → 12–16 demostraciones → 3–6 ventas. */
 const DEF_EMB = {leads:120, citas:30, citasMax:50, demos:12, demosMax:16, ventas:3, ventasMax:6};
@@ -753,6 +770,7 @@ function viewHoy(r){
       <div class="tile"><b>${d.contacts}</b><span>Contactos hoy</span></div>
       <div class="tile"><b>${d.citas}</b><span>Citas hoy</span><div class="bar"><i style="width:${Math.min(100,d.citas*100/mC)}%"></i></div></div></div>
       <div class="row" style="margin-top:12px"><button class="btn" data-go2="registrar">Registrar llamadas</button></div></div>`;
+    h += metaSemCard(S.uid);
     const e = teleEval(S.uid, rg);
     h += `<div class="card"><h2>Tu efectividad ${periodChips()}</h2>${evalTiles(e)}${e.sinRes?`<p class="note">${e.sinRes} cita(s) tuyas aún no tienen resultado del socio.</p>`:""}</div>`;
     const per = socios().map(s => ({s, e:teleEval(S.uid, rg, s.id)})).filter(x => x.e.calls || x.e.citas || x.e.demos);
@@ -788,7 +806,7 @@ function viewHoy(r){
     h += `<div class="card"><h2>Evaluación de telemarketers ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}
       <p class="note">% efectividad cita → demo: de cada 100 citas que agendó (y que ya pasaron), cuántas se convirtieron en demostración.</p></div>`;
     if (ext.length) h += `<div class="card"><h2>Telemarketers externas de distribuidores</h2><p class="note" style="margin-top:-6px">Las contrata y les paga cada distribuidor. No son del programa Lunaya: no entran en tus comisiones ni en el 5%.</p>${evalTable(ext, true)}</div>`;
-    h = metasCard(S.uid) + embudoEquipoCard() + h;
+    h = metasCard(S.uid) + metaSemEquipoCard() + embudoEquipoCard() + h;
     h += socioEvalCard(rg);
     const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
@@ -1216,7 +1234,7 @@ function viewLider(){
   const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
   let h = `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
   const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
-  h += citasEquipoCard();
+  h += metaSemEquipoCard() + citasEquipoCard();
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
   h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
@@ -1266,7 +1284,7 @@ function viewEquipo(){
     <label class="f">% extra de la líder sobre todo el equipo<input class="i" type="number" min="0" step="0.1" id="k-lider" value="${c.liderPct}"></label>
     <label class="f">% que aporta cada distribuidor al programa de telemarketing<input class="i" type="number" min="0" step="0.5" id="k-dist" value="${c.distPct}"></label></div>
     <div class="row" style="margin-top:10px"><button class="btn small" data-act="comision">Guardar comisiones</button></div></div>`;
-  h += `<div class="card"><h2>Metas y fuentes</h2><div class="grid2"><label class="f">Llamadas por día<input class="i" type="number" min="1" id="m-l" value="${+S.config.metaLlamadas||80}"></label><label class="f">Citas por día<input class="i" type="number" min="1" id="m-c" value="${+S.config.metaCitas||4}"></label></div>
+  h += `<div class="card"><h2>Metas y fuentes</h2><div class="grid2"><label class="f">Llamadas por día<input class="i" type="number" min="1" id="m-l" value="${+S.config.metaLlamadas||80}"></label><label class="f">Citas por semana (mínimo)<input class="i" type="number" min="1" id="m-cs" value="${metaSem()}"></label><label class="f">Citas por día<input class="i" type="number" min="1" id="m-c" value="${+S.config.metaCitas||4}"></label></div>
     <label class="f" style="margin-top:10px">Fuentes (separadas por coma)<input class="i" id="m-src" value="${esc(sources().join(", "))}"></label>
     <div class="row" style="margin-top:10px"><button class="btn small" data-act="metas">Guardar</button></div></div>`;
   h += `<div class="card"><h2>Reportes y respaldo</h2><p class="note" style="margin-top:-6px">Se descargan como archivo de Excel (CSV) a tu iPad o teléfono. Puedes abrirlos con Google Sheets, Numbers o Excel, o guardarlos en tu Drive.</p>
@@ -1416,7 +1434,7 @@ function bindCommon(){
   const af = m.querySelector("#a-filter"); if (af) af.onchange = e => { S.f.aSocio = e.target.value; render(); };
   all("[data-act]", b => b.onclick = async () => { const a = b.dataset.act;
     if (a==="world") setWorld("");
-    else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
+    else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
     else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0, distPct:+$("#k-dist").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
     else if (a==="embudo"){ const e = {}; document.querySelectorAll("[data-emb]").forEach(x => e[x.dataset.emb] = Math.max(0, +x.value||0)); try { await S.db.doc("config/main").set({...S.config, embudo:e}); toast("Meta del embudo guardada"); } catch(err){ writeErr(err); } }
     else if (a==="export") doExport("mes");
