@@ -17,6 +17,8 @@ service cloud.firestore {
     function isMember() { return isAdmin() || myRole() in ['tele', 'socio']; }
     function isLeader() { return myRole() == 'tele' && meData().get('lider', false) == true; }
     // Distribuidor: maneja su propio grupo (emprendedores y telemarketers que él invita)
+    // Telemarketer del programa Lunaya (no externa de un distribuidor)
+    function isProgramTele() { return myRole() == 'tele' && meData().get('upline', '') == ''; }
     function isDist() { return myRole() == 'socio' && meData().get('tipo', '') == 'Socio distribuidor'; }
 
     function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
@@ -98,7 +100,9 @@ service cloud.firestore {
       function involved() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid || resource.data.get('dador', '') == request.auth.uid); }
       function upline() { return signedIn() && resource.data.get('up', '') != '' && resource.data.get('up', '') == request.auth.uid; }
       function socioDoc() { return get(memberPath(request.resource.data.socioId)).data; }
-      allow read: if involved() || upline();
+      // tv = cita del territorio de Dirección: las telemarketers del programa la ven completa para darle seguimiento
+      function teleVe() { return isProgramTele() && resource.data.get('tv', false) == true; }
+      allow read: if involved() || upline() || teleVe();
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid
          && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
          && request.resource.data.get('up', '') == socioDoc().get('upline', '');
@@ -108,7 +112,8 @@ service cloud.firestore {
          && request.resource.data.teleId == resource.data.teleId
          && ((request.resource.data.socioId == resource.data.socioId
               && request.resource.data.dir == resource.data.dir
-              && request.resource.data.get('up', '') == resource.data.get('up', ''))
+              && request.resource.data.get('up', '') == resource.data.get('up', '')
+              && (request.resource.data.get('tv', false) == resource.data.get('tv', false) || !('tv' in resource.data)))
           || (request.resource.data.socioId != resource.data.socioId
               && (resource.data.socioId == request.auth.uid || upline() || isAdmin())
               && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
@@ -118,7 +123,9 @@ service cloud.firestore {
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['up', 'dir'])
              && request.resource.data.up == request.auth.uid
              && socioDoc().get('upline', '') == request.auth.uid
-             && request.resource.data.dir == false);
+             && request.resource.data.dir == false)
+         // Las telemarketers del programa pueden escribir en el chat de esas citas
+         || (teleVe() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chat', 'seen']));
       allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
     }
 

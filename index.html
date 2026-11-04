@@ -153,7 +153,7 @@ nav.bottom svg{width:22px;height:22px}
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611031837";
+const APP_VER = "202611031900";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -291,6 +291,7 @@ const PRIV_KEYS = ["client","phone","city","address","notes","chat","seen","resN
 /* Citas transferidas antes del arreglo: quien la recibió marca solo quién se la dio, para que esa persona la siga viendo */
 let dadorFix = new Set();
 function arreglarDador(){ const pv = Object.assign({}, ...Object.values(S.privs||{}));
+  Object.entries(pv).forEach(([id,q]) => { if (q.tv===undefined && !dadorFix.has("tv"+id) && (q.socioId===S.uid || q.up===S.uid) && S.members[q.socioId]){ dadorFix.add("tv"+id); S.db.doc("apptp/"+id).update({tv: S.members[pagadorDe(q.socioId)]?.role==="admin"}).catch(()=>{}); } });
   Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || dadorFix.has(id)) return;
     if (a.transferredFrom && a.socioId===S.uid && q.socioId===S.uid && !q.dador){ dadorFix.add(id); S.db.doc("apptp/"+id).update({dador:a.transferredFrom}).catch(()=>{}); } }); }
 function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, dador:q.dador, _priv:true} : {...x, _priv:false}; }); }
@@ -312,7 +313,7 @@ function subscribeAll(){
   S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; render(); }, onErr));
   S.apub = {}; S.privs = {};
   S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.apub = {}; s.docs.forEach(d => S.apub[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; mergeAppts(); render(); setTimeout(migrarGrupos, 1500); }, onErr));
-  const privQ = [["teleId", S.uid], ["socioId", S.uid], ["dador", S.uid]]; if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
+  const privQ = [["teleId", S.uid], ["socioId", S.uid], ["dador", S.uid]]; if (S.me?.role === "tele" && !S.me?.upline) privQ.push(["tv", true]); if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
   privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; (S.privLoaded = S.privLoaded||{})[f] = true; mergeAppts(); render(); }, e => console.log(e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
@@ -768,7 +769,7 @@ function openCitaForm(src, own){
         const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if (own) src = $("#c-src").value; const cred = own && $("#c-cred") ? $("#c-cred").value : "";
         const pub = {when:laToMs(d,t), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at};
         const priv = {client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(),
-          socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:at};
+          socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", tv: S.members[pagadorDe(socio)]?.role==="admin", createdAt:at};
         /* Se guardan juntas: o quedan las dos partes o ninguna (así nunca queda una cita sin los datos del cliente) */
         const bt = S.db.batch(); bt.set(ref, pub); bt.set(S.db.doc("apptp/"+ref.id), priv); await bt.commit();
         histAdd(socio, priv.phone, name, histEntry({...pub, id:ref.id}, {note:priv.notes}), [S.uid]);
@@ -813,7 +814,7 @@ function timeVal(id){ const el = document.getElementById(id); if (!el) return ""
 const horaTxt = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
 const diaTxt = ms => `<div class="dia">${fmt(ms,{weekday:"long",day:"numeric",month:"long"})}</div>`;
 function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
-  if (role()==="tele" && a.teleId!==S.uid && a.agendo!==S.uid) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
+  if (role()==="tele" && a.teleId!==S.uid && a.agendo!==S.uid && !a._priv) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de otra telemarketer con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
   return `<button class="appt ${a.status}" data-appt="${id}"><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
@@ -873,7 +874,7 @@ function transferTargets(a){ const f = famOf({id:a.socioId, ...(S.members[a.soci
 async function transferAppt(id, to){
   const a = S.appts[id], m = S.members[to]; if (!a || !m) return;
   const now = Date.now(), from = memberName(a.socioId);
-  await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", dador: a.socioId, chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`🔀 Cita transferida de ${from} a ${m.name}`})});
+  await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", tv: S.members[pagadorDe(to)]?.role==="admin", dador: a.socioId, chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`🔀 Cita transferida de ${from} a ${m.name}`})});
   await S.db.doc("appts/"+id).update({socioId:to, transferredFrom:a.socioId, transferredAt:now, transferredBy:S.uid});
 }
 function openAppt(id){
