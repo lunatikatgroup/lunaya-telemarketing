@@ -80,7 +80,8 @@ service cloud.firestore {
     // Cada director (Dirección) ve solo los de sus propios emprendedores (up == su uid); nunca los de
     // distribuidores ni de otro director. El distribuidor ve los de su grupo (up == su uid).
     match /apptp/{id} {
-      function involved() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid); }
+      // Involucrados: el socio de la cita, quien la agendó y quien se la dio (transfirió) a otro
+      function involved() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid || resource.data.get('dador', '') == request.auth.uid); }
       function upline() { return signedIn() && resource.data.get('up', '') != '' && resource.data.get('up', '') == request.auth.uid; }
       function socioDoc() { return get(memberPath(request.resource.data.socioId)).data; }
       allow read: if involved() || upline();
