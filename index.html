@@ -153,7 +153,7 @@ nav.bottom svg{width:22px;height:22px}
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611031717";
+const APP_VER = "202611031720";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -166,7 +166,7 @@ const RLABEL = Object.fromEntries(RESULTS);
 const CONTACT = new Set(["volver","no_interesa","no_califica","cita"]);
 const APPT_ST = {agendada:"Agendada", hecha:"Demostración hecha", no_se_hizo:"No se hizo", cancelada:"Cancelada"};
 const ROLE = {admin:"Dirección", tele:"Telemarketer", socio:"Socio", pendiente:"Pendiente"};
-const DEF_COM = {sueldo:200, pct:2, liderPct:1};
+const DEF_COM = {sueldo:200, pct:2, liderPct:1, distPct:5};
 const APP_URL = location.origin + location.pathname;
 const INV_ROLES = {tele:"Telemarketer", distribuidor:"Socio distribuidor", emprendedor:"Emprendedor"};
 
@@ -458,6 +458,29 @@ function empPagosCard(payer, p){ const plan = planDe(payer); const emps = Object
       <label class="note">Solo <input class="i" type="number" min="0" step="0.5" data-pemp="solo" value="${plan?pl.solo:""}" placeholder="${DEF_EMP.solo}" style="width:64px;padding:4px 6px">%</label>
       <label class="note">Solo, cita que tú le das <input class="i" type="number" min="0" step="0.5" data-pemp="asig" value="${plan?pl.asig:""}" placeholder="${DEF_EMP.asig}" style="width:64px;padding:4px 6px">%</label></div>`:""}
     ${!plan?`<p class="note">Pon tus porcentajes para que la app calcule las comisiones de tus emprendedores.</p>`:rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Emprendedor</th><th class="n">Con entrenador</th><th class="n">Solo</th><th class="n">Solo, cita asignada</th><th class="n">Total a pagar</th><th class="n">Por aprobar</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(memberName(x.id))}</b></td>${x.g.byCat.map(c=>`<td class="n">${money(c.com)}<div class="note">${c.n} · ${money(c.vol)}</div></td>`).join("")}<td class="n"><b>${money(x.g.tot)}</b></td><td class="n">${money(x.g.pend)}</td></tr>`).join("")}</tbody></table></div><p class="note">Se calcula solo sobre ventas aprobadas.</p>`:`<div class="empty">Tus emprendedores no tienen ventas en este periodo.</div>`}</div>`; }
+/* ===== Aporte al programa de telemarketing =====
+   Distribuidor: % fijo (5%) de las ventas aprobadas que salieron de citas de telemarketing, suyas y de su grupo.
+   Dirección (Katerine, Andrés): lo que de verdad cuesta la telemarketing de sus ventas (% de la telemarketer + % de la líder).
+   Emprendedores: no pagan; cuenta para su director o distribuidor. */
+function ownerUid(){ const e = Object.entries(S.members).find(([,m]) => (S.owners||[]).includes(String(m.email||"").toLowerCase()) && m.role==="admin"); return e ? e[0] : ""; }
+function pagadorDe(sid){ const m = S.members[sid]; if (!m) return ""; if (m.role==="admin" || m.tipo===DIST) return sid; const u = m.upline && S.members[m.upline]; if (u && (u.role==="admin" || u.tipo===DIST)) return m.upline; return ownerUid(); }
+function costoTM(a){ const c = com(); const t = S.members[a.teleId] || {}; const pct = (t.pct ?? "") === "" ? c.pct : +t.pct; const lider = byRole("tele").some(x => x.lider && !x.upline && x.id!==a.teleId) && !t.lider ? c.liderPct : 0; return pct + lider; }
+function aportes(r){ const c = com(); const out = {};
+  Object.values(S.appts).forEach(a => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r) || origenDe(a)!=="tm") return;
+    const t = S.members[a.teleId]; if (t && t.upline) return; /* telemarketers propias de un distribuidor: no es el programa */
+    const p = pagadorDe(a.socioId); if (!p) return; const pm = S.members[p] || {}; const pct = pm.role==="admin" ? costoTM(a) : (+c.distPct||0);
+    const o = out[p] = out[p] || {payer:p, ventas:0, vol:0, monto:0, rows:[]}; const m = (+a.amount||0)*pct/100; o.ventas++; o.vol += +a.amount||0; o.monto += m; o.rows.push({a, pct, m}); });
+  return out; }
+function aporteCard(payer, p){ const o = aportes(range(p))[payer]; const pm = S.members[payer]||{}; const dist = pm.tipo===DIST;
+  const H = aportes(range("hoy"))[payer], W = aportes(range("semana"))[payer];
+  return `<div class="card"><h2>Comisión de telemarketing<span class="note">${PLABEL[p]}</span></h2>
+    <p class="note" style="margin-top:-6px">${dist?`Aportas el <b>${com().distPct}%</b> de las ventas aprobadas que salen de citas de telemarketing (tuyas y de tu grupo).`:"Lo que cuesta la telemarketing de tus ventas: el % de la telemarketer + el de la líder."}</p>
+    <div class="tiles"><div class="tile"><b>${money(H?.monto||0)}</b><span>Hoy</span></div><div class="tile"><b>${money(W?.monto||0)}</b><span>Esta semana</span></div><div class="tile acc"><b>${money(o?.monto||0)}</b><span>${PLABEL[p]}</span><small>${o?.ventas||0} venta(s) · ${money(o?.vol||0)}</small></div></div>
+    ${o&&o.rows.length?`<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Telemarketer</th><th class="n">Venta</th><th class="n">%</th><th class="n">A pagar</th></tr></thead><tbody>${o.rows.sort((x,y)=>y.a.when-x.a.when).map(x=>`<tr><td class="note">${fmt(x.a.when,{day:"numeric",month:"short"})}</td><td>${esc(memberName(x.a.socioId))}</td><td>${esc(memberName(x.a.teleId))}</td><td class="n">${money(x.a.amount)}</td><td class="n">${x.pct}%</td><td class="n"><b>${money(x.m)}</b></td></tr>`).join("")}</tbody></table></div>`:""}</div>`; }
+function aporteResumen(p){ const ap = aportes(range(p)); const rows = Object.values(ap).sort((a,b)=>b.monto-a.monto);
+  return `<div class="card"><h2>Comisión de telemarketing por pagar<span class="note">${PLABEL[p]}</span></h2>
+    <p class="note" style="margin-top:-6px">Distribuidores: ${com().distPct}% de sus ventas de telemarketing (con su grupo). Dirección: el costo real (telemarketer + líder). Emprendedores no pagan: cuenta para su director o distribuidor. Solo ventas aprobadas.</p>
+    ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Quién paga</th><th class="n">Ventas de telemarketing</th><th class="n">Volumen</th><th class="n">A pagar</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(memberName(x.payer))}</b><div class="note">${S.members[x.payer]?.tipo===DIST?com().distPct+"% fijo":"costo real"}</div></td><td class="n">${x.ventas}</td><td class="n">${money(x.vol)}</td><td class="n"><b>${money(x.monto)}</b></td></tr>`).join("")}<tr class="total"><td>Total</td><td class="n">${rows.reduce((t,x)=>t+x.ventas,0)}</td><td class="n">${money(rows.reduce((t,x)=>t+x.vol,0))}</td><td class="n">${money(rows.reduce((t,x)=>t+x.monto,0))}</td></tr></tbody></table></div>`:`<div class="empty">No hay ventas aprobadas de telemarketing en este periodo.</div>`}</div>`; }
 function commissions(r, up=""){
   const c = com(); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0])].filter(t => (t.upline||"")===up);
   /* la comisión se paga sobre ventas aprobadas */
@@ -900,6 +923,7 @@ function viewPagos(){
   const ss = socios().map(s => { const e = teleEval(null, rg, s.id); return {s, e}; });
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
+  h += aporteResumen(p);
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
   h += empPagosCard(S.uid, p); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
@@ -990,6 +1014,7 @@ function viewGrupo(){
   const rg = range(S.f.period); const g = grupoDe(S.uid);
   const emps = [{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")].map(m => ({name:m.name+(m.id===S.uid?" (tú)":""), e:teleEval(null, rg, m.id), id:m.id}));
   let h = `<div class="card"><h2>Mi grupo ${periodChips()}</h2><p class="note" style="margin-top:-6px">Tú manejas a tus emprendedores y telemarketers. Solo tú y la telemarketer de cada cita ven los datos de los clientes de tu grupo.</p></div>`;
+  h += aporteCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes");
   h += empPagosCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes");
   h += socioTableCard([{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")], rg, "Emprendedores", "Tus ventas y las de tu grupo, separadas por de dónde salió la cita.").replace(/<div class="chips">[\s\S]*?<\/div>/, "");
   const teles = g.filter(m => m.role==="tele").map(t => ({name:t.name, e:teleEval(t.id, rg), id:t.id}));
@@ -1009,7 +1034,8 @@ function viewEquipo(){
   h += `<div class="card"><h2>Comisiones</h2><div class="grid2">
     <label class="f">Sueldo fijo mensual (USD)<input class="i" type="number" min="0" id="k-sueldo" value="${c.sueldo}"></label>
     <label class="f">% sobre sus ventas<input class="i" type="number" min="0" step="0.1" id="k-pct" value="${c.pct}"></label>
-    <label class="f">% extra de la líder sobre todo el equipo<input class="i" type="number" min="0" step="0.1" id="k-lider" value="${c.liderPct}"></label></div>
+    <label class="f">% extra de la líder sobre todo el equipo<input class="i" type="number" min="0" step="0.1" id="k-lider" value="${c.liderPct}"></label>
+    <label class="f">% que aporta cada distribuidor al programa de telemarketing<input class="i" type="number" min="0" step="0.5" id="k-dist" value="${c.distPct}"></label></div>
     <div class="row" style="margin-top:10px"><button class="btn small" data-act="comision">Guardar comisiones</button></div></div>`;
   h += `<div class="card"><h2>Metas y fuentes</h2><div class="grid2"><label class="f">Llamadas por día<input class="i" type="number" min="1" id="m-l" value="${+S.config.metaLlamadas||80}"></label><label class="f">Citas por día<input class="i" type="number" min="1" id="m-c" value="${+S.config.metaCitas||4}"></label></div>
     <label class="f" style="margin-top:10px">Fuentes (separadas por coma)<input class="i" id="m-src" value="${esc(sources().join(", "))}"></label>
@@ -1154,7 +1180,7 @@ function bindCommon(){
   all("[data-act]", b => b.onclick = async () => { const a = b.dataset.act;
     if (a==="world") setWorld("");
     else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
-    else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
+    else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0, distPct:+$("#k-dist").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
     else if (a==="export") doExport("mes");
     else if (a==="export-prev") doExport("mesant");
     else if (a==="backup") doBackup("citas");
