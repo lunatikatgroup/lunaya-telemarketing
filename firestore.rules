@@ -23,6 +23,7 @@ service cloud.firestore {
     // Las telemarketers del programa entran solas al mundo de cada distribuidor, menos las que él (o Dirección) quitó (teleNo)
     function distOk(d) { return d is string && d != '' && get(memberPath(d)).data.get('tipo', '') == 'Socio distribuidor'
       && !(request.auth.uid in get(memberPath(d)).data.get('teleNo', [])); }
+    function teleApptOk(sid) { return tvDe(sid) || distOk(sid) || distOk(get(memberPath(sid)).data.get('upline', '')); }
     function teleDistDe(data) { return isProgramTele() && (distOk(data.socioId) || distOk(data.get('up', ''))); }
 
     function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
@@ -79,6 +80,12 @@ service cloud.firestore {
       allow update: if noClientData() && (isAdmin()
          || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid))
          || (isDist() && get(memberPath(resource.data.socioId)).data.get('upline', '') == request.auth.uid)
+         // Telemarketers del programa: reportan el resultado (venta, no venta, seguimiento) y reprograman las citas
+         // de los socios a los que tienen acceso (territorio de Dirección o distribuidor que no las quitó). No aprueban ventas.
+         || (isProgramTele() && teleApptOk(resource.data.socioId)
+             && request.resource.data.socioId == resource.data.socioId && request.resource.data.teleId == resource.data.teleId
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'sale', 'amount', 'saleStatus', 'resultAt', 'resultBy', 'segWhen', 'refsDemo', 'acomp', 'entrenador', 'when'])
+             && request.resource.data.get('saleStatus', 'pendiente') in [resource.data.get('saleStatus', 'pendiente'), 'pendiente'])
          // La líder de telemarketing puede aprobar o cancelar ventas (solo el estado de la venta)
          || (isLeader() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saleStatus', 'saleStatusAt', 'saleStatusBy'])));
       allow delete: if isAdmin() || (isMember() && resource.data.teleId == request.auth.uid);
@@ -132,7 +139,7 @@ service cloud.firestore {
          || ((involved() || upline() || isAdmin()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tv'])
              && request.resource.data.tv == tvDe(resource.data.socioId))
          // Las telemarketers del programa pueden escribir en el chat de esas citas
-         || ((teleVe() || teleDistDe(resource.data)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chat', 'seen']));
+         || ((teleVe() || teleDistDe(resource.data)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chat', 'seen', 'resNote']));
       allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
     }
 
