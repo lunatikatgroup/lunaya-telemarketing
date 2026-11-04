@@ -274,5 +274,24 @@ service cloud.firestore {
       allow read: if isMember();
       allow write: if isAdmin();
     }
+
+    // ===== Reclutamiento (página aparte: /reclutamiento) =====
+    // Entra la dueña y las personas que ella agrega por correo en rconfig/main.staff
+    function rStaff() {
+      return signedIn() && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/rconfig/main)
+        && request.auth.token.email.lower() in get(/databases/$(database)/documents/rconfig/main).data.get('staff', {});
+    }
+    function rDir() {
+      return isOwnerEmail() || (rStaff() && 'direccion' in get(/databases/$(database)/documents/rconfig/main).data.staff[request.auth.token.email.lower()].get('roles', []));
+    }
+    match /rconfig/{id} {
+      allow read: if signedIn();
+      allow write: if rDir();
+    }
+    match /rcands/{id} {
+      allow read, create, update: if isOwnerEmail() || rStaff();
+      allow delete: if rDir();
+    }
   }
 }
