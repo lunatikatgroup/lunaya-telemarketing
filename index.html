@@ -152,11 +152,11 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="juego.js?v=202611040818"></script>
+<script src="juego.js?v=202611040827"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611040818";
+const APP_VER = "202611040827";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -486,6 +486,40 @@ function gananciasCard(uid, p){ const g = gananciasEmp(uid, range(p)); if (!g) r
   return `<div class="card"><h2>${uid===S.uid?"Mis ganancias":"Ganancias de "+esc(memberName(uid))}<span class="note">${PLABEL[p]}</span></h2>
     <div class="tiles">${g.byCat.map(x=>`<div class="tile"><b>${money(x.com)}</b><span>${x.pct}% · ${CAT_TXT[x.c]}</span><small>${x.n} venta(s) · ${money(x.vol)}</small></div>`).join("")}<div class="tile acc"><b>${money(g.tot)}</b><span>Total comisiones</span><small>solo ventas aprobadas</small></div></div>
     ${g.pend?`<p class="note">Por aprobar: ${money(g.pend)} más, cuando aprueben las ventas pendientes.</p>`:""}</div>`; }
+/* ===== Ruta a Distribuidor Junior =====
+   Requisito indispensable: $30,000 vendidos SOLO (sin distribuidor ni entrenador; con otro emprendedor sí cuenta como solo).
+   Lo acompañado se suma aparte hacia $30,000 acompañado. Ventas aprobadas. Quien lo patrocina puede poner lo que ya tenía vendido antes. */
+const RUTA = {solo:30000, acomp:30000};
+function rutaDe(uid){ const m = S.members[uid] || {}; const r = m.ruta || {}; const desde = r.desde || 0;
+  const v = Object.values(S.appts).filter(a => a.socioId===uid && a.sale && a.saleStatus==="aprobada" && (a.when||0) >= desde);
+  const pend = Object.values(S.appts).filter(a => a.socioId===uid && a.sale && (a.saleStatus||"pendiente")==="pendiente" && (a.when||0) >= desde);
+  const sum = (l, acomp) => l.filter(a => (a.acomp===true) === acomp).reduce((t,a) => t + (+a.amount||0), 0);
+  const solo = (+r.solo||0) + sum(v, false), acomp = (+r.acomp||0) + sum(v, true);
+  return {solo, acomp, pSolo: sum(pend, false), pAcomp: sum(pend, true), ini: r, faltaSolo: Math.max(0, RUTA.solo - solo), faltaAcomp: Math.max(0, RUTA.acomp - acomp), listo: solo >= RUTA.solo}; }
+function rutaBar(v, meta, pend){ const pc = Math.min(100, v*100/meta), pp = Math.min(100 - pc, (pend||0)*100/meta);
+  return `<div class="bar" style="height:12px;display:flex"><i style="width:${pc}%"></i><i style="width:${pp}%;opacity:.35"></i></div>`; }
+function rutaCard(uid){ const m = S.members[uid]; if (!esEmp(m)) return ""; const r = rutaDe(uid); const mine = uid===S.uid;
+  return `<div class="card"><h2>${mine?"Mi ruta a Distribuidor Junior":"Ruta de "+esc(m.name)}${r.listo?'<span class="tag tg-good">🏆 Requisito cumplido</span>':""}</h2>
+    <div style="display:grid;gap:14px">
+      <div><div class="row" style="justify-content:space-between"><b>Vendido solo <span class="tag tg-warn">requisito</span></b><b>${money(r.solo)} <span class="note">de ${money(RUTA.solo)}</span></b></div>${rutaBar(r.solo, RUTA.solo, r.pSolo)}
+        <div class="note" style="margin-top:4px">${r.faltaSolo ? `Te ${mine?"":"le "}faltan <b>${money(r.faltaSolo)}</b> vendidos solo.` : "¡Ya llegó a los $30,000 vendidos solo!"}${r.pSolo?` · ${money(r.pSolo)} más esperando aprobación`:""}</div></div>
+      <div><div class="row" style="justify-content:space-between"><b>Vendido acompañado</b><b>${money(r.acomp)} <span class="note">de ${money(RUTA.acomp)}</span></b></div>${rutaBar(r.acomp, RUTA.acomp, r.pAcomp)}
+        <div class="note" style="margin-top:4px">Con distribuidor o entrenador. Suma aparte: no cuenta para los ${money(RUTA.solo)} solo.${r.pAcomp?` · ${money(r.pAcomp)} esperando aprobación`:""}</div></div>
+    </div>
+    <p class="note" style="margin-bottom:0">Cuenta como solo aunque vaya con otro emprendedor. Solo suman las ventas aprobadas.${r.ini.solo||r.ini.acomp?` Incluye lo que ya tenía vendido antes de la app: ${money(r.ini.solo||0)} solo y ${money(r.ini.acomp||0)} acompañado.`:""}</p>
+    ${!mine && (role()==="admin" || m.upline===S.uid) ? `<button class="btn small ghost" data-ruta="${uid}">Poner lo que ya tenía vendido</button>` : ""}</div>`; }
+function rutaGrupoCard(payer){ const emps = Object.entries(S.members).filter(([,m]) => esEmp(m) && m.upline===payer && m.role!=="baja"); if (!emps.length) return "";
+  return `<div class="card"><h2>Ruta a Distribuidor Junior</h2><p class="note" style="margin-top:-6px">Requisito: ${money(RUTA.solo)} vendidos solo. Lo acompañado se lleva aparte (${money(RUTA.acomp)}).</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Emprendedor</th><th class="n">Solo</th><th class="n">Le falta solo</th><th class="n">Acompañado</th><th></th></tr></thead><tbody>${emps.map(([id,m]) => { const r = rutaDe(id);
+      return `<tr><td><b>${esc(m.name)}</b>${r.listo?' <span class="tag tg-good">🏆 listo</span>':""}<div style="max-width:160px">${rutaBar(r.solo, RUTA.solo, r.pSolo)}</div></td><td class="n">${money(r.solo)}</td><td class="n"><b>${money(r.faltaSolo)}</b></td><td class="n">${money(r.acomp)}</td><td><button class="btn small ghost" data-ruta="${id}">Ajustar</button></td></tr>`; }).join("")}</tbody></table></div></div>`; }
+function openRuta(uid){ const m = S.members[uid] || {}; const r = m.ruta || {};
+  openModal(`<h3>Ruta de ${esc(m.name)}</h3><p class="note" style="margin:0">Pon lo que ya tenía vendido antes de empezar a usar la app. De la fecha que escojas en adelante, la app suma sola sus ventas aprobadas.</p>
+    <div class="grid2"><label class="f">Ya vendido solo (USD)<input class="i" type="number" min="0" step="1" id="rt-s" value="${r.solo||""}" placeholder="0"></label><label class="f">Ya vendido acompañado (USD)<input class="i" type="number" min="0" step="1" id="rt-a" value="${r.acomp||""}" placeholder="0"></label>
+      <label class="f">Contar las ventas de la app desde<input class="i" type="date" id="rt-d" value="${r.desde?laDate(r.desde):today()}"></label></div>
+    <p class="note" style="margin:0">Si lo que pusiste ya incluye ventas registradas en la app, escoge la fecha de hoy para no contarlas dos veces.</p>
+    <div class="row"><button class="btn" id="rt-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#rt-ok").onclick = async () => { const d = $("#rt-d").value || today();
+      try { await S.db.doc("members/"+uid).update({ruta:{solo:Math.max(0,+$("#rt-s").value||0), acomp:Math.max(0,+$("#rt-a").value||0), desde:laToMs(d,"00:00"), by:S.uid, at:Date.now()}}); closeModal(); toast("Ruta actualizada"); } catch(e){ writeErr(e); } }; }); }
 function empPagosCard(payer, p){ const plan = planDe(payer); const emps = Object.entries(S.members).filter(([,m]) => esEmp(m) && m.upline===payer).map(([id])=>id);
   const rg = range(p); const rows = emps.map(id => ({id, g:gananciasEmp(id, rg)})).filter(x=>x.g);
   const pl = plan || DEF_EMP;
@@ -680,7 +714,7 @@ function viewHoy(r){
       <div class="tile"><b>${e.ventas?money(e.monto/e.ventas):"—"}</b><span>Venta promedio</span></div>
       <div class="tile"><b>${pctN(e.ventas,e.demos)??"—"}${e.demos?"%":""}</b><span>% efectividad demo → venta</span></div>
       <div class="tile"><b>${e.refsDemo||0}</b><span>Referidos sacados en demos</span><small>${e.demos?(Math.round((e.refsDemo||0)/e.demos*10)/10)+" por casa":""}</small></div></div></div>`;
-    h += gananciasCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes") + socioRefCard() + driveCard();
+    h += gananciasCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes") + rutaCard(S.uid) + socioRefCard() + driveCard();
   } else {
     const e = teleEval(null, rg); const sinRes = Object.values(S.appts).filter(a => a.status==="agendada" && a.when < Date.now()-3600e3).length;
     h += `<div class="card"><h2>Territorio ${periodChips()}</h2>${evalTiles(e)}${sinRes?`<div class="banner warn" style="margin-top:12px">${sinRes} cita(s) pasadas sin resultado. Los socios deben marcarlas.</div>`:""}</div>`;
@@ -1009,7 +1043,7 @@ function viewPagos(){
   h += comCard(p);
   h += aporteResumen(p);
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
-  h += empPagosCard(S.uid, p); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
+  h += empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
 }
 function comCard(p, up=""){
@@ -1111,6 +1145,7 @@ function viewGrupo(){
   let h = `<div class="card"><h2>Mi grupo ${periodChips()}</h2><p class="note" style="margin-top:-6px">Tú manejas a tus emprendedores y telemarketers. Solo tú y la telemarketer de cada cita ven los datos de los clientes de tu grupo.</p></div>`;
   h += socioTableCard([{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")], rg, "Emprendedores", "Tus ventas y las de tu grupo, separadas por de dónde salió la cita.").replace(/<div class="chips">[\s\S]*?<\/div>/, "");
   const teles = g.filter(m => m.role==="tele").map(t => ({name:t.name, e:teleEval(t.id, rg), id:t.id}));
+  h += rutaGrupoCard(S.uid);
   h += teleAccCard(S.uid);
   if (teles.length) h += `<div class="card"><h2>Mis telemarketers externas</h2>${evalTable(teles, true)}</div>`;
   h += inviteCard();
@@ -1268,6 +1303,7 @@ function bindCommon(){
   document.querySelectorAll("[data-tmode]").forEach(b => b.onclick = () => { S.f.tmode = b.dataset.tmode; S.f.aSocio = ""; S.f.aTele = ""; render(); });
   document.querySelectorAll("[data-tsel]").forEach(b => b.onclick = () => { const v = b.dataset.tsel; if (S.f.tmode==="tele"){ S.f.aTele = S.f.aTele===v ? "" : v; S.f.aSocio = ""; } else { S.f.aSocio = S.f.aSocio===v ? "" : v; S.f.aTele = ""; } render(); });
   const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
+  document.querySelectorAll("[data-ruta]").forEach(b => b.onclick = () => openRuta(b.dataset.ruta));
   all("[data-lt]", b => b.onclick = () => { S.f.lt = b.dataset.lt; render(); });
   all("[data-day]", b => b.onclick = () => { S.f.day = b.dataset.day; render(); });
   all("[data-wk]", b => b.onclick = () => { const n = +b.dataset.wk; S.f.day = n ? addDays(S.f.day||today(), n) : today(); render(); });

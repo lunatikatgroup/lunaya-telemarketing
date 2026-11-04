@@ -55,7 +55,7 @@ service cloud.firestore {
       allow update: if isAdmin()
          // El distribuidor ajusta el plan de pago de SUS telemarketers
          || (isDist() && resource.data.get('upline', '') == request.auth.uid
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate']))
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate', 'ruta']))
          || (signedIn() && request.auth.uid == uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp', 'planTele', 'teleNo']))
          || (signedIn() && request.auth.uid == uid && resource.data.role == 'pendiente'
