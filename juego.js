@@ -32,7 +32,7 @@ const TEMAS = {
 };
 let JGT = TEMAS.oro;
 /* Fondo con foto: la cocina de Royal o una foto que suba cada quien */
-const fondoSrc = p => p.fondo==="cocina" ? "fondo-cocina.jpg?v=2" : (/^data:image\/jpeg;base64,/.test(p.fondo||"") ? p.fondo : "");
+const fondoSrc = p => p.fondo==="colores" ? "" : (/^data:image\/jpeg;base64,/.test(p.fondo||"") ? p.fondo : "fondo-cocina.jpg?v=2");
 const setTema = t => { JGT = TEMAS[t] || TEMAS.oro; return JGT; };
 const TXT_DEF = tipo => ({top:"Juega y gana", pill: tipo==="caja" ? "te regaló una caja sorpresa 🎁" : "te regaló un giro 🎁", sub: tipo==="caja" ? "Escoge una caja y descubre tu regalo para tu cocina." : "Gira la ruleta y gana un regalo para tu cocina.", btn: tipo==="caja" ? "" : "¡GIRAR!"});
 const txtDe = p => ({...TXT_DEF(p.tipo), ...Object.fromEntries(Object.entries(p.textos||{}).filter(([,v]) => String(v||"").trim()))});
@@ -390,7 +390,7 @@ function openPrograma(pid, copia){
     }
     paint();
     document.querySelectorAll("[data-tema]").forEach(b => b.onclick = () => { P.tema = b.dataset.tema; document.querySelectorAll("[data-tema]").forEach(x => x.classList.toggle("on", x===b)); });
-    const paintF = () => { const f = P.fondo || ""; q("pg-fondos").innerHTML = [["","Solo colores"],["cocina","Cocina Royal"],["foto","📷 Subir mi foto"]].map(([k,l]) => `<button class="opt ${(k==="foto" ? /^data:/.test(f) : f===k) ? "on" : ""}" data-fondo="${k}" type="button" style="display:flex;gap:8px;align-items:center">${k==="cocina"?`<img src="fondo-cocina.jpg?v=2" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:k==="foto"&&/^data:/.test(f)?`<img src="${f}" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:""}${l}</button>`).join("");
+    const paintF = () => { const f = P.fondo || ""; q("pg-fondos").innerHTML = [["colores","Solo colores"],["cocina","Cocina Royal"],["foto","📷 Subir mi foto"]].map(([k,l]) => `<button class="opt ${(k==="foto" ? /^data:/.test(f) : k==="cocina" ? (!f || f==="cocina") : f===k) ? "on" : ""}" data-fondo="${k}" type="button" style="display:flex;gap:8px;align-items:center">${k==="cocina"?`<img src="fondo-cocina.jpg?v=2" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:k==="foto"&&/^data:/.test(f)?`<img src="${f}" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:""}${l}</button>`).join("");
       document.querySelectorAll("[data-fondo]").forEach(b => b.onclick = () => { const k = b.dataset.fondo; if (k==="foto") q("pg-ffile").click(); else { P.fondo = k; paintF(); } }); };
     paintF();
     q("pg-ffile").onchange = async () => { const f = q("pg-ffile").files[0]; if (!f) return; try { const url = URL.createObjectURL(f); const img = await loadImg(url); URL.revokeObjectURL(url); const k = Math.min(1, 900/Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); P.fondo = c.toDataURL("image/jpeg", 0.7); paintF(); } catch { toast("No se pudo leer esa foto"); } };
