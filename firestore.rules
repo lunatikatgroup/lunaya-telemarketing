@@ -23,6 +23,10 @@ service cloud.firestore {
     // Las telemarketers del programa entran solas al mundo de cada distribuidor, menos las que él (o Dirección) quitó (teleNo)
     function distOk(d) { return d is string && d != '' && get(memberPath(d)).data.get('tipo', '') == 'Socio distribuidor'
       && !(request.auth.uid in get(memberPath(d)).data.get('teleNo', [])); }
+    // Telemarketer del programa Lunaya (por uid) y la líder que maneja sus citas
+    function progTele(uid) { return uid is string && uid != '' && get(memberPath(uid)).data.role in ['tele', 'baja']
+      && get(memberPath(uid)).data.get('upline', '') == ''; }
+    function liderDe(data) { return isLeader() && meData().get('upline', '') == '' && progTele(data.teleId); }
     function teleApptOk(sid) { return tvDe(sid) || distOk(sid) || distOk(get(memberPath(sid)).data.get('upline', '')); }
     function teleDistDe(data) { return isProgramTele() && (distOk(data.socioId) || distOk(data.get('up', ''))); }
 
@@ -86,9 +90,11 @@ service cloud.firestore {
              && request.resource.data.socioId == resource.data.socioId && request.resource.data.teleId == resource.data.teleId
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'sale', 'amount', 'saleStatus', 'resultAt', 'resultBy', 'segWhen', 'refsDemo', 'acomp', 'entrenador', 'when'])
              && request.resource.data.get('saleStatus', 'pendiente') in [resource.data.get('saleStatus', 'pendiente'), 'pendiente'])
+         // La líder maneja completas las citas que sacaron las telemarketers del programa
+         || (liderDe(resource.data) && request.resource.data.socioId == resource.data.socioId && request.resource.data.teleId == resource.data.teleId && noClientData())
          // La líder de telemarketing puede aprobar o cancelar ventas (solo el estado de la venta)
          || (isLeader() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saleStatus', 'saleStatusAt', 'saleStatusBy'])));
-      allow delete: if isAdmin() || (isMember() && resource.data.teleId == request.auth.uid);
+      allow delete: if isAdmin() || (isMember() && resource.data.teleId == request.auth.uid) || liderDe(resource.data);
     }
 
     // Datos privados de cada cita (cliente, teléfono, dirección, notas y mensajes).
@@ -113,7 +119,7 @@ service cloud.firestore {
       function socioDoc() { return get(memberPath(request.resource.data.socioId)).data; }
       // tv = cita del territorio de Dirección: las telemarketers del programa la ven completa para darle seguimiento
       function teleVe() { return isProgramTele() && resource.data.get('tv', false) == true; }
-      allow read: if involved() || upline() || teleVe() || teleDistDe(resource.data);
+      allow read: if involved() || upline() || teleVe() || teleDistDe(resource.data) || liderDe(resource.data);
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid
          && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
          && request.resource.data.get('up', '') == socioDoc().get('upline', '');
@@ -135,12 +141,14 @@ service cloud.firestore {
              && request.resource.data.up == request.auth.uid
              && socioDoc().get('upline', '') == request.auth.uid
              && request.resource.data.dir == false)
+         // La líder corrige los datos del cliente y escribe en las citas de sus telemarketers
+         || (liderDe(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['client', 'phone', 'city', 'address', 'notes', 'chat', 'seen', 'resNote']))
          // Corregir tv (territorio de Dirección) cuando quedó mal: solo se acepta el valor correcto según el socio de la cita
          || ((involved() || upline() || isAdmin()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tv'])
              && request.resource.data.tv == tvDe(resource.data.socioId))
          // Las telemarketers del programa pueden escribir en el chat de esas citas
          || ((teleVe() || teleDistDe(resource.data)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chat', 'seen', 'resNote']));
-      allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
+      allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid) || liderDe(resource.data);
     }
 
     // Registro diario de llamadas: cada persona escribe solo el suyo (id = fecha_uid)

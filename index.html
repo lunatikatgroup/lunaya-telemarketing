@@ -152,11 +152,11 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="juego.js?v=202611040813"></script>
+<script src="juego.js?v=202611040816"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611040813";
+const APP_VER = "202611040816";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -266,7 +266,7 @@ function undoCall(at){
 
 /* ===== Arranque (Firebase) ===== */
 const onErr = e => { console.log(e); if (e && e.code === "permission-denied") return; S.timedOut = true; render(); };
-function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.tdSubs = {}; S.subscribed = false; S.invSub = false;
+function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.tdSubs = {}; S.ldSubs = {}; S.subscribed = false; S.invSub = false;
   S.members = {}; S.appts = {}; S.logs = {}; S.config = {}; S.invites = {}; S.drives = {}; S.me = null; S.loaded = {me:false, members:false, appts:false, logs:false}; inviteDone = false; ownerDone = false; }
 function boot(){
   const cfg = window.LUNAYA_CONFIG || {};
@@ -322,7 +322,7 @@ function subscribeAll(){
   if (S.subscribed) return; S.subscribed = true;
   const from = addMonths(today().slice(0,8)+"01", -1);
   const loadTimer = setTimeout(() => { if (!S.loaded.appts){ S.timedOut = true; render(); } }, 12000);
-  S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; subTeleDists(); render(); }, onErr));
+  S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; subTeleDists(); subLider(); render(); }, onErr));
   S.apub = {}; S.privs = {};
   S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.apub = {}; s.docs.forEach(d => S.apub[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; mergeAppts(); render(); setTimeout(migrarGrupos, 1500); }, onErr));
   const privQ = [["teleId", S.uid], ["socioId", S.uid], ["dador", S.uid]]; if (S.me?.role === "tele" && !S.me?.upline) privQ.push(["tv", true]); if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
@@ -337,6 +337,14 @@ function subscribeAll(){
   }
   subInvites();
   if (window.subJuegos) subJuegos();
+}
+const esTeleProg = uid => { const m = S.members[uid]; return !!m && (m.role==="tele" || m.prevRole==="tele") && !m.upline; };
+/* La líder ve completas las citas de todas las telemarketers del programa */
+function subLider(){
+  if (!(S.me?.role==="tele" && S.me?.lider && !S.me?.upline) || !S.subscribed) return; S.ldSubs = S.ldSubs || {};
+  telesLunaya().forEach(t => { if (S.ldSubs[t.id] || t.id===S.uid) return;
+    const u = S.db.collection("apptp").where("teleId", "==", t.id).onSnapshot(s => { const m = {}; s.docs.forEach(x => m[x.id] = x.data()); S.privs["lt|"+t.id] = m; mergeAppts(); render(); }, e => console.log("lider", t.id, e));
+    S.ldSubs[t.id] = u; S.unsub.push(u); });
 }
 /* Telemarketer del programa: ve completo el mundo de cada distribuidor que no la haya quitado (citas, clientes y prospectos) */
 function subTeleDists(){
@@ -913,7 +921,10 @@ function openAppt(id){
   const a = S.appts[id]; if (!a) return; S.openPrivState = !!a._priv; const r = role();
   /* Las telemarketers del programa también reportan y reprograman las citas de los socios a los que tienen acceso (si ven los datos del cliente, tienen acceso) */
   const teleAcc = r==="tele" && !S.me?.upline && a._priv;
-  const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc; const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid || teleAcc;
+  /* La líder (Carly) maneja completas las citas que sacó cualquier telemarketer del programa */
+  const liderAcc = r==="tele" && S.me?.lider && !S.me?.upline && esTeleProg(a.agendo);
+  const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc || liderAcc; const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid || teleAcc || liderAcc;
+  const canClient = a._priv && (r==="admin" || a.agendo===S.uid || a.socioId===S.uid || liderAcc);
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b></div>
     ${a.status!=="agendada" && (a.resNote || a.refsDemo || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.refsDemo?`<div>👥 <b>${a.refsDemo}</b> referidos sacados en la demo</div>`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado puesto por ${esc(memberName(a.resultBy))}</div>`:""}</div>` : ""}
@@ -930,13 +941,15 @@ function openAppt(id){
       <button class="opt ${a.status==="no_se_hizo"?"on":""}" data-ar="no_se_hizo">No se hizo</button>
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
       ${a.sale && (r!=="tele" || S.me?.lider)?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
+    ${canClient?`<button class="btn small ghost" id="ap-cli">✏️ Editar datos del cliente</button>`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha">${timeSel("ap-time",laTime(a.when))}<button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
     ${r==="admin" && esEmp(S.members[a.socioId]) && a.status==="hecha" ? `<div class="eyebrow">🤝 Acompañamiento (Dirección)</div><div id="ac-edit"></div><button class="btn small ghost" id="ac-save" style="margin-top:6px">Guardar acompañamiento</button>` : ""}
+    ${liderAcc ? `<div class="eyebrow">📞 Telemarketer de esta cita</div><div class="grid2"><select class="i" id="lc-sel">${telesLunaya().map(t=>`<option value="${t.id}" ${a.teleId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select><div style="align-self:end"><button class="btn small ghost" id="lc-save">Cambiar telemarketer</button></div></div>` : ""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
     ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
     ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a._priv && a.status==="agendada" && r==="tele" && (a.teleId===S.uid || a.agendo===S.uid) ? (() => { const sc = S.members[a.socioId]?.gcalId || ""; return `<a class="btn dark" href="${esc(gcalUrl(a, sc))}" target="_blank" rel="noopener">📅 Agregar al calendario de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">${sc ? `Se abre directo en el calendario de citas de ${esc(memberName(a.socioId))}: solo toca <b>Guardar</b> y le aparece en su TimeTree.` : `${esc(memberName(a.socioId))} todavía no puso su calendario de citas en su perfil. Al abrirse, elige su calendario en la lista y guarda.`} Funciona si ${esc(memberName(a.socioId))} te compartió ese calendario con permiso para <b>hacer cambios</b>.</p>`; })() : ""}
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
-    <div class="row">${r==="admin"||a.agendo===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    <div class="row">${r==="admin"||a.agendo===S.uid||liderAcc?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     S.openAppt = id; refreshChat();
     if (a._priv && a.phone) getHistAny(a.socioId, a.phone).then(h => { const el = $("#ap-hist"); if (el) el.innerHTML = histHtml(h, id); });
     const send = () => { const inp = $("#chat-in"); const t = (inp.value||"").trim(); if (!t) return; inp.value = ""; const now = Date.now();
@@ -968,6 +981,11 @@ function openAppt(id){
       openModal(`<h3>Datos del cliente</h3><div class="grid2"><label class="f">Nombre del cliente<input class="i" id="fx-name"></label><label class="f">Teléfono<input class="i" id="fx-phone" inputmode="tel"></label><label class="f">Ciudad<input class="i" id="fx-city"></label><label class="f">Dirección<input class="i" id="fx-addr"></label><label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="fx-notes"></textarea></label></div><div class="row"><button class="btn" id="fx-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
         $("#fx-save").onclick = async () => { const n = $("#fx-name").value.trim(); if (!n){ toast("Escribe el nombre del cliente"); return; }
           try { await S.db.doc("apptp/"+id).set({client:n, phone:$("#fx-phone").value.trim(), city:$("#fx-city").value.trim(), address:$("#fx-addr").value.trim(), notes:$("#fx-notes").value.trim(), socioId:a.socioId, teleId:a.agendo, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:a.createdAt||Date.now()}); closeModal(); toast("Datos guardados"); setTimeout(()=>openAppt(id), 500); } catch(e){ writeErr(e); } }; }); });
+    $("#lc-save") && ($("#lc-save").onclick = () => { const v = $("#lc-sel").value; save({teleCredit: v===a.agendo ? null : v, origen:"tm"}); });
+    $("#ap-cli") && ($("#ap-cli").onclick = () => openModal(`<h3>Datos del cliente</h3><div class="grid2"><label class="f">Nombre del cliente<input class="i" id="ec-name" value="${esc(a.client||"")}"></label><label class="f">Teléfono<input class="i" id="ec-phone" inputmode="tel" value="${esc(a.phone||"")}"></label><label class="f">Ciudad<input class="i" id="ec-city" value="${esc(a.city||"")}"></label><label class="f">Dirección<input class="i" id="ec-addr" value="${esc(a.address||"")}"></label><label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="ec-notes">${esc(a.notes||"")}</textarea></label></div><div class="row"><button class="btn" id="ec-save">Guardar</button><button class="btn ghost" id="ec-back">Cancelar</button></div>`, () => {
+      $("#ec-back").onclick = () => openAppt(id);
+      $("#ec-save").onclick = async () => { const n = $("#ec-name").value.trim(); if (!n){ toast("Escribe el nombre del cliente"); return; }
+        try { await S.db.doc("apptp/"+id).update({client:n, phone:$("#ec-phone").value.trim(), city:$("#ec-city").value.trim(), address:$("#ec-addr").value.trim(), notes:$("#ec-notes").value.trim()}); toast("Datos guardados"); setTimeout(() => openAppt(id), 400); } catch(e){ writeErr(e); } }; }));
     $("#cr-save") && ($("#cr-save").onclick = () => { const v = $("#cr-sel").value; save({teleCredit: v || null, origen: v ? "tm" : (a.agendo===a.socioId ? "propia" : "dir")}); });
     $("#tr-go") && ($("#tr-go").onclick = function(){ const to = $("#tr-to").value; if (!to){ toast("Elige a quién transferir la cita"); return; }
       if (!this.dataset.sure){ this.dataset.sure="1"; this.textContent = "Toca otra vez para pasarla a "+memberName(to); this.classList.add("danger"); return; }
