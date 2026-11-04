@@ -39,8 +39,11 @@ service cloud.firestore {
          || request.resource.data.role == 'pendiente'
          || validInvite(request.resource.data));
       allow update: if isAdmin()
+         // El distribuidor ajusta el plan de pago de SUS telemarketers
+         || (isDist() && resource.data.get('upline', '') == request.auth.uid
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate']))
          || (signedIn() && request.auth.uid == uid
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp']))
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp', 'planTele']))
          || (signedIn() && request.auth.uid == uid && resource.data.role == 'pendiente'
              && (request.resource.data.role == 'pendiente' || validInvite(request.resource.data)));
       allow delete: if isAdmin();
