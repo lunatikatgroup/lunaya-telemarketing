@@ -310,7 +310,8 @@ function misProgramas(){ const yo = pagadorDe(S.uid);
 const progName = pid => S.programs?.[pid]?.name || "Programa";
 
 function viewJuego(r){
-  const f = S.f.lead || "nuevo"; const leads = prospectos().filter(([,l]) => f==="todos" || l.status===f).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  const f = S.f.lead || "nuevo"; const fs = S.f.lsoc || ""; const socs = [...new Set(prospectos().map(([,l]) => l.socioId))];
+  const leads = prospectos().filter(([,l]) => (f==="todos" || l.status===f) && (!fs || l.socioId===fs)).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
   const progs = misProgramas(); const mine = Object.entries(S.programs||{}).filter(([,p]) => p.owner===S.uid);
   const links = Object.entries(S.juegos||{}).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
   const porAvisar = links.filter(([c,j]) => j.kind!=="campana" && avanceDe(c).ganados > (j.avisados||0));
@@ -318,6 +319,8 @@ function viewJuego(r){
     <div class="card"><div class="row"><button class="btn" id="jg-ins">🎁 Inscribir cliente</button><button class="btn dark" id="jg-camp">📣 Campaña por mensaje</button><button class="btn ghost" id="jg-newp">➕ Nuevo programa</button></div>
       ${progs.length?"":`<p class="note" style="margin-bottom:0">Primero crea un programa: los regalos con su foto, la probabilidad de cada uno y la meta de referidos.</p>`}</div>
     <div class="card"><h2>Prospectos que llegaron<span class="note">${nuevosLeads()} nuevo(s)</span></h2>
+      ${socs.length > 1 ? `<select class="i" id="jg-lsoc" style="margin-bottom:8px"><option value="">Todos los socios</option>${socs.map(id => `<option value="${id}" ${fs===id?"selected":""}>${esc(memberName(id))}</option>`).join("")}</select>` : ""}
+      <div class="row" style="margin-bottom:10px"><button class="btn small ghost" id="jg-csv">⬇️ Descargar para el Drive</button>${fs && S.drives?.[fs]?.url ? `<a class="btn small ghost" href="${esc(S.drives[fs].url)}" target="_blank" rel="noopener">📂 Drive de ${esc(firstName(memberName(fs)))}</a>` : ""}</div>
       <div class="chips" style="margin-bottom:10px">${[["nuevo","Nuevos"],["llamado","Ya se llamó"],["cita","Con cita"],["no_interesa","No le interesa"],["todos","Todos"]].map(([k,l])=>`<button class="chip ${f===k?"on":""}" data-lf="${k}">${l}</button>`).join("")}</div>
       ${leads.length?`<div class="list">${leads.slice(0,80).map(([id,l])=>`<button class="item" data-lead="${id}"><div><div class="t">${esc(l.name)}</div><div class="m">${telFmt(l.tel)} · ${l.kind==="hoja" ? "📋 De la hoja" : "🎁 "+esc(l.prize)}</div><div class="m">Amiga de ${esc(l.ref||"—")} · ${fmt(l.at,{day:"numeric",month:"short"})}${l.socioId!==S.uid?" · para "+esc(memberName(l.socioId)):""}</div></div><span class="tag ${l.status==="nuevo"?"tg-warn":l.status==="cita"?"tg-good":"tg-mute"}">${JG_ST[l.status]||l.status}</span></button>`).join("")}</div>`:`<div class="empty">${f==="nuevo"?"No hay prospectos nuevos. Cuando alguien juegue con uno de tus links, aparece aquí solo.":"No hay prospectos aquí."}</div>`}</div>
     <div class="card"><h2>Links activos<span class="note">${links.length}</span></h2>
@@ -333,6 +336,12 @@ function bindJuego(){
   if (q("jg-ins")) q("jg-ins").onclick = () => openInscribir();
   if (q("jg-camp")) q("jg-camp").onclick = () => openCampana();
   on("[data-lf]", b => b.onclick = () => { S.f.lead = b.dataset.lf; render(); });
+  if (q("jg-lsoc")) q("jg-lsoc").onchange = e => { S.f.lsoc = e.target.value; render(); };
+  if (q("jg-csv")) q("jg-csv").onclick = () => { const fs = S.f.lsoc || ""; const l = prospectos().filter(([,x]) => !fs || x.socioId===fs).sort((a,b) => (a[1].at||0) - (b[1].at||0));
+    if (!l.length){ toast("No hay prospectos para descargar"); return; }
+    csvDownload(`prospectos-${fs ? firstName(memberName(fs)).toLowerCase() : "todos"}-${today()}.csv`, [["Fecha","Programa","Cliente que refirió","Nombre","Teléfono","Regalo","De dónde","Socio","Estado","Notas"],
+      ...l.map(([,x]) => [fmt(x.at||Date.now(),{year:"numeric",month:"2-digit",day:"2-digit"}), `${progName(x.pid)} de ${x.ref||""}`, x.ref||"", x.name||"", telFmt(x.tel), x.prize||"", x.kind==="hoja"?"Hoja de referidos":"Jugó la ruleta", memberName(x.socioId), JG_ST[x.status]||x.status||"", x.notes||""])]);
+    toast("Descargado. Ábrelo y pégalo en la hoja del Drive"); };
   on("[data-lead]", b => b.onclick = () => openLead(b.dataset.lead));
   on("[data-share]", b => b.onclick = () => openShare(b.dataset.share));
   on("[data-avance]", b => b.onclick = () => openAvance(b.dataset.avance));
