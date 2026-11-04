@@ -153,7 +153,7 @@ nav.bottom svg{width:22px;height:22px}
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611031832";
+const APP_VER = "202611031837";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -293,7 +293,7 @@ let dadorFix = new Set();
 function arreglarDador(){ const pv = Object.assign({}, ...Object.values(S.privs||{}));
   Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || dadorFix.has(id)) return;
     if (a.transferredFrom && a.socioId===S.uid && q.socioId===S.uid && !q.dador){ dadorFix.add(id); S.db.doc("apptp/"+id).update({dador:a.transferredFrom}).catch(()=>{}); } }); }
-function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, _priv:true} : {...x, _priv:false}; }); }
+function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, dador:q.dador, _priv:true} : {...x, _priv:false}; }); }
 const cName = a => a._priv ? (a.client||"Cliente") : "Cliente privado";
 /* Separar Dirección: cada director ve solo los clientes de sus propios emprendedores.
    Pasa una vez: a los emprendedores sin grupo les pone como grupo a quien los invitó, y ajusta sus citas. */
@@ -736,7 +736,12 @@ const telKey = t => String(t||"").replace(/[^0-9]/g,"").slice(-10);
 const histId = (sid, tel) => { const f = pagadorDe(sid), k = telKey(tel); return f && k.length>=7 ? `${f}_${k}` : ""; };
 async function getHist(sid, tel){ const id = histId(sid, tel); if (!id) return null; try { const d = await S.db.doc("hist/"+id).get(); return d.exists ? d.data() : null; } catch { return null; } }
 function histEntry(a, extra){ return {id:a.id||"", when:a.when||0, socioId:a.socioId||"", teleId:a.teleId||"", status:a.status||"agendada", sale:!!a.sale, amount:+a.amount||0, note:(extra&&extra.note)||"", at:Date.now(), by:S.uid}; }
-function histAdd(sid, tel, name, entry){ const id = histId(sid, tel); if (!id) return Promise.resolve(); return S.db.doc("hist/"+id).set({fam:pagadorDe(sid), tel:telKey(tel), name:name||"", v:firebase.firestore.FieldValue.arrayUnion(entry)}, {merge:true}).catch(e => console.log("hist", e)); }
+/* Se guarda en el territorio del socio y, si la cita la dio otra persona (Dirección u otro distribuidor), también en el de quien la dio */
+function histAdd(sid, tel, name, entry, givers){ const k = telKey(tel); if (k.length < 7) return Promise.resolve();
+  const fams = new Set([pagadorDe(sid), ...(givers||[]).filter(g => g && (S.members[g]?.role==="admin" || S.members[g]?.tipo===DIST || S.members[g]?.tipo==="Emprendedor")).map(g => pagadorDe(g))].filter(Boolean));
+  return Promise.all([...fams].map(f => S.db.doc(`hist/${f}_${k}`).set({fam:f, tel:k, name:name||"", v:firebase.firestore.FieldValue.arrayUnion(entry)}, {merge:true}).catch(e => console.log("hist", e)))); }
+/* Lee el historial del territorio del socio; si no hay permiso, el de quien está mirando (sus propias citas dadas) */
+async function getHistAny(sid, tel){ const a = await getHist(sid, tel); if (a) return a; const f = pagadorDe(S.uid), k = telKey(tel); if (!f || k.length < 7 || f===pagadorDe(sid)) return null; try { const d = await S.db.doc(`hist/${f}_${k}`).get(); return d.exists ? d.data() : null; } catch { return null; } }
 const HST = {agendada:"Cita agendada", hecha:"Demo hecha", no_se_hizo:"No se hizo", cancelada:"Cancelada"};
 function histHtml(h, skipId){ if (!h || !h.v) return ""; const last = {}; h.v.filter(x => x.id!==skipId).forEach(x => { const k = x.id || x.at; if (!last[k] || (x.at||0) > (last[k].at||0)) last[k] = x; }); const v = Object.values(last).sort((a,b)=>(b.when||b.at||0)-(a.when||a.at||0)); if (!v.length) return "";
   return `<div class="banner warn" style="margin-top:6px"><b>📒 Este cliente ya tiene historial${h.name?` (${esc(h.name)})`:""}</b>${v.slice(0,8).map(x=>`<div class="note" style="color:inherit;margin-top:4px">• <b>${fmt(x.when||x.at,{day:"numeric",month:"short",year:"numeric"})}</b> · ${esc(memberName(x.socioId))}${x.teleId&&x.teleId!==x.socioId?` (cita de ${esc(memberName(x.teleId))})`:""} · ${x.sale?`Venta ${money(x.amount)}`:(HST[x.status]||x.status)}${x.note?` — “${esc(x.note)}”`:""}</div>`).join("")}</div>`; }
@@ -754,7 +759,7 @@ function openCitaForm(src, own){
       <label class="f" style="grid-column:1/-1">${own?"Notas":"Notas para el socio"}<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
     </div>
     <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
-    $("#c-phone").onchange = $("#c-phone").onblur = async () => { const h = await getHist(own ? S.uid : S.world, $("#c-phone").value); $("#c-hist").innerHTML = histHtml(h); if (h && h.name && !$("#c-name").value.trim()) $("#c-name").value = h.name; };
+    $("#c-phone").onchange = $("#c-phone").onblur = async () => { const h = await getHistAny(own ? S.uid : S.world, $("#c-phone").value); $("#c-hist").innerHTML = histHtml(h); if (h && h.name && !$("#c-name").value.trim()) $("#c-name").value = h.name; };
     $("#c-save").onclick = async () => {
       const name = $("#c-name").value.trim(), d = $("#c-date").value, t = timeVal("c-time");
       if (!name || !d || !t){ toast("Falta el nombre, la fecha o la hora"); return; }
@@ -766,7 +771,7 @@ function openCitaForm(src, own){
           socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:at};
         /* Se guardan juntas: o quedan las dos partes o ninguna (así nunca queda una cita sin los datos del cliente) */
         const bt = S.db.batch(); bt.set(ref, pub); bt.set(S.db.doc("apptp/"+ref.id), priv); await bt.commit();
-        histAdd(socio, priv.phone, name, histEntry({...pub, id:ref.id}, {note:priv.notes}));
+        histAdd(socio, priv.phone, name, histEntry({...pub, id:ref.id}, {note:priv.notes}), [S.uid]);
         if (!own) await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
         closeModal(); toast("Cita guardada"); S.flash = "cita"; setTimeout(() => { if (S.appts[ref.id]) openAppt(ref.id); }, 400); setTimeout(()=>{ S.flash=null; render(); }, 600);
       } catch(e){ $("#c-save").disabled = false; writeErr(e); }
@@ -898,7 +903,7 @@ function openAppt(id){
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
     <div class="row">${r==="admin"||a.agendo===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     S.openAppt = id; refreshChat();
-    if (a._priv && a.phone) getHist(a.socioId, a.phone).then(h => { const el = $("#ap-hist"); if (el) el.innerHTML = histHtml(h, id); });
+    if (a._priv && a.phone) getHistAny(a.socioId, a.phone).then(h => { const el = $("#ap-hist"); if (el) el.innerHTML = histHtml(h, id); });
     const send = () => { const inp = $("#chat-in"); const t = (inp.value||"").trim(); if (!t) return; inp.value = ""; const now = Date.now();
       S.db.doc("apptp/"+id).update({chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:t}), ["seen."+S.uid]: now}).catch(e => { inp.value = t; writeErr(e); }); };
     $("#chat-send") && ($("#chat-send").onclick = send);
@@ -912,7 +917,7 @@ function openAppt(id){
     const rb = () => `<label class="f">¿Cuántos referidos sacaste en esta casa?<input class="i" type="number" min="0" step="1" id="ar-refs" value="${a.refsDemo??""}" placeholder="0"></label>`;
     const nb = () => a._priv ? `<label class="f" style="grid-column:1/-1">¿Qué pasó con este cliente? (comentario)<textarea class="i" id="ar-note" maxlength="1000" placeholder="Ej: le gustó pero lo quiere hablar con su esposo; tiene ollas viejas…">${esc(a.resNote||"")}</textarea></label>` : "";
     const saveR = async upd => { if (upd.status==="hecha"){ const ac = readAc(); if (ac===null) return; Object.assign(upd, ac); } const rf = $("#ar-refs"); if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); } catch(e){ writeErr(e); return; } }
-      { const cur = S.appts[id] || a; if (cur._priv && cur.phone) histAdd(cur.socioId, cur.phone, cur.client, histEntry({...cur, ...upd, id}, {note: n ? n.value.trim() : (cur.resNote||"")})); }
+      { const cur = S.appts[id] || a; if (cur._priv && cur.phone) histAdd(cur.socioId, cur.phone, cur.client, histEntry({...cur, ...upd, id}, {note: n ? n.value.trim() : (cur.resNote||"")}), [cur.agendo, cur.dador]); }
       save(upd); };
     const LBL = {hecha:"Guardar: demo sin venta", no_se_hizo:"Guardar: no se hizo", cancelada:"Guardar: cancelada"};
     document.querySelectorAll("[data-ar]").forEach(b => b.onclick = () => { const k = b.dataset.ar;
