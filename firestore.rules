@@ -40,7 +40,7 @@ service cloud.firestore {
          || validInvite(request.resource.data));
       allow update: if isAdmin()
          || (signedIn() && request.auth.uid == uid
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo']))
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId']))
          || (signedIn() && request.auth.uid == uid && resource.data.role == 'pendiente'
              && (request.resource.data.role == 'pendiente' || validInvite(request.resource.data)));
       allow delete: if isAdmin();

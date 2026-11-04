@@ -773,6 +773,7 @@ function gcalUrl(a){
   const z = ms => new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
   const details = [a.phone?`Teléfono: ${a.phone}`:"", a.notes?`Notas: ${a.notes}`:"", `Agendó: ${memberName(a.teleId)} · Lunaya`].filter(Boolean).join("\n");
   const q = new URLSearchParams({action:"TEMPLATE", text:`Demostración · ${a.client||"Cliente"}`, dates:`${z(a.when)}/${z(a.when+2*3600e3)}`, details, location:[a.address,a.city].filter(Boolean).join(", "), ctz:TZ});
+  if (S.me?.gcalId) q.set("src", S.me.gcalId); /* abre directo en el calendario elegido (ej. Citas Lunaya) */
   return "https://calendar.google.com/calendar/render?" + q.toString();
 }
 const famOf = m => !m ? "" : (m.tipo===DIST || m.role==="admin") ? m.id : (m.upline || "dir");
@@ -1032,7 +1033,7 @@ function openProfile(){
         <label class="row" style="justify-content:center;margin-top:6px">− <input type="range" id="pf-zoom" min="1" max="4" step="0.01" value="1" style="flex:1" aria-label="Acercar o alejar"> +</label></div>
       <div class="row" style="justify-content:center"><label class="btn small" style="cursor:pointer">${photo?"Cambiar foto":"Elegir foto"}<input type="file" id="pf-file" accept="image/*" hidden></label>${photo?`<button class="btn small ghost" id="pf-rm">Quitar foto</button>`:""}</div>
     </div>
-    <div class="grid2"><label class="f">Nombre<input class="i" id="pf-name" value="${esc(m.name||"")}"></label><label class="f">Teléfono / WhatsApp<input class="i" id="pf-phone" inputmode="tel" value="${esc(m.phone||"")}"></label><label class="f">Correo de contacto<input class="i" id="pf-email" type="email" inputmode="email" value="${esc(m.email||"")}"></label></div>
+    <div class="grid2"><label class="f">Nombre<input class="i" id="pf-name" value="${esc(m.name||"")}"></label><label class="f">Teléfono / WhatsApp<input class="i" id="pf-phone" inputmode="tel" value="${esc(m.phone||"")}"></label><label class="f">Correo de contacto<input class="i" id="pf-email" type="email" inputmode="email" value="${esc(m.email||"")}"></label><label class="f" style="grid-column:1/-1">Calendario de Google para mis citas (opcional)<input class="i" id="pf-gcal" value="${esc(m.gcalId||"")}" placeholder="Ej: abc123@group.calendar.google.com"><span class="note">Si lo pones, el botón 📅 guarda las citas directo en ese calendario (por ejemplo "Citas Lunaya").</span></label></div>
     <p class="note" style="margin:0">Entras con: <b>${esc(S.email)}</b></p>
     <div class="row"><button class="btn" id="pf-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button><button class="btn small ghost" id="pf-out" style="margin-left:auto">Cerrar sesión</button></div>`, () => {
     $("#pf-out").onclick = () => { closeModal(); S.auth.signOut(); };
@@ -1061,7 +1062,7 @@ function openProfile(){
     $("#pf-rm") && ($("#pf-rm").onclick = () => { photo = ""; crop = null; $("#pf-tools").hidden = true; draw(); });
     $("#pf-save").onclick = async () => { const name = $("#pf-name").value.trim(); if (!name){ toast("Escribe tu nombre"); return; }
       let out = photo; if (crop){ const c2 = document.createElement("canvas"); c2.width = c2.height = 240; c2.getContext("2d").drawImage(cv, 0, 0, 240, 240); out = c2.toDataURL("image/jpeg", 0.85); }
-      try { $("#pf-save").disabled = true; await S.db.doc("members/"+S.uid).update({name, phone:$("#pf-phone").value.trim(), email:$("#pf-email").value.trim(), photo:out}); closeModal(); toast("Perfil guardado"); } catch(e){ $("#pf-save").disabled = false; writeErr(e); } };
+      try { $("#pf-save").disabled = true; await S.db.doc("members/"+S.uid).update({name, phone:$("#pf-phone").value.trim(), email:$("#pf-email").value.trim(), photo:out, gcalId:($("#pf-gcal")?.value||"").trim()}); closeModal(); toast("Perfil guardado"); } catch(e){ $("#pf-save").disabled = false; writeErr(e); } };
   });
 }
 
