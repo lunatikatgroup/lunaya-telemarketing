@@ -469,11 +469,15 @@ function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = a
       ${R.foto?`<a href="${R.foto}" target="_blank" rel="noopener"><img src="${R.foto}" alt="Hoja de referidos" style="width:100%;border-radius:10px;margin-top:8px;border:1px solid var(--line)"></a><p class="note" style="margin:4px 0 0">La telemarketer puede pasar los contactos de la foto a la lista de arriba.</p>`:""}</details>
     <p class="note" style="margin:0">Cuenta como visita cuando la cita de esa amiga se agenda desde Ruleta y se marca “Demostración hecha”.</p>
     <label class="f">Mensaje para ${esc(firstName(j.ref))}<textarea class="i" id="av-m" style="min-height:150px">${esc(msgAvance(code))}</textarea></label>
-    <div class="row"><a class="btn" id="av-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="av-sms">Mensaje de texto</a><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    <div class="row"><a class="btn" id="av-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="av-sms">Mensaje de texto</a><button class="btn ghost" data-close>Cerrar</button></div>
+    ${j.by===S.uid || j.socioId===S.uid ? `<button class="btn small ghost" id="av-del" style="justify-self:start">🗑️ Borrar este link y sus prospectos</button>` : ""}`, () => {
     const q = x => document.getElementById(x); const upd = () => { const t = q("av-m").value; q("av-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(t)}`; q("av-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(t)}`; }; upd(); q("av-m").oninput = upd;
     const marcar = () => { if (a.ganados > (j.avisados||0)){ j.avisados = a.ganados; S.db.doc("juegos/"+code).update({avisados:a.ganados}).catch(e => console.log(e)); setTimeout(render, 300); } };
     q("av-wa").addEventListener("click", marcar); q("av-sms").addEventListener("click", marcar);
     document.querySelectorAll("[data-envia]").forEach(x => x.addEventListener("click", () => { S.db.doc("leads/"+x.dataset.envia).update({enviado:Date.now()}).catch(e => console.log(e)); setTimeout(() => openAvance(code), 800); }));
+    if (q("av-del")) q("av-del").onclick = async function(){ if (!this.dataset.sure){ this.dataset.sure = "1"; this.textContent = "Toca otra vez: se borra el link de "+firstName(j.ref)+" y sus "+ls.length+" referido(s)"; this.classList.add("danger"); return; }
+      try { const ids = Object.keys(S.leads).filter(k => S.leads[k].code===code || k===code+"_ref"); for (const k of ids){ await S.db.doc("leads/"+k).delete().catch(() => {}); delete S.leads[k]; }
+        await S.db.doc("juegos/"+code).delete(); delete S.juegos[code]; closeModal(); toast("Link borrado"); render(); } catch(e){ writeErr(e); } };
     q("av-add").onclick = async () => { const nuevos = []; const ya = new Set(refsDe(code).map(([,l]) => l.tel));
       q("av-hoja").value.split(/\n+/).map(x => x.trim()).filter(Boolean).forEach(line => { const t = telOk((line.match(/[\d\s().+-]{10,}/)||[""])[0]) || telOk(line.replace(/[^\d]/g,"")); const nm = line.replace(/[\d().+-]/g,"").replace(/[,;:]+/g," ").replace(/\s+/g," ").trim();
         if (t && !ya.has(t) && !nuevos.some(x => x.tel===t)) nuevos.push({tel:t, name:nm.slice(0,60)}); });
@@ -582,10 +586,13 @@ function openLead(id){
     <div class="note">${telFmt(t)}</div><div id="ld-h"></div>
     <label class="f">Estado<select class="i" id="ld-st">${Object.entries(JG_ST).map(([k,v])=>`<option value="${k}" ${l.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
     <label class="f">Notas<textarea class="i" id="ld-n" placeholder="Qué te dijo, cuándo volver a llamar…">${esc(l.notes||"")}</textarea></label>
-    <div class="row"><button class="btn" id="ld-cita">📅 Agendar cita</button><button class="btn ghost" id="ld-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    <div class="row"><button class="btn" id="ld-cita">📅 Agendar cita</button><button class="btn ghost" id="ld-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>
+    ${l.by===S.uid || l.socioId===S.uid || role()==="admin" ? `<button class="btn small ghost" id="ld-del" style="justify-self:start">🗑️ Borrar prospecto</button>` : ""}`, () => {
     const q = x => document.getElementById(x);
     getHistAny(l.socioId, t).then(h => { const e = q("ld-h"); if (e) e.innerHTML = histHtml(h); });
     const upd = async (o) => { try { await S.db.doc("leads/"+id).update({...o, statusAt:Date.now()}); return true; } catch(e){ writeErr(e); return false; } };
+    if (q("ld-del")) q("ld-del").onclick = function(){ if (!this.dataset.sure){ this.dataset.sure = "1"; this.textContent = "Toca otra vez para borrarlo"; this.classList.add("danger"); return; }
+      S.db.doc("leads/"+id).delete().then(() => { delete S.leads[id]; closeModal(); toast("Prospecto borrado"); render(); }, writeErr); };
     q("ld-save").onclick = async () => { if (await upd({status:q("ld-st").value, notes:q("ld-n").value.trim().slice(0,1000)})){ closeModal(); toast("Guardado"); } };
     q("ld-cita").onclick = () => { const own = l.socioId===S.uid; if (!own){ if (!S.members[l.socioId]){ toast("Ese socio ya no está en el equipo"); return; } S.world = l.socioId; }
       const pre = {name:l.name, phone:telFmt(t), notes:`${l.kind==="hoja" ? "Referido" : "Ganó "+l.prize+" en la "+(S.programs[l.pid]?.tipo==="caja"?"caja sorpresa":"ruleta")} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
