@@ -153,7 +153,7 @@ nav.bottom svg{width:22px;height:22px}
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611031642";
+const APP_VER = "202611031708";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -423,6 +423,33 @@ function sueldoDe(t, r, base){
   const dias = a <= b ? workDays(a, b) : 0;
   return {sueldo: total ? base * dias / total : 0, dias, total};
 }
+/* ===== Comisiones de emprendedores =====
+   Cada quien paga a SUS emprendedores con su plan (Dirección o el distribuidor):
+   acompañado de entrenador / solo (cita propia o de telemarketing) / solo con cita que le dio quien paga. */
+const DEF_EMP = {acomp:10, solo:20, asig:13};
+function planDe(uid){ const m = S.members[uid]; if (!m) return null; if (m.planEmp) return {...DEF_EMP, ...m.planEmp}; return (S.owners||[]).includes(String(m.email||"").toLowerCase()) ? {...DEF_EMP} : null; }
+const esEmp = m => m && m.role==="socio" && m.tipo==="Emprendedor";
+function catEmp(a){ if (a.acomp===true) return "acomp"; return origenDe(a)==="asig" ? "asig" : "solo"; }
+const CAT_TXT = {acomp:"Acompañado de entrenador", solo:"Solo (cita propia o de telemarketing)", asig:"Solo, cita asignada"};
+function gananciasEmp(uid, r){ const m = S.members[uid]; const plan = esEmp(m) && m.upline ? planDe(m.upline) : null; if (!plan) return null;
+  const v = Object.entries(S.appts).filter(([,a]) => a.socioId===uid && a.sale && inR(a.when||0, r));
+  const rows = v.map(([id,a]) => { const c = catEmp(a), pct = +plan[c]||0, st = a.saleStatus||"pendiente"; return {id, a, c, pct, st, com: st==="aprobada" ? (+a.amount||0)*pct/100 : 0, pot: st==="pendiente" ? (+a.amount||0)*pct/100 : 0}; });
+  const tot = rows.reduce((t,x)=>t+x.com,0), pend = rows.reduce((t,x)=>t+x.pot,0);
+  const byCat = ["acomp","solo","asig"].map(c => { const l = rows.filter(x=>x.c===c && x.st==="aprobada"); return {c, pct:plan[c], n:l.length, vol:l.reduce((t,x)=>t+(+x.a.amount||0),0), com:l.reduce((t,x)=>t+x.com,0)}; });
+  return {plan, rows, tot, pend, byCat}; }
+function gananciasCard(uid, p){ const g = gananciasEmp(uid, range(p)); if (!g) return "";
+  return `<div class="card"><h2>${uid===S.uid?"Mis ganancias":"Ganancias de "+esc(memberName(uid))}<span class="note">${PLABEL[p]}</span></h2>
+    <div class="tiles">${g.byCat.map(x=>`<div class="tile"><b>${money(x.com)}</b><span>${x.pct}% · ${CAT_TXT[x.c]}</span><small>${x.n} venta(s) · ${money(x.vol)}</small></div>`).join("")}<div class="tile acc"><b>${money(g.tot)}</b><span>Total comisiones</span><small>solo ventas aprobadas</small></div></div>
+    ${g.pend?`<p class="note">Por aprobar: ${money(g.pend)} más, cuando aprueben las ventas pendientes.</p>`:""}</div>`; }
+function empPagosCard(payer, p){ const plan = planDe(payer); const emps = Object.entries(S.members).filter(([,m]) => esEmp(m) && m.upline===payer).map(([id])=>id);
+  const rg = range(p); const rows = emps.map(id => ({id, g:gananciasEmp(id, rg)})).filter(x=>x.g);
+  const pl = plan || DEF_EMP;
+  return `<div class="card"><h2>Comisiones de emprendedores<span class="note">${PLABEL[p]}</span></h2>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="note">Tu plan:</span>
+      <label class="note">Con entrenador <input class="i" type="number" min="0" step="0.5" data-pemp="acomp" value="${plan?pl.acomp:""}" placeholder="${DEF_EMP.acomp}" style="width:64px;padding:4px 6px">%</label>
+      <label class="note">Solo <input class="i" type="number" min="0" step="0.5" data-pemp="solo" value="${plan?pl.solo:""}" placeholder="${DEF_EMP.solo}" style="width:64px;padding:4px 6px">%</label>
+      <label class="note">Solo, cita que tú le das <input class="i" type="number" min="0" step="0.5" data-pemp="asig" value="${plan?pl.asig:""}" placeholder="${DEF_EMP.asig}" style="width:64px;padding:4px 6px">%</label></div>
+    ${!plan?`<p class="note">Pon tus porcentajes para que la app calcule las comisiones de tus emprendedores.</p>`:rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Emprendedor</th><th class="n">Con entrenador</th><th class="n">Solo</th><th class="n">Solo, cita asignada</th><th class="n">Total a pagar</th><th class="n">Por aprobar</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(memberName(x.id))}</b></td>${x.g.byCat.map(c=>`<td class="n">${money(c.com)}<div class="note">${c.n} · ${money(c.vol)}</div></td>`).join("")}<td class="n"><b>${money(x.g.tot)}</b></td><td class="n">${money(x.g.pend)}</td></tr>`).join("")}</tbody></table></div><p class="note">Se calcula solo sobre ventas aprobadas.</p>`:`<div class="empty">Tus emprendedores no tienen ventas en este periodo.</div>`}</div>`; }
 function commissions(r, up=""){
   const c = com(); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0])].filter(t => (t.upline||"")===up);
   /* la comisión se paga sobre ventas aprobadas */
@@ -575,7 +602,7 @@ function viewHoy(r){
       <div class="tile"><b>${e.ventas?money(e.monto/e.ventas):"—"}</b><span>Venta promedio</span></div>
       <div class="tile"><b>${pctN(e.ventas,e.demos)??"—"}${e.demos?"%":""}</b><span>% efectividad demo → venta</span></div>
       <div class="tile"><b>${e.refsDemo||0}</b><span>Referidos sacados en demos</span><small>${e.demos?(Math.round((e.refsDemo||0)/e.demos*10)/10)+" por casa":""}</small></div></div></div>`;
-    h += socioRefCard() + driveCard();
+    h += gananciasCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes") + socioRefCard() + driveCard();
   } else {
     const e = teleEval(null, rg); const sinRes = Object.values(S.appts).filter(a => a.status==="agendada" && a.when < Date.now()-3600e3).length;
     h += `<div class="card"><h2>Territorio ${periodChips()}</h2>${evalTiles(e)}${sinRes?`<div class="banner warn" style="margin-top:12px">${sinRes} cita(s) pasadas sin resultado. Los socios deben marcarlas.</div>`:""}</div>`;
@@ -810,6 +837,7 @@ function openAppt(id){
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
       ${a.sale && (r!=="tele" || S.me?.lider)?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha">${timeSel("ap-time",laTime(a.when))}<button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
+    ${r==="admin" && esEmp(S.members[a.socioId]) && a.status==="hecha" ? `<div class="eyebrow">🤝 Acompañamiento (Dirección)</div><div id="ac-edit"></div><button class="btn small ghost" id="ac-save" style="margin-top:6px">Guardar acompañamiento</button>` : ""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
     ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
     ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a._priv && a.status==="agendada" && r==="tele" && (a.teleId===S.uid || a.agendo===S.uid) ? (() => { const sc = S.members[a.socioId]?.gcalId || ""; return `<a class="btn dark" href="${esc(gcalUrl(a, sc))}" target="_blank" rel="noopener">📅 Agregar al calendario de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">${sc ? `Se abre directo en el calendario de citas de ${esc(memberName(a.socioId))}: solo toca <b>Guardar</b> y le aparece en su TimeTree.` : `${esc(memberName(a.socioId))} todavía no puso su calendario de citas en su perfil. Al abrirse, elige su calendario en la lista y guarda.`} Funciona si ${esc(memberName(a.socioId))} te compartió ese calendario con permiso para <b>hacer cambios</b>.</p>`; })() : ""}
@@ -821,17 +849,22 @@ function openAppt(id){
     $("#chat-send") && ($("#chat-send").onclick = send);
     $("#chat-in") && ($("#chat-in").onkeydown = e => { if (e.key==="Enter"){ e.preventDefault(); send(); } });
     const save = async upd => { try { await chain("appt:"+id, () => S.db.doc("appts/"+id).update(upd)); closeModal(); toast("Guardado"); } catch(e){ writeErr(e); } };
+    const needAc = esEmp(S.members[a.socioId]);
+    const acb = () => needAc ? `<div class="f" style="grid-column:1/-1"><span>¿Cómo fue a la cita? <b style="color:var(--bad,#c0392b)">*</b></span><div class="opts" style="margin-top:4px"><button type="button" class="opt ${a.acomp===false?"on":""}" data-ac="solo">🙋 Fue solo</button><button type="button" class="opt ${a.acomp===true?"on":""}" data-ac="acomp">🤝 Con entrenador</button></div><select class="i" id="ac-who" style="margin-top:6px;${a.acomp===true?"":"display:none"}"><option value="">¿Quién fue el entrenador?</option>${socios().filter(m=>m.id!==a.socioId).map(m=>`<option value="${m.id}" ${a.entrenador===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select></div>` : "";
+    const bindAc = () => { document.querySelectorAll("[data-ac]").forEach(b => b.onclick = () => { document.querySelectorAll("[data-ac]").forEach(x => x.classList.toggle("on", x===b)); $("#ac-who").style.display = b.dataset.ac==="acomp" ? "" : "none"; }); };
+    const readAc = () => { if (!needAc) return {}; const on = document.querySelector("[data-ac].on"); if (!on){ toast("Marca si fue solo o con entrenador"); return null; } const ac = on.dataset.ac==="acomp"; return {acomp:ac, entrenador: ac ? ($("#ac-who").value||"") : ""}; };
+    if ($("#ac-edit")){ $("#ac-edit").innerHTML = acb(); bindAc(); $("#ac-save").onclick = () => { const ac = readAc(); if (ac) save(ac); }; }
     const rb = () => `<label class="f">¿Cuántos referidos sacaste en esta casa?<input class="i" type="number" min="0" step="1" id="ar-refs" value="${a.refsDemo??""}" placeholder="0"></label>`;
     const nb = () => a._priv ? `<label class="f" style="grid-column:1/-1">¿Qué pasó con este cliente? (comentario)<textarea class="i" id="ar-note" maxlength="1000" placeholder="Ej: le gustó pero lo quiere hablar con su esposo; tiene ollas viejas…">${esc(a.resNote||"")}</textarea></label>` : "";
-    const saveR = async upd => { const rf = $("#ar-refs"); if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); } catch(e){ writeErr(e); return; } } save(upd); };
+    const saveR = async upd => { if (upd.status==="hecha"){ const ac = readAc(); if (ac===null) return; Object.assign(upd, ac); } const rf = $("#ar-refs"); if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); } catch(e){ writeErr(e); return; } } save(upd); };
     const LBL = {hecha:"Guardar: demo sin venta", no_se_hizo:"Guardar: no se hizo", cancelada:"Guardar: cancelada"};
     document.querySelectorAll("[data-ar]").forEach(b => b.onclick = () => { const k = b.dataset.ar;
       document.querySelectorAll("[data-ar]").forEach(x => x.classList.toggle("on", x===b));
-      if (k==="seguimiento"){ const w = a.segWhen || (Date.now()+2*864e5); $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Día del seguimiento<input class="i" type="date" id="sg-d" value="${laDate(w)}"></label><label class="f">Hora${timeSel("sg-t",a.segWhen?laTime(w):"18:00")}</label>${rb()}${nb()}<div style="align-self:end"><button class="btn" id="sg-save">Guardar seguimiento</button></div></div>`;
+      if (k==="seguimiento"){ const w = a.segWhen || (Date.now()+2*864e5); $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Día del seguimiento<input class="i" type="date" id="sg-d" value="${laDate(w)}"></label><label class="f">Hora${timeSel("sg-t",a.segWhen?laTime(w):"18:00")}</label>${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="sg-save">Guardar seguimiento</button></div></div>`; bindAc();
         $("#sg-save").onclick = () => { const d=$("#sg-d").value, t=timeVal("sg-t"); if (!d||!t){ toast("Elige el día y la hora"); return; } saveR({status:"hecha", sale:false, amount:0, segWhen:laToMs(d,t), resultAt:Date.now(), resultBy:S.uid}); }; return; }
-      if (k==="venta"){ $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Monto de la venta (USD)<input class="i" type="number" min="0" step="0.01" id="ar-amt" value="${a.amount||""}"></label>${rb()}${nb()}<div style="align-self:end"><button class="btn" id="ar-save">Guardar venta</button></div></div>`; $("#ar-amt").focus();
+      if (k==="venta"){ $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Monto de la venta (USD)<input class="i" type="number" min="0" step="0.01" id="ar-amt" value="${a.amount||""}"></label>${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="ar-save">Guardar venta</button></div></div>`; bindAc(); $("#ar-amt").focus();
         $("#ar-save").onclick = () => { const amt = +$("#ar-amt").value; if (!(amt>0)){ toast("Escribe el monto de la venta"); return; } saveR({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt:Date.now(), resultBy:S.uid}); }; return; }
-      $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${k==="hecha"?rb():""}${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; $("#ar-note") && $("#ar-note").focus();
+      $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${k==="hecha"?acb()+rb():""}${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; bindAc(); $("#ar-note") && $("#ar-note").focus();
       $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
     $("#fix-priv") && ($("#fix-priv").onclick = () => { const sm = S.members[a.socioId]||{};
@@ -859,6 +892,7 @@ function viewPagos(){
   const ss = socios().map(s => { const e = teleEval(null, rg, s.id); return {s, e}; });
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
+  h += empPagosCard(S.uid, p);
   return h;
 }
 function comCard(p, up=""){
@@ -947,6 +981,7 @@ function viewGrupo(){
   const rg = range(S.f.period); const g = grupoDe(S.uid);
   const emps = [{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")].map(m => ({name:m.name+(m.id===S.uid?" (tú)":""), e:teleEval(null, rg, m.id), id:m.id}));
   let h = `<div class="card"><h2>Mi grupo ${periodChips()}</h2><p class="note" style="margin-top:-6px">Tú manejas a tus emprendedores y telemarketers. Solo tú y la telemarketer de cada cita ven los datos de los clientes de tu grupo.</p></div>`;
+  h += empPagosCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes");
   h += socioTableCard([{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")], rg, "Emprendedores", "Tus ventas y las de tu grupo, separadas por de dónde salió la cita.").replace(/<div class="chips">[\s\S]*?<\/div>/, "");
   const teles = g.filter(m => m.role==="tele").map(t => ({name:t.name, e:teleEval(t.id, rg), id:t.id}));
   if (teles.length){ h += `<div class="card"><h2>Mis telemarketers</h2>${evalTable(teles, true)}</div>`; h += comCard(S.f.period==="mesant" ? "mesant" : "mes", S.uid); }
@@ -1084,6 +1119,7 @@ function bindCommon(){
   all("[data-go2]", b => b.onclick = () => go(b.dataset.go2));
   all("[data-world]", b => b.onclick = () => setWorld(b.dataset.world));
   all("[data-appt]", b => b.onclick = () => openAppt(b.dataset.appt));
+  document.querySelectorAll("[data-pemp]").forEach(inp => inp.onchange = async () => { const cur = {...(S.me?.planEmp || planDe(S.uid) || DEF_EMP)}; document.querySelectorAll("[data-pemp]").forEach(x => { cur[x.dataset.pemp] = x.value==="" ? DEF_EMP[x.dataset.pemp] : +x.value; }); try { await S.db.doc("members/"+S.uid).update({planEmp:cur}); toast("Plan de comisiones guardado"); } catch(e){ writeErr(e); } });
   document.querySelectorAll("[data-ss2]").forEach(b => b.onclick = async () => { const [id,k] = b.dataset.ss2.split("|"); try { await S.db.doc("appts/"+id).update({saleStatus:k, saleStatusAt:Date.now(), saleStatusBy:S.uid}); toast("Venta: "+SALE_ST[k]); } catch(e){ writeErr(e); } });
   document.querySelectorAll("[data-pend]").forEach(b => b.onclick = () => openAppt(b.dataset.pend));
   const nb2 = document.getElementById("noti-on"); if (nb2) nb2.onclick = async () => { S.notiAsked = true; try { await Notification.requestPermission(); } catch {} render(); if (notiOk()) toast("Avisos activados"); };
