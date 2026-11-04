@@ -42,7 +42,8 @@ service cloud.firestore {
         && get(invitePath(data.inviteCode)).data.status == 'enviada'
         && get(invitePath(data.inviteCode)).data.memberRole == data.role
         && data.get('upline', '') == get(invitePath(data.inviteCode)).data.get('upline', '')
-        && data.get('lider', false) == false;
+        && data.get('lider', false) == false
+        && data.get('aporte', -1) == get(invitePath(data.inviteCode)).data.get('aporte', -1);
     }
 
     match /members/{uid} {
