@@ -153,7 +153,7 @@ nav.bottom svg{width:22px;height:22px}
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611031713";
+const APP_VER = "202611031717";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -285,7 +285,12 @@ function startData(){
   }, onErr));
 }
 const PRIV_KEYS = ["client","phone","city","address","notes","chat","seen","resNote"];
-function mergeAppts(){ const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, _priv:true} : {...x, _priv:false}; }); }
+/* Citas transferidas antes del arreglo: quien la recibió marca solo quién se la dio, para que esa persona la siga viendo */
+let dadorFix = new Set();
+function arreglarDador(){ const pv = Object.assign({}, ...Object.values(S.privs||{}));
+  Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || dadorFix.has(id)) return;
+    if (a.transferredFrom && a.socioId===S.uid && q.socioId===S.uid && !q.dador){ dadorFix.add(id); S.db.doc("apptp/"+id).update({dador:a.transferredFrom}).catch(()=>{}); } }); }
+function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, _priv:true} : {...x, _priv:false}; }); }
 const cName = a => a._priv ? (a.client||"Cliente") : "Cliente privado";
 /* Separar Dirección: cada director ve solo los clientes de sus propios emprendedores.
    Pasa una vez: a los emprendedores sin grupo les pone como grupo a quien los invitó, y ajusta sus citas. */
