@@ -42,9 +42,9 @@ function wheelSvg(prizes, id="jg-wheel"){
   let s = "";
   prizes.forEach((p,i) => { const a0 = i*a, a1 = (i+1)*a, [x0,y0] = pt(a0,R), [x1,y1] = pt(a1,R), mid = a0+a/2; const col = SL[i % SL.length];
     s += n===1 ? `<circle cx="${R}" cy="${R}" r="${R}" fill="${col}"/>` : `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a>180?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}" stroke="${JGT.g[1]}" stroke-width="2.5"/>`;
-    const cy = R - R*0.6, sz = Math.min(86, Math.max(38, 2*Math.PI*R*0.58/n*0.6)); const lbl = esc(String(p.n||"").slice(0,16));
+    const cy = R - R*0.57, sz = Math.min(108, Math.max(42, 2*Math.PI*R*0.57/n*0.8)); const lbl = esc(String(p.n||"").slice(0,16));
     s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${cy}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${cy}" r="${sz/2+3.5}" fill="#fff" stroke="${JGT.g[1]}" stroke-width="2"/><image href="${p.img}" x="${R-sz/2}" y="${cy-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:`<text x="${R}" y="${cy+12}" text-anchor="middle" font-size="34">🎁</text>`}
-      <text x="${R}" y="${cy+sz/2+13}" text-anchor="middle" font-size="${n>6?9.5:11.5}" font-weight="800" fill="${JGT.ink}">${lbl}</text></g>`; });
+      <rect x="${R - Math.min(sz*0.95, lbl.length*6.6+16)/2}" y="${cy-sz/2-5}" width="${Math.min(sz*0.95, lbl.length*6.6+16)}" height="17" rx="8.5" fill="${JGT.ink}"/><text x="${R}" y="${cy-sz/2+7}" text-anchor="middle" font-size="${n>6?9:10.5}" font-weight="800" fill="#fff">${lbl}</text></g>`; });
   for (let i=0;i<24;i++){ const [x,y] = pt(i*15, R+9); s += `<circle cx="${x}" cy="${y}" r="5.5" fill="#ffe9a8" opacity=".55" filter="url(#jg-glow)" class="jg-bulb${i%2}"/><circle cx="${x}" cy="${y}" r="2.8" fill="#fffdf2"/>`; }
   return `<div class="jg-wrap"><svg viewBox="-14 -14 ${2*R+28} ${2*R+28}" class="jg-svg"><defs><linearGradient id="jg-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${JGT.g[0]}"/><stop offset=".5" stop-color="${JGT.g[1]}"/><stop offset="1" stop-color="${JGT.g[2]}"/></linearGradient><filter id="jg-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="2.2"/></filter></defs><circle cx="${R}" cy="${R}" r="${R+14}" fill="url(#jg-gold)"/>
     <g id="${id}" style="transform-origin:${R}px ${R}px">${s}</g><circle cx="${R}" cy="${R}" r="27" fill="${JGT.ink}" stroke="url(#jg-gold)" stroke-width="5"/><text x="${R}" y="${R+9}" text-anchor="middle" font-size="24">🎁</text></svg>
@@ -80,8 +80,20 @@ function musicStop(){ if (!jgMus) return; clearInterval(jgMus.timer); try { jgMu
 
 /* Sonido de la ruleta (sin archivos) */
 let jgAudio = null;
-function jgTick(f=900, d=0.03, v=0.08){ try { jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); const o = jgAudio.createOscillator(), g = jgAudio.createGain(); o.frequency.value = f; o.type = "triangle"; g.gain.value = v; o.connect(g); g.connect(jgAudio.destination); const t = jgAudio.currentTime; g.gain.exponentialRampToValueAtTime(0.0001, t+d); o.start(t); o.stop(t+d+0.02); } catch {} }
-function jgFanfare(){ [523,659,784,1047].forEach((f,i) => setTimeout(() => jgTick(f, 0.25, 0.12), i*130)); }
+function jgCtx(){ jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); if (jgAudio.state==="suspended") jgAudio.resume(); return jgAudio; }
+function jgTick(f=1400, d=0.035, v=0.22){ try { const c = jgCtx(), t = c.currentTime;
+  const o = c.createOscillator(), g = c.createGain(); o.type = "square"; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f*0.55, t+d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t+d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+d+0.02);
+  const b = c.createBuffer(1, c.sampleRate*0.02, c.sampleRate), dt = b.getChannelData(0); for (let i=0;i<dt.length;i++) dt[i] = (Math.random()*2-1) * (1 - i/dt.length);
+  const n = c.createBufferSource(), ng = c.createGain(); n.buffer = b; ng.gain.value = v*0.6; n.connect(ng); ng.connect(c.destination); n.start(t); } catch {} }
+/* Música de triunfo: redoble, trompetas y acorde final */
+function jgFanfare(){ try { const c = jgCtx(), t0 = c.currentTime + 0.05; const out = c.createGain(); out.gain.value = 0.16; out.connect(c.destination);
+  const tone = (m, t, d, type="sawtooth", v=0.5) => { const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(); o.type = type; o.frequency.value = 440*Math.pow(2,(m-69)/12); f.type = "lowpass"; f.frequency.value = 2600;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t+0.03); g.gain.setValueAtTime(v, t+d*0.7); g.gain.exponentialRampToValueAtTime(0.0001, t+d); o.connect(f); f.connect(g); g.connect(out); o.start(t); o.stop(t+d+0.05); };
+  const hit = (t, v=0.6, d=0.12) => { const b = c.createBuffer(1, c.sampleRate*d, c.sampleRate), x = b.getChannelData(0); for (let i=0;i<x.length;i++) x[i] = (Math.random()*2-1)*Math.pow(1-i/x.length, 2); const s = c.createBufferSource(), g = c.createGain(); s.buffer = b; g.gain.value = v; s.connect(g); g.connect(out); s.start(t); };
+  for (let i=0;i<10;i++) hit(t0 + i*0.05, 0.25 + i*0.04, 0.06);
+  const T = t0 + 0.55; [[67,0,.18],[67,.18,.12],[67,.30,.12],[72,.42,.5],[67,.95,.18],[72,1.13,.18],[76,1.31,1.4]].forEach(([m,a,d]) => { tone(m, T+a, d); tone(m-12, T+a, d, "triangle", 0.35); });
+  [60,64,67,72].forEach(m => tone(m, T+1.31, 1.5, "triangle", 0.3)); hit(T+1.31, 0.9, 0.6);
+} catch {} }
 function confetti(){ const c = document.createElement("canvas"); c.className = "jg-conf"; c.width = innerWidth; c.height = innerHeight; document.body.appendChild(c); const x = c.getContext("2d");
   const P = Array.from({length:160}, () => ({x:Math.random()*c.width, y:-20-Math.random()*c.height*0.5, vx:(Math.random()-.5)*3, vy:2+Math.random()*4, r:4+Math.random()*5, a:Math.random()*6, col:JG_COLORS[Math.floor(Math.random()*JG_COLORS.length)]}));
   const t0 = performance.now(); (function f(t){ x.clearRect(0,0,c.width,c.height); P.forEach(p => { p.x+=p.vx; p.y+=p.vy; p.a+=0.1; x.save(); x.translate(p.x,p.y); x.rotate(p.a); x.fillStyle=p.col; x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); x.restore(); }); if (t-t0 < 3800) requestAnimationFrame(f); else c.remove(); })(t0); }
@@ -121,6 +133,11 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-gifts{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
 .jg-gift{display:grid;justify-items:center;gap:6px;font-size:13px;font-weight:800;color:#14213d}
 .jg-gift img,.jg-gift span.ph{width:92px;height:92px;border-radius:50%;object-fit:cover;border:4px solid #e2bb4f;background:#fff;display:grid;place-items:center;font-size:40px}
+.jg-show{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 10px;margin:0 -18px;padding-left:18px;padding-right:18px;scrollbar-width:none}.jg-show::-webkit-scrollbar{display:none}
+.jg-show .it{flex:0 0 46%;scroll-snap-align:center;background:#fff;border-radius:18px;border:2px solid var(--g2);box-shadow:0 8px 20px rgba(120,90,20,.15);overflow:hidden;display:grid}
+.jg-show img{width:100%;aspect-ratio:1;object-fit:cover;display:block}.jg-show .ph{aspect-ratio:1;display:grid;place-items:center;font-size:60px;background:#fffaf0}
+.jg-show b{padding:8px 6px;font-size:15px;color:var(--ink)}
+.jg-showt{font-family:var(--serif);font-weight:700;font-size:20px;color:var(--ink);margin:4px 0 -4px}
 .jg-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0}
 .jg-box{font-size:64px;background:#fff;border:2px solid #e2bb4f;border-radius:18px;padding:16px 0;cursor:pointer;box-shadow:0 8px 20px rgba(120,90,20,.15)}
 .jg-box.shake{animation:jgsh .15s 8}
@@ -178,22 +195,24 @@ async function startJuego(code, avance){
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div><div class="jg-top">${esc(TX.top)}</div>
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>
       <p class="jg-p"><b>${esc(TX.sub)}</b><br>Sin costo y sin obligación de compra.</p>
+      ${prizes.some(p=>p.img) ? `<div class="jg-showt">🎁 Puedes ganar</div><div class="jg-show" id="jg-show">${prizes.map(p=>`<div class="it">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}<b>${esc(p.n)}</b></div>`).join("")}</div>` : ""}
       ${tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
-        <div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` : wheelSvg(prizes)}
+        ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(prizes)}
       <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
       ${tipo==="caja" ? "" : `<button class="jg-btn go" id="jg-spin">${esc(TX.btn||"¡GIRAR!")} <span style="font-size:22px">›</span></button>`}
       <p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`;
+    const sh = document.getElementById("jg-show"); if (sh && sh.scrollWidth > sh.clientWidth + 10){ let dir = 1; const iv = setInterval(() => { if (!document.body.contains(sh)) return clearInterval(iv); const max = sh.scrollWidth - sh.clientWidth; if (sh.scrollLeft >= max - 4) dir = -1; else if (sh.scrollLeft <= 4) dir = 1; sh.scrollBy({left: dir * sh.clientWidth * 0.5, behavior:"smooth"}); }, 2200); sh.addEventListener("touchstart", () => clearInterval(iv), {once:true}); }
     if (tipo==="caja") box.querySelectorAll("[data-box]").forEach(b => b.onclick = () => openBox(b));
     else document.getElementById("jg-spin").onclick = spin;
   }
-  function won(i){ saved.prize = i; save(); setTimeout(() => { confetti(); jgFanfare(); showForm(i, true); }, 450); }
+  function won(i){ saved.prize = i; save(); setTimeout(() => { confetti(); jgFanfare(); showForm(i, true); if (jgMus) setTimeout(() => { try { jgMus.out.gain.setTargetAtTime(0.05, jgAudio.currentTime, 0.4); } catch {} }, 3500); }, 450); }
   function spin(){
     const btn = document.getElementById("jg-spin"); btn.disabled = true; btn.textContent = "Girando…";
     const i = pickPrize(prizes), n = prizes.length, a = 360/n; const target = 360*6 + (360 - (i*a + a/2)) + (Math.random()-.5)*a*0.6;
     const g = document.getElementById("jg-wheel"); const T = 5200, t0 = performance.now(); let lastSeg = 0;
-    jgTick(600, 0.01, 0.001);
+    jgCtx(); if (jgMus) try { jgMus.out.gain.setTargetAtTime(0.012, jgAudio.currentTime, 0.1); } catch {}
     (function f(t){ const k = Math.min(1, (t-t0)/T), e = 1 - Math.pow(1-k, 4), ang = target*e; g.style.transform = `rotate(${ang}deg)`;
-      const seg = Math.floor(ang / a); if (seg !== lastSeg){ lastSeg = seg; jgTick(); }
+      const seg = Math.floor(ang / Math.min(a, 30)); if (seg !== lastSeg){ lastSeg = seg; jgTick(); }
       if (k < 1) requestAnimationFrame(f); else won(i); })(t0);
   }
   function openBox(b){ if (box.dataset.busy) return; box.dataset.busy = "1"; b.classList.add("shake"); jgTick(300,0.4,0.05); const i = pickPrize(prizes);
@@ -534,7 +553,7 @@ async function promoImg(j, p, link){
   const imgs = await Promise.all(prizes.map(pr => pr.img ? loadImg(pr.img).catch(()=>null) : null));
   x.save(); x.shadowColor = "rgba(120,90,20,.4)"; x.shadowBlur = 44; x.shadowOffsetY = 18; x.beginPath(); x.arc(cx, cy, R+32, 0, 7); x.fillStyle = goldGrad(x, cx-R, cy-R, cx+R, cy+R); x.fill(); x.restore();
   prizes.forEach((pr,i) => { const a0 = -Math.PI/2 + i*a; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,R,a0,a0+a); x.closePath(); x.fillStyle = SL[i%SL.length]; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 5; x.stroke(); });
-  prizes.forEach((pr,i) => { const mid = -Math.PI/2 + i*a + a/2, ir = R*0.56, ix = cx + ir*Math.cos(mid), iy = cy + ir*Math.sin(mid), s = Math.min(180, 2*Math.PI*ir/n*0.6);
+  prizes.forEach((pr,i) => { const mid = -Math.PI/2 + i*a + a/2, ir = R*0.56, ix = cx + ir*Math.cos(mid), iy = cy + ir*Math.sin(mid), s = Math.min(230, 2*Math.PI*ir/n*0.78);
     x.save(); x.shadowColor = "rgba(0,0,0,.18)"; x.shadowBlur = 14; x.beginPath(); x.arc(ix, iy, s/2+8, 0, 7); x.fillStyle = "#fff"; x.fill(); x.restore();
     x.beginPath(); x.arc(ix, iy, s/2+8, 0, 7); x.strokeStyle = JGT.g[1]; x.lineWidth = 4; x.stroke();
     if (imgs[i]){ x.save(); x.beginPath(); x.arc(ix, iy, s/2, 0, 7); x.clip(); x.drawImage(imgs[i], ix-s/2, iy-s/2, s, s); x.restore(); } else { x.font = `${s*0.5}px serif`; x.fillText("🎁", ix, iy+s*0.18); }
