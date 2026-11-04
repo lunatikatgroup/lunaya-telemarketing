@@ -146,6 +146,87 @@ service cloud.firestore {
          && request.resource.data.url.matches('^https://(drive|docs)[.]google[.]com/.*');
     }
 
+    // ===== Ruleta / caja sorpresa (programa de referidos) =====
+    // Territorio de un socio: tv = Dirección (lo trabajan las telemarketers del programa)
+    function tvDe(sid) {
+      let s = get(memberPath(sid)).data;
+      return s.role == 'admin' || (s.get('tipo', '') != 'Socio distribuidor'
+        && (s.get('upline', '') == '' || get(memberPath(s.upline)).data.role == 'admin'));
+    }
+    function juegoPath(code) { return /databases/$(database)/documents/juegos/$(code); }
+    function leadPath(id) { return /databases/$(database)/documents/leads/$(id); }
+
+    // Programas: regalos, fotos y probabilidades. Los ve cualquiera que abra un link (no tienen datos de clientes).
+    match /programs/{pid} {
+      allow get: if true;
+      allow list: if isMember();
+      allow create: if isMember() && request.resource.data.owner == request.auth.uid;
+      allow update: if isMember() && resource.data.owner == request.auth.uid && request.resource.data.owner == request.auth.uid;
+      allow delete: if isMember() && (resource.data.owner == request.auth.uid || isAdmin());
+    }
+
+    // Links: público solo el nombre que se muestra y el contador de amigas
+    match /juegos/{code} {
+      function lv() { return isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid
+        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true)); }
+      allow get: if true;
+      allow list: if lv();
+      // Un socio o telemarketer inscribe a un cliente o crea una campaña
+      allow create: if isMember() && request.resource.data.by == request.auth.uid
+         && request.resource.data.n == 0 && request.resource.data.kind in ['cliente', 'campana']
+         && request.resource.data.up == get(memberPath(request.resource.data.socioId)).data.get('upline', '')
+         && request.resource.data.tv == tvDe(request.resource.data.socioId)
+         && request.resource.data.until <= request.time.toMillis() + 61 * 86400000;
+      // La amiga que ya participó invita a las suyas: su link copia el de quien la invitó
+      allow create: if request.resource.data.kind == 'amiga' && request.resource.data.n == 0
+         && request.resource.data.keys().hasOnly(['pid', 'ref', 'socioId', 'up', 'tv', 'by', 'n', 'until', 'padre', 'refLead', 'createdAt', 'kind', 'meta'])
+         && request.resource.data.ref is string && request.resource.data.ref.size() <= 61
+         && request.resource.data.refLead.matches('^' + request.resource.data.padre + '_[0-9]{10}$')
+         && exists(leadPath(request.resource.data.refLead))
+         && get(juegoPath(request.resource.data.padre)).data.pid == request.resource.data.pid
+         && get(juegoPath(request.resource.data.padre)).data.socioId == request.resource.data.socioId
+         && get(juegoPath(request.resource.data.padre)).data.get('up', '') == request.resource.data.up
+         && get(juegoPath(request.resource.data.padre)).data.get('tv', false) == request.resource.data.tv
+         && get(juegoPath(request.resource.data.padre)).data.by == request.resource.data.by
+         && request.resource.data.until <= request.time.toMillis() + 15 * 86400000;
+      // Cada amiga que participa suma 1, junto con su registro
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['n', 'last'])
+         && request.resource.data.n == resource.data.get('n', 0) + 1
+         && request.resource.data.last.matches('^' + code + '_[0-9]{10}$')
+         && existsAfter(leadPath(request.resource.data.last)) && !exists(leadPath(request.resource.data.last));
+      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref']);
+      allow delete: if isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid);
+    }
+
+    // Prospectos de la ruleta: los ven el socio, quien creó el link, su director o distribuidor
+    // y, en el territorio de Dirección, las telemarketers del programa.
+    match /leads/{id} {
+      function lv() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.by == request.auth.uid
+        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true)); }
+      allow read: if lv();
+      // La amiga que juega (sin cuenta): teléfono completo de 10 dígitos, un registro por número y por link
+      allow create: if request.resource.data.keys().hasOnly(['code', 'pid', 'name', 'tel', 'prize', 'at', 'socioId', 'up', 'tv', 'by', 'ref', 'status', 'kind', 'acepta'])
+         && request.resource.data.kind == 'jugador' && request.resource.data.status == 'nuevo' && request.resource.data.acepta == true
+         && request.resource.data.tel is string && request.resource.data.tel.matches('^[2-9][0-9]{9}$')
+         && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60
+         && request.resource.data.prize is string && request.resource.data.prize.size() <= 80
+         && id == request.resource.data.code + '_' + request.resource.data.tel
+         && get(juegoPath(request.resource.data.code)).data.pid == request.resource.data.pid
+         && get(juegoPath(request.resource.data.code)).data.socioId == request.resource.data.socioId
+         && get(juegoPath(request.resource.data.code)).data.get('up', '') == request.resource.data.up
+         && get(juegoPath(request.resource.data.code)).data.get('tv', false) == request.resource.data.tv
+         && get(juegoPath(request.resource.data.code)).data.by == request.resource.data.by
+         && get(juegoPath(request.resource.data.code)).data.ref == request.resource.data.ref
+         && get(juegoPath(request.resource.data.code)).data.until > request.time.toMillis()
+         && getAfter(juegoPath(request.resource.data.code)).data.n == get(juegoPath(request.resource.data.code)).data.get('n', 0) + 1;
+      // El cliente que refiere (o la lista de una campaña): lo guarda quien crea el link
+      allow create: if isMember() && request.resource.data.by == request.auth.uid && request.resource.data.kind == 'ref'
+         && id == request.resource.data.code + '_ref'
+         && getAfter(juegoPath(request.resource.data.code)).data.by == request.auth.uid;
+      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusAt', 'notes', 'apptId', 'lista']);
+      allow delete: if lv() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid || isAdmin());
+    }
+
     match /config/{id} {
       allow read: if isMember();
       allow write: if isAdmin();
