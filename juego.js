@@ -32,7 +32,7 @@ const TEMAS = {
 };
 let JGT = TEMAS.oro;
 /* Fondo con foto: la cocina de Royal o una foto que suba cada quien */
-const fondoSrc = p => p.fondo==="cocina" ? "fondo-cocina.jpg" : (/^data:image\/jpeg;base64,/.test(p.fondo||"") ? p.fondo : "");
+const fondoSrc = p => p.fondo==="cocina" ? "fondo-cocina.jpg?v=2" : (/^data:image\/jpeg;base64,/.test(p.fondo||"") ? p.fondo : "");
 const setTema = t => { JGT = TEMAS[t] || TEMAS.oro; return JGT; };
 const TXT_DEF = tipo => ({top:"Juega y gana", pill: tipo==="caja" ? "te regaló una caja sorpresa 🎁" : "te regaló un giro 🎁", sub: tipo==="caja" ? "Escoge una caja y descubre tu regalo para tu cocina." : "Gira la ruleta y gana un regalo para tu cocina.", btn: tipo==="caja" ? "" : "¡GIRAR!"});
 const txtDe = p => ({...TXT_DEF(p.tipo), ...Object.fromEntries(Object.entries(p.textos||{}).filter(([,v]) => String(v||"").trim()))});
@@ -60,8 +60,8 @@ const SVG_GIFT = (w=120) => `<svg viewBox="0 0 120 120" width="${w}" height="${w
 const SVG_RIBBON = side => `<svg viewBox="0 0 120 900" preserveAspectRatio="none" class="jg-rib ${side}">${GOLD_DEF("gr"+side)}<path d="${side==="l" ? "M-40 120 C 90 200, -30 330, 70 420 S 10 640, 90 760 S 40 880, -20 920" : "M160 60 C 30 160, 150 300, 50 400 S 120 620, 30 740 S 90 860, 150 920"}" fill="none" stroke="url(#gr${side})" stroke-width="16" stroke-linecap="round" opacity=".85"/></svg>`;
 const SVG_CAL = `<svg viewBox="0 0 24 24" width="22" height="22"><path d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zm-2 7h14v10H5zm2 2v2h2v-2zm4 0v2h2v-2zm4 0v2h2v-2z" fill="#14213d"/></svg>`;
 const SVG_PPL = `<svg viewBox="0 0 24 24" width="24" height="22"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="#14213d"/></svg>`;
-function nameHtml(full){ const w = String(full||"").trim().split(/\s+/); if (w.length < 2) return `<div class="jg-name"><span class="n2">${esc(w[0]||"Tu amiga")}</span>${SVG_HEART}</div>`;
-  return `<div class="jg-name"><span class="n1">${esc(w.slice(0,-1).join(" "))}</span><span class="n2">${esc(w[w.length-1])}</span>${SVG_HEART}</div>`; }
+function nameHtml(full){ const w = String(full||"").trim().split(/\s+/); if (w.length < 2) return `<div class="jg-name"><span class="n2w"><span class="n2">${esc(w[0]||"Tu amiga")}</span>${SVG_HEART}</span></div>`;
+  return `<div class="jg-name"><span class="n1">${esc(w.slice(0,-1).join(" "))}</span><span class="n2w"><span class="n2">${esc(w[w.length-1])}</span>${SVG_HEART}</span></div>`; }
 
 /* Música alegre (hecha por la app, sin archivos ni licencias) */
 let jgMus = null;
@@ -135,7 +135,7 @@ body.jg{background:radial-gradient(circle at 12% 18%,rgba(var(--glow),.9) 0 3%,t
 .jg-name{position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:12px;line-height:.95;margin-top:2px}
 .jg-name .n1{font-family:var(--serif);font-weight:600;font-size:clamp(40px,12vw,56px);color:var(--ink)}
 .jg-name .n2{font-family:"Great Vibes",cursive;font-weight:400;font-size:clamp(54px,16vw,78px);color:var(--acc);background:linear-gradient(135deg,var(--g2),var(--g4) 55%,var(--g3));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;padding:0 6px}
-.jg-heart{position:relative;top:-0.9em;margin-left:-10px;width:40px;height:34px;flex:none;align-self:flex-start}
+.jg-name .n2w{position:relative;display:inline-block}.jg-heart{position:absolute;right:-26px;top:-12px;width:40px;height:34px}
 .jg-pill{justify-self:center;background:linear-gradient(var(--g1),var(--g3));color:var(--ink);border-radius:999px;padding:8px 22px;font-family:var(--serif);font-weight:700;font-size:22px;box-shadow:0 6px 16px rgba(160,120,30,.25);border:1.5px solid #fff3cf}
 .jg-p b{color:#14213d}
 .jg-chip{display:flex;align-items:center;gap:10px;border-radius:16px;padding:10px 16px;font-size:14.5px;text-align:left;box-shadow:0 4px 12px rgba(120,90,20,.08)}
@@ -371,7 +371,7 @@ function openPrograma(pid, copia){
     }
     paint();
     document.querySelectorAll("[data-tema]").forEach(b => b.onclick = () => { P.tema = b.dataset.tema; document.querySelectorAll("[data-tema]").forEach(x => x.classList.toggle("on", x===b)); });
-    const paintF = () => { const f = P.fondo || ""; q("pg-fondos").innerHTML = [["","Solo colores"],["cocina","Cocina Royal"],["foto","📷 Subir mi foto"]].map(([k,l]) => `<button class="opt ${(k==="foto" ? /^data:/.test(f) : f===k) ? "on" : ""}" data-fondo="${k}" type="button" style="display:flex;gap:8px;align-items:center">${k==="cocina"?`<img src="fondo-cocina.jpg" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:k==="foto"&&/^data:/.test(f)?`<img src="${f}" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:""}${l}</button>`).join("");
+    const paintF = () => { const f = P.fondo || ""; q("pg-fondos").innerHTML = [["","Solo colores"],["cocina","Cocina Royal"],["foto","📷 Subir mi foto"]].map(([k,l]) => `<button class="opt ${(k==="foto" ? /^data:/.test(f) : f===k) ? "on" : ""}" data-fondo="${k}" type="button" style="display:flex;gap:8px;align-items:center">${k==="cocina"?`<img src="fondo-cocina.jpg?v=2" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:k==="foto"&&/^data:/.test(f)?`<img src="${f}" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:""}${l}</button>`).join("");
       document.querySelectorAll("[data-fondo]").forEach(b => b.onclick = () => { const k = b.dataset.fondo; if (k==="foto") q("pg-ffile").click(); else { P.fondo = k; paintF(); } }); };
     paintF();
     q("pg-ffile").onchange = async () => { const f = q("pg-ffile").files[0]; if (!f) return; try { const url = URL.createObjectURL(f); const img = await loadImg(url); URL.revokeObjectURL(url); const k = Math.min(1, 900/Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); P.fondo = c.toDataURL("image/jpeg", 0.7); paintF(); } catch { toast("No se pudo leer esa foto"); } };
