@@ -23,20 +23,43 @@ function qrSvg(text, px=180){ try { const q = qrcode(0, "M"); q.addData(text); q
   return `<svg viewBox="0 0 ${n+4} ${n+4}" width="${px}" height="${px}" shape-rendering="crispEdges" style="background:#fff;border-radius:10px"><path d="${d}" fill="#14213d"/></svg>`; } catch { return ""; } }
 
 /* Ruleta en SVG: tonos crema y dorado, cada regalo con su foto en grande */
-const JG_SL = n => n%2 ? ["#fffaf0","#f3dfa6","#f9ecc8"] : ["#fffaf0","#f3dfa6"];
+/* Estilos de diseño que cada quien escoge para su ruleta */
+const TEMAS = {
+  oro:  {n:"Dorado clásico", bg:["#fffdf8","#faf2e1","#efdfbd"], g:["#f8e3a0","#c9971f","#f3d27a","#b8861b"], sl:["#fffaf0","#f3dfa6","#f9ecc8"], ink:"#14213d", acc:"#a8761b", glow:"255,232,170"},
+  rosa: {n:"Rosa elegante",  bg:["#fffafa","#fbeef0","#f1d3d8"], g:["#f7d9d3","#c47d74","#efc0b6","#a65f57"], sl:["#fffafa","#f6d5d8","#fbe6e8"], ink:"#4a2330", acc:"#a65f57", glow:"250,210,215"},
+  azul: {n:"Azul y plata",   bg:["#fbfdff","#eef4fb","#d3e0ef"], g:["#f1f4f8","#8d9db4","#dfe6ef","#6f7f98"], sl:["#ffffff","#dbe6f3","#ecf2f9"], ink:"#14213d", acc:"#3b5b8f", glow:"215,228,245"},
+  verde:{n:"Verde y oro",    bg:["#fbfdf8","#eef5ea","#d6e5cc"], g:["#f8e3a0","#c9971f","#f3d27a","#b8861b"], sl:["#ffffff","#d7e8cd","#eaf3e4"], ink:"#1f3a2b", acc:"#a8761b", glow:"240,230,180"}
+};
+let JGT = TEMAS.oro;
+const setTema = t => { JGT = TEMAS[t] || TEMAS.oro; return JGT; };
+const TXT_DEF = tipo => ({top:"Juega y gana", pill: tipo==="caja" ? "te regaló una caja sorpresa 🎁" : "te regaló un giro 🎁", sub: tipo==="caja" ? "Escoge una caja y descubre tu regalo para tu cocina." : "Gira la ruleta y gana un regalo para tu cocina.", btn: tipo==="caja" ? "" : "¡GIRAR!"});
+const txtDe = p => ({...TXT_DEF(p.tipo), ...Object.fromEntries(Object.entries(p.textos||{}).filter(([,v]) => String(v||"").trim()))});
+const JG_SL = n => n%2 ? JGT.sl : JGT.sl.slice(0,2);
 function wheelSvg(prizes, id="jg-wheel"){
   const n = prizes.length, R = 150, a = 360/n; const pt = (ang, r) => { const t = (ang-90)*Math.PI/180; return [R+r*Math.cos(t), R+r*Math.sin(t)]; }; const SL = JG_SL(n);
   let s = "";
   prizes.forEach((p,i) => { const a0 = i*a, a1 = (i+1)*a, [x0,y0] = pt(a0,R), [x1,y1] = pt(a1,R), mid = a0+a/2; const col = SL[i % SL.length];
-    s += n===1 ? `<circle cx="${R}" cy="${R}" r="${R}" fill="${col}"/>` : `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a>180?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}" stroke="#d4a72c" stroke-width="2.5"/>`;
+    s += n===1 ? `<circle cx="${R}" cy="${R}" r="${R}" fill="${col}"/>` : `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a>180?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}" stroke="${JGT.g[1]}" stroke-width="2.5"/>`;
     const cy = R - R*0.6, sz = Math.min(86, Math.max(38, 2*Math.PI*R*0.58/n*0.6)); const lbl = esc(String(p.n||"").slice(0,16));
-    s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${cy}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${cy}" r="${sz/2+3.5}" fill="#fff" stroke="#d4a72c" stroke-width="2"/><image href="${p.img}" x="${R-sz/2}" y="${cy-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:`<text x="${R}" y="${cy+12}" text-anchor="middle" font-size="34">🎁</text>`}
-      <text x="${R}" y="${cy+sz/2+13}" text-anchor="middle" font-size="${n>6?9.5:11.5}" font-weight="800" fill="#14213d">${lbl}</text></g>`; });
-  for (let i=0;i<24;i++){ const [x,y] = pt(i*15, R+9); s += `<circle cx="${x}" cy="${y}" r="3.2" fill="${i%2?"#fffdf5":"#ffe58a"}" class="jg-bulb${i%2}"/>`; }
-  return `<div class="jg-wrap"><svg viewBox="-14 -14 ${2*R+28} ${2*R+28}" class="jg-svg"><defs><linearGradient id="jg-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".5" stop-color="#c9971f"/><stop offset="1" stop-color="#f2d27a"/></linearGradient></defs><circle cx="${R}" cy="${R}" r="${R+14}" fill="url(#jg-gold)"/>
-    <g id="${id}" style="transform-origin:${R}px ${R}px">${s}</g><circle cx="${R}" cy="${R}" r="27" fill="#14213d" stroke="url(#jg-gold)" stroke-width="5"/><text x="${R}" y="${R+9}" text-anchor="middle" font-size="24">🎁</text></svg>
+    s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${cy}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${cy}" r="${sz/2+3.5}" fill="#fff" stroke="${JGT.g[1]}" stroke-width="2"/><image href="${p.img}" x="${R-sz/2}" y="${cy-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:`<text x="${R}" y="${cy+12}" text-anchor="middle" font-size="34">🎁</text>`}
+      <text x="${R}" y="${cy+sz/2+13}" text-anchor="middle" font-size="${n>6?9.5:11.5}" font-weight="800" fill="${JGT.ink}">${lbl}</text></g>`; });
+  for (let i=0;i<24;i++){ const [x,y] = pt(i*15, R+9); s += `<circle cx="${x}" cy="${y}" r="5.5" fill="#ffe9a8" opacity=".55" filter="url(#jg-glow)" class="jg-bulb${i%2}"/><circle cx="${x}" cy="${y}" r="2.8" fill="#fffdf2"/>`; }
+  return `<div class="jg-wrap"><svg viewBox="-14 -14 ${2*R+28} ${2*R+28}" class="jg-svg"><defs><linearGradient id="jg-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${JGT.g[0]}"/><stop offset=".5" stop-color="${JGT.g[1]}"/><stop offset="1" stop-color="${JGT.g[2]}"/></linearGradient><filter id="jg-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="2.2"/></filter></defs><circle cx="${R}" cy="${R}" r="${R+14}" fill="url(#jg-gold)"/>
+    <g id="${id}" style="transform-origin:${R}px ${R}px">${s}</g><circle cx="${R}" cy="${R}" r="27" fill="${JGT.ink}" stroke="url(#jg-gold)" stroke-width="5"/><text x="${R}" y="${R+9}" text-anchor="middle" font-size="24">🎁</text></svg>
     <div class="jg-ptr"></div></div>`;
 }
+
+/* Adornos: corona, corazón, caja de regalo y listones dorados */
+const GOLD_DEF = id => `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${JGT.g[0]}"/><stop offset=".45" stop-color="${JGT.g[1]}"/><stop offset=".7" stop-color="${JGT.g[2]}"/><stop offset="1" stop-color="${JGT.g[3]}"/></linearGradient></defs>`;
+const SVG_CROWN = `<svg viewBox="0 0 40 26" width="34" height="22">${GOLD_DEF("gc")}<path d="M3 22 L1 6 L11 13 L20 2 L29 13 L39 6 L37 22 Z" fill="url(#gc)"/><rect x="3" y="22" width="34" height="3" rx="1.5" fill="url(#gc)"/></svg>`;
+const SVG_HEART = `<svg viewBox="0 0 60 50" class="jg-heart">${GOLD_DEF("gh")}<path d="M30 46 C8 30 2 20 6 11 C10 2 24 2 30 14 C36 2 50 2 54 11 C58 20 52 30 30 46 Z" fill="none" stroke="url(#gh)" stroke-width="3" stroke-linecap="round"/></svg>`;
+const SVG_GIFT = (w=120) => `<svg viewBox="0 0 120 120" width="${w}" height="${w}">${GOLD_DEF("gg"+w)}<rect x="14" y="52" width="92" height="62" rx="4" fill="#fffdf7" stroke="#ead9ad"/><rect x="8" y="38" width="104" height="20" rx="4" fill="#fff" stroke="#ead9ad"/><rect x="52" y="38" width="16" height="76" fill="url(#gg${w})"/><rect x="8" y="44" width="104" height="8" fill="url(#gg${w})" opacity=".0"/>
+  <path d="M60 38 C40 10 14 16 26 32 C32 40 50 40 60 38 Z M60 38 C80 10 106 16 94 32 C88 40 70 40 60 38 Z" fill="url(#gg${w})"/><path d="M60 38 L44 62 M60 38 L76 62" stroke="url(#gg${w})" stroke-width="7" stroke-linecap="round"/><circle cx="60" cy="38" r="7" fill="#c9971f"/></svg>`;
+const SVG_RIBBON = side => `<svg viewBox="0 0 120 900" preserveAspectRatio="none" class="jg-rib ${side}">${GOLD_DEF("gr"+side)}<path d="${side==="l" ? "M-40 120 C 90 200, -30 330, 70 420 S 10 640, 90 760 S 40 880, -20 920" : "M160 60 C 30 160, 150 300, 50 400 S 120 620, 30 740 S 90 860, 150 920"}" fill="none" stroke="url(#gr${side})" stroke-width="16" stroke-linecap="round" opacity=".85"/></svg>`;
+const SVG_CAL = `<svg viewBox="0 0 24 24" width="22" height="22"><path d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zm-2 7h14v10H5zm2 2v2h2v-2zm4 0v2h2v-2zm4 0v2h2v-2z" fill="#14213d"/></svg>`;
+const SVG_PPL = `<svg viewBox="0 0 24 24" width="24" height="22"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="#14213d"/></svg>`;
+function nameHtml(full){ const w = String(full||"").trim().split(/\s+/); if (w.length < 2) return `<div class="jg-name"><span class="n2">${esc(w[0]||"Tu amiga")}</span>${SVG_HEART}</div>`;
+  return `<div class="jg-name"><span class="n1">${esc(w.slice(0,-1).join(" "))}</span><span class="n2">${esc(w[w.length-1])}</span>${SVG_HEART}</div>`; }
 
 /* Música alegre (hecha por la app, sin archivos ni licencias) */
 let jgMus = null;
@@ -72,7 +95,7 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-p{margin:0;color:#5b5547;font-size:16px}
 .jg-wrap{position:relative;width:min(92vw,400px);margin:4px auto 0}
 .jg-svg{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 28px rgba(120,90,20,.28))}
-.jg-ptr{position:absolute;left:50%;top:-8px;transform:translateX(-50%);width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:36px solid #14213d;filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))}
+.jg-ptr{position:absolute;left:50%;top:-8px;transform:translateX(-50%);width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:36px solid var(--ink);filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))}
 .jg-bulb0{animation:jgb 1s infinite}.jg-bulb1{animation:jgb 1s .5s infinite}
 @keyframes jgb{50%{opacity:.35}}
 .jg-btn{border:0;border-radius:16px;padding:18px 20px;font-size:20px;font-weight:800;cursor:pointer;background:linear-gradient(#f6d77a,#d4a72c);color:#14213d;box-shadow:0 6px 0 #a87a10,0 12px 24px rgba(120,90,20,.3);width:100%;letter-spacing:.03em}
@@ -89,7 +112,7 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-prize{display:grid;justify-items:center;gap:8px}
 .jg-prize img{width:190px;height:190px;border-radius:50%;object-fit:cover;border:7px solid #e2bb4f;background:#fff;box-shadow:0 12px 30px rgba(120,90,20,.25);animation:jgpop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes jgpop{from{transform:scale(.2)}to{transform:scale(1)}}
-.jg-prize .pn{font-family:var(--serif);font-weight:700;font-size:30px;color:#a8761b;text-align:center}
+.jg-prize .pn{font-family:var(--serif);font-weight:700;font-size:30px;color:var(--acc);text-align:center}
 .jg-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .jg-chip{background:#fff;border:1.5px solid #ead9ad;color:#14213d;border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:700}
 .jg-small{font-size:12.5px;color:#8a826f}
@@ -102,12 +125,29 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 @keyframes jgsh{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
 .jg-conf{position:fixed;inset:0;pointer-events:none;z-index:50}
 .jg-bar{height:14px;background:#efe3c4;border-radius:99px;overflow:hidden}.jg-bar i{display:block;height:100%;background:linear-gradient(90deg,#f6d77a,#d4a72c)}
+body.jg{background:radial-gradient(circle at 12% 18%,rgba(var(--glow),.9) 0 3%,transparent 9%),radial-gradient(circle at 88% 12%,rgba(var(--glow),.9) 0 2.5%,transparent 8%),radial-gradient(circle at 80% 55%,rgba(var(--glow),.6) 0 3%,transparent 10%),radial-gradient(circle at 15% 75%,rgba(var(--glow),.7) 0 2%,transparent 8%),radial-gradient(ellipse at top,var(--b1) 0%,var(--b2) 55%,var(--b3) 100%);background-attachment:fixed;color:var(--ink)}
+.jg-rib{position:fixed;top:0;height:100vh;width:70px;pointer-events:none;z-index:0;opacity:.9}.jg-rib.l{left:-8px}.jg-rib.r{right:-8px}
+.jg-pg{position:relative;z-index:1}
+.jg-crownrow{display:flex;align-items:center;justify-content:center;gap:12px}.jg-crownrow i{display:block;height:1.5px;width:64px;background:linear-gradient(90deg,transparent,var(--g2))}.jg-crownrow i:last-child{transform:scaleX(-1)}
+.jg-top{color:var(--ink);letter-spacing:.3em;font-size:13px}
+.jg-name{position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:12px;line-height:.95;margin-top:2px}
+.jg-name .n1{font-family:var(--serif);font-weight:600;font-size:clamp(40px,12vw,56px);color:var(--ink)}
+.jg-name .n2{font-family:"Great Vibes",cursive;font-weight:400;font-size:clamp(54px,16vw,78px);color:var(--acc);background:linear-gradient(135deg,var(--g2),var(--g4) 55%,var(--g3));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;padding:0 6px}
+.jg-heart{position:absolute;right:max(0px,calc(50% - 190px));top:-6px;width:46px;height:40px}
+.jg-pill{justify-self:center;background:linear-gradient(var(--g1),var(--g3));color:var(--ink);border-radius:999px;padding:8px 22px;font-family:var(--serif);font-weight:700;font-size:22px;box-shadow:0 6px 16px rgba(160,120,30,.25);border:1.5px solid #fff3cf}
+.jg-p b{color:#14213d}
+.jg-chip{display:flex;align-items:center;gap:10px;border-radius:16px;padding:10px 16px;font-size:14.5px;text-align:left;box-shadow:0 4px 12px rgba(120,90,20,.08)}
+.jg-chips.col{flex-direction:column;align-items:stretch;max-width:340px;margin:0 auto;width:100%}
+.jg-btn.go{background:var(--ink);color:#fff;border:2.5px solid var(--g2);box-shadow:0 0 0 3px rgba(217,173,60,.25),0 10px 24px rgba(20,33,61,.35);border-radius:999px;font-size:24px;display:flex;justify-content:center;align-items:center;gap:14px}
+.jg-btn.go:active{transform:translateY(2px)}
+.jg-giftdec{position:absolute;left:-14px;top:-6px;z-index:-1;opacity:.9}
 .jg-mute{position:fixed;top:12px;right:12px;z-index:40;border:1.5px solid #ead9ad;background:#fff;border-radius:999px;width:44px;height:44px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 `;
 async function startJuego(code, avance){
   S.publicGame = true;
   document.body.className = "jg"; const st = document.createElement("style"); st.textContent = JG_CSS; document.head.appendChild(st);
   document.body.innerHTML = `<div class="jg-pg" id="jg"><div class="jg-p">Cargando…</div></div>`;
+  document.body.insertAdjacentHTML("afterbegin", SVG_RIBBON("l") + SVG_RIBBON("r"));
   const mb = document.createElement("button"); mb.className = "jg-mute"; mb.setAttribute("aria-label", "Música"); const paintMb = () => mb.textContent = jgMuted() ? "🔇" : "🎵"; paintMb();
   mb.onclick = e => { e.stopPropagation(); try { localStorage.setItem("ly-jg-mute", jgMuted() ? "0" : "1"); } catch {} paintMb(); if (jgMuted()) musicStop(); else musicStart(); }; document.body.appendChild(mb);
   const box = document.getElementById("jg"); code = String(code).toUpperCase().replace(/[^A-Z0-9]/g,"");
@@ -115,7 +155,9 @@ async function startJuego(code, avance){
   catch { box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
   const key = "ly-jg-" + code; let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
   const save = () => { try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
-  const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const ref = firstName(J.ref) ? J.ref : "Tu amiga";
+  const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const T = setTema(P.tema), TX = txtDe(P);
+  const bs = document.body.style; [["--b1",T.bg[0]],["--b2",T.bg[1]],["--b3",T.bg[2]],["--g1",T.g[0]],["--g2",T.g[1]],["--g3",T.g[2]],["--g4",T.g[3]],["--ink",T.ink],["--acc",T.acc],["--glow",T.glow]].forEach(([k,v]) => bs.setProperty(k, v));
+  document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r")); const ref = firstName(J.ref) ? J.ref : "Tu amiga";
   const vence = J.until ? new Intl.DateTimeFormat("es-US",{weekday:"long", day:"numeric", month:"long"}).format(new Date(J.until)) : "";
   const meta = P.meta || {refs:14, cada:4};
   if (P.musica === false) mb.remove(); else document.addEventListener("pointerdown", () => { if (!saved.done) musicStart(); }, {once:true});
@@ -127,13 +169,13 @@ async function startJuego(code, avance){
 
   function showIntro(){
     const n = J.n || 0;
-    box.innerHTML = `<div class="jg-top">✨ Juega y gana ✨</div>
-      <div class="jg-name">${esc(ref)}</div><h1 class="jg-h">te regaló ${tipo==="caja"?"una caja sorpresa":"un giro"} 🎁</h1>
-      <p class="jg-p">${tipo==="caja"?"Escoge una caja y descubre tu regalo":"Gira la ruleta y gana un regalo"} para tu cocina. Sin costo y sin obligación de compra.</p>
+    box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div><div class="jg-top">${esc(TX.top)}</div>
+      ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>
+      <p class="jg-p"><b>${esc(TX.sub)}</b><br>Sin costo y sin obligación de compra.</p>
       ${tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
         <div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` : wheelSvg(prizes)}
-      <div class="jg-chips">${vence?`<span class="jg-chip">⏳ Válido hasta el ${esc(vence)}</span>`:""}${n>=2?`<span class="jg-chip">🔥 ${n} amigas de ${esc(ref)} ya participaron</span>`:""}</div>
-      ${tipo==="caja" ? "" : `<button class="jg-btn" id="jg-spin">¡GIRAR!</button>`}
+      <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
+      ${tipo==="caja" ? "" : `<button class="jg-btn go" id="jg-spin">${esc(TX.btn||"¡GIRAR!")} <span style="font-size:22px">›</span></button>`}
       <p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`;
     if (tipo==="caja") box.querySelectorAll("[data-box]").forEach(b => b.onclick = () => openBox(b));
     else document.getElementById("jg-spin").onclick = spin;
@@ -246,7 +288,8 @@ function viewJuego(r){
     <div class="card"><h2>Links activos<span class="note">${links.length}</span></h2>
       ${links.length?`<div class="list">${links.slice(0,40).map(([c,j])=>{ const m = j.meta || S.programs?.[j.pid]?.meta || {refs:14,cada:4}; const venc = j.until && j.until < Date.now();
         return `<div class="item" style="cursor:default"><div style="min-width:0"><div class="t">${j.kind==="campana"?"📣 ":j.kind==="amiga"?"👭 ":""}${esc(j.ref||"")}</div><div class="m">${esc(progName(j.pid))} · ${j.n||0} de ${m.refs} amigas${venc?" · vencido":j.until?" · hasta "+fmt(j.until,{day:"numeric",month:"short"}):""}${j.socioId!==S.uid?" · "+esc(memberName(j.socioId)):""}</div><div class="bar"><i style="width:${Math.min(100,(j.n||0)*100/(m.refs||14))}%"></i></div></div><button class="btn small" data-share="${c}">Mandar</button></div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay links. Toca “Inscribir cliente”.</div>`}</div>
-    <div class="card"><h2>Mis programas</h2>${mine.length?`<div class="list">${mine.map(([id,p])=>`<button class="item" data-prog="${id}"><div><div class="t">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div><div class="m">Meta: ${p.meta?.refs||14} referidos, un regalo cada ${p.meta?.cada||4}${p.activo===false?" · pausado":""}</div></div><span class="note">Editar</span></button>`).join("")}</div>`:`<div class="empty">No has creado programas.${progs.length?" Puedes usar los de tu equipo.":""}</div>`}</div>`;
+    <div class="card"><h2>Mis programas</h2>${mine.length?`<div class="list">${mine.map(([id,p])=>`<button class="item" data-prog="${id}"><div><div class="t">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div><div class="m">Meta: ${p.meta?.refs||14} referidos, un regalo cada ${p.meta?.cada||4}${p.activo===false?" · pausado":""}</div></div><span class="note">Editar</span></button>`).join("")}</div>`:`<div class="empty">No has creado programas.${progs.length?" Puedes usar los de tu equipo.":""}</div>`}</div>
+    ${(() => { const cp = Object.entries(S.programs||{}).filter(([,p]) => p.owner!==S.uid && p.activo!==false && S.members[p.owner]?.role==="admin"); return cp.length ? `<div class="card"><h2>Diseña tu propia ruleta</h2><p class="note" style="margin-top:-6px">Copia un programa de Lunaya y cámbiale lo que quieras: colores, textos, regalos, fotos y mensaje. La copia es solo tuya.</p><div class="list">${cp.map(([id,p])=>`<div class="item" style="cursor:default"><div><div class="t">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div></div><button class="btn small" data-pcopy="${id}">Copiar y diseñar</button></div>`).join("")}</div></div>` : ""; })()}`;
 }
 function bindJuego(){
   const m = document.getElementById("main"); if (!m) return; const on = (sel, fn) => m.querySelectorAll(sel).forEach(fn);
@@ -258,14 +301,15 @@ function bindJuego(){
   on("[data-lead]", b => b.onclick = () => openLead(b.dataset.lead));
   on("[data-share]", b => b.onclick = () => openShare(b.dataset.share));
   on("[data-prog]", b => b.onclick = () => openPrograma(b.dataset.prog));
+  on("[data-pcopy]", b => b.onclick = () => openPrograma(null, b.dataset.pcopy));
 }
 
 /* Foto del regalo: cuadrada y liviana para que quepa en la base de datos gratis */
 async function fotoChica(file, sz=300){ const url = URL.createObjectURL(file); try { const img = await loadImg(url); const c = document.createElement("canvas"); c.width = c.height = sz; const x = c.getContext("2d"); const s = Math.min(img.width, img.height);
   x.fillStyle = "#fff"; x.fillRect(0,0,sz,sz); x.drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, sz, sz); return c.toDataURL("image/jpeg", 0.72); } finally { URL.revokeObjectURL(url); } }
 
-function openPrograma(pid){
-  const P = pid ? JSON.parse(JSON.stringify(S.programs[pid])) : {name:"", tipo:"ruleta", prizes:[{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""}], meta:{refs:14, cada:4}, dias:7, msg:""};
+function openPrograma(pid, copia){
+  const P = pid ? JSON.parse(JSON.stringify(S.programs[pid])) : copia ? {...JSON.parse(JSON.stringify(S.programs[copia])), name:(S.programs[copia].name||"")+" (mío)", createdAt:0, owner:""} : {name:"", tema:"oro", textos:{}, tipo:"ruleta", prizes:[{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""}], meta:{refs:14, cada:4}, dias:7, msg:""};
   const rowsHtml = () => P.prizes.map((p,i)=>`<div class="row" style="flex-wrap:nowrap;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:8px">
       <label style="cursor:pointer;flex:none">${p.img?`<img src="${p.img}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block">`:`<span style="width:56px;height:56px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:12px;text-align:center;font-weight:700;color:var(--muted)">📷<br>Foto</span>`}<input type="file" accept="image/*" data-pimg="${i}" hidden></label>
       <input class="i" data-pn="${i}" value="${esc(p.n)}" placeholder="Regalo ${i+1}" style="flex:1;min-width:0">
@@ -280,6 +324,10 @@ function openPrograma(pid){
       <p class="note" style="margin:4px 0 0">Pon 0% al regalo que quieres que se vea pero que nunca salga.</p></div>
     <div class="grid2"><label class="f">Meta de referidos<input class="i" type="number" min="1" id="pg-refs" value="${P.meta.refs}"></label><label class="f">Un regalo cada<input class="i" type="number" min="1" id="pg-cada" value="${P.meta.cada}"></label><label class="f">Días que dura cada link<input class="i" type="number" min="1" max="60" id="pg-dias" value="${P.dias||7}"></label></div>
     <label class="f">Mensaje que el cliente manda a sus amigas ({link} es donde va el link)<textarea class="i" id="pg-msg" style="min-height:160px">${esc(P.msg || defMsg(P.tipo))}</textarea></label>
+    <div><div class="eyebrow" style="margin-bottom:6px">Diseño</div>
+      <div class="opts">${Object.entries(TEMAS).map(([k,t])=>`<button class="opt ${(P.tema||"oro")===k?"on":""}" data-tema="${k}" style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;flex:none;background:linear-gradient(135deg,${t.g[0]},${t.g[1]} 50%,${t.bg[2]});border:2px solid ${t.ink}"></span>${t.n}</button>`).join("")}</div></div>
+    <div class="grid2">${[["top","Texto de arriba"],["pill","Debajo del nombre"],["sub","Frase de invitación"],["btn","Botón"]].map(([k,l])=>`<label class="f">${l}<input class="i" data-tx="${k}" value="${esc((P.textos||{})[k]||"")}" placeholder="${esc(TXT_DEF(P.tipo)[k]||"")}" maxlength="60"></label>`).join("")}</div>
+    <button class="btn small ghost" id="pg-prev" type="button">👀 Ver cómo se ve</button><div id="pg-pv"></div>
     <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-mus" ${P.musica!==false?"checked":""}> Música alegre en la ruleta (la persona la puede apagar)</label>
     ${pid?`<label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-act" ${P.activo!==false?"checked":""}> Programa activo (se puede usar para inscribir clientes)</label>`:""}
     <div class="row"><button class="btn" id="pg-save">Guardar programa</button><button class="btn ghost" data-close>Cancelar</button></div>`, bind);
@@ -293,6 +341,9 @@ function openPrograma(pid){
       document.querySelectorAll("[data-pimg]").forEach(x => x.onchange = async () => { const f = x.files[0]; if (!f) return; try { P.prizes[+x.dataset.pimg].img = await fotoChica(f); paint(); } catch { toast("No se pudo leer esa foto"); } });
     }
     paint();
+    document.querySelectorAll("[data-tema]").forEach(b => b.onclick = () => { P.tema = b.dataset.tema; document.querySelectorAll("[data-tema]").forEach(x => x.classList.toggle("on", x===b)); });
+    const readTx = () => { const t = {}; document.querySelectorAll("[data-tx]").forEach(i => { if (i.value.trim()) t[i.dataset.tx] = i.value.trim().slice(0,60); }); return t; };
+    q("pg-prev").onclick = async () => { q("pg-prev").disabled = true; try { const bl = await promoImg({ref:"Amada Segura"}, {...P, textos:readTx(), prizes:P.prizes.filter(x=>x.n)}, APP_URL+"?j=EJEMPLO1"); q("pg-pv").innerHTML = `<img src="${URL.createObjectURL(bl)}" style="width:100%;border-radius:12px;margin-top:6px">`; } catch(e){ console.log(e); toast("No se pudo crear la vista previa"); } q("pg-prev").disabled = false; };
     q("pg-add").onclick = () => { if (P.prizes.length >= 8){ toast("Máximo 8 regalos"); return; } P.prizes.push({n:"", w:0, img:""}); paint(); };
     document.querySelectorAll("[data-ptipo]").forEach(b => b.onclick = () => { const old = P.tipo; P.tipo = b.dataset.ptipo; document.querySelectorAll("[data-ptipo]").forEach(x => x.classList.toggle("on", x===b)); if (q("pg-msg").value === defMsg(old)) q("pg-msg").value = defMsg(P.tipo); });
     q("pg-save").onclick = async () => {
@@ -300,7 +351,7 @@ function openPrograma(pid){
       if (!P.name){ toast("Ponle un nombre al programa"); return; } if (prizes.length < 2){ toast("Pon al menos 2 regalos con nombre"); return; }
       if (!prizes.some(p => p.w > 0)) prizes.forEach(p => p.w = 1);
       const msg = q("pg-msg").value.trim(); if (!msg.includes("{link}")){ toast("El mensaje necesita {link} para poner el link"); return; }
-      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4)}, dias:Math.min(60,Math.max(1,+q("pg-dias").value||7)), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
+      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4)}, dias:Math.min(60,Math.max(1,+q("pg-dias").value||7)), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
       if (JSON.stringify(doc).length > 900000){ toast("Las fotos pesan mucho. Quita alguna e intenta de nuevo."); return; }
       q("pg-save").disabled = true;
       try { if (pid) await S.db.doc("programs/"+pid).set(doc); else await S.db.collection("programs").add(doc); closeModal(); toast("Programa guardado"); } catch(e){ q("pg-save").disabled = false; writeErr(e); }
@@ -357,38 +408,66 @@ function openShare(code){
   });
 }
 
-/* Imagen para compartir: fondo crema y dorado, el nombre en grande, la ruleta con las fotos de los regalos y el QR */
-function fitText(x, txt, max, w, weight, fam){ let f = max; do { x.font = `${weight} ${f}px ${fam}`; f -= 2; } while (x.measureText(txt).width > w && f > 20); }
+/* Imagen para compartir: estilo crema y dorado, nombre en grande (apellido en letra cursiva), ruleta con fotos y QR */
+function fitText(x, txt, max, w, weight, fam){ let f = max; do { x.font = `${weight} ${f}px ${fam}`; f -= 2; } while (x.measureText(txt).width > w && f > 20); return f+2; }
+function goldGrad(x, x0, y0, x1, y1){ const g = x.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, JGT.g[0]); g.addColorStop(.45, JGT.g[1]); g.addColorStop(.7, JGT.g[2]); g.addColorStop(1, JGT.g[3]); return g; }
+function rr(x, X, Y, w, h, r){ x.beginPath(); if (x.roundRect) x.roundRect(X, Y, w, h, r); else x.rect(X, Y, w, h); }
+function drawGift(x, X, Y, w){ const k = w/120; x.save(); x.translate(X, Y); x.scale(k, k); x.shadowColor = "rgba(120,90,20,.3)"; x.shadowBlur = 24; x.shadowOffsetY = 10;
+  x.fillStyle = "#fffdf7"; x.fillRect(14, 52, 92, 62); x.shadowColor = "transparent"; x.fillStyle = "#ffffff"; x.fillRect(8, 38, 104, 20); x.strokeStyle = "#ead9ad"; x.lineWidth = 1; x.strokeRect(14,52,92,62); x.strokeRect(8,38,104,20);
+  const g = goldGrad(x, 0, 0, 120, 120); x.fillStyle = g; x.fillRect(52, 38, 16, 76);
+  x.beginPath(); x.moveTo(60,38); x.bezierCurveTo(40,10,14,16,26,32); x.bezierCurveTo(32,40,50,40,60,38); x.moveTo(60,38); x.bezierCurveTo(80,10,106,16,94,32); x.bezierCurveTo(88,40,70,40,60,38); x.fill();
+  x.strokeStyle = g; x.lineWidth = 7; x.lineCap = "round"; x.beginPath(); x.moveTo(60,38); x.lineTo(44,62); x.moveTo(60,38); x.lineTo(76,62); x.stroke(); x.fillStyle = "#c9971f"; x.beginPath(); x.arc(60,38,7,0,7); x.fill(); x.restore(); }
+function drawHeart(x, X, Y, w){ const k = w/60; x.save(); x.translate(X, Y); x.scale(k, k); x.beginPath(); x.moveTo(30,46); x.bezierCurveTo(8,30,2,20,6,11); x.bezierCurveTo(10,2,24,2,30,14); x.bezierCurveTo(36,2,50,2,54,11); x.bezierCurveTo(58,20,52,30,30,46); x.strokeStyle = goldGrad(x,0,0,60,50); x.lineWidth = 3.2; x.stroke(); x.restore(); }
+function drawCrown(x, cx, Y, w){ const k = w/40; x.save(); x.translate(cx - w/2, Y); x.scale(k, k); x.fillStyle = goldGrad(x,0,0,40,26); x.beginPath(); x.moveTo(3,22); x.lineTo(1,6); x.lineTo(11,13); x.lineTo(20,2); x.lineTo(29,13); x.lineTo(39,6); x.lineTo(37,22); x.closePath(); x.fill(); rr(x,3,22,34,3,1.5); x.fill(); x.restore(); }
 async function promoImg(j, p, link){
+  setTema(p.tema); const TX = txtDe(p);
+  try { await Promise.all([document.fonts.load('80px "Great Vibes"'), document.fonts.load('700 80px "Source Serif 4"'), document.fonts.load('800 30px Manrope')]); } catch {}
   const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
-  const SERIF = '"Source Serif 4", Georgia, serif', SANS = "Manrope, system-ui, sans-serif";
-  const g = x.createRadialGradient(W/2, 0, 80, W/2, H*0.6, 1200); g.addColorStop(0, "#fffdf7"); g.addColorStop(.6, "#faf1de"); g.addColorStop(1, "#efdcb4"); x.fillStyle = g; x.fillRect(0,0,W,H);
-  for (let i=0;i<90;i++){ x.fillStyle = `rgba(201,151,31,${0.15+Math.random()*.35})`; x.beginPath(); x.arc(Math.random()*W, Math.random()*H, Math.random()*5+1.5, 0, 7); x.fill(); }
-  x.strokeStyle = "#d4a72c"; x.lineWidth = 4; x.strokeRect(26, 26, W-52, H-52); x.lineWidth = 1.5; x.strokeRect(40, 40, W-80, H-80);
-  x.textAlign = "center"; x.fillStyle = "#b8861b"; x.font = `800 30px ${SANS}`; x.fillText("✦  J U E G A   Y   G A N A  ✦", W/2, 108);
-  const nombre = String(j.ref||"Tu amiga").trim(); x.fillStyle = "#a8761b"; fitText(x, nombre, 118, W-160, 700, SERIF); x.fillText(nombre, W/2, 225);
-  x.fillStyle = "#14213d"; x.font = `700 50px ${SERIF}`; x.fillText(p.tipo==="caja" ? "te regaló una caja sorpresa 🎁" : "te regaló un giro 🎁", W/2, 292);
-  const prizes = p.prizes||[], n = prizes.length||1, cx = W/2, cy = 690, R = 335, a = 2*Math.PI/n; const SL = JG_SL(n);
+  const SERIF = '"Source Serif 4", Georgia, serif', SANS = "Manrope, system-ui, sans-serif", SCRIPT = '"Great Vibes", cursive';
+  const g = x.createRadialGradient(W/2, 0, 80, W/2, H*0.6, 1200); g.addColorStop(0, JGT.bg[0]); g.addColorStop(.6, JGT.bg[1]); g.addColorStop(1, JGT.bg[2]); x.fillStyle = g; x.fillRect(0,0,W,H);
+  /* luces desenfocadas */
+  for (let i=0;i<26;i++){ const bx = Math.random()*W, by = Math.random()*H, br = 20+Math.random()*60; const rg = x.createRadialGradient(bx,by,0,bx,by,br); rg.addColorStop(0, `rgba(${JGT.glow},.55)`); rg.addColorStop(1, `rgba(${JGT.glow},0)`); x.fillStyle = rg; x.fillRect(bx-br,by-br,2*br,2*br); }
+  /* listones dorados */
+  x.save(); x.lineCap = "round"; x.globalAlpha = .9; x.lineWidth = 22; x.strokeStyle = goldGrad(x,0,0,W,H);
+  x.beginPath(); x.moveTo(-60, 820); x.bezierCurveTo(120, 760, 60, 1000, 200, 1050); x.bezierCurveTo(300, 1090, 210, 1250, 330, 1380); x.stroke();
+  x.beginPath(); x.moveTo(W+60, 640); x.bezierCurveTo(900, 720, 1060, 860, 940, 960); x.bezierCurveTo(840, 1040, 1000, 1150, 1120, 1120); x.stroke(); x.restore();
+  /* encabezado */
+  x.textAlign = "center"; drawCrown(x, W/2, 46, 54);
+  x.strokeStyle = goldGrad(x, W/2-260, 0, W/2-60, 0); x.lineWidth = 2; x.beginPath(); x.moveTo(W/2-260, 72); x.lineTo(W/2-50, 72); x.moveTo(W/2+50, 72); x.lineTo(W/2+260, 72); x.stroke();
+  x.fillStyle = JGT.ink; x.font = `800 30px ${SANS}`; x.fillText(TX.top.toUpperCase().split("").join(" ").replace(/   /g,"   "), W/2, 128);
+  const words = String(j.ref||"Tu amiga").trim().split(/\s+/); const n1 = words.length > 1 ? words.slice(0,-1).join(" ") : "", n2 = words[words.length-1];
+  let f1 = 104, f2 = 136; const measure = () => { x.font = `600 ${f1}px ${SERIF}`; const w1 = n1 ? x.measureText(n1).width + 26 : 0; x.font = `${f2}px ${SCRIPT}`; return [w1, x.measureText(n2).width]; };
+  let [w1, w2] = measure(); while (w1 + w2 > W - 200 && f1 > 50){ f1 -= 4; f2 -= 5; [w1, w2] = measure(); }
+  const nx = W/2 - (w1 + w2)/2, ny = 262; x.textAlign = "left";
+  if (n1){ x.fillStyle = JGT.ink; x.font = `600 ${f1}px ${SERIF}`; x.fillText(n1, nx, ny); }
+  x.fillStyle = goldGrad(x, nx+w1, ny-f2, nx+w1+w2, ny); x.font = `${f2}px ${SCRIPT}`; x.fillText(n2, nx + w1, ny + 8); drawHeart(x, nx + w1 + w2 - 18, ny - f2*0.85, 70);
+  x.textAlign = "center"; const pill = TX.pill; fitText(x, pill, 46, W-260, 700, SERIF); const pw = x.measureText(pill).width + 90;
+  x.save(); x.shadowColor = "rgba(20,33,61,.3)"; x.shadowBlur = 18; x.shadowOffsetY = 6; rr(x, W/2-pw/2, 300, pw, 76, 38); const pg = x.createLinearGradient(0,300,0,376); pg.addColorStop(0, JGT.ink); pg.addColorStop(1, JGT.ink); x.fillStyle = pg; x.fill(); x.restore();
+  x.fillStyle = "#fff"; x.fillText(pill, W/2, 354);
+  /* ruleta */
+  const prizes = p.prizes||[], n = prizes.length||1, cx = W/2, cy = 760, R = 300, a = 2*Math.PI/n; const SL = JG_SL(n);
   const imgs = await Promise.all(prizes.map(pr => pr.img ? loadImg(pr.img).catch(()=>null) : null));
-  x.save(); x.shadowColor = "rgba(120,90,20,.35)"; x.shadowBlur = 40; x.shadowOffsetY = 16; x.beginPath(); x.arc(cx, cy, R+30, 0, 7);
-  const gg = x.createLinearGradient(cx-R, cy-R, cx+R, cy+R); gg.addColorStop(0, "#f6dc8a"); gg.addColorStop(.5, "#c9971f"); gg.addColorStop(1, "#f2d27a"); x.fillStyle = gg; x.fill(); x.restore();
-  prizes.forEach((pr,i) => { const a0 = -Math.PI/2 + i*a; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,R,a0,a0+a); x.closePath(); x.fillStyle = SL[i%SL.length]; x.fill(); x.strokeStyle = "#d4a72c"; x.lineWidth = 5; x.stroke(); });
-  prizes.forEach((pr,i) => { const mid = -Math.PI/2 + i*a + a/2, ir = R*0.56, ix = cx + ir*Math.cos(mid), iy = cy + ir*Math.sin(mid), s = Math.min(200, 2*Math.PI*ir/n*0.6);
+  x.save(); x.shadowColor = "rgba(120,90,20,.4)"; x.shadowBlur = 44; x.shadowOffsetY = 18; x.beginPath(); x.arc(cx, cy, R+32, 0, 7); x.fillStyle = goldGrad(x, cx-R, cy-R, cx+R, cy+R); x.fill(); x.restore();
+  prizes.forEach((pr,i) => { const a0 = -Math.PI/2 + i*a; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,R,a0,a0+a); x.closePath(); x.fillStyle = SL[i%SL.length]; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 5; x.stroke(); });
+  prizes.forEach((pr,i) => { const mid = -Math.PI/2 + i*a + a/2, ir = R*0.56, ix = cx + ir*Math.cos(mid), iy = cy + ir*Math.sin(mid), s = Math.min(180, 2*Math.PI*ir/n*0.6);
     x.save(); x.shadowColor = "rgba(0,0,0,.18)"; x.shadowBlur = 14; x.beginPath(); x.arc(ix, iy, s/2+8, 0, 7); x.fillStyle = "#fff"; x.fill(); x.restore();
-    x.beginPath(); x.arc(ix, iy, s/2+8, 0, 7); x.strokeStyle = "#d4a72c"; x.lineWidth = 4; x.stroke();
+    x.beginPath(); x.arc(ix, iy, s/2+8, 0, 7); x.strokeStyle = JGT.g[1]; x.lineWidth = 4; x.stroke();
     if (imgs[i]){ x.save(); x.beginPath(); x.arc(ix, iy, s/2, 0, 7); x.clip(); x.drawImage(imgs[i], ix-s/2, iy-s/2, s, s); x.restore(); } else { x.font = `${s*0.5}px serif`; x.fillText("🎁", ix, iy+s*0.18); }
     const lbl = String(pr.n).slice(0,18); x.font = `800 ${n>6?22:28}px ${SANS}`; const tw = x.measureText(lbl).width + 32, ty = Math.sin(mid) < -0.2 ? iy - s/2 - 22 : iy + s/2 + 34;
-    x.fillStyle = "#14213d"; x.beginPath(); x.roundRect ? x.roundRect(ix-tw/2, ty-30, tw, 46, 23) : x.rect(ix-tw/2, ty-30, tw, 46); x.fill(); x.fillStyle = "#fff"; x.fillText(lbl, ix, ty+3); });
-  for (let i=0;i<32;i++){ const t = i*2*Math.PI/32; x.beginPath(); x.arc(cx+(R+15)*Math.cos(t), cy+(R+15)*Math.sin(t), 6.5, 0, 7); x.fillStyle = i%2 ? "#fffdf5" : "#ffe58a"; x.fill(); }
-  x.beginPath(); x.arc(cx, cy, 56, 0, 7); x.fillStyle = "#14213d"; x.fill(); x.lineWidth = 9; x.strokeStyle = "#e2bb4f"; x.stroke(); x.font = "54px serif"; x.fillText("🎁", cx, cy+19);
-  x.beginPath(); x.moveTo(cx-34, cy-R-52); x.lineTo(cx+34, cy-R-52); x.lineTo(cx, cy-R+16); x.closePath(); x.fillStyle = "#14213d"; x.fill();
-  /* QR */
-  const q = qrcode(0, "M"); q.addData(link); q.make(); const nm = q.getModuleCount(), qs = 210, cell = qs/nm, qx = 150, qy = 1090;
-  x.fillStyle = "#fff"; x.beginPath(); x.roundRect ? x.roundRect(qx-16, qy-16, qs+32, qs+32, 20) : x.rect(qx-16, qy-16, qs+32, qs+32); x.fill(); x.strokeStyle = "#d4a72c"; x.lineWidth = 4; x.stroke(); x.fillStyle = "#14213d";
+    x.fillStyle = JGT.ink; rr(x, ix-tw/2, ty-30, tw, 46, 23); x.fill(); x.fillStyle = "#fff"; x.fillText(lbl, ix, ty+3); });
+  for (let i=0;i<32;i++){ const t = i*2*Math.PI/32, bx = cx+(R+16)*Math.cos(t), by = cy+(R+16)*Math.sin(t); const rg = x.createRadialGradient(bx,by,0,bx,by,18); rg.addColorStop(0,"rgba(255,250,225,1)"); rg.addColorStop(.35,`rgba(${JGT.glow},.95)`); rg.addColorStop(1,`rgba(${JGT.glow},0)`); x.fillStyle = rg; x.fillRect(bx-18,by-18,36,36); }
+  x.beginPath(); x.arc(cx, cy, 58, 0, 7); x.fillStyle = JGT.ink; x.fill(); x.lineWidth = 10; x.strokeStyle = goldGrad(x, cx-60, cy-60, cx+60, cy+60); x.stroke(); drawGift(x, cx-40, cy-44, 80);
+  x.beginPath(); x.moveTo(cx-34, cy-R-56); x.lineTo(cx+34, cy-R-56); x.lineTo(cx, cy-R+14); x.closePath(); x.fillStyle = JGT.ink; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 3; x.stroke();
+  drawGift(x, 34, 970, 190);
+  /* tarjeta con QR */
+  const cardX = 250, cardY = 1110, cardW = 790, cardH = 200;
+  x.save(); x.shadowColor = "rgba(120,90,20,.25)"; x.shadowBlur = 30; x.shadowOffsetY = 10; rr(x, cardX, cardY, cardW, cardH, 100); x.fillStyle = "rgba(255,253,247,.96)"; x.fill(); x.restore(); rr(x, cardX, cardY, cardW, cardH, 100); x.strokeStyle = JGT.g[1]; x.lineWidth = 3; x.stroke();
+  const q = qrcode(0, "M"); q.addData(link); q.make(); const nm = q.getModuleCount(), qs = 160, cell = qs/nm, qx = cardX + 60, qy = cardY + 20;
+  rr(x, qx-10, qy-10, qs+20, qs+20, 16); x.fillStyle = "#fff"; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 3; x.stroke(); x.fillStyle = JGT.ink;
   for (let r=0;r<nm;r++) for (let k=0;k<nm;k++) if (q.isDark(r,k)) x.fillRect(qx+k*cell, qy+r*cell, Math.ceil(cell), Math.ceil(cell));
-  x.textAlign = "left"; const tx = qx+qs+60; x.fillStyle = "#14213d"; x.font = `700 54px ${SERIF}`; x.fillText(p.tipo==="caja" ? "¡Abre y gana!" : "¡Gira y gana!", tx, qy+58);
-  x.font = `700 32px ${SANS}`; x.fillText("Escanea el código o toca el link", tx, qy+112);
-  x.fillStyle = "#7a705c"; x.font = `500 26px ${SANS}`; x.fillText("Sin costo · sin obligación de compra", tx, qy+160); x.fillText("Solo mayores de 18 años", tx, qy+196);
+  x.textAlign = "left"; const tx = qx+qs+40; x.fillStyle = JGT.ink; x.font = `700 50px ${SERIF}`; x.fillText(p.tipo==="caja" ? "¡Abre y gana!" : "¡Gira y gana!", tx, cardY+68);
+  x.font = `italic 700 30px ${SERIF}`; x.fillText("Escanea el código o toca el link", tx, cardY+110);
+  x.fillStyle = "#5b5547"; x.font = `600 23px ${SANS}`; x.fillText("Sin costo · Sin obligación de compra", tx, cardY+148); x.fillText("Solo mayores de 18 años", tx, cardY+178);
   return await new Promise(res => c.toBlob(res, "image/png"));
 }
 
