@@ -153,7 +153,7 @@ nav.bottom svg{width:22px;height:22px}
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611031725";
+const APP_VER = "202611031727";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -216,6 +216,9 @@ const who = (id, size=28, bold=true) => `<span class="nm-av">${av(id,size)}${bol
 const byRole = r => Object.entries(S.members).filter(([,m]) => m.role === r).map(([id,m]) => ({id,...m})).sort((a,b) => (a.name||"").localeCompare(b.name||""));
 const socios = () => [...byRole("admin"), ...byRole("socio")];
 const DIST = "Socio distribuidor";
+/* Telemarketers del programa Lunaya (las de Dirección) vs. externas (las que contrata un distribuidor por su cuenta) */
+const telesLunaya = () => byRole("tele").filter(t => !t.upline);
+const telesExternas = () => byRole("tele").filter(t => t.upline);
 const isDist = () => role()==="socio" && S.me?.tipo===DIST;
 const grupoDe = uid => Object.entries(S.members).filter(([,m]) => m.upline===uid && m.role!=="baja").map(([id,m]) => ({id,...m}));
 /* Socios para los que puede llamar una telemarketer: las de un distribuidor solo trabajan su grupo */
@@ -639,11 +642,13 @@ function viewHoy(r){
   } else {
     const e = teleEval(null, rg); const sinRes = Object.values(S.appts).filter(a => a.status==="agendada" && a.when < Date.now()-3600e3).length;
     h += `<div class="card"><h2>Territorio ${periodChips()}</h2>${evalTiles(e)}${sinRes?`<div class="banner warn" style="margin-top:12px">${sinRes} cita(s) pasadas sin resultado. Los socios deben marcarlas.</div>`:""}</div>`;
-    const teles = byRole("tele").map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
+    const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
+    const ext = telesExternas().map(t => ({name:`${t.name} · de ${memberName(t.upline)}`, e:teleEval(t.id, rg), id:t.id}));
     h += `<div class="card"><h2>Evaluación de telemarketers ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}
       <p class="note">% efectividad cita → demo: de cada 100 citas que agendó (y que ya pasaron), cuántas se convirtieron en demostración.</p></div>`;
+    if (ext.length) h += `<div class="card"><h2>Telemarketers externas de distribuidores</h2><p class="note" style="margin-top:-6px">Las contrata y les paga cada distribuidor. No son del programa Lunaya: no entran en tus comisiones ni en el 5%.</p>${evalTable(ext, true)}</div>`;
     h += socioEvalCard(rg);
-    const hoyT = byRole("tele").map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
+    const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   }
   return h;
@@ -683,7 +688,7 @@ function evalTable(rows, calls){
   return `<div class="tbl-wrap"><table><thead><tr><th>Nombre</th>${calls?`<th class="n">Referidos recibidos</th><th class="n">Llamadas</th><th class="n">Contactos</th>`:""}<th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Ventas canceladas</th><th class="n">Volumen de ventas</th>${calls?`<th class="n">% efectividad contacto → cita</th>`:""}<th class="n">% efectividad cita → demo</th></tr></thead><tbody>${rows.map(x=>tr(x.name,x.e,"",x.id)).join("")}${rows.length>1?tr("Total",tot,"total"):""}</tbody></table></div>`;
 }
 function rankTele(){
-  const r = range("mes"); const list = byRole("tele").map(t => ({...t, e:teleEval(t.id, r)})).sort((a,b)=>b.e.ventas-a.e.ventas||b.e.demos-a.e.demos||b.e.citas-a.e.citas);
+  const r = range("mes"); const list = telesLunaya().map(t => ({...t, e:teleEval(t.id, r)})).sort((a,b)=>b.e.ventas-a.e.ventas||b.e.demos-a.e.demos||b.e.citas-a.e.citas);
   if (!list.length) return "";
   return `<div class="card"><h2>Ranking del mes</h2><div class="rank">${list.map((t,i)=>`<div class="${t.id===S.uid?"me":""}"><span class="pos">${i+1}</span><span style="flex:1"><b>${esc(t.name)}</b></span><span class="note">${t.e.citas} citas · ${t.e.demos} demos</span><b>${t.e.ventas} ventas</b></div>`).join("")}</div></div>`;
 }
@@ -797,7 +802,7 @@ function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
 function terrResumen(){
   const modo = S.f.tmode==="tele" ? "tele" : "socio";
   const H = range("hoy"), W = range("semana"), M = range("mes");
-  const list = modo==="tele" ? [...byRole("tele"), ...byRole("baja").filter(t=>t.prevRole==="tele")] : socios();
+  const list = modo==="tele" ? [...byRole("tele"), ...byRole("baja").filter(t=>t.prevRole==="tele")].map(t => t.upline ? {...t, name:`${t.name} (externa · ${memberName(t.upline)})`} : t) : socios();
   const rows = list.map(m => { const ev = rg => modo==="tele" ? teleEval(m.id, rg) : socioEval(m.id, rg);
     const h = ev(H), w = ev(W), mo = ev(M); return {m, h:h.citas, w:w.citas, mo:mo.citas, demos:mo.demos, ventas:mo.ventas, monto:mo.monto}; })
     .filter(x => x.mo || x.w || x.h || modo==="tele").sort((a,b)=>b.mo-a.mo||b.w-a.w);
@@ -951,7 +956,7 @@ function board(title, list, metrics, sortKey){
 }
 function viewRanking(){
   const p = ["semana","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
-  const teles = byRole("tele").map(t => { const e = teleEval(t.id, rg); return {id:t.id, name:t.name, citas:e.citas, demos:e.demos, ventas:e.ventas, monto:e.monto}; }).sort((a,b)=>b.monto-a.monto||b.ventas-a.ventas||b.demos-a.demos||b.citas-a.citas);
+  const teles = telesLunaya().map(t => { const e = teleEval(t.id, rg); return {id:t.id, name:t.name, citas:e.citas, demos:e.demos, ventas:e.ventas, monto:e.monto}; }).sort((a,b)=>b.monto-a.monto||b.ventas-a.ventas||b.demos-a.demos||b.citas-a.citas);
   const soc = socios().map(s => { const e = socioEval(s.id, rg); return {id:s.id, name:s.name, referidos:e.referidos, citas:e.citas, demos:e.demos, ventas:e.ventas, monto:e.monto}; }).sort((a,b)=>b.monto-a.monto||b.ventas-a.ventas||b.demos-a.demos||b.referidos-a.referidos);
   const since = Date.now() - 30*864e5;
   const feed = Object.values(S.appts).filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada" && (a.resultAt||a.when) >= since).sort((a,b)=>(b.resultAt||b.when)-(a.resultAt||a.when)).slice(0,15);
@@ -973,7 +978,7 @@ function inviteCard(){
       <label class="f">Correo (opcional)<input class="i" id="inv-email" type="email" inputmode="email" autocomplete="off"></label>
       <label class="f">WhatsApp (con código de país)<input class="i" id="inv-phone" inputmode="tel" placeholder="+58 412 555 1234"></label>
       <label class="f">Es<select class="i" id="inv-gen"><option value="m">Mujer (bienvenida)</option><option value="h">Hombre (bienvenido)</option></select></label>
-      <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => role()==="tele" ? k==="tele" : (!isDist() || k!=="distribuidor")).map(([k,l])=>`<option value="${k}">${l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
+      <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => role()==="tele" ? k==="tele" : (!isDist() || k!=="distribuidor")).map(([k,l])=>`<option value="${k}">${isDist() && k==="tele" ? "Telemarketer externa (tuya, fuera del programa Lunaya)" : l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
       <div><button class="btn" type="submit">Crear invitación</button></div>
     </form>
 
@@ -1002,9 +1007,9 @@ function ventasLider(p){
 function viewLider(){
   if (!S.me?.lider && !S.isOwner) return `<div class="card empty">Esta pantalla es solo para la líder del equipo.</div>`;
   const rg = range(S.f.period);
-  const teles = byRole("tele").map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
+  const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
   let h = `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
-  const hoyT = byRole("tele").map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
+  const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
   h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
@@ -1041,7 +1046,7 @@ function viewEquipo(){
   const c = com(); const sid = S.config.sheetId || "";
   let h = driveCard() + inviteCard();
   h += `<div class="card"><h2>Solicitudes de acceso</h2>${pend.length?`<div class="list">${pend.map(([id,m])=>`<div class="item" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(m.name)}</div><div class="m">Pidió entrar como ${esc(INV_ROLES[m.wantedRole]||"socio")}${m.phone?" · "+esc(m.phone):""}</div></div><div class="row">${Object.entries(INV_ROLES).map(([k,l])=>`<button class="btn small ${k===(m.wantedRole||"tele")?"":"ghost"}" data-approve="${id}" data-role="${k}">${k===(m.wantedRole||"tele")?"Aprobar":"Como "+l.toLowerCase()}</button>`).join("")}</div></div>`).join("")}</div>`:`<div class="empty">No hay solicitudes pendientes. Quien entra con un enlace de invitación queda registrado solo.</div>`}</div>`;
-  h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td>${who(id,30)}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.upline?` <span class="tag tg-warn">grupo de ${esc(memberName(m.upline))}</span>`:""}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label><label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label><div class="row" style="gap:4px;margin-top:4px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" data-plan="${id}|sueldo" value="${m.sueldo??""}" placeholder="${com().sueldo}" style="padding:4px 6px;width:80px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" data-plan="${id}|pct" value="${m.pct??""}" placeholder="${com().pct}" style="padding:4px 6px;width:60px"></label></div>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
+  h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td>${who(id,30)}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.upline?` <span class="tag tg-warn">${m.role==="tele"?"externa · ":""}grupo de ${esc(memberName(m.upline))}</span>`:(m.role==="tele"?` <span class="tag tg-good">programa Lunaya</span>`:"")}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label><label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label><div class="row" style="gap:4px;margin-top:4px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" data-plan="${id}|sueldo" value="${m.sueldo??""}" placeholder="${com().sueldo}" style="padding:4px 6px;width:80px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" data-plan="${id}|pct" value="${m.pct??""}" placeholder="${com().pct}" style="padding:4px 6px;width:60px"></label></div>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += `<div class="card"><h2>Comisiones</h2><div class="grid2">
     <label class="f">Sueldo fijo mensual (USD)<input class="i" type="number" min="0" id="k-sueldo" value="${c.sueldo}"></label>
     <label class="f">% sobre sus ventas<input class="i" type="number" min="0" step="0.1" id="k-pct" value="${c.pct}"></label>
