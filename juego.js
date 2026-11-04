@@ -195,7 +195,6 @@ async function startJuego(code, avance){
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div><div class="jg-top">${esc(TX.top)}</div>
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>
       <p class="jg-p"><b>${esc(TX.sub)}</b><br>Sin costo y sin obligación de compra.</p>
-      ${prizes.some(p=>p.img) ? `<div class="jg-showt">🎁 Puedes ganar</div><div class="jg-show" id="jg-show">${prizes.map(p=>`<div class="it">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}<b>${esc(p.n)}</b></div>`).join("")}</div>` : ""}
       ${tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
         ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(prizes)}
       <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
