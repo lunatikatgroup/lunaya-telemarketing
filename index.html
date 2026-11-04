@@ -152,6 +152,10 @@ nav.bottom svg{width:22px;height:22px}
 <script src="config.js"></script>
 <script>
 /* ===== Constantes ===== */
+/* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
+const APP_VER = "202611031642";
+async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
+setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
 const DEFAULT_SOURCES = ["Referencias","4/14","Abordajes","Clientes del sistema","Redes sociales","Otro"];
 const RESULTS = [
@@ -1035,7 +1039,7 @@ function openProfile(){
       <div class="row" style="justify-content:center"><label class="btn small" style="cursor:pointer">${photo?"Cambiar foto":"Elegir foto"}<input type="file" id="pf-file" accept="image/*" hidden></label>${photo?`<button class="btn small ghost" id="pf-rm">Quitar foto</button>`:""}</div>
     </div>
     <div class="grid2"><label class="f">Nombre<input class="i" id="pf-name" value="${esc(m.name||"")}"></label><label class="f">Teléfono / WhatsApp<input class="i" id="pf-phone" inputmode="tel" value="${esc(m.phone||"")}"></label><label class="f">Correo de contacto<input class="i" id="pf-email" type="email" inputmode="email" value="${esc(m.email||"")}"></label><label class="f" style="grid-column:1/-1">Calendario de Google para mis citas (opcional)<input class="i" id="pf-gcal" value="${esc(m.gcalId||"")}" placeholder="Ej: abc123@group.calendar.google.com"><span class="note">Si lo pones, el botón 📅 guarda las citas directo en ese calendario (por ejemplo "Citas Lunaya").</span></label></div>
-    <p class="note" style="margin:0">Entras con: <b>${esc(S.email)}</b></p>
+    <p class="note" style="margin:0">Entras con: <b>${esc(S.email)}</b> · versión ${APP_VER}</p>
     <div class="row"><button class="btn" id="pf-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button><button class="btn small ghost" id="pf-out" style="margin-left:auto">Cerrar sesión</button></div>`, () => {
     $("#pf-out").onclick = () => { closeModal(); S.auth.signOut(); };
     const cv = $("#pf-cv"), ctx = cv.getContext("2d");
