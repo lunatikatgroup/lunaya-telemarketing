@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611040832"></script>
-<script src="juego.js?v=202611040832"></script>
+<script src="demo.js?v=202611040834"></script>
+<script src="juego.js?v=202611040834"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611040832";
+const APP_VER = "202611040834";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -521,6 +521,29 @@ function openRuta(uid){ const m = S.members[uid] || {}; const r = m.ruta || {};
     <div class="row"><button class="btn" id="rt-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     $("#rt-ok").onclick = async () => { const d = $("#rt-d").value || today();
       try { await S.db.doc("members/"+uid).update({ruta:{solo:Math.max(0,+$("#rt-s").value||0), acomp:Math.max(0,+$("#rt-a").value||0), desde:laToMs(d,"00:00"), by:S.uid, at:Date.now()}}); closeModal(); toast("Ruta actualizada"); } catch(e){ writeErr(e); } }; }); }
+/* ===== Metas de ventas (mes y año) =====
+   Emprendedor: sus propias ventas. Distribuidor y Dirección: las suyas más las de su grupo. Cuentan las aprobadas; las pendientes se ven aparte. */
+function metaGrupo(uid){ const m = S.members[uid] || {}; return (m.tipo===DIST || m.role==="admin") ? [uid, ...grupoDe(uid).filter(x => x.role==="socio").map(x => x.id)] : [uid]; }
+function metaVentas(uid, [a, b]){ const ids = new Set(metaGrupo(uid)); let ap = 0, pe = 0, mio = 0;
+  Object.values(S.appts).forEach(x => { if (!x.sale || !ids.has(x.socioId) || !inR(x.when||0, [a,b])) return; const st = x.saleStatus||"pendiente"; if (st==="aprobada"){ ap += +x.amount||0; if (x.socioId===uid) mio += +x.amount||0; } else if (st==="pendiente") pe += +x.amount||0; });
+  return {ap, pe, mio}; }
+function metaBloque(tit, meta, v, restTxt){ if (!meta) return `<div><b>${tit}</b><div class="note">Sin meta todavía.</div></div>`; const falta = Math.max(0, meta - v.ap);
+  return `<div><div class="row" style="justify-content:space-between"><b>${tit}</b><b>${money(v.ap)} <span class="note">de ${money(meta)} · ${Math.round(v.ap*100/meta)}%</span></b></div>${rutaBar(v.ap, meta, v.pe)}
+    <div class="note" style="margin-top:4px">${falta ? `Faltan <b>${money(falta)}</b>${restTxt ? " · "+restTxt(falta) : ""}` : "🎉 ¡Meta cumplida!"}${v.pe ? ` · ${money(v.pe)} esperando aprobación` : ""}</div></div>`; }
+function metasCard(uid){ const m = S.members[uid] || {}; const mt = m.metas || {}; const grupo = metaGrupo(uid).length > 1;
+  const t = today(), y = t.slice(0,4), mesR = range("mes"), anioR = [laToMs(y+"-01-01","00:00"), laToMs((+y+1)+"-01-01","00:00")];
+  const finMes = laDate(mesR[1]-1), diasMes = workDays(t, finMes), semAnio = Math.max(1, Math.ceil((anioR[1] - Date.now()) / (7*864e5)));
+  const vm = metaVentas(uid, mesR), va = metaVentas(uid, anioR);
+  return `<div class="card"><h2>${uid===S.uid?"Mis metas":"Metas de "+esc(m.name)}${uid===S.uid?`<button class="btn small ghost" data-metas>${mt.mes||mt.anio?"Cambiar metas":"Poner mis metas"}</button>`:""}</h2>
+    ${grupo?`<p class="note" style="margin-top:-6px">Cuenta tus ventas y las de tu grupo. Solo suman las ventas aprobadas.</p>`:`<p class="note" style="margin-top:-6px">Solo suman las ventas aprobadas.</p>`}
+    <div style="display:grid;gap:14px">${metaBloque("Este mes", +mt.mes||0, vm, f => diasMes ? `${money(Math.ceil(f/diasMes))} por día en los ${diasMes} días de trabajo que quedan` : "")}
+      ${metaBloque("Este año ("+y+")", +mt.anio||0, va, f => `${money(Math.ceil(f/semAnio))} por semana en las ${semAnio} semanas que quedan`)}</div>
+    ${grupo && (vm.ap || va.ap) ? `<p class="note" style="margin-bottom:0">Tuyas: ${money(vm.mio)} este mes · ${money(va.mio)} este año. El resto es de tu grupo.</p>` : ""}</div>`; }
+function openMetas(){ const mt = S.me?.metas || {};
+  openModal(`<h3>Mis metas de ventas</h3><p class="note" style="margin:0">${metaGrupo(S.uid).length>1?"Incluye tus ventas y las de tu grupo.":"Tus propias ventas."} La app te va llevando la cuenta sola.</p>
+    <div class="grid2"><label class="f">Meta del mes (USD)<input class="i" type="number" min="0" step="100" id="mt-m" value="${mt.mes||""}" placeholder="Ej.: 15000"></label><label class="f">Meta del año (USD)<input class="i" type="number" min="0" step="1000" id="mt-a" value="${mt.anio||""}" placeholder="Ej.: 180000"></label></div>
+    <div class="row"><button class="btn" id="mt-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#mt-ok").onclick = async () => { try { await S.db.doc("members/"+S.uid).update({metas:{mes:Math.max(0,+$("#mt-m").value||0), anio:Math.max(0,+$("#mt-a").value||0)}}); closeModal(); toast("Metas guardadas"); } catch(e){ writeErr(e); } }; }); }
 function empPagosCard(payer, p){ const plan = planDe(payer); const emps = Object.entries(S.members).filter(([,m]) => esEmp(m) && m.upline===payer).map(([id])=>id);
   const rg = range(p); const rows = emps.map(id => ({id, g:gananciasEmp(id, rg)})).filter(x=>x.g);
   const pl = plan || DEF_EMP;
@@ -716,6 +739,7 @@ function viewHoy(r){
       <div class="tile"><b>${e.ventas?money(e.monto/e.ventas):"—"}</b><span>Venta promedio</span></div>
       <div class="tile"><b>${pctN(e.ventas,e.demos)??"—"}${e.demos?"%":""}</b><span>% efectividad demo → venta</span></div>
       <div class="tile"><b>${e.refsDemo||0}</b><span>Referidos sacados en demos</span><small>${e.demos?(Math.round((e.refsDemo||0)/e.demos*10)/10)+" por casa":""}</small></div></div></div>`;
+    h = h.replace('<div class="card"><h2>Próximas citas', metasCard(S.uid) + '<div class="card"><h2>Próximas citas');
     h += gananciasCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes") + rutaCard(S.uid) + socioRefCard() + driveCard();
   } else {
     const e = teleEval(null, rg); const sinRes = Object.values(S.appts).filter(a => a.status==="agendada" && a.when < Date.now()-3600e3).length;
@@ -725,6 +749,7 @@ function viewHoy(r){
     h += `<div class="card"><h2>Evaluación de telemarketers ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}
       <p class="note">% efectividad cita → demo: de cada 100 citas que agendó (y que ya pasaron), cuántas se convirtieron en demostración.</p></div>`;
     if (ext.length) h += `<div class="card"><h2>Telemarketers externas de distribuidores</h2><p class="note" style="margin-top:-6px">Las contrata y les paga cada distribuidor. No son del programa Lunaya: no entran en tus comisiones ni en el 5%.</p>${evalTable(ext, true)}</div>`;
+    h = metasCard(S.uid) + h;
     h += socioEvalCard(rg);
     const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
@@ -1305,6 +1330,7 @@ function bindCommon(){
   document.querySelectorAll("[data-tmode]").forEach(b => b.onclick = () => { S.f.tmode = b.dataset.tmode; S.f.aSocio = ""; S.f.aTele = ""; render(); });
   document.querySelectorAll("[data-tsel]").forEach(b => b.onclick = () => { const v = b.dataset.tsel; if (S.f.tmode==="tele"){ S.f.aTele = S.f.aTele===v ? "" : v; S.f.aSocio = ""; } else { S.f.aSocio = S.f.aSocio===v ? "" : v; S.f.aTele = ""; } render(); });
   const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
+  document.querySelectorAll("[data-metas]").forEach(b => b.onclick = openMetas);
   document.querySelectorAll("[data-ruta]").forEach(b => b.onclick = () => openRuta(b.dataset.ruta));
   all("[data-lt]", b => b.onclick = () => { S.f.lt = b.dataset.lt; render(); });
   all("[data-day]", b => b.onclick = () => { S.f.day = b.dataset.day; render(); });

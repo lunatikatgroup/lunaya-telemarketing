@@ -18,8 +18,8 @@ function demoData(kind){
   const owner = ownerUid() || S.uid;
   const M = {
     [owner]: {name: S.me?.name || "Katerine Luna", role:"admin", email:"", joinedAt:d(-400)},
-    demo_dist: {name:"Daniel Ríos", role:"socio", tipo:DIST, upline:"", joinedAt:d(-200), genero:"h", planEmp:{acomp:10, solo:20, asig:13}},
-    demo_emp: {name:"Mariela Torres", role:"socio", tipo:"Emprendedor", upline:"demo_dist", joinedAt:d(-90), genero:"m", ruta:{solo:6000, acomp:2500, desde:d(-60)}},
+    demo_dist: {name:"Daniel Ríos", role:"socio", tipo:DIST, upline:"", joinedAt:d(-200), genero:"h", planEmp:{acomp:10, solo:20, asig:13}, metas:{mes:25000, anio:300000}},
+    demo_emp: {name:"Mariela Torres", role:"socio", tipo:"Emprendedor", upline:"demo_dist", joinedAt:d(-90), genero:"m", ruta:{solo:6000, acomp:2500, desde:d(-60)}, metas:{mes:8000, anio:96000}},
     demo_emp2: {name:"Jorge Pineda", role:"socio", tipo:"Emprendedor", upline:"demo_dist", joinedAt:d(-40), genero:"h"},
     demo_emp3: {name:"Sofía Vargas", role:"socio", tipo:"Emprendedor", upline:owner, joinedAt:d(-70), genero:"m"},
     demo_lider: {name:"Carla Méndez", role:"tele", lider:true, upline:"", joinedAt:d(-300), genero:"m"},
