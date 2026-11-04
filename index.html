@@ -532,8 +532,8 @@ function render(){
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
   if (needsWorld && !worldOk()) html += worldPicker();
-  else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:(r==="admin" ? viewPagos : viewPagosDist), equipo:viewEquipo, lider:viewLider, ranking:viewRanking, juego:viewJuego}[S.view])(r);
-  main.innerHTML = html; bindCommon(); refreshChat(); if (S.view==="juego") bindJuego();
+  else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:(r==="admin" ? viewPagos : viewPagosDist), equipo:viewEquipo, lider:viewLider, ranking:viewRanking, juego:(x => window.viewJuego ? viewJuego(x) : `<div class="card empty">Cargando…</div>`)}[S.view])(r);
+  main.innerHTML = html; bindCommon(); refreshChat(); if (S.view==="juego" && window.bindJuego) bindJuego();
   if (S.openAppt && S.appts[S.openAppt] && !!S.appts[S.openAppt]._priv !== S.openPrivState && !document.querySelector(".modal input:focus,.modal textarea:focus")) openAppt(S.openAppt);
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); if (sel && "setSelectionRange" in el) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
