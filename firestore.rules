@@ -28,7 +28,10 @@ service cloud.firestore {
       && get(memberPath(uid)).data.get('upline', '') == ''; }
     function liderDe(data) { return isLeader() && meData().get('upline', '') == '' && progTele(data.teleId); }
     function teleApptOk(sid) { return tvDe(sid) || distOk(sid) || distOk(get(memberPath(sid)).data.get('upline', '')); }
-    function teleDistDe(data) { return isProgramTele() && (distOk(data.socioId) || distOk(data.get('up', ''))); }
+    // Las telemarketers trabajan en equipo: las del programa ven todo el mundo de cada distribuidor que no las quitó,
+    // y las externas de un distribuidor ven todo el mundo de su distribuidor
+    function teleDistDe(data) { return (isProgramTele() && (distOk(data.socioId) || distOk(data.get('up', ''))))
+      || (myRole() == 'tele' && meData().get('upline', '') != '' && (data.socioId == meData().upline || data.get('up', '') == meData().upline)); }
 
     function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
     // Una invitación válida y sin usar que corresponde al rol que se está pidiendo
