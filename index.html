@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041542"></script>
-<script src="juego.js?v=202611041542"></script>
+<script src="demo.js?v=202611041549"></script>
+<script src="juego.js?v=202611041549"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041542";
+const APP_VER = "202611041549";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -569,9 +569,18 @@ function embudoCard(uid){ const m = S.members[uid] || {}; const E = emb(); const
     <p class="note" style="margin-bottom:0">Meta de la semana: ${E.leads} números → ${E.citas}–${E.citasMax} citas → ${E.demos}–${E.demosMax} demostraciones → ${E.ventas}–${E.ventasMax} ventas. ${e.leads < E.leads ? `Te faltan <b>${E.leads - e.leads}</b> números esta semana.` : "✅ Ya llegaste a los números de la semana."}</p></div>`; }
 function embudoEquipoCard(){ const E = emb(); const r = range("semana"); const ss = socios().filter(s => s.role!=="baja");
   const rows = ss.map(s => ({s, e: embudoDe([s.id], r)})).sort((a,b) => b.e.leads - a.e.leads);
-  return `<div class="card"><h2>Embudo de la semana por socio</h2><p class="note" style="margin-top:-6px">Meta: ${E.leads} números → ${E.citas}–${E.citasMax} citas → ${E.demos}–${E.demosMax} demos → ${E.ventas}–${E.ventasMax} ventas.</p>
-    <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Números</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th></tr></thead><tbody>${rows.map(({s,e}) => `<tr><td><b>${esc(s.name)}</b></td>${[[e.leads,E.leads],[e.citas,E.citas],[e.demos,E.demos],[e.ventas,E.ventas]].map(([v,lo]) => `<td class="n"><span class="${v>=lo?"pct-good":v>=lo/2?"pct-mid":"pct-low"}">${v}</span></td>`).join("")}</tr>`).join("")}</tbody></table></div>
+  return `<div class="card"><h2>Embudo de la semana por socio</h2><p class="note" style="margin-top:-6px">Toca el número de un socio para ver de dónde salió. Meta: ${E.leads} números → ${E.citas}–${E.citasMax} citas → ${E.demos}–${E.demosMax} demos → ${E.ventas}–${E.ventasMax} ventas.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Números</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th></tr></thead><tbody>${rows.map(({s,e}) => `<tr><td><b>${esc(s.name)}</b></td>${[[e.leads,E.leads],[e.citas,E.citas],[e.demos,E.demos],[e.ventas,E.ventas]].map(([v,lo],i) => `<td class="n">${i===0&&v?`<button class="linkbtn" data-embdet="${s.id}" style="background:none;border:0;padding:0;font:inherit;cursor:pointer;text-decoration:underline dotted">`:""}<span class="${v>=lo?"pct-good":v>=lo/2?"pct-mid":"pct-low"}">${v}</span>${i===0&&v?"</button>":""}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
     <details style="margin-top:10px"><summary class="note" style="cursor:pointer">Cambiar la meta del embudo</summary><div class="grid2" style="margin-top:8px">${[["leads","Números a la semana"],["citas","Citas (mínimo)"],["citasMax","Citas (máximo)"],["demos","Demostraciones (mínimo)"],["demosMax","Demostraciones (máximo)"],["ventas","Ventas (mínimo)"],["ventasMax","Ventas (máximo)"]].map(([k,l]) => `<label class="f">${l}<input class="i" type="number" min="0" data-emb="${k}" value="${E[k]}"></label>`).join("")}</div><button class="btn small" data-act="embudo" style="margin-top:8px">Guardar meta</button></details></div>`; }
+/* Detalle de los números de un socio en la semana: quién los anotó, cuándo y de qué fuente */
+function openEmbDet(sid){ const r = range("semana");
+  const refs = allRefs().filter(x => x.socioId===sid && inR(x.at, r)).sort((a,b) => b.at - a.at);
+  const ru = Object.values(S.leads||{}).filter(l => (l.kind==="jugador" || l.kind==="hoja") && l.socioId===sid && inR(l.at||0, r));
+  openModal(`<h3>Números de ${esc(memberName(sid))}</h3><p class="note" style="margin-top:-6px">Esta semana. "Referidos anotados" son los que una telemarketer anotó en Registrar mientras trabajaba para este socio.</p>
+    ${refs.length ? `<div class="tbl-wrap"><table><thead><tr><th>Día</th><th>Quién lo anotó</th><th>Fuente</th><th class="n">Cantidad</th></tr></thead><tbody>${refs.map(x => `<tr><td>${fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</td><td>${esc(memberName(x.teleId))}</td><td>${esc(x.source||"—")}</td><td class="n"><b>${+x.n||0}</b></td></tr>`).join("")}</tbody></table></div>` : `<p class="note">Sin referidos anotados.</p>`}
+    ${ru.length ? `<p><b>${ru.length}</b> prospecto(s) de la ruleta.</p>` : ""}
+    <p class="note">Si alguno no es tuyo, la telemarketer que lo anotó lo puede borrar en Registrar y anotarlo con el socio correcto.</p>
+    <div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`); }
 /* ===== Metas de ventas (mes y año) =====
    Emprendedor: sus propias ventas. Distribuidor y Dirección: las suyas más las de su grupo. Cuentan las aprobadas; las pendientes se ven aparte. */
 function metaGrupo(uid){ const m = S.members[uid] || {}; return (m.tipo===DIST || m.role==="admin") ? [uid, ...grupoDe(uid).filter(x => x.role==="socio").map(x => x.id)] : [uid]; }
@@ -1464,6 +1473,7 @@ function bindCommon(){
   all("[data-plan]", s => s.onchange = async () => { const [id,k] = s.dataset.plan.split("|"); const v = s.value.trim(); try { await S.db.doc("members/"+id).update({[k]: v==="" ? firebase.firestore.FieldValue.delete() : +v}); toast(v==="" ? "Vuelve al plan general" : "Plan de pago guardado"); } catch(e){ writeErr(e); } });
   document.querySelectorAll("[data-tacc]").forEach(c => c.onchange = async () => { const [did, tid] = c.dataset.tacc.split("|"); const cur = new Set(S.members[did]?.teleNo || []); if (c.checked) cur.delete(tid); else cur.add(tid);
     try { await S.db.doc("members/"+did).update({teleNo:[...cur]}); toast(c.checked ? `${memberName(tid)} ya tiene acceso` : `${memberName(tid)} ya no tiene acceso`); } catch(e){ c.checked = !c.checked; writeErr(e); } });
+  all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
   all("[data-lider]", c => c.onchange = async () => { try { await S.db.doc("members/"+c.dataset.lider).update({lider:c.checked}); toast(c.checked?"Marcada como líder":"Ya no es líder"); } catch(e){ writeErr(e); } });
