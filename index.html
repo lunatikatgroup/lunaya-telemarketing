@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041200"></script>
-<script src="juego.js?v=202611041200"></script>
+<script src="demo.js?v=202611041212"></script>
+<script src="juego.js?v=202611041212"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041200";
+const APP_VER = "202611041212";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -477,9 +477,13 @@ function planDe(uid){ const m = S.members[uid]; if (!m) return null; if (m.planE
 const esEmp = m => m && m.role==="socio" && m.tipo==="Emprendedor";
 function catEmp(a){ if (a.acomp===true) return "acomp"; return origenDe(a)==="asig" ? "asig" : "solo"; }
 const CAT_TXT = {acomp:"Acompañado de entrenador", solo:"Solo (cita propia o de telemarketing)", asig:"Solo, cita asignada"};
-function gananciasEmp(uid, r){ const m = S.members[uid]; const plan = esEmp(m) && m.upline ? planDe(m.upline) : null; if (!plan) return null;
-  const v = Object.entries(S.appts).filter(([,a]) => a.socioId===uid && a.sale && inR(a.when||0, r));
-  const rows = v.map(([id,a]) => { const c = catEmp(a), pct = +plan[c]||0, st = a.saleStatus||"pendiente"; return {id, a, c, pct, st, com: st==="aprobada" ? (+a.amount||0)*pct/100 : 0, pot: st==="pendiente" ? (+a.amount||0)*pct/100 : 0}; });
+/* Comisiones del emprendedor: cada venta se paga con el plan del distribuidor por el que pasó la venta (o su patrocinador si no se indicó).
+   Con payer: solo las ventas que paga ese distribuidor. */
+function gananciasEmp(uid, r, payer){ const m = S.members[uid]; if (!esEmp(m)) return null; const base = m.upline ? planDe(m.upline) : null;
+  const v = Object.entries(S.appts).filter(([,a]) => a.socioId===uid && a.sale && inR(a.when||0, r) && (!payer || (a.pasoPor || m.upline)===payer));
+  if (!base && !v.length) return null;
+  const rows = v.map(([id,a]) => { const py = a.pasoPor || m.upline, pl = planDe(py) || base || DEF_EMP; const c = catEmp(a), pct = +pl[c]||0, st = a.saleStatus||"pendiente"; return {id, a, c, pct, st, payer:py, com: st==="aprobada" ? (+a.amount||0)*pct/100 : 0, pot: st==="pendiente" ? (+a.amount||0)*pct/100 : 0}; });
+  const plan = (payer && planDe(payer)) || base || DEF_EMP;
   const tot = rows.reduce((t,x)=>t+x.com,0), pend = rows.reduce((t,x)=>t+x.pot,0);
   const byCat = ["acomp","solo","asig"].map(c => { const l = rows.filter(x=>x.c===c && x.st==="aprobada"); return {c, pct:plan[c], n:l.length, vol:l.reduce((t,x)=>t+(+x.a.amount||0),0), com:l.reduce((t,x)=>t+x.com,0)}; });
   return {plan, rows, tot, pend, byCat}; }
@@ -574,8 +578,10 @@ function openMetas(){ const mt = S.me?.metas || {};
     <div class="grid2"><label class="f">Meta del mes (USD)<input class="i" type="number" min="0" step="100" id="mt-m" value="${mt.mes||""}" placeholder="Ej.: 15000"></label><label class="f">Meta del año (USD)<input class="i" type="number" min="0" step="1000" id="mt-a" value="${mt.anio||""}" placeholder="Ej.: 180000"></label></div>
     <div class="row"><button class="btn" id="mt-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     $("#mt-ok").onclick = async () => { try { await S.db.doc("members/"+S.uid).update({metas:{mes:Math.max(0,+$("#mt-m").value||0), anio:Math.max(0,+$("#mt-a").value||0)}}); closeModal(); toast("Metas guardadas"); } catch(e){ writeErr(e); } }; }); }
-function empPagosCard(payer, p){ const plan = planDe(payer); const emps = Object.entries(S.members).filter(([,m]) => esEmp(m) && m.upline===payer).map(([id])=>id);
-  const rg = range(p); const rows = emps.map(id => ({id, g:gananciasEmp(id, rg)})).filter(x=>x.g);
+function empPagosCard(payer, p){ const plan = planDe(payer); const rg = range(p);
+  const otros = new Set(Object.values(S.appts).filter(a => a.sale && a.pasoPor===payer && inR(a.when||0, rg)).map(a => a.socioId));
+  const emps = Object.entries(S.members).filter(([id,m]) => esEmp(m) && (m.upline===payer || otros.has(id))).map(([id])=>id);
+  const rows = emps.map(id => ({id, g:gananciasEmp(id, rg, payer)})).filter(x => x.g && (x.g.rows.length || S.members[x.id].upline===payer));
   const pl = plan || DEF_EMP;
   const mine = payer===S.uid;
   if (!mine && !rows.length) return "";
@@ -598,7 +604,7 @@ function costoTM(a){ return costoTMd(a).total; }
 function aportes(r){ const c = com(); const out = {};
   Object.values(S.appts).forEach(a => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r) || origenDe(a)!=="tm") return;
     const t = S.members[a.teleId]; if (t && t.upline) return; /* telemarketers propias de un distribuidor: no es el programa */
-    const p = pagadorDe(a.socioId); if (!p) return; const pm = S.members[p] || {}; const d = pm.role==="admin" ? costoTMd(a) : null; const pct = d ? d.total : aporteDe(p); /* Dirección: % real de la telemarketer + 1% de la líder (Carly en sus propias citas: solo su %) */
+    const p = a.pasoPor || pagadorDe(a.socioId); if (!p) return; const pm = S.members[p] || {}; const d = pm.role==="admin" ? costoTMd(a) : null; const pct = d ? d.total : aporteDe(p); /* Dirección: % real de la telemarketer + 1% de la líder (Carly en sus propias citas: solo su %) */
     const o = out[p] = out[p] || {payer:p, ventas:0, vol:0, monto:0, rows:[]}; const m = (+a.amount||0)*pct/100; o.ventas++; o.vol += +a.amount||0; o.monto += m; o.rows.push({a, pct, m, txt: d ? d.txt : "fijo"}); });
   return out; }
 /* % que paga cada distribuidor por las ventas de telemarketing: el suyo si Dirección se lo puso, o el general */
@@ -1055,6 +1061,10 @@ function openAppt(id){
     const bindAc = () => { document.querySelectorAll("[data-ac]").forEach(b => b.onclick = () => { document.querySelectorAll("[data-ac]").forEach(x => x.classList.toggle("on", x===b)); $("#ac-who").style.display = b.dataset.ac==="acomp" ? "" : "none"; }); };
     const readAc = () => { if (!needAc) return {}; const on = document.querySelector("[data-ac].on"); if (!on){ toast("Marca si fue solo o con entrenador"); return null; } const ac = on.dataset.ac==="acomp"; return {acomp:ac, entrenador: ac ? ($("#ac-who").value||"") : ""}; };
     if ($("#ac-edit")){ $("#ac-edit").innerHTML = acb(); bindAc(); $("#ac-save").onclick = () => { const ac = readAc(); if (ac) save(ac); }; }
+    /* Emprendedor: por cuál distribuidor pasó la venta (paga la comisión de telemarketing y la del emprendedor con su plan) */
+    const pasoOpts = () => { const m = S.members[a.socioId] || {}; const ids = [...new Set([m.upline, ...socios().filter(x => x.role==="admin" || x.tipo===DIST).map(x => x.id)].filter(Boolean))];
+      return ids.map(id => `<option value="${id}" ${a.pasoPor===id?"selected":""}>${esc(memberName(id))}${id===m.upline?" (su patrocinador)":""}</option>`).join(""); };
+    const pb = () => needAc ? `<label class="f" style="grid-column:1/-1">¿Por cuál distribuidor pasó la venta? <b style="color:var(--bad,#c0392b)">*</b><select class="i" id="ar-paso"><option value="">Escoge…</option>${pasoOpts()}</select></label>` : "";
     const rb = () => `<label class="f">¿Cuántos referidos sacaste en esta casa?<input class="i" type="number" min="0" step="1" id="ar-refs" value="${a.refsDemo??""}" placeholder="0"></label>`;
     const nb = () => a._priv ? `<label class="f" style="grid-column:1/-1">¿Qué pasó con este cliente? (comentario)<textarea class="i" id="ar-note" maxlength="1000" placeholder="Ej: le gustó pero lo quiere hablar con su esposo; tiene ollas viejas…">${esc(a.resNote||"")}</textarea></label>` : "";
     const saveR = async upd => { if (upd.status==="hecha"){ const ac = readAc(); if (ac===null) return; Object.assign(upd, ac); } const rf = $("#ar-refs"); if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); } catch(e){ writeErr(e); return; } }
@@ -1065,8 +1075,10 @@ function openAppt(id){
       document.querySelectorAll("[data-ar]").forEach(x => x.classList.toggle("on", x===b));
       if (k==="seguimiento"){ const w = a.segWhen || (Date.now()+2*864e5); $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Día del seguimiento<input class="i" type="date" id="sg-d" value="${laDate(w)}"></label><label class="f">Hora${timeSel("sg-t",a.segWhen?laTime(w):"18:00")}</label>${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="sg-save">Guardar seguimiento</button></div></div>`; bindAc();
         $("#sg-save").onclick = () => { const d=$("#sg-d").value, t=timeVal("sg-t"); if (!d||!t){ toast("Elige el día y la hora"); return; } saveR({status:"hecha", sale:false, amount:0, segWhen:laToMs(d,t), resultAt:Date.now(), resultBy:S.uid}); }; return; }
-      if (k==="venta"){ $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Monto de la venta (USD)<input class="i" type="number" min="0" step="0.01" id="ar-amt" value="${a.amount||""}"></label>${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="ar-save">Guardar venta</button></div></div>`; bindAc(); $("#ar-amt").focus();
-        $("#ar-save").onclick = () => { const amt = +$("#ar-amt").value; if (!(amt>0)){ toast("Escribe el monto de la venta"); return; } saveR({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt:Date.now(), resultBy:S.uid}); }; return; }
+      if (k==="venta"){ $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Monto de la venta (USD)<input class="i" type="number" min="0" step="0.01" id="ar-amt" value="${a.amount||""}"></label>${pb()}${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="ar-save">Guardar venta</button></div></div>`; bindAc(); $("#ar-amt").focus();
+        $("#ar-save").onclick = () => { const amt = +$("#ar-amt").value; if (!(amt>0)){ toast("Escribe el monto de la venta"); return; }
+          const ps = $("#ar-paso"); if (ps && !ps.value){ toast("Escoge por cuál distribuidor pasó la venta"); ps.focus(); return; }
+          saveR({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt:Date.now(), resultBy:S.uid, ...(ps ? {pasoPor:ps.value} : {})}); }; return; }
       $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${k==="hecha"?acb()+rb():""}${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; bindAc(); $("#ar-note") && $("#ar-note").focus();
       $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
