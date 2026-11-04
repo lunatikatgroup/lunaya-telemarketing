@@ -43,7 +43,8 @@ service cloud.firestore {
         && get(invitePath(data.inviteCode)).data.memberRole == data.role
         && data.get('upline', '') == get(invitePath(data.inviteCode)).data.get('upline', '')
         && data.get('lider', false) == false
-        && data.get('aporte', -1) == get(invitePath(data.inviteCode)).data.get('aporte', -1);
+        && data.get('aporte', -1) == get(invitePath(data.inviteCode)).data.get('aporte', -1)
+        && data.get('startDate', '') == get(invitePath(data.inviteCode)).data.get('startDate', '');
     }
 
     match /members/{uid} {
@@ -57,6 +58,9 @@ service cloud.firestore {
          // El distribuidor ajusta el plan de pago de SUS telemarketers
          || (isDist() && resource.data.get('upline', '') == request.auth.uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate', 'ruta']))
+         // La líder corrige el día en que empezó cada telemarketer del programa (para el sueldo)
+         || (isLeader() && resource.data.role == 'tele' && resource.data.get('upline', '') == ''
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['startDate']))
          || (signedIn() && request.auth.uid == uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp', 'planTele', 'teleNo', 'metas']))
          || (signedIn() && request.auth.uid == uid && resource.data.role == 'pendiente'

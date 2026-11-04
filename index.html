@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041534"></script>
-<script src="juego.js?v=202611041534"></script>
+<script src="demo.js?v=202611041542"></script>
+<script src="juego.js?v=202611041542"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041534";
+const APP_VER = "202611041542";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -379,7 +379,7 @@ async function acceptInvite(code){
     const snap = await S.db.doc("invites/"+c).get();
     if (!snap.exists || snap.data().status === "aceptada"){ inviteDone = false; return false; }
     const v = snap.data();
-    await S.db.doc("members/"+S.uid).set({name: S.me?.name || v.name || S.authUser?.displayName || "", phone: S.me?.phone || v.phone || "", email: S.email, role: MEMBER_ROLE(v.role), tipo: (v.role==="tele"||v.role==="admin") ? "" : INV_ROLES[v.role], lider:false, joinedAt: Date.now(), invitedBy: v.invitedBy || "", upline: v.upline || "", genero: v.genero || "", inviteCode: c, ...(v.sueldo!==undefined?{sueldo:v.sueldo}:{}), ...(v.pct!==undefined?{pct:v.pct}:{}), ...(v.aporte!==undefined?{aporte:v.aporte}:{})});
+    await S.db.doc("members/"+S.uid).set({name: S.me?.name || v.name || S.authUser?.displayName || "", phone: S.me?.phone || v.phone || "", email: S.email, role: MEMBER_ROLE(v.role), tipo: (v.role==="tele"||v.role==="admin") ? "" : INV_ROLES[v.role], lider:false, joinedAt: Date.now(), invitedBy: v.invitedBy || "", upline: v.upline || "", genero: v.genero || "", inviteCode: c, ...(v.sueldo!==undefined?{sueldo:v.sueldo}:{}), ...(v.pct!==undefined?{pct:v.pct}:{}), ...(v.aporte!==undefined?{aporte:v.aporte}:{}), ...(v.startDate?{startDate:v.startDate}:{})});
     await S.db.doc("invites/"+c).update({status:"aceptada", acceptedAt:Date.now(), uid:S.uid});
     clearCode(); toast(v.genero==="h" ? "¡Bienvenido al equipo!" : v.genero==="m" ? "¡Bienvenida al equipo!" : "¡Te damos la bienvenida al equipo!"); return true;
   } catch(e){ inviteDone = false; console.log(e); return false; }
@@ -1194,6 +1194,7 @@ function inviteCard(){
       <label class="f">WhatsApp (con código de país)<input class="i" id="inv-phone" inputmode="tel" placeholder="+58 412 555 1234"></label>
       <label class="f">Es<select class="i" id="inv-gen"><option value="m">Mujer (bienvenida)</option><option value="h">Hombre (bienvenido)</option></select></label>
       <div class="f" id="inv-plan"><span>Plan de pago (solo telemarketers, opcional)</span><div class="row" style="gap:6px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" id="inv-sueldo" placeholder="${com().sueldo}" style="width:80px;padding:6px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" id="inv-pct" placeholder="${com().pct}" style="width:64px;padding:6px"></label></div><span class="note">Vacío = plan general. Ej: a prueba, sueldo 0 y 2%.</span></div>
+      <label class="f" id="inv-start-w">Día en que empezó a trabajar<input class="i" type="date" id="inv-start" value="${today()}" max="${today()}"><span class="note">Si ya venía trabajando antes de entrar a la app, pon el día real: el sueldo se le cuenta desde ese día.</span></label>
       ${role()==="admin" ? `<label class="f" id="inv-aporte-w">% que paga por telemarketing (solo distribuidores, opcional)<input class="i" type="number" min="0" step="0.5" id="inv-aporte" placeholder="${com().distPct}"><span class="note">Vacío = ${com().distPct}% general.</span></label>` : ""}
       <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => role()==="tele" ? k==="tele" : (!isDist() || k!=="distribuidor")).map(([k,l])=>`<option value="${k}">${isDist() && k==="tele" ? "Telemarketer externa (tuya, fuera del programa Lunaya)" : l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
       <div><button class="btn" type="submit">Crear invitación</button></div>
@@ -1236,6 +1237,7 @@ function viewLider(){
   const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
   h += metaSemEquipoCard() + citasEquipoCard();
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
+  h += `<div class="card"><h2>Día de inicio de cada telemarketer</h2><p class="note" style="margin-top:-6px">El sueldo se cuenta desde el día que realmente empezó a trabajar, aunque la hayas agregado a la app después. Cámbialo si no es el correcto.</p><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th>Empezó a trabajar</th></tr></thead><tbody>${telesLunaya().map(t => `<tr><td><b>${esc(t.name)}</b></td><td><input class="i" type="date" data-start="${t.id}" value="${startOf(t)==="2000-01-01"?"":startOf(t)}" max="${today()}" style="padding:4px 6px"></td></tr>`).join("")}</tbody></table></div></div>`;
   h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
   h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
   h += inviteCard();
@@ -1445,7 +1447,7 @@ function bindCommon(){
   all("[data-approve]", b => b.onclick = async () => { const k = b.dataset.role; try { await S.db.doc("members/"+b.dataset.approve).update({role: k==="tele"?"tele":"socio", tipo: k==="tele"?"":INV_ROLES[k], upline: k==="emprendedor" ? S.uid : "", approvedAt:Date.now()}); toast("Acceso aprobado"); } catch(e){ writeErr(e); } });
   all("[data-inv-send]", b => b.onclick = () => openInviteMsg(b.dataset.invSend));
   all("[data-inv-del]", b => b.onclick = function(){ if (this.dataset.sure){ S.db.doc("invites/"+this.dataset.invDel).delete().then(()=>toast("Invitación borrada"), writeErr); } else { this.dataset.sure="1"; this.textContent="¿Seguro?"; this.classList.add("danger"); } });
-  const ir = m.querySelector("#inv-role"); if (ir){ const tog = () => { const pl = m.querySelector("#inv-plan"), ap = m.querySelector("#inv-aporte-w"); if (pl) pl.style.display = ir.value==="tele" ? "" : "none"; if (ap) ap.style.display = ir.value==="distribuidor" ? "" : "none"; }; ir.addEventListener("change", tog); tog(); }
+  const ir = m.querySelector("#inv-role"); if (ir){ const tog = () => { const pl = m.querySelector("#inv-plan"), ap = m.querySelector("#inv-aporte-w"); if (pl) pl.style.display = ir.value==="tele" ? "" : "none"; const sw = m.querySelector("#inv-start-w"); if (sw) sw.style.display = ir.value==="tele" ? "" : "none"; if (ap) ap.style.display = ir.value==="distribuidor" ? "" : "none"; }; ir.addEventListener("change", tog); tog(); }
   const invf = m.querySelector("#inv-form"); if (invf) invf.onsubmit = async e => { e.preventDefault();
     const genero = $("#inv-gen") ? $("#inv-gen").value : "", name = $("#inv-name").value.trim(), email = $("#inv-email").value.trim().toLowerCase(), phone = $("#inv-phone").value.trim(), rl = $("#inv-role").value;
     if (!name){ toast("Escribe el nombre de la persona"); return; }
@@ -1455,7 +1457,7 @@ function bindCommon(){
       const isv = ($("#inv-sueldo")?.value||"").trim(), ipc = ($("#inv-pct")?.value||"").trim();
       const iap = ($("#inv-aporte")?.value||"").trim();
       const plan = rl==="tele" ? {...(isv!==""?{sueldo:+isv}:{}), ...(ipc!==""?{pct:+ipc}:{})} : (rl==="distribuidor" && iap!=="" ? {aporte:+iap} : {});
-      const inv = {...plan, name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, upline: (isDist() || (role()==="admin" && rl==="emprendedor")) ? S.uid : "", genero, createdAt:Date.now(), status:"enviada"};
+      const inv = {...plan, name, email, phone, role:rl, memberRole:MEMBER_ROLE(rl), code, invitedBy:S.uid, upline: (isDist() || (role()==="admin" && rl==="emprendedor")) ? S.uid : "", genero, createdAt:Date.now(), status:"enviada", ...(rl==="tele" && /^\d{4}-\d{2}-\d{2}$/.test($("#inv-start")?.value||"") ? {startDate:$("#inv-start").value} : {})};
       try { await S.db.doc("invites/"+code).set(inv); }
       catch(e1){ /* reglas viejas en Firebase: se crea sin grupo y la app lo asigna sola después */ if (role()==="admin" && inv.upline){ inv.upline = ""; await S.db.doc("invites/"+code).set(inv); } else throw e1; } invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid, genero}); } catch(err){ writeErr(err); } };
   all("[data-ptele]", s => s.onchange = async () => { const cur = {sueldo:0, pct:0, liderPct:0, ...(S.me?.planTele||{})}; m.querySelectorAll("[data-ptele]").forEach(x => { cur[x.dataset.ptele] = +x.value||0; }); try { await S.db.doc("members/"+S.uid).update({planTele:cur}); toast("Plan de tus telemarketers guardado"); } catch(e){ writeErr(e); } });
