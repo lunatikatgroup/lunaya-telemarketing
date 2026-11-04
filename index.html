@@ -152,11 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="juego.js?v=202611040827"></script>
+<script src="demo.js?v=202611040832"></script>
+<script src="juego.js?v=202611040832"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611040827";
+const APP_VER = "202611040832";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -591,12 +592,13 @@ function render(){
   $("#nav").innerHTML = tabs.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${l}${k==="citas"&&(unreadTotal()+sinReporte().length)?` <span class="nbadge">${unreadTotal()+sinReporte().length}</span>`:""}${k==="juego"&&window.nuevosLeads&&nuevosLeads()?` <span class="nbadge">${nuevosLeads()}</span>`:""}</button>`).join("");
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
+  if (window.demoBar) html += demoBar();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
   if (needsWorld && !worldOk()) html += worldPicker();
   else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:(r==="admin" ? viewPagos : viewPagosDist), equipo:viewEquipo, lider:viewLider, ranking:viewRanking, juego:(x => window.viewJuego ? viewJuego(x) : `<div class="card empty">Cargando…</div>`)}[S.view])(r);
-  main.innerHTML = html; bindCommon(); refreshChat(); if (S.view==="juego" && window.bindJuego) bindJuego();
+  main.innerHTML = html; bindCommon(); refreshChat(); if (S.view==="juego" && window.bindJuego) bindJuego(); if (window.bindDemo) bindDemo();
   if (S.openAppt && S.appts[S.openAppt] && !!S.appts[S.openAppt]._priv !== S.openPrivState && !document.querySelector(".modal input:focus,.modal textarea:focus")) openAppt(S.openAppt);
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); if (sel && "setSelectionRange" in el) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
@@ -864,7 +866,7 @@ function pendBanner(){ const l = sinReporte(); if (!l.length) return ""; const r
   return `<div class="banner bad" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div>⏰ <b>${l.length===1?"Tienes 1 cita sin reportar":`Tienes ${l.length} citas sin reportar`}</b><div class="note" style="color:inherit">${r==="tele"?`Si el socio ya te contó qué pasó, repórtalo tú. La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`:`¿Qué pasó? La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`}</div></div>${r==="tele" && a.agendo!==S.uid?"":`<button class="btn small" data-pend="${l[0][0]}">Reportar ahora</button>`}</div>`; }
 /* Avisos del teléfono mientras la app está abierta (no necesitan servidor) */
 function notiOk(){ try { return "Notification" in window && Notification.permission==="granted"; } catch { return false; } }
-function avisar(t, b){ if (!notiOk()) return; try { new Notification(t, {body:b, icon:"icon-192.png", tag:t}); } catch {} }
+function avisar(t, b){ if (S.demo || !notiOk()) return; try { new Notification(t, {body:b, icon:"icon-192.png", tag:t}); } catch {} }
 function vigilar(){ if (!S.uid) return; const mine = Object.entries(S.appts||{});
   if (!S.seenIds){ S.seenIds = new Set(mine.map(([id])=>id)); S.seenUnread = unreadTotal(); S.pendNotified = false; }
   else {
@@ -1166,7 +1168,7 @@ function viewEquipo(){
   const pend = Object.entries(S.members).filter(([,m])=>m.role==="pendiente");
   const active = Object.entries(S.members).filter(([,m])=>m.role!=="pendiente" && m.role!=="baja").sort((a,b)=>(a[1].role||"").localeCompare(b[1].role||"")||(a[1].name||"").localeCompare(b[1].name||""));
   const c = com(); const sid = S.config.sheetId || "";
-  let h = driveCard() + inviteCard();
+  let h = (window.demoCard ? demoCard() : "") + driveCard() + inviteCard();
   h += `<div class="card"><h2>Solicitudes de acceso</h2>${pend.length?`<div class="list">${pend.map(([id,m])=>`<div class="item" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(m.name)}</div><div class="m">Pidió entrar como ${esc(INV_ROLES[m.wantedRole]||"socio")}${m.phone?" · "+esc(m.phone):""}</div></div><div class="row">${Object.entries(INV_ROLES).map(([k,l])=>`<button class="btn small ${k===(m.wantedRole||"tele")?"":"ghost"}" data-approve="${id}" data-role="${k}">${k===(m.wantedRole||"tele")?"Aprobar":"Como "+l.toLowerCase()}</button>`).join("")}</div></div>`).join("")}</div>`:`<div class="empty">No hay solicitudes pendientes. Quien entra con un enlace de invitación queda registrado solo.</div>`}</div>`;
   h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td>${who(id,30)}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.upline?` <span class="tag tg-warn">${m.role==="tele"?"externa · ":""}grupo de ${esc(memberName(m.upline))}</span>`:(m.role==="tele"?` <span class="tag tg-good">programa Lunaya</span>`:"")}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label><label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label><div class="row" style="gap:4px;margin-top:4px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" data-plan="${id}|sueldo" value="${m.sueldo??""}" placeholder="${com().sueldo}" style="padding:4px 6px;width:80px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" data-plan="${id}|pct" value="${m.pct??""}" placeholder="${com().pct}" style="padding:4px 6px;width:60px"></label></div>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
   const dists = active.filter(([,m]) => m.role==="socio" && m.tipo===DIST);
