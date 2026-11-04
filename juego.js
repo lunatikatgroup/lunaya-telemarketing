@@ -278,9 +278,17 @@ function jgSub(f, v){ const k = f+"|"+v;
   return [u1, u2, () => { delete S.jl[k]; delete S.ll[k]; S.juegos = Object.assign({}, ...Object.values(S.jl)); S.leads = Object.assign({}, ...Object.values(S.ll)); }];
 }
 /* Avance de un cliente: amigas que jugaron y visitas hechas (citas de esas amigas marcadas "Demostración hecha") */
+/* Referidos de un cliente: los que jugaron la ruleta y los de la hoja (uno por teléfono; si jugó, cuenta como jugó) */
+const esProsp = l => l.kind==="jugador" || l.kind==="hoja";
+function refsDe(code){ const by = {}; Object.entries(S.leads||{}).forEach(([id,l]) => { if (!esProsp(l) || l.code!==code) return; const k = l.tel || id; const cur = by[k];
+    if (!cur || (cur[1].kind==="hoja" && l.kind==="jugador")) by[k] = [id, {...l, apptId: l.apptId || cur?.[1]?.apptId, enviado: l.enviado || cur?.[1]?.enviado}]; else if (!cur[1].apptId && l.apptId) cur[1].apptId = l.apptId; });
+  return Object.values(by); }
+/* Prospectos para llamar: si un contacto de la hoja después jugó, se muestra una sola vez */
+function prospectos(){ const jug = new Set(Object.values(S.leads||{}).filter(l => l.kind==="jugador").map(l => l.code+"|"+l.tel));
+  return Object.entries(S.leads||{}).filter(([,l]) => l.kind==="jugador" || (l.kind==="hoja" && !jug.has(l.code+"|"+l.tel))); }
 function avanceDe(code){ const j = S.juegos?.[code] || {}; const m = {refs:14, cada:4, ...(S.programs?.[j.pid]?.meta || j.meta || {})};
-  const ls = Object.entries(S.leads||{}).filter(([id,l]) => l.kind==="jugador" && l.code===code);
-  const amigas = Math.max(j.n||0, ls.length), visitas = ls.filter(([,l]) => l.apptId && S.appts?.[l.apptId]?.status==="hecha").length;
+  const ls = refsDe(code); const jugaron = ls.filter(([,l]) => l.kind==="jugador").length;
+  const amigas = Math.max(j.n||0, jugaron), visitas = ls.filter(([,l]) => l.apptId && S.appts?.[l.apptId]?.status==="hecha").length;
   const base = m.cuenta==="amigas" ? amigas : visitas, max = Math.floor(m.refs/m.cada); const ganados = Math.min(Math.floor(base/m.cada), max);
   return {m, amigas, visitas, base, ganados, max, falta: ganados>=max ? 0 : m.cada - (base % m.cada), unidad: m.cuenta==="amigas" ? "amigas que jugaron" : "visitas"}; }
 function msgAvance(code){ const j = S.juegos[code], a = avanceDe(code), nm = firstName(j.ref);
@@ -288,11 +296,13 @@ function msgAvance(code){ const j = S.juegos[code], a = avanceDe(code), nm = fir
   return a.ganados > (j.avisados||0)
     ? `¡Hola ${nm}! 🎉 Te tengo una gran noticia: ${linea}, ¡y ya te ganaste tu regalo${a.ganados>1?" número "+a.ganados:""}! 🎁 Te escribo para coordinar la entrega.\n\n${a.falta ? `Te faltan ${a.falta} más para el siguiente regalo. ` : ""}Mira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`
     : `¡Hola ${nm}! 😊 Te cuento cómo va tu programa de regalos: ${linea}. Te faltan ${a.falta} para tu ${a.ganados ? "siguiente " : ""}regalo 🎁\n\nMira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`; }
+function msgReferido(code, nombre){ const j = S.juegos[code] || {}; const p = S.programs[j.pid] || {}; const r = firstName(j.ref);
+  return `¡Hola${nombre?" "+firstName(nombre):""}! 👋 Te escribo de parte de ${r}, que nos recomendó contigo 😊 Somos de Royal Prestige.\n\n${r} está participando por regalos para su cocina y tú también puedes ganarte uno, sin costo y sin obligación de compra 🎁\n\n${p.tipo==="caja"?"Abre tu caja sorpresa":"Gira la ruleta"} aquí 👉 ${jgLink(code)}`; }
 /* Guarda el avance en el link (lo ve el cliente en su página) y avisa cuando alguien se gana un regalo */
 function syncAvance(){ Object.entries(S.juegos||{}).forEach(([code,j]) => { if (j.kind==="campana" || !(j.by===S.uid || j.socioId===S.uid)) return; const a = avanceDe(code);
   if (a.visitas !== (j.visitas||0) || a.ganados !== (j.ganados||0)){ if (a.ganados > (j.ganados||0)) avisar("🎁 Un cliente se ganó su regalo", `${j.ref} ya tiene ${a.base} ${a.unidad}. Avísale desde Ruleta.`);
     j.visitas = a.visitas; j.ganados = a.ganados; S.db.doc("juegos/"+code).update({visitas:a.visitas, ganados:a.ganados}).catch(e => console.log("avance", e)); } }); }
-const nuevosLeads = () => Object.values(S.leads||{}).filter(l => l.kind==="jugador" && l.status==="nuevo").length;
+const nuevosLeads = () => prospectos().filter(([,l]) => l.status==="nuevo").length;
 /* Programas que puede usar: los suyos, los de su director o distribuidor y, para las telemarketers del programa, los de Dirección */
 function misProgramas(){ const yo = pagadorDe(S.uid);
   return Object.entries(S.programs||{}).filter(([,p]) => p.activo!==false && (p.owner===S.uid || p.owner===yo || pagadorDe(p.owner)===yo || (role()==="tele" && !S.me?.upline && S.members[p.owner]?.role==="admin")))
@@ -300,7 +310,7 @@ function misProgramas(){ const yo = pagadorDe(S.uid);
 const progName = pid => S.programs?.[pid]?.name || "Programa";
 
 function viewJuego(r){
-  const f = S.f.lead || "nuevo"; const leads = Object.entries(S.leads||{}).filter(([,l]) => l.kind==="jugador" && (f==="todos" || l.status===f)).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  const f = S.f.lead || "nuevo"; const leads = prospectos().filter(([,l]) => f==="todos" || l.status===f).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
   const progs = misProgramas(); const mine = Object.entries(S.programs||{}).filter(([,p]) => p.owner===S.uid);
   const links = Object.entries(S.juegos||{}).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
   const porAvisar = links.filter(([c,j]) => j.kind!=="campana" && avanceDe(c).ganados > (j.avisados||0));
@@ -309,7 +319,7 @@ function viewJuego(r){
       ${progs.length?"":`<p class="note" style="margin-bottom:0">Primero crea un programa: los regalos con su foto, la probabilidad de cada uno y la meta de referidos.</p>`}</div>
     <div class="card"><h2>Prospectos que llegaron<span class="note">${nuevosLeads()} nuevo(s)</span></h2>
       <div class="chips" style="margin-bottom:10px">${[["nuevo","Nuevos"],["llamado","Ya se llamó"],["cita","Con cita"],["no_interesa","No le interesa"],["todos","Todos"]].map(([k,l])=>`<button class="chip ${f===k?"on":""}" data-lf="${k}">${l}</button>`).join("")}</div>
-      ${leads.length?`<div class="list">${leads.slice(0,80).map(([id,l])=>`<button class="item" data-lead="${id}"><div><div class="t">${esc(l.name)}</div><div class="m">${telFmt(l.tel)} · 🎁 ${esc(l.prize)}</div><div class="m">Amiga de ${esc(l.ref||"—")} · ${fmt(l.at,{day:"numeric",month:"short"})}${l.socioId!==S.uid?" · para "+esc(memberName(l.socioId)):""}</div></div><span class="tag ${l.status==="nuevo"?"tg-warn":l.status==="cita"?"tg-good":"tg-mute"}">${JG_ST[l.status]||l.status}</span></button>`).join("")}</div>`:`<div class="empty">${f==="nuevo"?"No hay prospectos nuevos. Cuando alguien juegue con uno de tus links, aparece aquí solo.":"No hay prospectos aquí."}</div>`}</div>
+      ${leads.length?`<div class="list">${leads.slice(0,80).map(([id,l])=>`<button class="item" data-lead="${id}"><div><div class="t">${esc(l.name)}</div><div class="m">${telFmt(l.tel)} · ${l.kind==="hoja" ? "📋 De la hoja" : "🎁 "+esc(l.prize)}</div><div class="m">Amiga de ${esc(l.ref||"—")} · ${fmt(l.at,{day:"numeric",month:"short"})}${l.socioId!==S.uid?" · para "+esc(memberName(l.socioId)):""}</div></div><span class="tag ${l.status==="nuevo"?"tg-warn":l.status==="cita"?"tg-good":"tg-mute"}">${JG_ST[l.status]||l.status}</span></button>`).join("")}</div>`:`<div class="empty">${f==="nuevo"?"No hay prospectos nuevos. Cuando alguien juegue con uno de tus links, aparece aquí solo.":"No hay prospectos aquí."}</div>`}</div>
     <div class="card"><h2>Links activos<span class="note">${links.length}</span></h2>
       ${links.length?`<div class="list">${links.slice(0,40).map(([c,j])=>{ const m = j.meta || S.programs?.[j.pid]?.meta || {refs:14,cada:4}; const venc = j.until && j.until < Date.now();
         const av = avanceDe(c); return `<div class="item" style="cursor:default"><div style="min-width:0;flex:1"><div class="t">${j.kind==="campana"?"📣 ":j.kind==="amiga"?"👭 ":""}${esc(j.ref||"")}${av.ganados?` <span class="tag tg-good">🎁 ${av.ganados} ganado${av.ganados>1?"s":""}</span>`:""}</div><div class="m">${esc(progName(j.pid))} · ${av.amigas} amiga${av.amigas===1?"":"s"} · ${av.visitas} visita${av.visitas===1?"":"s"}${j.kind!=="campana"?` · faltan ${av.falta} para el ${av.ganados?"siguiente ":""}regalo`:""}${venc?" · vencido":j.until?" · hasta "+fmt(j.until,{day:"numeric",month:"short"}):""}${j.socioId!==S.uid?" · "+esc(memberName(j.socioId)):""}</div><div class="bar"><i style="width:${Math.min(100, av.base*100/(av.m.refs||14))}%"></i></div></div><div class="row" style="flex-wrap:nowrap;flex:none">${j.kind!=="campana"?`<button class="btn small ghost" data-avance="${c}">Avance</button>`:""}<button class="btn small" data-share="${c}">Mandar</button></div></div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay links. Toca “Inscribir cliente”.</div>`}</div>
@@ -420,17 +430,32 @@ function openInscribir(){
 
 /* Avance del cliente: cuántas amigas, cuántas visitas, regalos ganados y mensaje listo para mandarle */
 function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = avanceDe(code); const cli = S.leads[code+"_ref"] || {}; const tel = telOk(cli.tel);
-  const ls = Object.values(S.leads||{}).filter(l => l.kind==="jugador" && l.code===code).sort((x,y)=>(y.at||0)-(x.at||0));
+  const ls = refsDe(code).map(([id,l]) => ({...l, _id:id})).sort((x,y)=>(y.at||0)-(x.at||0)); const R = S.leads[code+"_ref"] || {};
   openModal(`<h3>Avance de ${esc(j.ref)}</h3>
-    <div class="tiles"><div class="tile"><b>${a.amigas}</b><span>Amigas que jugaron</span></div><div class="tile"><b>${a.visitas}</b><span>Visitas hechas</span></div><div class="tile acc"><b>${a.ganados}</b><span>Regalos ganados</span><small>de ${a.max} · uno cada ${a.m.cada} ${a.m.cuenta==="amigas"?"amigas":"visitas"}</small></div></div>
+    <div class="tiles"><div class="tile"><b>${ls.length}</b><span>Referidos</span><small>${a.amigas} jugaron la ruleta</small></div><div class="tile"><b>${a.visitas}</b><span>Visitas hechas</span></div><div class="tile acc"><b>${a.ganados}</b><span>Regalos ganados</span><small>de ${a.max} · uno cada ${a.m.cada} ${a.m.cuenta==="amigas"?"amigas":"visitas"}</small></div></div>
     ${a.falta?`<p class="note" style="margin:0">Le faltan <b>${a.falta}</b> ${a.m.cuenta==="amigas"?"amigas":"visitas"} para el ${a.ganados?"siguiente ":""}regalo.</p>`:`<div class="banner good">🏆 Llegó a la meta.</div>`}
-    ${ls.length?`<div class="list">${ls.map(l => { const ap = l.apptId && S.appts?.[l.apptId]; return `<div class="item" style="cursor:default"><div><div class="t">${esc(l.name)}</div><div class="m">${ap ? (ap.status==="hecha" ? "✅ Visita hecha" : ap.status==="agendada" ? "📅 Cita "+fmtWhen(ap.when) : APPT_ST[ap.status]||ap.status) : (JG_ST[l.status]||l.status)}</div></div></div>`; }).join("")}</div>`:`<div class="empty">Todavía no juega ninguna amiga con su link.</div>`}
+    <div class="eyebrow">Referidos de ${esc(firstName(j.ref))}</div>
+    ${ls.length?`<div class="list">${ls.map(l => { const ap = l.apptId && S.appts?.[l.apptId]; const t = telOk(l.tel); return `<div class="item" style="cursor:default"><div style="min-width:0"><div class="t">${esc(l.name||"Sin nombre")} <span class="note">${l.kind==="jugador"?"🎡 jugó":"📋 hoja"}</span></div><div class="m">${telFmt(l.tel)} · ${ap ? (ap.status==="hecha" ? "✅ Visita hecha" : ap.status==="agendada" ? "📅 Cita "+fmtWhen(ap.when) : APPT_ST[ap.status]||ap.status) : (JG_ST[l.status]||l.status)}${l.enviado?" · mensaje enviado":""}</div></div>${t && l.kind==="hoja" && !ap ? `<a class="btn small ${l.enviado?"ghost":""}" target="_blank" rel="noopener" data-envia="${l._id}" href="https://wa.me/1${t}?text=${encodeURIComponent(msgReferido(code, l.name))}">${l.enviado?"Reenviar":"Mandar ruleta"}</a>` : ""}</div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay referidos. Agrégalos de la hoja aquí abajo.</div>`}
+    <details ${ls.length?"":"open"}><summary class="btn small ghost" style="display:inline-flex">📋 Agregar contactos de la hoja</summary>
+      <label class="f" style="margin-top:8px">Uno por línea: nombre y teléfono<textarea class="i" id="av-hoja" style="min-height:120px" placeholder="Rosa Linares 619 555 1234&#10;Claudia (858) 555-9876"></textarea></label>
+      <div class="row" style="margin-top:6px"><button class="btn small" id="av-add">Agregar a ${esc(firstName(j.ref))}</button><label class="btn small ghost" style="cursor:pointer">📷 ${R.foto?"Cambiar foto de la hoja":"Subir foto de la hoja"}<input type="file" accept="image/*" id="av-foto" hidden></label></div>
+      ${R.foto?`<a href="${R.foto}" target="_blank" rel="noopener"><img src="${R.foto}" alt="Hoja de referidos" style="width:100%;border-radius:10px;margin-top:8px;border:1px solid var(--line)"></a><p class="note" style="margin:4px 0 0">La telemarketer puede pasar los contactos de la foto a la lista de arriba.</p>`:""}</details>
     <p class="note" style="margin:0">Cuenta como visita cuando la cita de esa amiga se agenda desde Ruleta y se marca “Demostración hecha”.</p>
     <label class="f">Mensaje para ${esc(firstName(j.ref))}<textarea class="i" id="av-m" style="min-height:150px">${esc(msgAvance(code))}</textarea></label>
     <div class="row"><a class="btn" id="av-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="av-sms">Mensaje de texto</a><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     const q = x => document.getElementById(x); const upd = () => { const t = q("av-m").value; q("av-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(t)}`; q("av-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(t)}`; }; upd(); q("av-m").oninput = upd;
     const marcar = () => { if (a.ganados > (j.avisados||0)){ j.avisados = a.ganados; S.db.doc("juegos/"+code).update({avisados:a.ganados}).catch(e => console.log(e)); setTimeout(render, 300); } };
-    q("av-wa").addEventListener("click", marcar); q("av-sms").addEventListener("click", marcar); });
+    q("av-wa").addEventListener("click", marcar); q("av-sms").addEventListener("click", marcar);
+    document.querySelectorAll("[data-envia]").forEach(x => x.addEventListener("click", () => { S.db.doc("leads/"+x.dataset.envia).update({enviado:Date.now()}).catch(e => console.log(e)); setTimeout(() => openAvance(code), 800); }));
+    q("av-add").onclick = async () => { const nuevos = []; const ya = new Set(refsDe(code).map(([,l]) => l.tel));
+      q("av-hoja").value.split(/\n+/).map(x => x.trim()).filter(Boolean).forEach(line => { const t = telOk((line.match(/[\d\s().+-]{10,}/)||[""])[0]) || telOk(line.replace(/[^\d]/g,"")); const nm = line.replace(/[\d().+-]/g,"").replace(/[,;:]+/g," ").replace(/\s+/g," ").trim();
+        if (t && !ya.has(t) && !nuevos.some(x => x.tel===t)) nuevos.push({tel:t, name:nm.slice(0,60)}); });
+      if (!nuevos.length){ toast("No encontré teléfonos nuevos de 10 dígitos"); return; } q("av-add").disabled = true;
+      try { const bt = S.db.batch(); nuevos.forEach(x => bt.set(S.db.doc(`leads/${code}_h_${x.tel}`), {code, pid:j.pid, name:x.name, tel:x.tel, kind:"hoja", status:"nuevo", socioId:j.socioId, up:j.up||"", tv:!!j.tv, by:j.by, ref:j.ref||"", at:Date.now(), addedBy:S.uid})); await bt.commit();
+        nuevos.forEach(x => S.leads[`${code}_h_${x.tel}`] = {code, pid:j.pid, name:x.name, tel:x.tel, kind:"hoja", status:"nuevo", socioId:j.socioId, ref:j.ref, at:Date.now()}); toast(`${nuevos.length} referido(s) agregados a ${firstName(j.ref)}`); openAvance(code); } catch(e){ q("av-add").disabled = false; writeErr(e); } };
+    q("av-foto").onchange = async () => { const f = q("av-foto").files[0]; if (!f) return; try { const url = URL.createObjectURL(f); const img = await loadImg(url); URL.revokeObjectURL(url); const k = Math.min(1, 1300/Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const foto = c.toDataURL("image/jpeg", 0.6); await S.db.doc("leads/"+code+"_ref").update({foto}); S.leads[code+"_ref"] = {...R, foto}; toast("Foto de la hoja guardada"); openAvance(code); } catch(e){ writeErr(e); } };
+  });
 }
 
 /* Mandar el link: al cliente por WhatsApp o texto, imagen con QR, copiar */
@@ -524,8 +549,9 @@ async function promoImg(j, p, link){
 
 function openLead(id){
   const l = S.leads[id]; if (!l) return; const t = telOk(l.tel) || l.tel;
-  openModal(`<h3>${esc(l.name)}</h3><div class="note" style="margin-top:-6px">🎁 Ganó: <b>${esc(l.prize)}</b> · Amiga de ${esc(l.ref||"—")} · ${esc(progName(l.pid))} · ${fmtWhen(l.at)}${l.socioId!==S.uid?` · para ${esc(memberName(l.socioId))}`:""}</div>
+  openModal(`<h3>${esc(l.name)}</h3><div class="note" style="margin-top:-6px">${l.kind==="hoja" ? "📋 Contacto de la hoja (todavía no juega la ruleta)" : `🎁 Ganó: <b>${esc(l.prize)}</b>`} · Amiga de ${esc(l.ref||"—")} · ${esc(progName(l.pid))} · ${fmtWhen(l.at)}${l.socioId!==S.uid?` · para ${esc(memberName(l.socioId))}`:""}</div>
     <div class="row"><a class="btn" href="tel:+1${t}">📞 Llamar</a><a class="btn dark" target="_blank" rel="noopener" href="https://wa.me/1${t}?text=${encodeURIComponent(`¡Hola ${firstName(l.name)}! 🎉 Te escribo de Royal Prestige por el regalo que ganaste en la ${S.programs[l.pid]?.tipo==="caja"?"caja sorpresa":"ruleta"}: ${l.prize}. ¿Cuándo te queda bien para coordinar la entrega?`)}">WhatsApp</a><a class="btn ghost" href="sms:+1${t}">Mensaje</a></div>
+    ${l.kind==="hoja" && S.juegos[l.code] ? `<a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}?text=${encodeURIComponent(msgReferido(l.code, l.name))}">🎡 Mandarle la ruleta de ${esc(firstName(l.ref))}</a>` : ""}
     <div class="note">${telFmt(t)}</div><div id="ld-h"></div>
     <label class="f">Estado<select class="i" id="ld-st">${Object.entries(JG_ST).map(([k,v])=>`<option value="${k}" ${l.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
     <label class="f">Notas<textarea class="i" id="ld-n" placeholder="Qué te dijo, cuándo volver a llamar…">${esc(l.notes||"")}</textarea></label>
@@ -535,7 +561,7 @@ function openLead(id){
     const upd = async (o) => { try { await S.db.doc("leads/"+id).update({...o, statusAt:Date.now()}); return true; } catch(e){ writeErr(e); return false; } };
     q("ld-save").onclick = async () => { if (await upd({status:q("ld-st").value, notes:q("ld-n").value.trim().slice(0,1000)})){ closeModal(); toast("Guardado"); } };
     q("ld-cita").onclick = () => { const own = l.socioId===S.uid; if (!own){ if (!S.members[l.socioId]){ toast("Ese socio ya no está en el equipo"); return; } S.world = l.socioId; }
-      const pre = {name:l.name, phone:telFmt(t), notes:`Ganó ${l.prize} en la ${S.programs[l.pid]?.tipo==="caja"?"caja sorpresa":"ruleta"} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
+      const pre = {name:l.name, phone:telFmt(t), notes:`${l.kind==="hoja" ? "Referido" : "Ganó "+l.prize+" en la "+(S.programs[l.pid]?.tipo==="caja"?"caja sorpresa":"ruleta")} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
       closeModal(); openCitaForm(own ? "" : "Ruleta", own, pre); };
   });
 }

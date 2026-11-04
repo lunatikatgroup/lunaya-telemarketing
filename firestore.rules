@@ -244,11 +244,22 @@ service cloud.firestore {
          && get(juegoPath(request.resource.data.code)).data.ref == request.resource.data.ref
          && get(juegoPath(request.resource.data.code)).data.until > request.time.toMillis()
          && getAfter(juegoPath(request.resource.data.code)).data.n == get(juegoPath(request.resource.data.code)).data.get('n', 0) + 1;
+      // Contactos de la hoja del cliente (los pasa el socio o la telemarketer): quedan con los mismos datos del link
+      allow create: if isMember() && request.resource.data.kind == 'hoja' && request.resource.data.status == 'nuevo'
+         && request.resource.data.tel is string && request.resource.data.tel.matches('^[2-9][0-9]{9}$')
+         && id == request.resource.data.code + '_h_' + request.resource.data.tel
+         && get(juegoPath(request.resource.data.code)).data.pid == request.resource.data.pid
+         && get(juegoPath(request.resource.data.code)).data.socioId == request.resource.data.socioId
+         && get(juegoPath(request.resource.data.code)).data.get('up', '') == request.resource.data.up
+         && get(juegoPath(request.resource.data.code)).data.get('tv', false) == request.resource.data.tv
+         && get(juegoPath(request.resource.data.code)).data.by == request.resource.data.by
+         && (request.resource.data.by == request.auth.uid || request.resource.data.socioId == request.auth.uid || request.resource.data.up == request.auth.uid
+             || (isProgramTele() && request.resource.data.tv == true) || teleDistDe(request.resource.data));
       // El cliente que refiere (o la lista de una campaña): lo guarda quien crea el link
       allow create: if isMember() && request.resource.data.by == request.auth.uid && request.resource.data.kind == 'ref'
          && id == request.resource.data.code + '_ref'
          && getAfter(juegoPath(request.resource.data.code)).data.by == request.auth.uid;
-      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusAt', 'notes', 'apptId', 'lista']);
+      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusAt', 'notes', 'apptId', 'lista', 'enviado', 'foto']);
       allow delete: if lv() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid || isAdmin());
     }
 
