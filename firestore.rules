@@ -20,6 +20,10 @@ service cloud.firestore {
     // Telemarketer del programa Lunaya (no externa de un distribuidor)
     function isProgramTele() { return myRole() == 'tele' && meData().get('upline', '') == ''; }
     function isDist() { return myRole() == 'socio' && meData().get('tipo', '') == 'Socio distribuidor'; }
+    // Las telemarketers del programa entran solas al mundo de cada distribuidor, menos las que él (o Dirección) quitó (teleNo)
+    function distOk(d) { return d is string && d != '' && get(memberPath(d)).data.get('tipo', '') == 'Socio distribuidor'
+      && !(request.auth.uid in get(memberPath(d)).data.get('teleNo', [])); }
+    function teleDistDe(data) { return isProgramTele() && (distOk(data.socioId) || distOk(data.get('up', ''))); }
 
     function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
     // Una invitación válida y sin usar que corresponde al rol que se está pidiendo
@@ -45,7 +49,7 @@ service cloud.firestore {
          || (isDist() && resource.data.get('upline', '') == request.auth.uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate']))
          || (signedIn() && request.auth.uid == uid
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp', 'planTele']))
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp', 'planTele', 'teleNo']))
          || (signedIn() && request.auth.uid == uid && resource.data.role == 'pendiente'
              && (request.resource.data.role == 'pendiente' || validInvite(request.resource.data)));
       allow delete: if isAdmin();
@@ -102,7 +106,7 @@ service cloud.firestore {
       function socioDoc() { return get(memberPath(request.resource.data.socioId)).data; }
       // tv = cita del territorio de Dirección: las telemarketers del programa la ven completa para darle seguimiento
       function teleVe() { return isProgramTele() && resource.data.get('tv', false) == true; }
-      allow read: if involved() || upline() || teleVe();
+      allow read: if involved() || upline() || teleVe() || teleDistDe(resource.data);
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid
          && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
          && request.resource.data.get('up', '') == socioDoc().get('upline', '');
@@ -125,7 +129,7 @@ service cloud.firestore {
              && socioDoc().get('upline', '') == request.auth.uid
              && request.resource.data.dir == false)
          // Las telemarketers del programa pueden escribir en el chat de esas citas
-         || (teleVe() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chat', 'seen']));
+         || ((teleVe() || teleDistDe(resource.data)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chat', 'seen']));
       allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
     }
 
@@ -168,7 +172,7 @@ service cloud.firestore {
     // Links: público solo el nombre que se muestra y el contador de amigas
     match /juegos/{code} {
       function lv() { return isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid
-        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true)); }
+        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)); }
       allow get: if true;
       allow list: if lv();
       // Un socio o telemarketer inscribe a un cliente o crea una campaña
@@ -202,7 +206,7 @@ service cloud.firestore {
     // y, en el territorio de Dirección, las telemarketers del programa.
     match /leads/{id} {
       function lv() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.by == request.auth.uid
-        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true)); }
+        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)); }
       allow read: if lv();
       // La amiga que juega (sin cuenta): teléfono completo de 10 dígitos, un registro por número y por link
       allow create: if request.resource.data.keys().hasOnly(['code', 'pid', 'name', 'tel', 'prize', 'at', 'socioId', 'up', 'tv', 'by', 'ref', 'status', 'kind', 'acepta'])

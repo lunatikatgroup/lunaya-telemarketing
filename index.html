@@ -152,11 +152,11 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="juego.js?v=202611032255"></script>
+<script src="juego.js?v=202611040743"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611032255";
+const APP_VER = "202611040743";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -224,8 +224,13 @@ const telesLunaya = () => byRole("tele").filter(t => !t.upline);
 const telesExternas = () => byRole("tele").filter(t => t.upline);
 const isDist = () => role()==="socio" && S.me?.tipo===DIST;
 const grupoDe = uid => Object.entries(S.members).filter(([,m]) => m.upline===uid && m.role!=="baja").map(([id,m]) => ({id,...m}));
-/* Socios para los que puede llamar una telemarketer: las de un distribuidor solo trabajan su grupo */
-const sociosPara = t => t && t.upline ? socios().filter(s => s.id===t.upline || s.upline===t.upline) : socios();
+/* Telemarketers del programa: entran solas al mundo de cada distribuidor; él o Dirección pueden quitar a alguna */
+const teleEnDist = (tid, did) => { const d = S.members[did]; return !!d && d.tipo===DIST && !(d.teleNo||[]).includes(tid); };
+const distsDeTele = tid => Object.entries(S.members).filter(([id,m]) => m.role==="socio" && m.tipo===DIST && teleEnDist(tid, id)).map(([id])=>id);
+/* Socios para los que puede llamar una telemarketer: las de un distribuidor solo trabajan su grupo;
+   las del programa, todos menos los distribuidores que las quitaron */
+const sociosPara = t => t && t.upline ? socios().filter(s => s.id===t.upline || s.upline===t.upline)
+  : socios().filter(s => { const p = pagadorDe(s.id), pm = S.members[p]; return !(t && pm && pm.tipo===DIST && (pm.teleNo||[]).includes(t.id || S.uid)); });
 const role = () => S.isOwner ? "admin" : (S.me?.role === "baja" ? "pendiente" : (S.me?.role || "nuevo"));
 const worldOk = () => !!(S.world && S.members[S.world] && ["socio","admin"].includes(S.members[S.world].role));
 function toast(msg, action){ document.querySelectorAll(".toast").forEach(t=>t.remove()); const t = document.createElement("div"); t.className="toast"; t.innerHTML = `<span>${esc(msg)}</span>`; if (action){ const b = document.createElement("button"); b.textContent = action.label; b.onclick = () => { t.remove(); action.fn(); }; t.appendChild(b); } document.body.appendChild(t); setTimeout(()=>t.remove(), action?6000:2600); }
@@ -261,7 +266,7 @@ function undoCall(at){
 
 /* ===== Arranque (Firebase) ===== */
 const onErr = e => { console.log(e); if (e && e.code === "permission-denied") return; S.timedOut = true; render(); };
-function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.subscribed = false; S.invSub = false;
+function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.tdSubs = {}; S.subscribed = false; S.invSub = false;
   S.members = {}; S.appts = {}; S.logs = {}; S.config = {}; S.invites = {}; S.drives = {}; S.me = null; S.loaded = {me:false, members:false, appts:false, logs:false}; inviteDone = false; ownerDone = false; }
 function boot(){
   const cfg = window.LUNAYA_CONFIG || {};
@@ -315,7 +320,7 @@ function subscribeAll(){
   if (S.subscribed) return; S.subscribed = true;
   const from = addMonths(today().slice(0,8)+"01", -1);
   const loadTimer = setTimeout(() => { if (!S.loaded.appts){ S.timedOut = true; render(); } }, 12000);
-  S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; render(); }, onErr));
+  S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; subTeleDists(); render(); }, onErr));
   S.apub = {}; S.privs = {};
   S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.apub = {}; s.docs.forEach(d => S.apub[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; mergeAppts(); render(); setTimeout(migrarGrupos, 1500); }, onErr));
   const privQ = [["teleId", S.uid], ["socioId", S.uid], ["dador", S.uid]]; if (S.me?.role === "tele" && !S.me?.upline) privQ.push(["tv", true]); if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
@@ -331,6 +336,20 @@ function subscribeAll(){
   subInvites();
   if (window.subJuegos) subJuegos();
 }
+/* Telemarketer del programa: ve completo el mundo de cada distribuidor que no la haya quitado (citas, clientes y prospectos) */
+function subTeleDists(){
+  if (S.me?.role !== "tele" || S.me?.upline || !S.subscribed) return; S.tdSubs = S.tdSubs || {};
+  const want = new Set(distsDeTele(S.uid));
+  Object.keys(S.tdSubs).forEach(d => { if (!want.has(d)){ S.tdSubs[d].forEach(u => { try { u(); } catch {} }); delete S.tdSubs[d]; delete S.privs["dup|"+d]; delete S.privs["dso|"+d]; mergeAppts(); } });
+  want.forEach(d => { if (S.tdSubs[d]) return; const us = [];
+    [["up","dup"],["socioId","dso"]].forEach(([f,k]) => us.push(S.db.collection("apptp").where(f, "==", d).onSnapshot(s => { const m = {}; s.docs.forEach(x => m[x.id] = x.data()); S.privs[k+"|"+d] = m; mergeAppts(); render(); }, e => console.log("dist", d, e))));
+    if (window.jgSub){ us.push(...jgSub("up", d), ...jgSub("socioId", d)); }
+    S.tdSubs[d] = us; S.unsub.push(() => us.forEach(u => { try { u(); } catch {} })); });
+}
+/* Quién de las telemarketers del programa entra al mundo de un distribuidor */
+function teleAccCard(did){ const d = S.members[did]; if (!d) return ""; const no = d.teleNo || []; const tl = telesLunaya();
+  return `<div class="card"><h2>${did===S.uid?"Telemarketers del programa Lunaya":"Telemarketers en el grupo de "+esc(d.name)}</h2><p class="note" style="margin-top:-6px">Entran solas a tu mundo: ven tus citas y las de tu grupo, los clientes, el historial y los prospectos de la ruleta, para agendarte y darte seguimiento. Quita la palomita a la que no quieras.</p>
+    ${tl.length?`<div class="list">${tl.map(t=>`<label class="item" style="cursor:pointer"><span class="nm-av">${av(t.id,30)}<b>${esc(t.name)}</b>${t.lider?' <span class="note">líder</span>':""}</span><input type="checkbox" data-tacc="${did}|${t.id}" ${no.includes(t.id)?"":"checked"} style="width:22px;height:22px"></label>`).join("")}</div>`:`<div class="empty">No hay telemarketers del programa todavía.</div>`}</div>`; }
 /* Invitaciones: Dirección y la líder (aunque la marquen líder después de entrar) */
 function subInvites(){
   if (S.invSub || !(S.isOwner || S.me?.role === "admin" || (S.me?.role === "tele" && S.me?.lider))) return; S.invSub = true;
@@ -601,7 +620,7 @@ function bindDrive(){
 /* ===== Elegir socio ===== */
 function worldPicker(){
   const t0 = range("hoy");
-  const cards = sociosPara(S.me).map(s => { const e = teleEval(S.uid, t0, s.id); const next = Object.values(S.appts).filter(a => a.socioId===s.id && a.status==="agendada" && a.when >= Date.now()).length;
+  const cards = sociosPara({...S.me, id:S.uid}).map(s => { const e = teleEval(S.uid, t0, s.id); const next = Object.values(S.appts).filter(a => a.socioId===s.id && a.status==="agendada" && a.when >= Date.now()).length;
     return `<button class="item" data-world="${s.id}"><div><div class="t nm-av">${av(s.id,32)}${esc(s.name)}${s.role==="admin"?" · dirección":""}</div><div class="m">Hoy: ${e.calls} llamadas · ${e.citas} citas · ${next} citas próximas</div></div><span class="pill acc">Entrar</span></button>`; }).join("");
   return `<div class="card"><h2>¿Para qué socio vas a llamar?</h2><p class="note" style="margin-top:-6px">Cada socio es independiente: lo que registres aquí solo cuenta para esa persona. Cambia de socio cuando termines con su base.</p>${cards?`<div class="list">${cards}</div>`:`<div class="empty">Aún no hay socios aprobados.</div>`}</div>`;
 }
@@ -1062,7 +1081,8 @@ function viewGrupo(){
   let h = `<div class="card"><h2>Mi grupo ${periodChips()}</h2><p class="note" style="margin-top:-6px">Tú manejas a tus emprendedores y telemarketers. Solo tú y la telemarketer de cada cita ven los datos de los clientes de tu grupo.</p></div>`;
   h += socioTableCard([{id:S.uid, ...S.me}, ...g.filter(m => m.role==="socio")], rg, "Emprendedores", "Tus ventas y las de tu grupo, separadas por de dónde salió la cita.").replace(/<div class="chips">[\s\S]*?<\/div>/, "");
   const teles = g.filter(m => m.role==="tele").map(t => ({name:t.name, e:teleEval(t.id, rg), id:t.id}));
-  if (teles.length) h += `<div class="card"><h2>Mis telemarketers</h2>${evalTable(teles, true)}</div>`;
+  h += teleAccCard(S.uid);
+  if (teles.length) h += `<div class="card"><h2>Mis telemarketers externas</h2>${evalTable(teles, true)}</div>`;
   h += inviteCard();
   return h;
 }
@@ -1084,6 +1104,8 @@ function viewEquipo(){
   let h = driveCard() + inviteCard();
   h += `<div class="card"><h2>Solicitudes de acceso</h2>${pend.length?`<div class="list">${pend.map(([id,m])=>`<div class="item" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(m.name)}</div><div class="m">Pidió entrar como ${esc(INV_ROLES[m.wantedRole]||"socio")}${m.phone?" · "+esc(m.phone):""}</div></div><div class="row">${Object.entries(INV_ROLES).map(([k,l])=>`<button class="btn small ${k===(m.wantedRole||"tele")?"":"ghost"}" data-approve="${id}" data-role="${k}">${k===(m.wantedRole||"tele")?"Aprobar":"Como "+l.toLowerCase()}</button>`).join("")}</div></div>`).join("")}</div>`:`<div class="empty">No hay solicitudes pendientes. Quien entra con un enlace de invitación queda registrado solo.</div>`}</div>`;
   h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td>${who(id,30)}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.upline?` <span class="tag tg-warn">${m.role==="tele"?"externa · ":""}grupo de ${esc(memberName(m.upline))}</span>`:(m.role==="tele"?` <span class="tag tg-good">programa Lunaya</span>`:"")}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label><label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label><div class="row" style="gap:4px;margin-top:4px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" data-plan="${id}|sueldo" value="${m.sueldo??""}" placeholder="${com().sueldo}" style="padding:4px 6px;width:80px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" data-plan="${id}|pct" value="${m.pct??""}" placeholder="${com().pct}" style="padding:4px 6px;width:60px"></label></div>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
+  const dists = active.filter(([,m]) => m.role==="socio" && m.tipo===DIST);
+  if (dists.length) h += `<div class="card"><h2>Telemarketers en cada distribuidor</h2><p class="note" style="margin-top:-6px">Todas las telemarketers del programa entran solas al mundo de cada distribuidor. Quita la palomita para sacar a alguna.</p>${dists.map(([did,d])=>`<div style="margin-top:12px"><div class="eyebrow" style="margin-bottom:6px">${esc(d.name)}</div><div class="chips">${telesLunaya().map(t=>`<label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-tacc="${did}|${t.id}" ${(d.teleNo||[]).includes(t.id)?"":"checked"}>${esc(t.name)}</label>`).join("")}</div></div>`).join("")}</div>`;
   h += `<div class="card"><h2>Comisiones</h2><div class="grid2">
     <label class="f">Sueldo fijo mensual (USD)<input class="i" type="number" min="0" id="k-sueldo" value="${c.sueldo}"></label>
     <label class="f">% sobre sus ventas<input class="i" type="number" min="0" step="0.1" id="k-pct" value="${c.pct}"></label>
@@ -1255,6 +1277,8 @@ function bindCommon(){
       catch(e1){ /* reglas viejas en Firebase: se crea sin grupo y la app lo asigna sola después */ if (role()==="admin" && inv.upline){ inv.upline = ""; await S.db.doc("invites/"+code).set(inv); } else throw e1; } invf.reset(); openInviteMsg(code, {name, email, phone, role:rl, code, invitedBy:S.uid, genero}); } catch(err){ writeErr(err); } };
   all("[data-ptele]", s => s.onchange = async () => { const cur = {sueldo:0, pct:0, liderPct:0, ...(S.me?.planTele||{})}; m.querySelectorAll("[data-ptele]").forEach(x => { cur[x.dataset.ptele] = +x.value||0; }); try { await S.db.doc("members/"+S.uid).update({planTele:cur}); toast("Plan de tus telemarketers guardado"); } catch(e){ writeErr(e); } });
   all("[data-plan]", s => s.onchange = async () => { const [id,k] = s.dataset.plan.split("|"); const v = s.value.trim(); try { await S.db.doc("members/"+id).update({[k]: v==="" ? firebase.firestore.FieldValue.delete() : +v}); toast(v==="" ? "Vuelve al plan general" : "Plan de pago guardado"); } catch(e){ writeErr(e); } });
+  document.querySelectorAll("[data-tacc]").forEach(c => c.onchange = async () => { const [did, tid] = c.dataset.tacc.split("|"); const cur = new Set(S.members[did]?.teleNo || []); if (c.checked) cur.delete(tid); else cur.add(tid);
+    try { await S.db.doc("members/"+did).update({teleNo:[...cur]}); toast(c.checked ? `${memberName(tid)} ya tiene acceso` : `${memberName(tid)} ya no tiene acceso`); } catch(e){ c.checked = !c.checked; writeErr(e); } });
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
   all("[data-lider]", c => c.onchange = async () => { try { await S.db.doc("members/"+c.dataset.lider).update({lider:c.checked}); toast(c.checked?"Marcada como líder":"Ya no es líder"); } catch(e){ writeErr(e); } });

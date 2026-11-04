@@ -22,20 +22,36 @@ function qrSvg(text, px=180){ try { const q = qrcode(0, "M"); q.addData(text); q
   for (let r=0;r<n;r++) for (let c=0;c<n;c++) if (q.isDark(r,c)) d += `M${c+2},${r+2}h1v1h-1z`;
   return `<svg viewBox="0 0 ${n+4} ${n+4}" width="${px}" height="${px}" shape-rendering="crispEdges" style="background:#fff;border-radius:10px"><path d="${d}" fill="#14213d"/></svg>`; } catch { return ""; } }
 
-/* Ruleta en SVG: cada regalo con su foto */
+/* Ruleta en SVG: tonos crema y dorado, cada regalo con su foto en grande */
+const JG_SL = n => n%2 ? ["#fffaf0","#f3dfa6","#f9ecc8"] : ["#fffaf0","#f3dfa6"];
 function wheelSvg(prizes, id="jg-wheel"){
-  const n = prizes.length, R = 150, a = 360/n; const pt = (ang, r) => { const t = (ang-90)*Math.PI/180; return [R+r*Math.cos(t), R+r*Math.sin(t)]; };
+  const n = prizes.length, R = 150, a = 360/n; const pt = (ang, r) => { const t = (ang-90)*Math.PI/180; return [R+r*Math.cos(t), R+r*Math.sin(t)]; }; const SL = JG_SL(n);
   let s = "";
-  prizes.forEach((p,i) => { const a0 = i*a, a1 = (i+1)*a, [x0,y0] = pt(a0,R), [x1,y1] = pt(a1,R), mid = a0+a/2; const col = JG_COLORS[i % JG_COLORS.length];
-    s += n===1 ? `<circle cx="${R}" cy="${R}" r="${R}" fill="${col}"/>` : `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a>180?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}" stroke="#f7e7b4" stroke-width="2"/>`;
-    const sz = Math.min(64, Math.max(34, 2*Math.PI*R*0.62/n*0.62)); const lbl = esc(String(p.n||"").slice(0,16));
-    s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${R-R*0.6}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${R-R*0.6}" r="${sz/2+3}" fill="#fff"/><image href="${p.img}" x="${R-sz/2}" y="${R-R*0.6-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:""}
-      <text x="${R}" y="${R-R*(p.img?0.3:0.55)}" text-anchor="middle" font-size="${n>6?10:12}" font-weight="800" fill="#fff" style="paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:2px">${lbl}</text></g>`; });
-  for (let i=0;i<24;i++){ const [x,y] = pt(i*15, R+9); s += `<circle cx="${x}" cy="${y}" r="3.2" fill="${i%2?"#fff8dc":"#ffd84d"}" class="jg-bulb${i%2}"/>`; }
-  return `<div class="jg-wrap"><svg viewBox="-14 -14 ${2*R+28} ${2*R+28}" class="jg-svg"><circle cx="${R}" cy="${R}" r="${R+14}" fill="url(#jg-gold)"/><defs><radialGradient id="jg-gold"><stop offset="80%" stop-color="#f3d36b"/><stop offset="100%" stop-color="#b8861b"/></radialGradient></defs>
-    <g id="${id}" style="transform-origin:${R}px ${R}px">${s}</g><circle cx="${R}" cy="${R}" r="30" fill="#14213d" stroke="#f3d36b" stroke-width="5"/><text x="${R}" y="${R+9}" text-anchor="middle" font-size="26">🎁</text></svg>
+  prizes.forEach((p,i) => { const a0 = i*a, a1 = (i+1)*a, [x0,y0] = pt(a0,R), [x1,y1] = pt(a1,R), mid = a0+a/2; const col = SL[i % SL.length];
+    s += n===1 ? `<circle cx="${R}" cy="${R}" r="${R}" fill="${col}"/>` : `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a>180?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}" stroke="#d4a72c" stroke-width="2.5"/>`;
+    const cy = R - R*0.6, sz = Math.min(86, Math.max(38, 2*Math.PI*R*0.58/n*0.6)); const lbl = esc(String(p.n||"").slice(0,16));
+    s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${cy}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${cy}" r="${sz/2+3.5}" fill="#fff" stroke="#d4a72c" stroke-width="2"/><image href="${p.img}" x="${R-sz/2}" y="${cy-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:`<text x="${R}" y="${cy+12}" text-anchor="middle" font-size="34">🎁</text>`}
+      <text x="${R}" y="${cy+sz/2+13}" text-anchor="middle" font-size="${n>6?9.5:11.5}" font-weight="800" fill="#14213d">${lbl}</text></g>`; });
+  for (let i=0;i<24;i++){ const [x,y] = pt(i*15, R+9); s += `<circle cx="${x}" cy="${y}" r="3.2" fill="${i%2?"#fffdf5":"#ffe58a"}" class="jg-bulb${i%2}"/>`; }
+  return `<div class="jg-wrap"><svg viewBox="-14 -14 ${2*R+28} ${2*R+28}" class="jg-svg"><defs><linearGradient id="jg-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".5" stop-color="#c9971f"/><stop offset="1" stop-color="#f2d27a"/></linearGradient></defs><circle cx="${R}" cy="${R}" r="${R+14}" fill="url(#jg-gold)"/>
+    <g id="${id}" style="transform-origin:${R}px ${R}px">${s}</g><circle cx="${R}" cy="${R}" r="27" fill="#14213d" stroke="url(#jg-gold)" stroke-width="5"/><text x="${R}" y="${R+9}" text-anchor="middle" font-size="24">🎁</text></svg>
     <div class="jg-ptr"></div></div>`;
 }
+
+/* Música alegre (hecha por la app, sin archivos ni licencias) */
+let jgMus = null;
+const jgMuted = () => { try { return localStorage.getItem("ly-jg-mute")==="1"; } catch { return false; } };
+function jgNote(ctx, out, midi, t, d, type, v){ const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = 440*Math.pow(2,(midi-69)/12); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t+0.015); g.gain.exponentialRampToValueAtTime(0.0001, t+d); o.connect(g); g.connect(out); o.start(t); o.stop(t+d+0.05); }
+function musicStart(){ if (jgMus || jgMuted()) return; try { jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); const ctx = jgAudio; if (ctx.state==="suspended") ctx.resume();
+  const out = ctx.createGain(); out.gain.value = 0.05; out.connect(ctx.destination); const step = 60/132/2;
+  const mel = [76,0,79,81,79,0,76,74, 72,0,74,76,79,0,76,0, 77,0,81,84,81,0,79,77, 76,79,77,74,72,0,0,0];
+  const bas = [48,55,52,55, 45,52,48,52, 41,48,45,48, 43,50,47,50]; const ch = [[64,67],[60,64],[57,60],[59,62]];
+  let i = 0, next = ctx.currentTime + 0.05;
+  jgMus = {out, timer: setInterval(() => { while (next < ctx.currentTime + 0.25){ const m = mel[i % mel.length]; if (m) jgNote(ctx, out, m, next, step*0.95, "square", 0.35);
+    if (i % 2 === 0) jgNote(ctx, out, bas[(i/2) % bas.length], next, step*1.8, "triangle", 0.9);
+    if (i % 8 === 4) ch[Math.floor(i/8) % ch.length].forEach(c => jgNote(ctx, out, c, next, step*0.5, "triangle", 0.25));
+    next += step; i++; } }, 60)}; } catch {} }
+function musicStop(){ if (!jgMus) return; clearInterval(jgMus.timer); try { jgMus.out.gain.setTargetAtTime(0, jgAudio.currentTime, 0.2); } catch {} jgMus = null; }
 
 /* Sonido de la ruleta (sin archivos) */
 let jgAudio = null;
@@ -47,46 +63,53 @@ function confetti(){ const c = document.createElement("canvas"); c.className = "
 
 /* ================= PÁGINA PÚBLICA (la amiga abre el link) ================= */
 const JG_CSS = `
-body.jg{background:radial-gradient(ellipse at top,#22325e 0%,#14213d 55%,#0b1328 100%);color:#fff;min-height:100%;font-family:var(--body)}
-.jg-pg{max-width:480px;margin:0 auto;padding:22px 18px 40px;display:grid;gap:14px;text-align:center}
-.jg-top{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#f3d36b;font-weight:800}
-.jg-h{font-family:var(--serif);font-weight:700;font-size:34px;line-height:1.05;margin:0;color:#fff}
-.jg-h b{color:#f3d36b}
-.jg-p{margin:0;color:#dfe5f5;font-size:16px}
-.jg-wrap{position:relative;width:min(88vw,380px);margin:4px auto 0}
-.jg-svg{width:100%;height:auto;display:block;filter:drop-shadow(0 10px 24px rgba(0,0,0,.45))}
-.jg-ptr{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:34px solid #ffd84d;filter:drop-shadow(0 3px 3px rgba(0,0,0,.4))}
+body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4 100%);background-attachment:fixed;color:#14213d;min-height:100%;font-family:var(--body)}
+.jg-pg{max-width:480px;margin:0 auto;padding:20px 18px 40px;display:grid;gap:14px;text-align:center}
+.jg-top{font-size:12.5px;letter-spacing:.26em;text-transform:uppercase;color:#b8861b;font-weight:800}
+.jg-name{font-family:var(--serif);font-weight:700;font-size:clamp(40px,12vw,58px);line-height:1;margin:2px 0 0;color:#a8761b;text-transform:none;letter-spacing:0;text-wrap:balance}
+.jg-h{font-family:var(--serif);font-weight:700;font-size:28px;line-height:1.1;margin:0;color:#14213d;text-transform:none;letter-spacing:0}
+.jg-h b{color:#a8761b}
+.jg-p{margin:0;color:#5b5547;font-size:16px}
+.jg-wrap{position:relative;width:min(92vw,400px);margin:4px auto 0}
+.jg-svg{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 28px rgba(120,90,20,.28))}
+.jg-ptr{position:absolute;left:50%;top:-8px;transform:translateX(-50%);width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:36px solid #14213d;filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))}
 .jg-bulb0{animation:jgb 1s infinite}.jg-bulb1{animation:jgb 1s .5s infinite}
 @keyframes jgb{50%{opacity:.35}}
-.jg-btn{border:0;border-radius:16px;padding:18px 20px;font-size:20px;font-weight:800;cursor:pointer;background:linear-gradient(#ffd84d,#e0a91f);color:#14213d;box-shadow:0 6px 0 #a87a10,0 10px 24px rgba(0,0,0,.35);width:100%;letter-spacing:.02em}
+.jg-btn{border:0;border-radius:16px;padding:18px 20px;font-size:20px;font-weight:800;cursor:pointer;background:linear-gradient(#f6d77a,#d4a72c);color:#14213d;box-shadow:0 6px 0 #a87a10,0 12px 24px rgba(120,90,20,.3);width:100%;letter-spacing:.03em}
 .jg-btn:active{transform:translateY(3px);box-shadow:0 3px 0 #a87a10}
 .jg-btn:disabled{opacity:.6}
 .jg-btn.alt{background:#25d366;color:#fff;box-shadow:0 6px 0 #178a42}
-.jg-btn.sec{background:rgba(255,255,255,.12);color:#fff;box-shadow:none;font-size:16px;padding:14px}
-.jg-card{background:#fffdf8;color:#1f1e1d;border-radius:20px;padding:20px 18px;display:grid;gap:12px;text-align:left}
-.jg-card h3{margin:0;font-family:var(--serif);font-size:24px;text-align:center}
-.jg-card input[type=text],.jg-card input[type=tel]{width:100%;border:2px solid #d4a72c;border-radius:14px;padding:14px 16px;font-size:18px;background:#fff;color:#1f1e1d}
+.jg-btn.sec{background:#fff;color:#14213d;box-shadow:none;border:1.5px solid #e4d2a4;font-size:16px;padding:14px}
+.jg-card{background:#fff;color:#1f1e1d;border-radius:22px;padding:20px 18px;display:grid;gap:12px;text-align:left;border:1.5px solid #ead9ad;box-shadow:0 12px 30px rgba(120,90,20,.12)}
+.jg-card h3{margin:0;font-family:var(--serif);font-size:24px;text-align:center;color:#14213d}
+.jg-card input[type=text],.jg-card input[type=tel]{width:100%;border:2px solid #d4a72c;border-radius:14px;padding:14px 16px;font-size:18px;background:#fffdf8;color:#1f1e1d}
 .jg-card label.ck{display:flex;gap:10px;font-size:13.5px;color:#555;align-items:flex-start}
 .jg-card label.ck input{width:22px;height:22px;flex:none;margin-top:1px}
 .jg-err{color:#b4442f;font-weight:700;font-size:14px;min-height:18px}
 .jg-prize{display:grid;justify-items:center;gap:8px}
-.jg-prize img{width:150px;height:150px;border-radius:50%;object-fit:cover;border:6px solid #f3d36b;background:#fff;animation:jgpop .6s cubic-bezier(.2,1.6,.4,1)}
+.jg-prize img{width:190px;height:190px;border-radius:50%;object-fit:cover;border:7px solid #e2bb4f;background:#fff;box-shadow:0 12px 30px rgba(120,90,20,.25);animation:jgpop .6s cubic-bezier(.2,1.6,.4,1)}
 @keyframes jgpop{from{transform:scale(.2)}to{transform:scale(1)}}
-.jg-prize .pn{font-family:var(--serif);font-weight:700;font-size:26px;color:#a8761b;text-align:center}
+.jg-prize .pn{font-family:var(--serif);font-weight:700;font-size:30px;color:#a8761b;text-align:center}
 .jg-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.jg-chip{background:rgba(255,255,255,.12);border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:700}
-.jg-small{font-size:12.5px;color:#aab3cc}
-.jg-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:8px 0}
-.jg-box{font-size:64px;background:rgba(255,255,255,.08);border:2px solid rgba(243,211,107,.5);border-radius:18px;padding:16px 0;cursor:pointer}
+.jg-chip{background:#fff;border:1.5px solid #ead9ad;color:#14213d;border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:700}
+.jg-small{font-size:12.5px;color:#8a826f}
+.jg-gifts{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
+.jg-gift{display:grid;justify-items:center;gap:6px;font-size:13px;font-weight:800;color:#14213d}
+.jg-gift img,.jg-gift span.ph{width:92px;height:92px;border-radius:50%;object-fit:cover;border:4px solid #e2bb4f;background:#fff;display:grid;place-items:center;font-size:40px}
+.jg-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0}
+.jg-box{font-size:64px;background:#fff;border:2px solid #e2bb4f;border-radius:18px;padding:16px 0;cursor:pointer;box-shadow:0 8px 20px rgba(120,90,20,.15)}
 .jg-box.shake{animation:jgsh .15s 8}
 @keyframes jgsh{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
 .jg-conf{position:fixed;inset:0;pointer-events:none;z-index:50}
-.jg-bar{height:14px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden}.jg-bar i{display:block;height:100%;background:linear-gradient(90deg,#ffd84d,#e0a91f)}
+.jg-bar{height:14px;background:#efe3c4;border-radius:99px;overflow:hidden}.jg-bar i{display:block;height:100%;background:linear-gradient(90deg,#f6d77a,#d4a72c)}
+.jg-mute{position:fixed;top:12px;right:12px;z-index:40;border:1.5px solid #ead9ad;background:#fff;border-radius:999px;width:44px;height:44px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 `;
 async function startJuego(code, avance){
   S.publicGame = true;
   document.body.className = "jg"; const st = document.createElement("style"); st.textContent = JG_CSS; document.head.appendChild(st);
   document.body.innerHTML = `<div class="jg-pg" id="jg"><div class="jg-p">Cargando…</div></div>`;
+  const mb = document.createElement("button"); mb.className = "jg-mute"; mb.setAttribute("aria-label", "Música"); const paintMb = () => mb.textContent = jgMuted() ? "🔇" : "🎵"; paintMb();
+  mb.onclick = e => { e.stopPropagation(); try { localStorage.setItem("ly-jg-mute", jgMuted() ? "0" : "1"); } catch {} paintMb(); if (jgMuted()) musicStop(); else musicStart(); }; document.body.appendChild(mb);
   const box = document.getElementById("jg"); code = String(code).toUpperCase().replace(/[^A-Z0-9]/g,"");
   let J, P; try { const js = await S.db.doc("juegos/"+code).get(); if (!js.exists) throw 0; J = js.data(); const ps = await S.db.doc("programs/"+J.pid).get(); if (!ps.exists) throw 0; P = ps.data(); }
   catch { box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
@@ -95,6 +118,7 @@ async function startJuego(code, avance){
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const ref = firstName(J.ref) ? J.ref : "Tu amiga";
   const vence = J.until ? new Intl.DateTimeFormat("es-US",{weekday:"long", day:"numeric", month:"long"}).format(new Date(J.until)) : "";
   const meta = P.meta || {refs:14, cada:4};
+  if (P.musica === false) mb.remove(); else document.addEventListener("pointerdown", () => { if (!saved.done) musicStart(); }, {once:true});
   if (avance){ return showAvance(); }
   if (J.until && J.until < Date.now() && !saved.done){ box.innerHTML = `<div class="jg-top">Juega y gana</div><div class="jg-h">Esta promoción ya terminó</div><p class="jg-p">Pídele a ${esc(ref)} que te mande un link nuevo.</p>`; return; }
   if (saved.done) return showDone();
@@ -104,10 +128,10 @@ async function startJuego(code, avance){
   function showIntro(){
     const n = J.n || 0;
     box.innerHTML = `<div class="jg-top">✨ Juega y gana ✨</div>
-      <h1 class="jg-h"><b>${esc(ref)}</b> te regaló ${tipo==="caja"?"una caja sorpresa":"un giro"} 🎁</h1>
+      <div class="jg-name">${esc(ref)}</div><h1 class="jg-h">te regaló ${tipo==="caja"?"una caja sorpresa":"un giro"} 🎁</h1>
       <p class="jg-p">${tipo==="caja"?"Escoge una caja y descubre tu regalo":"Gira la ruleta y gana un regalo"} para tu cocina. Sin costo y sin obligación de compra.</p>
       ${tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
-        <div class="jg-chips">${prizes.map(p=>`<span class="jg-chip">${esc(p.n)}</span>`).join("")}</div>` : wheelSvg(prizes)}
+        <div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` : wheelSvg(prizes)}
       <div class="jg-chips">${vence?`<span class="jg-chip">⏳ Válido hasta el ${esc(vence)}</span>`:""}${n>=2?`<span class="jg-chip">🔥 ${n} amigas de ${esc(ref)} ya participaron</span>`:""}</div>
       ${tipo==="caja" ? "" : `<button class="jg-btn" id="jg-spin">¡GIRAR!</button>`}
       <p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`;
@@ -159,6 +183,7 @@ async function startJuego(code, avance){
     };
   }
   function showDone(){
+    setTimeout(musicStop, 2500);
     const i = saved.prize ?? 0; const mine = saved.child;
     box.innerHTML = `<div class="jg-top">✅ Regalo reservado</div><h1 class="jg-h">¡Listo${saved.name?", "+esc(firstName(saved.name)):""}!</h1>${prizeHtml(i)}
       <p class="jg-p">Tu regalo quedó reservado. Muy pronto te contactamos para coordinar la entrega.</p>
@@ -191,12 +216,16 @@ function subJuegos(){
   S.programs = {}; S.juegos = {}; S.leads = {}; S.jl = {}; S.ll = {}; S.leadsReady = false;
   const r = S.me?.role; const q = [["by", S.uid], ["socioId", S.uid]]; if (S.isOwner || r==="admin" || isDist()) q.push(["up", S.uid]); if (r==="tele" && !S.me?.upline) q.push(["tv", true]);
   S.unsub.push(S.db.collection("programs").onSnapshot(s => { S.programs = {}; s.docs.forEach(d => S.programs[d.id] = d.data()); if (S.view==="juego") render(); }, e => console.log("programs", e)));
-  q.forEach(([f,v]) => {
-    S.unsub.push(S.db.collection("juegos").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.jl[f] = m; S.juegos = Object.assign({}, ...Object.values(S.jl)); if (S.view==="juego") render(); }, e => console.log("juegos", f, e)));
-    S.unsub.push(S.db.collection("leads").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.ll[f] = m; const prev = S.leads; S.leads = Object.assign({}, ...Object.values(S.ll));
+  q.forEach(([f,v]) => jgSub(f, v).forEach(u => S.unsub.push(u)));
+  setTimeout(() => S.leadsReady = true, 5000);
+}
+/* Suscribe links y prospectos de un filtro; devuelve cómo cancelarlo (para quitar el acceso de una telemarketer a un distribuidor) */
+function jgSub(f, v){ const k = f+"|"+v;
+  const u1 = S.db.collection("juegos").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.jl[k] = m; S.juegos = Object.assign({}, ...Object.values(S.jl)); if (S.view==="juego") render(); }, e => console.log("juegos", k, e));
+  const u2 = S.db.collection("leads").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.ll[k] = m; const prev = S.leads; S.leads = Object.assign({}, ...Object.values(S.ll));
       if (S.leadsReady){ Object.entries(S.leads).forEach(([id,l]) => { if (!prev[id] && l.kind==="jugador") avisar("🎁 Nuevo prospecto de la ruleta", `${l.name} · ganó ${l.prize}${l.ref?" · amiga de "+l.ref:""}`); }); }
-      setTimeout(() => S.leadsReady = true, 4000); render(); }, e => console.log("leads", f, e)));
-  });
+      render(); }, e => console.log("leads", k, e));
+  return [u1, u2, () => { delete S.jl[k]; delete S.ll[k]; S.juegos = Object.assign({}, ...Object.values(S.jl)); S.leads = Object.assign({}, ...Object.values(S.ll)); }];
 }
 const nuevosLeads = () => Object.values(S.leads||{}).filter(l => l.kind==="jugador" && l.status==="nuevo").length;
 /* Programas que puede usar: los suyos, los de su director o distribuidor y, para las telemarketers del programa, los de Dirección */
@@ -251,6 +280,7 @@ function openPrograma(pid){
       <p class="note" style="margin:4px 0 0">Pon 0% al regalo que quieres que se vea pero que nunca salga.</p></div>
     <div class="grid2"><label class="f">Meta de referidos<input class="i" type="number" min="1" id="pg-refs" value="${P.meta.refs}"></label><label class="f">Un regalo cada<input class="i" type="number" min="1" id="pg-cada" value="${P.meta.cada}"></label><label class="f">Días que dura cada link<input class="i" type="number" min="1" max="60" id="pg-dias" value="${P.dias||7}"></label></div>
     <label class="f">Mensaje que el cliente manda a sus amigas ({link} es donde va el link)<textarea class="i" id="pg-msg" style="min-height:160px">${esc(P.msg || defMsg(P.tipo))}</textarea></label>
+    <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-mus" ${P.musica!==false?"checked":""}> Música alegre en la ruleta (la persona la puede apagar)</label>
     ${pid?`<label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-act" ${P.activo!==false?"checked":""}> Programa activo (se puede usar para inscribir clientes)</label>`:""}
     <div class="row"><button class="btn" id="pg-save">Guardar programa</button><button class="btn ghost" data-close>Cancelar</button></div>`, bind);
   function bind(){
@@ -270,7 +300,7 @@ function openPrograma(pid){
       if (!P.name){ toast("Ponle un nombre al programa"); return; } if (prizes.length < 2){ toast("Pon al menos 2 regalos con nombre"); return; }
       if (!prizes.some(p => p.w > 0)) prizes.forEach(p => p.w = 1);
       const msg = q("pg-msg").value.trim(); if (!msg.includes("{link}")){ toast("El mensaje necesita {link} para poner el link"); return; }
-      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4)}, dias:Math.min(60,Math.max(1,+q("pg-dias").value||7)), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
+      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4)}, dias:Math.min(60,Math.max(1,+q("pg-dias").value||7)), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
       if (JSON.stringify(doc).length > 900000){ toast("Las fotos pesan mucho. Quita alguna e intenta de nuevo."); return; }
       q("pg-save").disabled = true;
       try { if (pid) await S.db.doc("programs/"+pid).set(doc); else await S.db.collection("programs").add(doc); closeModal(); toast("Programa guardado"); } catch(e){ q("pg-save").disabled = false; writeErr(e); }
@@ -327,30 +357,38 @@ function openShare(code){
   });
 }
 
-/* Imagen para compartir: ruleta con las fotos de los productos + QR */
+/* Imagen para compartir: fondo crema y dorado, el nombre en grande, la ruleta con las fotos de los regalos y el QR */
+function fitText(x, txt, max, w, weight, fam){ let f = max; do { x.font = `${weight} ${f}px ${fam}`; f -= 2; } while (x.measureText(txt).width > w && f > 20); }
 async function promoImg(j, p, link){
   const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
-  const g = x.createRadialGradient(W/2, 300, 100, W/2, 700, 1100); g.addColorStop(0, "#2a3d72"); g.addColorStop(1, "#0b1328"); x.fillStyle = g; x.fillRect(0,0,W,H);
-  for (let i=0;i<70;i++){ x.fillStyle = `rgba(243,211,107,${Math.random()*.5})`; x.beginPath(); x.arc(Math.random()*W, Math.random()*H, Math.random()*4+1, 0, 7); x.fill(); }
-  x.textAlign = "center"; x.fillStyle = "#f3d36b"; x.font = "800 34px Manrope, sans-serif"; x.fillText("✨  JUEGA Y GANA  ✨", W/2, 90);
-  x.fillStyle = "#fff"; x.font = "800 92px Manrope, sans-serif"; x.fillText(p.tipo==="caja" ? "¡ABRE Y GANA!" : "¡GIRA Y GANA!", W/2, 190);
-  x.font = "600 40px Manrope, sans-serif"; x.fillStyle = "#dfe5f5"; x.fillText(`${firstName(j.ref)||"Tu amiga"} te regaló ${p.tipo==="caja"?"una caja sorpresa":"un giro"} 🎁`, W/2, 250);
-  const prizes = p.prizes||[], n = prizes.length||1, cx = W/2, cy = 640, R = 330, a = 2*Math.PI/n;
-  x.beginPath(); x.arc(cx, cy, R+26, 0, 7); x.fillStyle = "#e6b93a"; x.fill();
+  const SERIF = '"Source Serif 4", Georgia, serif', SANS = "Manrope, system-ui, sans-serif";
+  const g = x.createRadialGradient(W/2, 0, 80, W/2, H*0.6, 1200); g.addColorStop(0, "#fffdf7"); g.addColorStop(.6, "#faf1de"); g.addColorStop(1, "#efdcb4"); x.fillStyle = g; x.fillRect(0,0,W,H);
+  for (let i=0;i<90;i++){ x.fillStyle = `rgba(201,151,31,${0.15+Math.random()*.35})`; x.beginPath(); x.arc(Math.random()*W, Math.random()*H, Math.random()*5+1.5, 0, 7); x.fill(); }
+  x.strokeStyle = "#d4a72c"; x.lineWidth = 4; x.strokeRect(26, 26, W-52, H-52); x.lineWidth = 1.5; x.strokeRect(40, 40, W-80, H-80);
+  x.textAlign = "center"; x.fillStyle = "#b8861b"; x.font = `800 30px ${SANS}`; x.fillText("✦  J U E G A   Y   G A N A  ✦", W/2, 108);
+  const nombre = String(j.ref||"Tu amiga").trim(); x.fillStyle = "#a8761b"; fitText(x, nombre, 118, W-160, 700, SERIF); x.fillText(nombre, W/2, 225);
+  x.fillStyle = "#14213d"; x.font = `700 50px ${SERIF}`; x.fillText(p.tipo==="caja" ? "te regaló una caja sorpresa 🎁" : "te regaló un giro 🎁", W/2, 292);
+  const prizes = p.prizes||[], n = prizes.length||1, cx = W/2, cy = 690, R = 335, a = 2*Math.PI/n; const SL = JG_SL(n);
   const imgs = await Promise.all(prizes.map(pr => pr.img ? loadImg(pr.img).catch(()=>null) : null));
-  prizes.forEach((pr,i) => { const a0 = -Math.PI/2 + i*a; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,R,a0,a0+a); x.closePath(); x.fillStyle = JG_COLORS[i%JG_COLORS.length]; x.fill(); x.strokeStyle = "#f7e7b4"; x.lineWidth = 4; x.stroke();
-    const mid = a0 + a/2, ir = R*0.6, ix = cx + ir*Math.cos(mid), iy = cy + ir*Math.sin(mid), s = Math.min(150, 2*Math.PI*ir/n*0.62);
-    if (imgs[i]){ x.save(); x.beginPath(); x.arc(ix, iy, s/2+6, 0, 7); x.fillStyle = "#fff"; x.fill(); x.beginPath(); x.arc(ix, iy, s/2, 0, 7); x.clip(); x.drawImage(imgs[i], ix-s/2, iy-s/2, s, s); x.restore(); }
-    x.save(); x.translate(cx + R*0.28*Math.cos(mid), cy + R*0.28*Math.sin(mid)); x.rotate(mid + Math.PI/2); x.fillStyle = "#fff"; x.font = `800 ${n>6?22:26}px Manrope, sans-serif`; x.fillText(String(pr.n).slice(0,14), 0, 0); x.restore(); });
-  for (let i=0;i<28;i++){ const t = i*2*Math.PI/28; x.beginPath(); x.arc(cx+(R+13)*Math.cos(t), cy+(R+13)*Math.sin(t), 7, 0, 7); x.fillStyle = i%2 ? "#fff8dc" : "#ffd84d"; x.fill(); }
-  x.beginPath(); x.arc(cx, cy, 62, 0, 7); x.fillStyle = "#14213d"; x.fill(); x.lineWidth = 10; x.strokeStyle = "#f3d36b"; x.stroke(); x.font = "60px serif"; x.fillText("🎁", cx, cy+22);
-  x.beginPath(); x.moveTo(cx-30, cy-R-46); x.lineTo(cx+30, cy-R-46); x.lineTo(cx, cy-R+14); x.closePath(); x.fillStyle = "#ffd84d"; x.fill();
+  x.save(); x.shadowColor = "rgba(120,90,20,.35)"; x.shadowBlur = 40; x.shadowOffsetY = 16; x.beginPath(); x.arc(cx, cy, R+30, 0, 7);
+  const gg = x.createLinearGradient(cx-R, cy-R, cx+R, cy+R); gg.addColorStop(0, "#f6dc8a"); gg.addColorStop(.5, "#c9971f"); gg.addColorStop(1, "#f2d27a"); x.fillStyle = gg; x.fill(); x.restore();
+  prizes.forEach((pr,i) => { const a0 = -Math.PI/2 + i*a; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,R,a0,a0+a); x.closePath(); x.fillStyle = SL[i%SL.length]; x.fill(); x.strokeStyle = "#d4a72c"; x.lineWidth = 5; x.stroke(); });
+  prizes.forEach((pr,i) => { const mid = -Math.PI/2 + i*a + a/2, ir = R*0.56, ix = cx + ir*Math.cos(mid), iy = cy + ir*Math.sin(mid), s = Math.min(200, 2*Math.PI*ir/n*0.6);
+    x.save(); x.shadowColor = "rgba(0,0,0,.18)"; x.shadowBlur = 14; x.beginPath(); x.arc(ix, iy, s/2+8, 0, 7); x.fillStyle = "#fff"; x.fill(); x.restore();
+    x.beginPath(); x.arc(ix, iy, s/2+8, 0, 7); x.strokeStyle = "#d4a72c"; x.lineWidth = 4; x.stroke();
+    if (imgs[i]){ x.save(); x.beginPath(); x.arc(ix, iy, s/2, 0, 7); x.clip(); x.drawImage(imgs[i], ix-s/2, iy-s/2, s, s); x.restore(); } else { x.font = `${s*0.5}px serif`; x.fillText("🎁", ix, iy+s*0.18); }
+    const lbl = String(pr.n).slice(0,18); x.font = `800 ${n>6?22:28}px ${SANS}`; const tw = x.measureText(lbl).width + 32, ty = Math.sin(mid) < -0.2 ? iy - s/2 - 22 : iy + s/2 + 34;
+    x.fillStyle = "#14213d"; x.beginPath(); x.roundRect ? x.roundRect(ix-tw/2, ty-30, tw, 46, 23) : x.rect(ix-tw/2, ty-30, tw, 46); x.fill(); x.fillStyle = "#fff"; x.fillText(lbl, ix, ty+3); });
+  for (let i=0;i<32;i++){ const t = i*2*Math.PI/32; x.beginPath(); x.arc(cx+(R+15)*Math.cos(t), cy+(R+15)*Math.sin(t), 6.5, 0, 7); x.fillStyle = i%2 ? "#fffdf5" : "#ffe58a"; x.fill(); }
+  x.beginPath(); x.arc(cx, cy, 56, 0, 7); x.fillStyle = "#14213d"; x.fill(); x.lineWidth = 9; x.strokeStyle = "#e2bb4f"; x.stroke(); x.font = "54px serif"; x.fillText("🎁", cx, cy+19);
+  x.beginPath(); x.moveTo(cx-34, cy-R-52); x.lineTo(cx+34, cy-R-52); x.lineTo(cx, cy-R+16); x.closePath(); x.fillStyle = "#14213d"; x.fill();
   /* QR */
-  const q = qrcode(0, "M"); q.addData(link); q.make(); const nm = q.getModuleCount(), qs = 230, cell = qs/nm, qx = W/2 - qs/2 - 230, qy = 1030;
-  x.fillStyle = "#fff"; x.beginPath(); x.roundRect ? x.roundRect(qx-18, qy-18, qs+36, qs+36, 22) : x.rect(qx-18, qy-18, qs+36, qs+36); x.fill(); x.fillStyle = "#14213d";
+  const q = qrcode(0, "M"); q.addData(link); q.make(); const nm = q.getModuleCount(), qs = 210, cell = qs/nm, qx = 150, qy = 1090;
+  x.fillStyle = "#fff"; x.beginPath(); x.roundRect ? x.roundRect(qx-16, qy-16, qs+32, qs+32, 20) : x.rect(qx-16, qy-16, qs+32, qs+32); x.fill(); x.strokeStyle = "#d4a72c"; x.lineWidth = 4; x.stroke(); x.fillStyle = "#14213d";
   for (let r=0;r<nm;r++) for (let k=0;k<nm;k++) if (q.isDark(r,k)) x.fillRect(qx+k*cell, qy+r*cell, Math.ceil(cell), Math.ceil(cell));
-  x.textAlign = "left"; x.fillStyle = "#fff"; x.font = "800 50px Manrope, sans-serif"; x.fillText("Escanea o toca", qx+qs+60, qy+70); x.fillText("el link 👆", qx+qs+60, qy+130);
-  x.fillStyle = "#aab3cc"; x.font = "500 26px Manrope, sans-serif"; x.fillText("Sin costo · sin obligación de compra", qx+qs+60, qy+190); x.fillText("Solo mayores de 18 años", qx+qs+60, qy+228);
+  x.textAlign = "left"; const tx = qx+qs+60; x.fillStyle = "#14213d"; x.font = `700 54px ${SERIF}`; x.fillText(p.tipo==="caja" ? "¡Abre y gana!" : "¡Gira y gana!", tx, qy+58);
+  x.font = `700 32px ${SANS}`; x.fillText("Escanea el código o toca el link", tx, qy+112);
+  x.fillStyle = "#7a705c"; x.font = `500 26px ${SANS}`; x.fillText("Sin costo · sin obligación de compra", tx, qy+160); x.fillText("Solo mayores de 18 años", tx, qy+196);
   return await new Promise(res => c.toBlob(res, "image/png"));
 }
 
