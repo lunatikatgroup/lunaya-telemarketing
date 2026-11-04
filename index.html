@@ -769,11 +769,11 @@ function viewCitas(r){
   if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
   return h;
 }
-function gcalUrl(a){
+function gcalUrl(a, calId){
   const z = ms => new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
   const details = [a.phone?`Teléfono: ${a.phone}`:"", a.notes?`Notas: ${a.notes}`:"", `Agendó: ${memberName(a.teleId)} · Lunaya`].filter(Boolean).join("\n");
   const q = new URLSearchParams({action:"TEMPLATE", text:`Demostración · ${a.client||"Cliente"}`, dates:`${z(a.when)}/${z(a.when+2*3600e3)}`, details, location:[a.address,a.city].filter(Boolean).join(", "), ctz:TZ});
-  if (S.me?.gcalId) q.set("src", S.me.gcalId); /* abre directo en el calendario elegido (ej. Citas Lunaya) */
+  const cal = calId===undefined ? S.me?.gcalId : calId; if (cal) q.set("src", cal); /* abre directo en el calendario elegido (ej. Citas Lunaya) */
   return "https://calendar.google.com/calendar/render?" + q.toString();
 }
 const famOf = m => !m ? "" : (m.tipo===DIST || m.role==="admin") ? m.id : (m.upline || "dir");
@@ -807,7 +807,7 @@ function openAppt(id){
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha">${timeSel("ap-time",laTime(a.when))}<button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
     ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
-    ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a.status==="agendada" && r==="tele" && a.teleId===S.uid ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Pasar al Google Calendar de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">Al abrirse, elige el calendario de ${esc(memberName(a.socioId))} en la lista de calendarios y guarda. Funciona si ${esc(memberName(a.socioId))} te compartió su calendario con permiso para hacer cambios.</p>` : ""}
+    ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a._priv && a.status==="agendada" && r==="tele" && (a.teleId===S.uid || a.agendo===S.uid) ? (() => { const sc = S.members[a.socioId]?.gcalId || ""; return `<a class="btn dark" href="${esc(gcalUrl(a, sc))}" target="_blank" rel="noopener">📅 Agregar al calendario de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">${sc ? `Se abre directo en el calendario de citas de ${esc(memberName(a.socioId))}: solo toca <b>Guardar</b> y le aparece en su TimeTree.` : `${esc(memberName(a.socioId))} todavía no puso su calendario de citas en su perfil. Al abrirse, elige su calendario en la lista y guarda.`} Funciona si ${esc(memberName(a.socioId))} te compartió ese calendario con permiso para <b>hacer cambios</b>.</p>`; })() : ""}
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
     <div class="row">${r==="admin"||a.agendo===S.uid?`<button class="btn ghost" id="ap-del">Borrar cita</button>`:""}<button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     S.openAppt = id; refreshChat();
