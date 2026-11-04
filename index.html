@@ -152,11 +152,11 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="juego.js?v=202611040750"></script>
+<script src="juego.js?v=202611040810"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611040750";
+const APP_VER = "202611040810";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -301,7 +301,9 @@ const PRIV_KEYS = ["client","phone","city","address","notes","chat","seen","resN
 /* Citas transferidas antes del arreglo: quien la recibió marca solo quién se la dio, para que esa persona la siga viendo */
 let dadorFix = new Set();
 function arreglarDador(){ const pv = Object.assign({}, ...Object.values(S.privs||{}));
-  Object.entries(pv).forEach(([id,q]) => { if (q.tv===undefined && !dadorFix.has("tv"+id) && (q.socioId===S.uid || q.up===S.uid) && S.members[q.socioId]){ dadorFix.add("tv"+id); S.db.doc("apptp/"+id).update({tv: S.members[pagadorDe(q.socioId)]?.role==="admin"}).catch(()=>{}); } });
+  /* tv = cita del territorio de Dirección (la ven completa las telemarketers del programa). Se corrige si falta o quedó mal (por ejemplo, si el emprendedor cambió de grupo) */
+  Object.entries(pv).forEach(([id,q]) => { if (!S.members[q.socioId] || dadorFix.has("tv"+id) || !(q.socioId===S.uid || q.up===S.uid || q.teleId===S.uid || role()==="admin")) return; const tv = S.members[pagadorDe(q.socioId)]?.role==="admin";
+    if (q.tv !== tv){ dadorFix.add("tv"+id); S.db.doc("apptp/"+id).update({tv}).catch(e => console.log("tv", id, e)); } });
   Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || dadorFix.has(id)) return;
     if (a.transferredFrom && a.socioId===S.uid && q.socioId===S.uid && !q.dador){ dadorFix.add(id); S.db.doc("apptp/"+id).update({dador:a.transferredFrom}).catch(()=>{}); } }); }
 function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, dador:q.dador, _priv:true} : {...x, _priv:false}; }); }

@@ -128,6 +128,9 @@ service cloud.firestore {
              && request.resource.data.up == request.auth.uid
              && socioDoc().get('upline', '') == request.auth.uid
              && request.resource.data.dir == false)
+         // Corregir tv (territorio de Dirección) cuando quedó mal: solo se acepta el valor correcto según el socio de la cita
+         || ((involved() || upline() || isAdmin()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tv'])
+             && request.resource.data.tv == tvDe(resource.data.socioId))
          // Las telemarketers del programa pueden escribir en el chat de esas citas
          || ((teleVe() || teleDistDe(resource.data)) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['chat', 'seen']));
       allow delete: if isAdmin() || (signedIn() && resource.data.teleId == request.auth.uid);
@@ -198,7 +201,7 @@ service cloud.firestore {
          && request.resource.data.n == resource.data.get('n', 0) + 1
          && request.resource.data.last.matches('^' + code + '_[0-9]{10}$')
          && existsAfter(leadPath(request.resource.data.last)) && !exists(leadPath(request.resource.data.last));
-      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref']);
+      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref', 'visitas', 'ganados', 'avisados']);
       allow delete: if isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid);
     }
 

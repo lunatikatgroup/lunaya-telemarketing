@@ -31,6 +31,8 @@ const TEMAS = {
   verde:{n:"Verde y oro",    bg:["#fbfdf8","#eef5ea","#d6e5cc"], g:["#f8e3a0","#c9971f","#f3d27a","#b8861b"], sl:["#ffffff","#d7e8cd","#eaf3e4"], ink:"#1f3a2b", acc:"#a8761b", glow:"240,230,180"}
 };
 let JGT = TEMAS.oro;
+/* Fondo con foto: la cocina de Royal o una foto que suba cada quien */
+const fondoSrc = p => p.fondo==="cocina" ? "fondo-cocina.jpg" : (/^data:image\/jpeg;base64,/.test(p.fondo||"") ? p.fondo : "");
 const setTema = t => { JGT = TEMAS[t] || TEMAS.oro; return JGT; };
 const TXT_DEF = tipo => ({top:"Juega y gana", pill: tipo==="caja" ? "te regaló una caja sorpresa 🎁" : "te regaló un giro 🎁", sub: tipo==="caja" ? "Escoge una caja y descubre tu regalo para tu cocina." : "Gira la ruleta y gana un regalo para tu cocina.", btn: tipo==="caja" ? "" : "¡GIRAR!"});
 const txtDe = p => ({...TXT_DEF(p.tipo), ...Object.fromEntries(Object.entries(p.textos||{}).filter(([,v]) => String(v||"").trim()))});
@@ -133,7 +135,7 @@ body.jg{background:radial-gradient(circle at 12% 18%,rgba(var(--glow),.9) 0 3%,t
 .jg-name{position:relative;display:flex;flex-wrap:wrap;justify-content:center;align-items:baseline;column-gap:12px;line-height:.95;margin-top:2px}
 .jg-name .n1{font-family:var(--serif);font-weight:600;font-size:clamp(40px,12vw,56px);color:var(--ink)}
 .jg-name .n2{font-family:"Great Vibes",cursive;font-weight:400;font-size:clamp(54px,16vw,78px);color:var(--acc);background:linear-gradient(135deg,var(--g2),var(--g4) 55%,var(--g3));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;padding:0 6px}
-.jg-heart{position:absolute;right:max(0px,calc(50% - 190px));top:-6px;width:46px;height:40px}
+.jg-heart{position:relative;top:-0.9em;margin-left:-10px;width:40px;height:34px;flex:none;align-self:flex-start}
 .jg-pill{justify-self:center;background:linear-gradient(var(--g1),var(--g3));color:var(--ink);border-radius:999px;padding:8px 22px;font-family:var(--serif);font-weight:700;font-size:22px;box-shadow:0 6px 16px rgba(160,120,30,.25);border:1.5px solid #fff3cf}
 .jg-p b{color:#14213d}
 .jg-chip{display:flex;align-items:center;gap:10px;border-radius:16px;padding:10px 16px;font-size:14.5px;text-align:left;box-shadow:0 4px 12px rgba(120,90,20,.08)}
@@ -141,6 +143,9 @@ body.jg{background:radial-gradient(circle at 12% 18%,rgba(var(--glow),.9) 0 3%,t
 .jg-btn.go{background:var(--ink);color:#fff;border:2.5px solid var(--g2);box-shadow:0 0 0 3px rgba(217,173,60,.25),0 10px 24px rgba(20,33,61,.35);border-radius:999px;font-size:24px;display:flex;justify-content:center;align-items:center;gap:14px}
 .jg-btn.go:active{transform:translateY(2px)}
 .jg-giftdec{position:absolute;left:-14px;top:-6px;z-index:-1;opacity:.9}
+.jg-bgimg{position:fixed;inset:0;z-index:0;background-color:#f5eae0;background-position:center bottom;background-size:cover;background-repeat:no-repeat}
+body.foto .jg-giftdec{display:none}
+body.foto .jg-p{text-shadow:0 1px 8px rgba(255,255,255,.9)}
 .jg-mute{position:fixed;top:12px;right:12px;z-index:40;border:1.5px solid #ead9ad;background:#fff;border-radius:999px;width:44px;height:44px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 `;
 async function startJuego(code, avance){
@@ -157,7 +162,8 @@ async function startJuego(code, avance){
   const save = () => { try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const T = setTema(P.tema), TX = txtDe(P);
   const bs = document.body.style; [["--b1",T.bg[0]],["--b2",T.bg[1]],["--b3",T.bg[2]],["--g1",T.g[0]],["--g2",T.g[1]],["--g3",T.g[2]],["--g4",T.g[3]],["--ink",T.ink],["--acc",T.acc],["--glow",T.glow]].forEach(([k,v]) => bs.setProperty(k, v));
-  document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r")); const ref = firstName(J.ref) ? J.ref : "Tu amiga";
+  document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r"));
+  const fsrc = fondoSrc(P); if (fsrc){ document.body.classList.add("foto"); document.querySelectorAll(".jg-rib").forEach(r => r.remove()); const bg = document.createElement("div"); bg.className = "jg-bgimg"; bg.style.backgroundImage = `linear-gradient(rgba(250,245,238,.75), rgba(250,245,238,.35) 40%, rgba(250,245,238,0) 60%), url("${fsrc}")`; document.body.prepend(bg); } const ref = firstName(J.ref) ? J.ref : "Tu amiga";
   const vence = J.until ? new Intl.DateTimeFormat("es-US",{weekday:"long", day:"numeric", month:"long"}).format(new Date(J.until)) : "";
   const meta = P.meta || {refs:14, cada:4};
   if (P.musica === false) mb.remove(); else document.addEventListener("pointerdown", () => { if (!saved.done) musicStart(); }, {once:true});
@@ -230,7 +236,7 @@ async function startJuego(code, avance){
     box.innerHTML = `<div class="jg-top">✅ Regalo reservado</div><h1 class="jg-h">¡Listo${saved.name?", "+esc(firstName(saved.name)):""}!</h1>${prizeHtml(i)}
       <p class="jg-p">Tu regalo quedó reservado. Muy pronto te contactamos para coordinar la entrega.</p>
       <div class="jg-card" style="text-align:center"><h3>🎁 ¿Quieres ganar más regalos?</h3>
-        <p style="margin:0;color:#555">Invita a tus amigas a jugar. Cada ${meta.cada||4} amigas que participen, ganas otro regalo (hasta ${Math.floor((meta.refs||14)/(meta.cada||4))}).</p>
+        <p style="margin:0;color:#555">Invita a tus amigas a jugar. Cada ${meta.cada||4} amigas que ${meta.cuenta==="amigas"?"participen":"reciban nuestra visita"}, ganas otro regalo (hasta ${Math.floor((meta.refs||14)/(meta.cada||4))}).</p>
         <button class="jg-btn alt" id="jg-inv">Invitar a mis amigas por WhatsApp</button>
         ${mine?`<a class="jg-btn sec" style="text-decoration:none;display:block" href="${jgLink(mine)}&a=1">Ver cuántas amigas llevo</a>`:""}</div>
       <p class="jg-small">Regalo sujeto a disponibilidad en tu zona y a la coordinación con un representante autorizado.</p>`;
@@ -244,9 +250,11 @@ async function startJuego(code, avance){
     };
   }
   function showAvance(){
-    const n = J.n||0, cada = meta.cada||4, tot = meta.refs||14, ganados = Math.min(Math.floor(n/cada), Math.floor(tot/cada)), falta = n >= tot ? 0 : cada - (n % cada);
-    box.innerHTML = `<div class="jg-top">Tu avance</div><h1 class="jg-h">${esc(firstName(J.ref)||"Hola")}, llevas <b>${n}</b> amiga${n===1?"":"s"}</h1>
-      <div class="jg-bar"><i style="width:${Math.min(100, n*100/tot)}%"></i></div><p class="jg-p">Meta: ${tot} amigas · un regalo cada ${cada}</p>
+    const vis = meta.cuenta !== "amigas"; const n = vis ? (J.visitas||0) : (J.n||0), cada = meta.cada||4, tot = meta.refs||14, ganados = Math.min(Math.floor(n/cada), Math.floor(tot/cada)), falta = n >= tot ? 0 : cada - (n % cada);
+    const u = vis ? (n===1 ? "visita" : "visitas") : (n===1 ? "amiga" : "amigas");
+    box.innerHTML = `<div class="jg-top">Tu avance</div>${nameHtml(J.ref)}<h1 class="jg-h">llevas <b>${n}</b> ${u}${vis?" de tus amigas":""}</h1>
+      ${vis?`<p class="jg-p">${J.n||0} amiga${(J.n||0)===1?"":"s"} ya jugaron con tu link. Cada visita que les hacemos cuenta para tu regalo.</p>`:""}
+      <div class="jg-bar"><i style="width:${Math.min(100, n*100/tot)}%"></i></div><p class="jg-p">Meta: ${tot} ${vis?"visitas":"amigas"} · un regalo cada ${cada}</p>
       <div class="jg-chips"><span class="jg-chip">🎁 Regalos ganados: ${ganados}</span>${falta?`<span class="jg-chip">Te faltan ${falta} para el siguiente</span>`:`<span class="jg-chip">🏆 ¡Llegaste a la meta!</span>`}</div>
       <button class="jg-btn alt" id="jg-sh">Invitar a más amigas</button>`;
     document.getElementById("jg-sh").onclick = async () => { const msg = fillMsg(P.msg || defMsg(tipo), {link:jgLink(code)}); if (navigator.share) { try { await navigator.share({text:msg}); } catch {} } else location.href = "https://wa.me/?text="+encodeURIComponent(msg); };
@@ -269,6 +277,21 @@ function jgSub(f, v){ const k = f+"|"+v;
       render(); }, e => console.log("leads", k, e));
   return [u1, u2, () => { delete S.jl[k]; delete S.ll[k]; S.juegos = Object.assign({}, ...Object.values(S.jl)); S.leads = Object.assign({}, ...Object.values(S.ll)); }];
 }
+/* Avance de un cliente: amigas que jugaron y visitas hechas (citas de esas amigas marcadas "Demostración hecha") */
+function avanceDe(code){ const j = S.juegos?.[code] || {}; const m = {refs:14, cada:4, ...(S.programs?.[j.pid]?.meta || j.meta || {})};
+  const ls = Object.entries(S.leads||{}).filter(([id,l]) => l.kind==="jugador" && l.code===code);
+  const amigas = Math.max(j.n||0, ls.length), visitas = ls.filter(([,l]) => l.apptId && S.appts?.[l.apptId]?.status==="hecha").length;
+  const base = m.cuenta==="amigas" ? amigas : visitas, max = Math.floor(m.refs/m.cada); const ganados = Math.min(Math.floor(base/m.cada), max);
+  return {m, amigas, visitas, base, ganados, max, falta: ganados>=max ? 0 : m.cada - (base % m.cada), unidad: m.cuenta==="amigas" ? "amigas que jugaron" : "visitas"}; }
+function msgAvance(code){ const j = S.juegos[code], a = avanceDe(code), nm = firstName(j.ref);
+  const linea = a.m.cuenta==="amigas" ? `${a.amigas} amiga${a.amigas===1?"":"s"} ya jugaron con tu link` : `ya visitamos a ${a.visitas} de tus referidos`;
+  return a.ganados > (j.avisados||0)
+    ? `¡Hola ${nm}! 🎉 Te tengo una gran noticia: ${linea}, ¡y ya te ganaste tu regalo${a.ganados>1?" número "+a.ganados:""}! 🎁 Te escribo para coordinar la entrega.\n\n${a.falta ? `Te faltan ${a.falta} más para el siguiente regalo. ` : ""}Mira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`
+    : `¡Hola ${nm}! 😊 Te cuento cómo va tu programa de regalos: ${linea}. Te faltan ${a.falta} para tu ${a.ganados ? "siguiente " : ""}regalo 🎁\n\nMira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`; }
+/* Guarda el avance en el link (lo ve el cliente en su página) y avisa cuando alguien se gana un regalo */
+function syncAvance(){ Object.entries(S.juegos||{}).forEach(([code,j]) => { if (j.kind==="campana" || !(j.by===S.uid || j.socioId===S.uid)) return; const a = avanceDe(code);
+  if (a.visitas !== (j.visitas||0) || a.ganados !== (j.ganados||0)){ if (a.ganados > (j.ganados||0)) avisar("🎁 Un cliente se ganó su regalo", `${j.ref} ya tiene ${a.base} ${a.unidad}. Avísale desde Ruleta.`);
+    j.visitas = a.visitas; j.ganados = a.ganados; S.db.doc("juegos/"+code).update({visitas:a.visitas, ganados:a.ganados}).catch(e => console.log("avance", e)); } }); }
 const nuevosLeads = () => Object.values(S.leads||{}).filter(l => l.kind==="jugador" && l.status==="nuevo").length;
 /* Programas que puede usar: los suyos, los de su director o distribuidor y, para las telemarketers del programa, los de Dirección */
 function misProgramas(){ const yo = pagadorDe(S.uid);
@@ -280,14 +303,16 @@ function viewJuego(r){
   const f = S.f.lead || "nuevo"; const leads = Object.entries(S.leads||{}).filter(([,l]) => l.kind==="jugador" && (f==="todos" || l.status===f)).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
   const progs = misProgramas(); const mine = Object.entries(S.programs||{}).filter(([,p]) => p.owner===S.uid);
   const links = Object.entries(S.juegos||{}).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
-  return `<div class="card"><div class="row"><button class="btn" id="jg-ins">🎁 Inscribir cliente</button><button class="btn dark" id="jg-camp">📣 Campaña por mensaje</button><button class="btn ghost" id="jg-newp">➕ Nuevo programa</button></div>
+  const porAvisar = links.filter(([c,j]) => j.kind!=="campana" && avanceDe(c).ganados > (j.avisados||0));
+  return `${porAvisar.map(([c,j]) => `<div class="banner good" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🎁 <b>${esc(j.ref)}</b> se ganó su regalo${avanceDe(c).ganados>1?" #"+avanceDe(c).ganados:""} (${avanceDe(c).base} ${avanceDe(c).unidad}). ¡Avísale!</span><button class="btn small" data-avance="${c}">Avisarle</button></div>`).join("")}
+    <div class="card"><div class="row"><button class="btn" id="jg-ins">🎁 Inscribir cliente</button><button class="btn dark" id="jg-camp">📣 Campaña por mensaje</button><button class="btn ghost" id="jg-newp">➕ Nuevo programa</button></div>
       ${progs.length?"":`<p class="note" style="margin-bottom:0">Primero crea un programa: los regalos con su foto, la probabilidad de cada uno y la meta de referidos.</p>`}</div>
     <div class="card"><h2>Prospectos que llegaron<span class="note">${nuevosLeads()} nuevo(s)</span></h2>
       <div class="chips" style="margin-bottom:10px">${[["nuevo","Nuevos"],["llamado","Ya se llamó"],["cita","Con cita"],["no_interesa","No le interesa"],["todos","Todos"]].map(([k,l])=>`<button class="chip ${f===k?"on":""}" data-lf="${k}">${l}</button>`).join("")}</div>
       ${leads.length?`<div class="list">${leads.slice(0,80).map(([id,l])=>`<button class="item" data-lead="${id}"><div><div class="t">${esc(l.name)}</div><div class="m">${telFmt(l.tel)} · 🎁 ${esc(l.prize)}</div><div class="m">Amiga de ${esc(l.ref||"—")} · ${fmt(l.at,{day:"numeric",month:"short"})}${l.socioId!==S.uid?" · para "+esc(memberName(l.socioId)):""}</div></div><span class="tag ${l.status==="nuevo"?"tg-warn":l.status==="cita"?"tg-good":"tg-mute"}">${JG_ST[l.status]||l.status}</span></button>`).join("")}</div>`:`<div class="empty">${f==="nuevo"?"No hay prospectos nuevos. Cuando alguien juegue con uno de tus links, aparece aquí solo.":"No hay prospectos aquí."}</div>`}</div>
     <div class="card"><h2>Links activos<span class="note">${links.length}</span></h2>
       ${links.length?`<div class="list">${links.slice(0,40).map(([c,j])=>{ const m = j.meta || S.programs?.[j.pid]?.meta || {refs:14,cada:4}; const venc = j.until && j.until < Date.now();
-        return `<div class="item" style="cursor:default"><div style="min-width:0"><div class="t">${j.kind==="campana"?"📣 ":j.kind==="amiga"?"👭 ":""}${esc(j.ref||"")}</div><div class="m">${esc(progName(j.pid))} · ${j.n||0} de ${m.refs} amigas${venc?" · vencido":j.until?" · hasta "+fmt(j.until,{day:"numeric",month:"short"}):""}${j.socioId!==S.uid?" · "+esc(memberName(j.socioId)):""}</div><div class="bar"><i style="width:${Math.min(100,(j.n||0)*100/(m.refs||14))}%"></i></div></div><button class="btn small" data-share="${c}">Mandar</button></div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay links. Toca “Inscribir cliente”.</div>`}</div>
+        const av = avanceDe(c); return `<div class="item" style="cursor:default"><div style="min-width:0;flex:1"><div class="t">${j.kind==="campana"?"📣 ":j.kind==="amiga"?"👭 ":""}${esc(j.ref||"")}${av.ganados?` <span class="tag tg-good">🎁 ${av.ganados} ganado${av.ganados>1?"s":""}</span>`:""}</div><div class="m">${esc(progName(j.pid))} · ${av.amigas} amiga${av.amigas===1?"":"s"} · ${av.visitas} visita${av.visitas===1?"":"s"}${j.kind!=="campana"?` · faltan ${av.falta} para el ${av.ganados?"siguiente ":""}regalo`:""}${venc?" · vencido":j.until?" · hasta "+fmt(j.until,{day:"numeric",month:"short"}):""}${j.socioId!==S.uid?" · "+esc(memberName(j.socioId)):""}</div><div class="bar"><i style="width:${Math.min(100, av.base*100/(av.m.refs||14))}%"></i></div></div><div class="row" style="flex-wrap:nowrap;flex:none">${j.kind!=="campana"?`<button class="btn small ghost" data-avance="${c}">Avance</button>`:""}<button class="btn small" data-share="${c}">Mandar</button></div></div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay links. Toca “Inscribir cliente”.</div>`}</div>
     <div class="card"><h2>Mis programas</h2>${mine.length?`<div class="list">${mine.map(([id,p])=>`<button class="item" data-prog="${id}"><div><div class="t">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div><div class="m">Meta: ${p.meta?.refs||14} referidos, un regalo cada ${p.meta?.cada||4}${p.activo===false?" · pausado":""}</div></div><span class="note">Editar</span></button>`).join("")}</div>`:`<div class="empty">No has creado programas.${progs.length?" Puedes usar los de tu equipo.":""}</div>`}</div>
     ${(() => { const cp = Object.entries(S.programs||{}).filter(([,p]) => p.owner!==S.uid && p.activo!==false && S.members[p.owner]?.role==="admin"); return cp.length ? `<div class="card"><h2>Diseña tu propia ruleta</h2><p class="note" style="margin-top:-6px">Copia un programa de Lunaya y cámbiale lo que quieras: colores, textos, regalos, fotos y mensaje. La copia es solo tuya.</p><div class="list">${cp.map(([id,p])=>`<div class="item" style="cursor:default"><div><div class="t">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div></div><button class="btn small" data-pcopy="${id}">Copiar y diseñar</button></div>`).join("")}</div></div>` : ""; })()}`;
 }
@@ -300,6 +325,8 @@ function bindJuego(){
   on("[data-lf]", b => b.onclick = () => { S.f.lead = b.dataset.lf; render(); });
   on("[data-lead]", b => b.onclick = () => openLead(b.dataset.lead));
   on("[data-share]", b => b.onclick = () => openShare(b.dataset.share));
+  on("[data-avance]", b => b.onclick = () => openAvance(b.dataset.avance));
+  syncAvance();
   on("[data-prog]", b => b.onclick = () => openPrograma(b.dataset.prog));
   on("[data-pcopy]", b => b.onclick = () => openPrograma(null, b.dataset.pcopy));
 }
@@ -322,10 +349,12 @@ function openPrograma(pid, copia){
     <div><div class="eyebrow" style="margin-bottom:6px">Regalos · toca el círculo para poner la foto</div><div id="pg-rows" style="display:grid;gap:8px">${rowsHtml()}</div>
       <div class="row" style="margin-top:8px;justify-content:space-between"><button class="btn small ghost" id="pg-add">+ Agregar regalo</button><span class="note" id="pg-tot"></span></div>
       <p class="note" style="margin:4px 0 0">Pon 0% al regalo que quieres que se vea pero que nunca salga.</p></div>
+    <label class="f">Cada regalo se gana por<select class="i" id="pg-cuenta"><option value="visitas" ${P.meta.cuenta!=="amigas"?"selected":""}>Visitas hechas a sus referidos (demostración)</option><option value="amigas" ${P.meta.cuenta==="amigas"?"selected":""}>Amigas que juegan la ruleta</option></select></label>
     <div class="grid2"><label class="f">Meta de referidos<input class="i" type="number" min="1" id="pg-refs" value="${P.meta.refs}"></label><label class="f">Un regalo cada<input class="i" type="number" min="1" id="pg-cada" value="${P.meta.cada}"></label><label class="f">Días que dura cada link<input class="i" type="number" min="1" max="60" id="pg-dias" value="${P.dias||7}"></label></div>
     <label class="f">Mensaje que el cliente manda a sus amigas ({link} es donde va el link)<textarea class="i" id="pg-msg" style="min-height:160px">${esc(P.msg || defMsg(P.tipo))}</textarea></label>
     <div><div class="eyebrow" style="margin-bottom:6px">Diseño</div>
       <div class="opts">${Object.entries(TEMAS).map(([k,t])=>`<button class="opt ${(P.tema||"oro")===k?"on":""}" data-tema="${k}" style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;flex:none;background:linear-gradient(135deg,${t.g[0]},${t.g[1]} 50%,${t.bg[2]});border:2px solid ${t.ink}"></span>${t.n}</button>`).join("")}</div></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Fondo</div><div class="opts" id="pg-fondos"></div><input type="file" accept="image/*" id="pg-ffile" hidden></div>
     <div class="grid2">${[["top","Texto de arriba"],["pill","Debajo del nombre"],["sub","Frase de invitación"],["btn","Botón"]].map(([k,l])=>`<label class="f">${l}<input class="i" data-tx="${k}" value="${esc((P.textos||{})[k]||"")}" placeholder="${esc(TXT_DEF(P.tipo)[k]||"")}" maxlength="60"></label>`).join("")}</div>
     <button class="btn small ghost" id="pg-prev" type="button">👀 Ver cómo se ve</button><div id="pg-pv"></div>
     <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-mus" ${P.musica!==false?"checked":""}> Música alegre en la ruleta (la persona la puede apagar)</label>
@@ -342,6 +371,10 @@ function openPrograma(pid, copia){
     }
     paint();
     document.querySelectorAll("[data-tema]").forEach(b => b.onclick = () => { P.tema = b.dataset.tema; document.querySelectorAll("[data-tema]").forEach(x => x.classList.toggle("on", x===b)); });
+    const paintF = () => { const f = P.fondo || ""; q("pg-fondos").innerHTML = [["","Solo colores"],["cocina","Cocina Royal"],["foto","📷 Subir mi foto"]].map(([k,l]) => `<button class="opt ${(k==="foto" ? /^data:/.test(f) : f===k) ? "on" : ""}" data-fondo="${k}" type="button" style="display:flex;gap:8px;align-items:center">${k==="cocina"?`<img src="fondo-cocina.jpg" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:k==="foto"&&/^data:/.test(f)?`<img src="${f}" style="width:34px;height:34px;border-radius:8px;object-fit:cover">`:""}${l}</button>`).join("");
+      document.querySelectorAll("[data-fondo]").forEach(b => b.onclick = () => { const k = b.dataset.fondo; if (k==="foto") q("pg-ffile").click(); else { P.fondo = k; paintF(); } }); };
+    paintF();
+    q("pg-ffile").onchange = async () => { const f = q("pg-ffile").files[0]; if (!f) return; try { const url = URL.createObjectURL(f); const img = await loadImg(url); URL.revokeObjectURL(url); const k = Math.min(1, 900/Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); P.fondo = c.toDataURL("image/jpeg", 0.7); paintF(); } catch { toast("No se pudo leer esa foto"); } };
     const readTx = () => { const t = {}; document.querySelectorAll("[data-tx]").forEach(i => { if (i.value.trim()) t[i.dataset.tx] = i.value.trim().slice(0,60); }); return t; };
     q("pg-prev").onclick = async () => { q("pg-prev").disabled = true; try { const bl = await promoImg({ref:"Amada Segura"}, {...P, textos:readTx(), prizes:P.prizes.filter(x=>x.n)}, APP_URL+"?j=EJEMPLO1"); q("pg-pv").innerHTML = `<img src="${URL.createObjectURL(bl)}" style="width:100%;border-radius:12px;margin-top:6px">`; } catch(e){ console.log(e); toast("No se pudo crear la vista previa"); } q("pg-prev").disabled = false; };
     q("pg-add").onclick = () => { if (P.prizes.length >= 8){ toast("Máximo 8 regalos"); return; } P.prizes.push({n:"", w:0, img:""}); paint(); };
@@ -351,7 +384,7 @@ function openPrograma(pid, copia){
       if (!P.name){ toast("Ponle un nombre al programa"); return; } if (prizes.length < 2){ toast("Pon al menos 2 regalos con nombre"); return; }
       if (!prizes.some(p => p.w > 0)) prizes.forEach(p => p.w = 1);
       const msg = q("pg-msg").value.trim(); if (!msg.includes("{link}")){ toast("El mensaje necesita {link} para poner el link"); return; }
-      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4)}, dias:Math.min(60,Math.max(1,+q("pg-dias").value||7)), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
+      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4), cuenta:q("pg-cuenta").value}, dias:Math.min(60,Math.max(1,+q("pg-dias").value||7)), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), fondo: P.fondo || "", createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
       if (JSON.stringify(doc).length > 900000){ toast("Las fotos pesan mucho. Quita alguna e intenta de nuevo."); return; }
       q("pg-save").disabled = true;
       try { if (pid) await S.db.doc("programs/"+pid).set(doc); else await S.db.collection("programs").add(doc); closeModal(); toast("Programa guardado"); } catch(e){ q("pg-save").disabled = false; writeErr(e); }
@@ -383,6 +416,21 @@ function openInscribir(){
         bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid, name:name.slice(0,60), tel:t||"", kind:"ref", status:"ref", socioId:sid, up:base.up, tv:base.tv, by:S.uid, ref:name.slice(0,60), at:Date.now()}); await bt.commit();
         S.juegos[code] = {...base, ref:name, kind:"cliente"}; S.leads[code+"_ref"] = {name, tel:t, kind:"ref"}; closeModal(); openShare(code); } catch(e){ q("in-ok").disabled = false; writeErr(e); } };
   });
+}
+
+/* Avance del cliente: cuántas amigas, cuántas visitas, regalos ganados y mensaje listo para mandarle */
+function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = avanceDe(code); const cli = S.leads[code+"_ref"] || {}; const tel = telOk(cli.tel);
+  const ls = Object.values(S.leads||{}).filter(l => l.kind==="jugador" && l.code===code).sort((x,y)=>(y.at||0)-(x.at||0));
+  openModal(`<h3>Avance de ${esc(j.ref)}</h3>
+    <div class="tiles"><div class="tile"><b>${a.amigas}</b><span>Amigas que jugaron</span></div><div class="tile"><b>${a.visitas}</b><span>Visitas hechas</span></div><div class="tile acc"><b>${a.ganados}</b><span>Regalos ganados</span><small>de ${a.max} · uno cada ${a.m.cada} ${a.m.cuenta==="amigas"?"amigas":"visitas"}</small></div></div>
+    ${a.falta?`<p class="note" style="margin:0">Le faltan <b>${a.falta}</b> ${a.m.cuenta==="amigas"?"amigas":"visitas"} para el ${a.ganados?"siguiente ":""}regalo.</p>`:`<div class="banner good">🏆 Llegó a la meta.</div>`}
+    ${ls.length?`<div class="list">${ls.map(l => { const ap = l.apptId && S.appts?.[l.apptId]; return `<div class="item" style="cursor:default"><div><div class="t">${esc(l.name)}</div><div class="m">${ap ? (ap.status==="hecha" ? "✅ Visita hecha" : ap.status==="agendada" ? "📅 Cita "+fmtWhen(ap.when) : APPT_ST[ap.status]||ap.status) : (JG_ST[l.status]||l.status)}</div></div></div>`; }).join("")}</div>`:`<div class="empty">Todavía no juega ninguna amiga con su link.</div>`}
+    <p class="note" style="margin:0">Cuenta como visita cuando la cita de esa amiga se agenda desde Ruleta y se marca “Demostración hecha”.</p>
+    <label class="f">Mensaje para ${esc(firstName(j.ref))}<textarea class="i" id="av-m" style="min-height:150px">${esc(msgAvance(code))}</textarea></label>
+    <div class="row"><a class="btn" id="av-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="av-sms">Mensaje de texto</a><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const q = x => document.getElementById(x); const upd = () => { const t = q("av-m").value; q("av-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(t)}`; q("av-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(t)}`; }; upd(); q("av-m").oninput = upd;
+    const marcar = () => { if (a.ganados > (j.avisados||0)){ j.avisados = a.ganados; S.db.doc("juegos/"+code).update({avisados:a.ganados}).catch(e => console.log(e)); setTimeout(render, 300); } };
+    q("av-wa").addEventListener("click", marcar); q("av-sms").addEventListener("click", marcar); });
 }
 
 /* Mandar el link: al cliente por WhatsApp o texto, imagen con QR, copiar */
@@ -425,12 +473,15 @@ async function promoImg(j, p, link){
   const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
   const SERIF = '"Source Serif 4", Georgia, serif', SANS = "Manrope, system-ui, sans-serif", SCRIPT = '"Great Vibes", cursive';
   const g = x.createRadialGradient(W/2, 0, 80, W/2, H*0.6, 1200); g.addColorStop(0, JGT.bg[0]); g.addColorStop(.6, JGT.bg[1]); g.addColorStop(1, JGT.bg[2]); x.fillStyle = g; x.fillRect(0,0,W,H);
+  const fsrc = fondoSrc(p); let fimg = null; if (fsrc) { try { fimg = await loadImg(fsrc); } catch {} }
+  if (fimg){ const sc = Math.max(W/fimg.width, H/fimg.height), dw = fimg.width*sc, dh = fimg.height*sc; x.drawImage(fimg, (W-dw)/2, H-dh, dw, dh);
+    const vg = x.createLinearGradient(0,0,0,H*.55); vg.addColorStop(0, "rgba(250,245,238,.8)"); vg.addColorStop(1, "rgba(250,245,238,0)"); x.fillStyle = vg; x.fillRect(0,0,W,H*.55); }
   /* luces desenfocadas */
-  for (let i=0;i<26;i++){ const bx = Math.random()*W, by = Math.random()*H, br = 20+Math.random()*60; const rg = x.createRadialGradient(bx,by,0,bx,by,br); rg.addColorStop(0, `rgba(${JGT.glow},.55)`); rg.addColorStop(1, `rgba(${JGT.glow},0)`); x.fillStyle = rg; x.fillRect(bx-br,by-br,2*br,2*br); }
+  if (!fimg) for (let i=0;i<26;i++){ const bx = Math.random()*W, by = Math.random()*H, br = 20+Math.random()*60; const rg = x.createRadialGradient(bx,by,0,bx,by,br); rg.addColorStop(0, `rgba(${JGT.glow},.55)`); rg.addColorStop(1, `rgba(${JGT.glow},0)`); x.fillStyle = rg; x.fillRect(bx-br,by-br,2*br,2*br); }
   /* listones dorados */
-  x.save(); x.lineCap = "round"; x.globalAlpha = .9; x.lineWidth = 22; x.strokeStyle = goldGrad(x,0,0,W,H);
+  if (!fimg){ x.save(); x.lineCap = "round"; x.globalAlpha = .9; x.lineWidth = 22; x.strokeStyle = goldGrad(x,0,0,W,H);
   x.beginPath(); x.moveTo(-60, 820); x.bezierCurveTo(120, 760, 60, 1000, 200, 1050); x.bezierCurveTo(300, 1090, 210, 1250, 330, 1380); x.stroke();
-  x.beginPath(); x.moveTo(W+60, 640); x.bezierCurveTo(900, 720, 1060, 860, 940, 960); x.bezierCurveTo(840, 1040, 1000, 1150, 1120, 1120); x.stroke(); x.restore();
+  x.beginPath(); x.moveTo(W+60, 640); x.bezierCurveTo(900, 720, 1060, 860, 940, 960); x.bezierCurveTo(840, 1040, 1000, 1150, 1120, 1120); x.stroke(); x.restore(); }
   /* encabezado */
   x.textAlign = "center"; drawCrown(x, W/2, 46, 54);
   x.strokeStyle = goldGrad(x, W/2-260, 0, W/2-60, 0); x.lineWidth = 2; x.beginPath(); x.moveTo(W/2-260, 72); x.lineTo(W/2-50, 72); x.moveTo(W/2+50, 72); x.lineTo(W/2+260, 72); x.stroke();
@@ -445,7 +496,7 @@ async function promoImg(j, p, link){
   x.save(); x.shadowColor = "rgba(20,33,61,.3)"; x.shadowBlur = 18; x.shadowOffsetY = 6; rr(x, W/2-pw/2, 300, pw, 76, 38); const pg = x.createLinearGradient(0,300,0,376); pg.addColorStop(0, JGT.ink); pg.addColorStop(1, JGT.ink); x.fillStyle = pg; x.fill(); x.restore();
   x.fillStyle = "#fff"; x.fillText(pill, W/2, 354);
   /* ruleta */
-  const prizes = p.prizes||[], n = prizes.length||1, cx = W/2, cy = 760, R = 300, a = 2*Math.PI/n; const SL = JG_SL(n);
+  const prizes = p.prizes||[], n = prizes.length||1, cx = W/2, cy = fimg ? 665 : 760, R = fimg ? 240 : 300, a = 2*Math.PI/n; const SL = JG_SL(n);
   const imgs = await Promise.all(prizes.map(pr => pr.img ? loadImg(pr.img).catch(()=>null) : null));
   x.save(); x.shadowColor = "rgba(120,90,20,.4)"; x.shadowBlur = 44; x.shadowOffsetY = 18; x.beginPath(); x.arc(cx, cy, R+32, 0, 7); x.fillStyle = goldGrad(x, cx-R, cy-R, cx+R, cy+R); x.fill(); x.restore();
   prizes.forEach((pr,i) => { const a0 = -Math.PI/2 + i*a; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,R,a0,a0+a); x.closePath(); x.fillStyle = SL[i%SL.length]; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 5; x.stroke(); });
@@ -458,9 +509,9 @@ async function promoImg(j, p, link){
   for (let i=0;i<32;i++){ const t = i*2*Math.PI/32, bx = cx+(R+16)*Math.cos(t), by = cy+(R+16)*Math.sin(t); const rg = x.createRadialGradient(bx,by,0,bx,by,18); rg.addColorStop(0,"rgba(255,250,225,1)"); rg.addColorStop(.35,`rgba(${JGT.glow},.95)`); rg.addColorStop(1,`rgba(${JGT.glow},0)`); x.fillStyle = rg; x.fillRect(bx-18,by-18,36,36); }
   x.beginPath(); x.arc(cx, cy, 58, 0, 7); x.fillStyle = JGT.ink; x.fill(); x.lineWidth = 10; x.strokeStyle = goldGrad(x, cx-60, cy-60, cx+60, cy+60); x.stroke(); drawGift(x, cx-40, cy-44, 80);
   x.beginPath(); x.moveTo(cx-34, cy-R-56); x.lineTo(cx+34, cy-R-56); x.lineTo(cx, cy-R+14); x.closePath(); x.fillStyle = JGT.ink; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 3; x.stroke();
-  drawGift(x, 34, 970, 190);
+  if (!fimg) drawGift(x, 34, 970, 190);
   /* tarjeta con QR */
-  const cardX = 250, cardY = 1110, cardW = 790, cardH = 200;
+  const cardX = fimg ? 145 : 250, cardY = fimg ? 1120 : 1110, cardW = 790, cardH = 200;
   x.save(); x.shadowColor = "rgba(120,90,20,.25)"; x.shadowBlur = 30; x.shadowOffsetY = 10; rr(x, cardX, cardY, cardW, cardH, 100); x.fillStyle = "rgba(255,253,247,.96)"; x.fill(); x.restore(); rr(x, cardX, cardY, cardW, cardH, 100); x.strokeStyle = JGT.g[1]; x.lineWidth = 3; x.stroke();
   const q = qrcode(0, "M"); q.addData(link); q.make(); const nm = q.getModuleCount(), qs = 160, cell = qs/nm, qx = cardX + 60, qy = cardY + 20;
   rr(x, qx-10, qy-10, qs+20, qs+20, 16); x.fillStyle = "#fff"; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 3; x.stroke(); x.fillStyle = JGT.ink;
