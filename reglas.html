@@ -1,0 +1,12 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reglas de Lunaya</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;background:#f4ecdd;margin:0;padding:24px;color:#1f1e1d}.c{max-width:640px;margin:0 auto;background:#fff;border-radius:16px;padding:20px;display:grid;gap:14px}
+button{border:0;border-radius:12px;padding:18px;font-size:20px;font-weight:800;background:#d97757;color:#fff;cursor:pointer}#m{font-weight:700}textarea{width:100%;height:160px;font-family:monospace;font-size:12px;border:1px solid #ddd;border-radius:10px;padding:8px;box-sizing:border-box}</style></head>
+<body><div class="c"><h2 style="margin:0">Reglas de Lunaya</h2><p style="margin:0">1. Toca el botón. 2. En Firebase, borra todo lo que hay en Reglas. 3. Pega y toca Publicar.</p>
+<button id="b" disabled>Cargando…</button><div id="m"></div><textarea id="t" readonly></textarea></div>
+<script>
+let txt = "";
+fetch("firestore.rules?t=" + Date.now(), {cache:"no-store"}).then(r => r.text()).then(t => { txt = t; document.getElementById("t").value = t; const b = document.getElementById("b"); b.disabled = false; b.textContent = "📋 Copiar las reglas (" + t.split("\n").length + " líneas)"; });
+document.getElementById("b").onclick = async () => { const m = document.getElementById("m");
+  try { await navigator.clipboard.writeText(txt); m.textContent = "✅ Copiadas completas. Ahora ve a Firebase, borra todo y pega."; }
+  catch { const t = document.getElementById("t"); t.focus(); t.select(); t.setSelectionRange(0, txt.length); document.execCommand("copy"); m.textContent = "✅ Copiadas. Ahora ve a Firebase, borra todo y pega."; } };
+</script></body></html>
