@@ -96,7 +96,7 @@ service cloud.firestore {
          // de los socios a los que tienen acceso (territorio de Dirección o distribuidor que no las quitó). No aprueban ventas.
          || (isProgramTele() && teleApptOk(resource.data.socioId)
              && request.resource.data.socioId == resource.data.socioId && request.resource.data.teleId == resource.data.teleId
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'sale', 'amount', 'saleStatus', 'resultAt', 'resultBy', 'segWhen', 'refsDemo', 'acomp', 'entrenador', 'when', 'pasoPor'])
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'sale', 'amount', 'saleStatus', 'resultAt', 'resultBy', 'segWhen', 'refsDemo', 'acomp', 'entrenador', 'when', 'pasoPor', 'nomVenta'])
              && request.resource.data.get('saleStatus', 'pendiente') in [resource.data.get('saleStatus', 'pendiente'), 'pendiente'])
          // La líder maneja completas las citas que sacaron las telemarketers del programa
          || (liderDe(resource.data) && request.resource.data.socioId == resource.data.socioId && request.resource.data.teleId == resource.data.teleId && noClientData())
