@@ -186,10 +186,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Enlace al Drive de cada socio: solo lo ven el socio dueño y las telemarketers
+    // Enlace al Drive de cada socio: lo ven y lo ponen el socio dueño y las telemarketers
     match /drives/{socioId} {
       allow read: if signedIn() && (request.auth.uid == socioId || myRole() == 'tele');
-      allow write: if signedIn() && request.auth.uid == socioId
+      allow write: if signedIn() && (request.auth.uid == socioId || myRole() == 'tele')
+         && request.resource.data.keys().hasOnly(['url', 'updatedAt', 'by'])
          && request.resource.data.url is string
          && request.resource.data.url.matches('^https://(drive|docs)[.]google[.]com/.*');
     }

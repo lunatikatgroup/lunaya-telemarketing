@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611051453"></script>
-<script src="anuncios.js?v=202611051453"></script>
-<script src="juego.js?v=202611051453"></script>
+<script src="demo.js?v=202611051542"></script>
+<script src="anuncios.js?v=202611051542"></script>
+<script src="juego.js?v=202611051542"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611051453";
+const APP_VER = "202611051542";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -845,7 +845,7 @@ function socioRefCard(){
 function driveCard(){
   const d = S.drives[S.uid];
   return `<div class="card"><h2>Mi base de datos en Drive</h2>
-    <p class="note" style="margin-top:-6px">Solo tú y las telemarketers ven este enlace. La dirección no lo ve.</p>
+    <p class="note" style="margin-top:-6px">Solo tú y las telemarketers ven este enlace (ellas también lo pueden poner o cambiar). La dirección no lo ve.</p>
     ${d?.url ? `<div class="row"><a class="btn" href="${esc(d.url)}" target="_blank" rel="noopener">📂 Abrir mi Drive</a><a class="btn ghost" href="${esc(d.url)}" target="_blank" rel="noopener">⬆ Subir base nueva</a><button class="btn small ghost" id="dr-edit">Cambiar enlace</button></div>
       <p class="note">Para subir: se abre tu carpeta, toca <b>+</b> → <b>Subir</b> y elige el archivo.</p>` : ""}
     <form id="dr-form" class="row" ${d?.url?"hidden":""} style="margin-top:8px"><input class="i" id="dr-url" placeholder="Pega el enlace de tu carpeta de Google Drive" value="${esc(d?.url||"")}" style="flex:1;min-width:220px"><button class="btn" type="submit">Guardar</button></form>
@@ -859,6 +859,18 @@ function bindDrive(){
     try { await S.db.doc("drives/"+S.uid).set({url, updatedAt:Date.now()}); toast("Enlace guardado"); } catch(err){ writeErr(err); } };
 }
 
+/* La telemarketer también puede poner o cambiar el Drive del socio */
+function openDriveSocio(sid){ if (!sid) return; const d = S.drives[sid] || {};
+  openModal(`<h2>Drive de ${esc(memberName(sid))}</h2>
+    <p class="note">Pega el enlace de la carpeta de Google Drive con la base de datos de este socio. Lo verán el socio y las telemarketers.</p>
+    ${d.url && d.by && d.by!==sid ? `<p class="note">Lo puso ${esc(memberName(d.by))} · ${fmt(d.updatedAt,{day:"numeric",month:"short"})}</p>` : ""}
+    <input class="i" id="drs-url" placeholder="https://drive.google.com/…" value="${esc(d.url||"")}" style="width:100%">
+    <p class="note">En Google Drive: abre la carpeta → <b>Compartir</b> → agrega el correo del socio y de las telemarketers como <b>Editor</b> → <b>Copiar enlace</b>.</p>
+    <div class="row" style="margin-top:10px"><button class="btn" id="drs-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#drs-ok").onclick = async () => { const url = $("#drs-url").value.trim();
+      if (!driveOk(url)){ toast("Pega un enlace de Google Drive (empieza con https://drive.google.com)"); return; }
+      try { await S.db.doc("drives/"+sid).set({url, updatedAt:Date.now(), by:S.uid}); S.drives[sid] = {url, updatedAt:Date.now(), by:S.uid}; closeModal(); toast("Drive guardado"); render(); } catch(err){ writeErr(err); } }; }); }
+
 /* ===== Elegir socio ===== */
 function worldPicker(){
   const t0 = range("hoy");
@@ -866,7 +878,7 @@ function worldPicker(){
     return `<button class="item" data-world="${s.id}"><div><div class="t nm-av">${av(s.id,32)}${esc(s.name)}${s.role==="admin"?" · dirección":""}</div><div class="m">Hoy: ${e.calls} llamadas · ${e.citas} citas · ${next} citas próximas</div></div><span class="pill acc">Entrar</span></button>`; }).join("");
   return `<div class="card"><h2>¿Para qué socio vas a llamar?</h2><p class="note" style="margin-top:-6px">Cada socio es independiente: lo que registres aquí solo cuenta para esa persona. Cambia de socio cuando termines con su base.</p>${cards?`<div class="list">${cards}</div>`:`<div class="empty">Aún no hay socios aprobados.</div>`}</div>`;
 }
-function worldBar(){ return `<div class="card world"><div class="row" style="justify-content:space-between"><div><div class="eyebrow" style="color:var(--accent)">Llamando para</div><div class="nm nm-av">${av(S.world,34)}${esc(memberName(S.world))}</div></div><div class="row">${S.drives[S.world]?.url ? `<a class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" href="${esc(S.drives[S.world].url)}" target="_blank" rel="noopener">📂 Base en Drive</a>` : (role()==="tele" ? `<span class="note" style="color:var(--line)">Sin Drive todavía</span>` : "")}<button class="btn small" data-act="world">Cambiar socio</button></div></div>${S.drives[S.world]?.url ? `<p class="note" style="color:var(--line);margin:8px 0 0">Para subir contactos nuevos: abre el Drive y toca <b>+</b> → <b>Subir</b>.</p>` : ""}</div>`; }
+function worldBar(){ return `<div class="card world"><div class="row" style="justify-content:space-between"><div><div class="eyebrow" style="color:var(--accent)">Llamando para</div><div class="nm nm-av">${av(S.world,34)}${esc(memberName(S.world))}</div></div><div class="row">${S.drives[S.world]?.url ? `<a class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" href="${esc(S.drives[S.world].url)}" target="_blank" rel="noopener">📂 Base en Drive</a>` : (role()==="tele" ? `<span class="note" style="color:var(--line)">Sin Drive todavía</span>` : "")}${role()==="tele" ? `<button class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" data-act="drset">${S.drives[S.world]?.url ? "✏️ Cambiar Drive" : "＋ Agregar Drive"}</button>` : ""}<button class="btn small" data-act="world">Cambiar socio</button></div></div>${S.drives[S.world]?.url ? `<p class="note" style="color:var(--line);margin:8px 0 0">Para subir contactos nuevos: abre el Drive y toca <b>+</b> → <b>Subir</b>.</p>` : ""}</div>`; }
 
 /* ===== HOY ===== */
 function evalTiles(e, showCalls=true){
@@ -1674,6 +1686,7 @@ function bindCommon(){
   const af = m.querySelector("#a-filter"); if (af) af.onchange = e => { S.f.aSocio = e.target.value; render(); };
   all("[data-act]", b => b.onclick = async () => { const a = b.dataset.act;
     if (a==="world") setWorld("");
+    if (a==="drset") openDriveSocio(S.world);
     else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
     else if (a==="pago"){ try { await S.db.doc("config/main").set({...S.config, pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
     else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0, distPct:+$("#k-dist").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
