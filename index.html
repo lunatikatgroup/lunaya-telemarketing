@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611042133"></script>
-<script src="juego.js?v=202611042133"></script>
+<script src="demo.js?v=202611042136"></script>
+<script src="juego.js?v=202611042136"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611042133";
+const APP_VER = "202611042136";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1106,13 +1106,18 @@ function terrResumen(){
     .filter(x => x.mo || x.w || x.h || x.hd || modo==="tele").sort((a,b)=>b.mo-a.mo||b.w-a.w);
   const sel = modo==="tele" ? S.f.aTele : S.f.aSocio;
   const tot = rows.reduce((t,x)=>({h:t.h+x.h,hd:t.hd+x.hd,hv:t.hv+x.hv,w:t.w+x.w,mo:t.mo+x.mo,demos:t.demos+x.demos,ventas:t.ventas+x.ventas,monto:t.monto+x.monto}),{h:0,hd:0,hv:0,w:0,mo:0,demos:0,ventas:0,monto:0});
-  const pend = Object.values(S.appts).filter(a => a.status==="agendada" && inR(a.when||0, H)).length;
+  const tp = ["hoy","semana","quin","mes"].includes(S.f.tper) ? S.f.tper : "hoy"; const TP = range(tp);
+  const tap = Object.values(S.appts).filter(a => inR(a.when||0, TP) && (modo!=="tele" || list.some(m => m.id===a.teleId)));
+  const T = {citas:tap.length, pend:tap.filter(a => a.status==="agendada").length, demos:tap.filter(a => a.status==="hecha").length};
+  const tv = tap.filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada"); T.ventas = tv.length; T.monto = tv.reduce((t,a) => t + (+a.amount||0), 0);
+  const Q = range("quin"); rows.forEach(x => { x.q = (modo==="tele" ? teleEval(x.m.id, Q) : socioEval(x.m.id, Q)).citas; }); const totQ = rows.reduce((t,x) => t + x.q, 0);
   return `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">Citas del territorio</h2><div class="chips"><button class="chip ${modo==="socio"?"on":""}" data-tmode="socio">👥 Por socio</button><button class="chip ${modo==="tele"?"on":""}" data-tmode="tele">📞 Por telemarketer</button></div></div>
-    <div class="tiles" style="margin-bottom:10px"><div class="tile"><b>${tot.h}</b><span>Citas hoy</span><small>${pend} por hacer</small></div><div class="tile"><b>${tot.hd}</b><span>Demos hechas hoy</span><small>${tot.h?Math.round(tot.hd*100/tot.h)+"% de las citas":""}</small></div><div class="tile acc"><b>${tot.hv}</b><span>Ventas hoy</span><small>${tot.hd?Math.round(tot.hv*100/tot.hd)+"% de las demos":""}</small></div></div>
+    <div class="chips" style="margin-bottom:8px">${[["hoy","Hoy"],["semana","Semana"],["quin","Quincena"],["mes","Mes"]].map(([k,l]) => `<button class="chip ${tp===k?"on":""}" data-tper="${k}">${l}</button>`).join("")}</div>
+    <div class="tiles" style="margin-bottom:10px"><div class="tile"><b>${T.citas}</b><span>Citas</span><small>${T.pend} por hacer</small></div><div class="tile"><b>${T.demos}</b><span>Demos hechas</span><small>${T.citas?Math.round(T.demos*100/T.citas)+"% de las citas":""}</small></div><div class="tile acc"><b>${T.ventas}</b><span>Ventas</span><small>${T.demos?Math.round(T.ventas*100/T.demos)+"% de las demos":""}</small></div><div class="tile"><b>${money(T.monto)}</b><span>Volumen</span><small>${esc({hoy:"hoy",semana:"esta semana",quin:"esta quincena",mes:"este mes"}[tp])}</small></div></div>
     <p class="note" style="margin-top:0">${modo==="tele"?"Citas que agendó cada telemarketer (según el día en que la sacó).":"Citas de cada socio (según el día de la cita)."} Toca un nombre para ver solo sus citas en el calendario.</p>
-    <div class="tbl-wrap"><table><thead><tr><th>${modo==="tele"?"Telemarketer":"Socio"}</th><th class="n">Hoy</th><th class="n">Demos hoy</th><th class="n">Ventas hoy</th><th class="n">Semana</th><th class="n">Mes</th><th class="n">Demos (mes)</th><th class="n">Ventas (mes)</th><th class="n">Volumen (mes)</th></tr></thead><tbody>
-    ${rows.map(x=>`<tr data-tsel="${x.m.id}" style="cursor:pointer;${sel===x.m.id?"background:var(--accent-soft,#f6d9cc)":""}"><td><span class="nm-av">${av(x.m.id,26)}<b>${esc(x.m.name)}</b></span></td><td class="n">${x.h}</td><td class="n">${x.hd}</td><td class="n">${x.hv}</td><td class="n">${x.w}</td><td class="n"><b>${x.mo}</b></td><td class="n">${x.demos}</td><td class="n">${x.ventas}</td><td class="n">${money(x.monto)}</td></tr>`).join("")}
-    ${rows.length>1?`<tr class="total"><td>Total</td><td class="n">${tot.h}</td><td class="n">${tot.hd}</td><td class="n">${tot.hv}</td><td class="n">${tot.w}</td><td class="n">${tot.mo}</td><td class="n">${tot.demos}</td><td class="n">${tot.ventas}</td><td class="n">${money(tot.monto)}</td></tr>`:""}</tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>${modo==="tele"?"Telemarketer":"Socio"}</th><th class="n">Hoy</th><th class="n">Demos hoy</th><th class="n">Ventas hoy</th><th class="n">Semana</th><th class="n">Quincena</th><th class="n">Mes</th><th class="n">Demos (mes)</th><th class="n">Ventas (mes)</th><th class="n">Volumen (mes)</th></tr></thead><tbody>
+    ${rows.map(x=>`<tr data-tsel="${x.m.id}" style="cursor:pointer;${sel===x.m.id?"background:var(--accent-soft,#f6d9cc)":""}"><td><span class="nm-av">${av(x.m.id,26)}<b>${esc(x.m.name)}</b></span></td><td class="n">${x.h}</td><td class="n">${x.hd}</td><td class="n">${x.hv}</td><td class="n">${x.w}</td><td class="n">${x.q}</td><td class="n"><b>${x.mo}</b></td><td class="n">${x.demos}</td><td class="n">${x.ventas}</td><td class="n">${money(x.monto)}</td></tr>`).join("")}
+    ${rows.length>1?`<tr class="total"><td>Total</td><td class="n">${tot.h}</td><td class="n">${tot.hd}</td><td class="n">${tot.hv}</td><td class="n">${tot.w}</td><td class="n">${totQ}</td><td class="n">${tot.mo}</td><td class="n">${tot.demos}</td><td class="n">${tot.ventas}</td><td class="n">${money(tot.monto)}</td></tr>`:""}</tbody></table></div>
     ${sel?`<button class="btn small ghost" data-tsel="" style="margin-top:8px">Ver todas las citas otra vez</button>`:""}</div>`;
 }
 function viewCitas(r){
@@ -1611,6 +1616,7 @@ function bindCommon(){
     if (!b.dataset.sure){ b.dataset.sure = 1; b.textContent = `Toca otra vez para confirmar que pagaste ${money(monto)}`; return; }
     try { await S.db.doc("pagosdist/"+pagoKey(S.uid, p)).set({payer:S.uid, monto, desde:laDate(range(p)[0]), hasta:laDate(range(p)[1]-1), at:Date.now(), ok:false}); toast("Listo, le avisamos a Katerine"); } catch(e){ writeErr(e); } });
   all("[data-pagook]", b => b.onclick = () => S.db.doc("pagosdist/"+b.dataset.pagook).update({ok:true, okAt:Date.now()}).then(() => toast("Pago confirmado"), writeErr));
+  all("[data-tper]", b => b.onclick = () => { S.f.tper = b.dataset.tper; render(); });
   all("[data-origen]", b => b.onclick = () => openOrigen(b.dataset.origen));
   all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
