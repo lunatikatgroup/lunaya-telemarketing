@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611050946"></script>
-<script src="juego.js?v=202611050946"></script>
+<script src="demo.js?v=202611050951"></script>
+<script src="juego.js?v=202611050951"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611050946";
+const APP_VER = "202611050951";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -858,6 +858,7 @@ function viewHoy(r){
       ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.comision)}</b><span>Total comisión</span></div></div>
       <p class="note">La comisión sale solo de ventas aprobadas. Las pendientes suman cuando quedan aprobadas.</p>
       ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado este mes</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
+    h += citasDiaCard();
   } else if (r==="socio"){
     const pend = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.when < Date.now()-3600e3);
     const up = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.when >= Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when).slice(0,5);
@@ -884,7 +885,7 @@ function viewHoy(r){
     h += `<div class="card"><h2>Evaluación de telemarketers ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}
       <p class="note">% efectividad cita → demo: de cada 100 citas que agendó (y que ya pasaron), cuántas se convirtieron en demostración.</p></div>`;
     if (ext.length) h += `<div class="card"><h2>Telemarketers externas de distribuidores</h2><p class="note" style="margin-top:-6px">Las contrata y les paga cada distribuidor. No son del programa Lunaya: no entran en tus comisiones ni en el 5%.</p>${evalTable(ext, true)}</div>`;
-    h = metasCard(S.uid) + metaSemEquipoCard() + embudoEquipoCard() + refsPendCard() + refByCard(socios().map(x => x.id)) + h;
+    h = metasCard(S.uid) + citasDiaCard() + metaSemEquipoCard() + embudoEquipoCard() + refsPendCard() + refByCard(socios().map(x => x.id)) + h;
     h += socioEvalCard(rg);
     const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
@@ -1370,6 +1371,16 @@ function ventasLider(p){
   return `<div class="card"><h2>Ventas por aprobar<span class="note">${PLABEL[p]}</span></h2>${l.length?`<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Telemarketer</th><th class="n">Monto</th><th>Estado</th></tr></thead><tbody>${l.map(([id,a])=>{ const st=a.saleStatus||"pendiente"; return `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(memberName(a.socioId))}</td><td>${esc(memberName(a.teleId))}</td><td class="n"><b>${money(a.amount)}</b></td><td><div class="row" style="gap:4px;flex-wrap:nowrap">${Object.entries(SALE_ST).map(([k,lb])=>`<button class="btn small ${st===k?"":"ghost"}" data-ss2="${id}|${k}">${k==="pendiente"?"Pendiente":lb}</button>`).join("")}</div></td></tr>`; }).join("")}</tbody></table></div><p class="note">Solo aprobadas cuentan para comisión.</p>`:`<div class="empty">No hay ventas en este periodo.</div>`}</div>`;
 }
 /* Citas que sacó cada telemarketer: la líder ve el movimiento de su equipo y entra a cada cita */
+/* Citas que sacó cada telemarketer en un día (según el día en que la agendó), con el socio de cada una */
+function citasDiaCard(){ const d = S.f.cdia || today(); const r = [laToMs(d,"00:00"), laToMs(addDays(d,1),"00:00")];
+  const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele")].filter(t => !t.upline || role()==="admin");
+  const ap = Object.values(S.appts).filter(a => inR(a.createdAt||0, r) && origenDe(a)==="tm");
+  const rows = teles.map(t => { const l = ap.filter(a => a.teleId===t.id); const by = {}; l.forEach(a => by[a.socioId] = (by[a.socioId]||0) + 1); return {t, n:l.length, by}; }).filter(x => x.n || x.t.role==="tele").sort((a,b) => b.n - a.n || String(a.t.name).localeCompare(String(b.t.name)));
+  const tot = rows.reduce((t,x) => t + x.n, 0); const ayer = addDays(today(),-1);
+  return `<div class="card"><h2>Citas por día<span class="note">${tot} cita(s)</span></h2>
+    <div class="row" style="margin-bottom:8px"><button class="chip ${d===ayer?"on":""}" data-cdia="${ayer}">Ayer</button><button class="chip ${d===today()?"on":""}" data-cdia="${today()}">Hoy</button><input class="i" type="date" id="cdia" value="${d}" max="${today()}" style="max-width:170px;padding:6px 8px"></div>
+    <p class="note" style="margin-top:0">${fmt(laToMs(d,"12:00"),{weekday:"long",day:"numeric",month:"long"})} · cuenta el día en que se sacó la cita, no el día de la cita.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Citas</th><th>Para quién</th></tr></thead><tbody>${rows.map(x => `<tr><td><span class="nm-av">${av(x.t.id,26)}<b>${esc(x.t.name)}</b></span></td><td class="n"><b>${x.n}</b></td><td class="note">${Object.entries(x.by).sort((a,b) => b[1]-a[1]).map(([sid,n]) => `${esc(memberName(sid))} (${n})`).join(", ") || "—"}</td></tr>`).join("")}${rows.length>1?`<tr class="total"><td>Total</td><td class="n">${tot}</td><td></td></tr>`:""}</tbody></table></div></div>`; }
 function citasEquipoCard(){ const tl = telesLunaya(); const f = S.f.lt || ""; const desde = Date.now() - 7*864e5;
   const l = Object.entries(S.appts).filter(([,a]) => esTeleProg(a.agendo) && (a.when >= desde || a.createdAt >= desde) && (!f || a.agendo===f || a.teleId===f)).sort((x,y) => (y[1].createdAt||0) - (x[1].createdAt||0));
   return `<div class="card"><h2>Citas de mi equipo<span class="note">últimos 7 días y próximas</span></h2>
@@ -1382,7 +1393,7 @@ function viewLider(){
   const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
   let h = `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
   const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
-  h += refsPendCard() + metaSemEquipoCard() + citasEquipoCard() + refByCard(socios().map(x => x.id));
+  h += refsPendCard() + citasDiaCard() + metaSemEquipoCard() + citasEquipoCard() + refByCard(socios().map(x => x.id));
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   h += `<div class="card"><h2>Día de inicio de cada telemarketer</h2><p class="note" style="margin-top:-6px">El sueldo se cuenta desde el día que realmente empezó a trabajar, aunque la hayas agregado a la app después. Cámbialo si no es el correcto.</p><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th>Empezó a trabajar</th></tr></thead><tbody>${telesLunaya().map(t => `<tr><td><b>${esc(t.name)}</b></td><td><input class="i" type="date" data-start="${t.id}" value="${startOf(t)==="2000-01-01"?"":startOf(t)}" max="${today()}" style="padding:4px 6px"></td></tr>`).join("")}</tbody></table></div></div>`;
   h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
@@ -1629,6 +1640,8 @@ function bindCommon(){
     if (!b.dataset.sure){ b.dataset.sure = 1; b.textContent = `Toca otra vez para confirmar que pagaste ${money(monto)}`; return; }
     try { await S.db.doc("pagosdist/"+pagoKey(S.uid, p)).set({payer:S.uid, monto, desde:laDate(range(p)[0]), hasta:laDate(range(p)[1]-1), at:Date.now(), ok:false}); toast("Listo, le avisamos a Katerine"); } catch(e){ writeErr(e); } });
   all("[data-pagook]", b => b.onclick = () => S.db.doc("pagosdist/"+b.dataset.pagook).update({ok:true, okAt:Date.now()}).then(() => toast("Pago confirmado"), writeErr));
+  all("[data-cdia]", b => b.onclick = () => { S.f.cdia = b.dataset.cdia; render(); });
+  { const cd = m.querySelector("#cdia"); if (cd) cd.onchange = () => { if (cd.value) { S.f.cdia = cd.value; render(); } }; }
   all("[data-tper]", b => b.onclick = () => { S.f.tper = b.dataset.tper; render(); });
   all("[data-origen]", b => b.onclick = () => openOrigen(b.dataset.origen));
   all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
