@@ -349,7 +349,7 @@ function viewJuego(r){
       ${leads.length?`<div class="list">${leads.slice(0,80).map(([id,l])=>`<button class="item" data-lead="${id}"><div><div class="t">${esc(l.name)}</div><div class="m">${telFmt(l.tel)} · ${l.kind==="hoja" ? "📋 De la hoja" : "🎁 "+esc(l.prize)}</div>${otrasVeces(id).length?`<div class="m" style="color:var(--warn);font-weight:700">🔁 Ya estaba en ${otrasVeces(id).length} programa(s)</div>`:""}<div class="m">Amiga de ${esc(l.ref||"—")} · ${fmt(l.at,{day:"numeric",month:"short"})}${l.socioId!==S.uid?" · para "+esc(memberName(l.socioId)):""}</div></div><span class="tag ${l.status==="nuevo"?"tg-warn":l.status==="cita"?"tg-good":"tg-mute"}">${JG_ST[l.status]||l.status}</span></button>`).join("")}</div>`:`<div class="empty">${f==="nuevo"?"No hay prospectos nuevos. Cuando alguien juegue con uno de tus links, aparece aquí solo.":"No hay prospectos aquí."}</div>`}</div>
     <div class="card"><h2>Links activos<span class="note">${links.length}</span></h2>
       ${links.length?`<div class="list">${links.slice(0,40).map(([c,j])=>{ const m = j.meta || S.programs?.[j.pid]?.meta || {refs:14,cada:4}; const venc = j.until && j.until < Date.now();
-        const av = avanceDe(c); return `<div class="item" style="cursor:default"><div style="min-width:0;flex:1"><div class="t">${j.kind==="campana"?"📣 ":j.kind==="amiga"?"👭 ":""}${esc(j.ref||"")}${av.ganados?` <span class="tag tg-good">🎁 ${av.ganados} ganado${av.ganados>1?"s":""}</span>`:""}</div><div class="m">${esc(progName(j.pid))} · ${av.amigas} amiga${av.amigas===1?"":"s"} · ${av.visitas} visita${av.visitas===1?"":"s"}${j.kind!=="campana"?` · faltan ${av.falta} para el ${av.ganados?"siguiente ":""}regalo`:""}${venc?" · vencido":j.until?" · hasta "+fmt(j.until,{day:"numeric",month:"short"}):""}${j.socioId!==S.uid?" · "+esc(memberName(j.socioId)):""}</div><div class="bar"><i style="width:${Math.min(100, av.base*100/(av.m.refs||14))}%"></i></div></div><div class="row" style="flex-wrap:nowrap;flex:none">${j.kind!=="campana"?`<button class="btn small ghost" data-avance="${c}">Avance</button>`:""}<button class="btn small" data-share="${c}">Mandar</button>${j.by===S.uid || j.socioId===S.uid ? `<button class="btn small ghost" data-jdel="${c}" aria-label="Borrar link">🗑️</button>` : ""}</div></div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay links. Toca “Inscribir cliente”.</div>`}</div>
+        const av = avanceDe(c); return `<div class="item" style="cursor:default"><div style="min-width:0;flex:1"><div class="t">${j.kind==="campana"?"📣 ":j.kind==="amiga"?"👭 ":""}${esc(j.ref||"")}${av.ganados?` <span class="tag tg-good">🎁 ${av.ganados} ganado${av.ganados>1?"s":""}</span>`:""}</div><div class="m">${esc(progName(j.pid))} · ${av.amigas} amiga${av.amigas===1?"":"s"} · ${av.visitas} visita${av.visitas===1?"":"s"}${j.kind!=="campana"?` · faltan ${av.falta} para el ${av.ganados?"siguiente ":""}regalo`:""}${venc?" · vencido":j.until?" · hasta "+fmt(j.until,{day:"numeric",month:"short"}):""}${j.socioId!==S.uid?" · "+esc(memberName(j.socioId)):""}</div><div class="bar"><i style="width:${Math.min(100, av.base*100/(av.m.refs||14))}%"></i></div></div><div class="row" style="flex-wrap:nowrap;flex:none">${j.kind!=="campana"?`<button class="btn small ghost" data-avance="${c}">Avance</button><button class="btn small ghost" data-editlink="${c}" title="Editar">✏️</button>`:""}<button class="btn small" data-share="${c}">Mandar</button>${j.by===S.uid || j.socioId===S.uid ? `<button class="btn small ghost" data-jdel="${c}" aria-label="Borrar link">🗑️</button>` : ""}</div></div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay links. Toca “Inscribir cliente”.</div>`}</div>
     <div class="card"><h2>Mis programas</h2>${mine.length?`<div class="list">${mine.map(([id,p])=>`<button class="item" data-prog="${id}"><div><div class="t">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div><div class="m">Meta: ${p.meta?.refs||14} referidos, un regalo cada ${p.meta?.cada||4}${p.activo===false?" · pausado":""}</div></div><span class="note">Editar</span></button>`).join("")}</div>`:`<div class="empty">No has creado programas.${progs.length?" Puedes usar los de tu equipo.":""}</div>`}</div>
     ${(() => { const cp = Object.entries(S.programs||{}).filter(([,p]) => p.owner!==S.uid && p.activo!==false && S.members[p.owner]?.role==="admin"); return cp.length ? `<div class="card"><h2>Diseña tu propia ruleta</h2><p class="note" style="margin-top:-6px">La ruleta de Lunaya ya está lista para usar: solo toca "Inscribir cliente". Si quieres una a tu gusto, cópiala y cámbiale lo que quieras: colores, textos, regalos, fotos y mensaje. La copia es solo tuya.</p><div class="list">${cp.map(([id,p])=>`<div class="item" style="cursor:default"><div><div class="t">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div></div><button class="btn small" data-pcopy="${id}">Copiar y diseñar</button></div>`).join("")}</div></div>` : ""; })()}`;
 }
@@ -369,6 +369,7 @@ function bindJuego(){
   on("[data-lead]", b => b.onclick = () => openLead(b.dataset.lead));
   on("[data-share]", b => b.onclick = () => openShare(b.dataset.share));
   on("[data-avance]", b => b.onclick = () => openAvance(b.dataset.avance));
+  on("[data-editlink]", b => b.onclick = () => openEditLink(b.dataset.editlink));
   on("[data-jdel]", b => b.onclick = async function(){ const code = this.dataset.jdel, j = S.juegos[code] || {};
     if (!this.dataset.sure){ this.dataset.sure = "1"; this.textContent = "¿Borrar?"; this.classList.add("danger"); setTimeout(() => { if (this.isConnected){ delete this.dataset.sure; this.textContent = "🗑️"; this.classList.remove("danger"); } }, 4000); return; }
     try { const ids = Object.keys(S.leads).filter(k => S.leads[k].code===code || k===code+"_ref"); for (const k of ids){ await S.db.doc("leads/"+k).delete().catch(() => {}); delete S.leads[k]; }
@@ -475,13 +476,37 @@ async function ruletaDeCita(apptId){ const a = S.appts?.[apptId]; if (!a) return
     bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid, name, tel:t, kind:"ref", status:"ref", socioId:sid, up:base.up, tv:base.tv, by:S.uid, ref:name, at:Date.now()}); await bt.commit();
     S.juegos[code] = {...base, ref:name, kind:"cliente", cita:apptId}; S.leads[code+"_ref"] = {name, tel:t, kind:"ref"}; closeModal(); openShare(code); } catch(e){ writeErr(e); } }
 window.ruletaDeCita = ruletaDeCita; window.juegoDeCita = juegoDeCita;
+/* Editar los datos de un link: nombre real, nombre que sale en la ruleta y la imagen, teléfono, dirección, notas y vigencia */
+function openEditLink(code){ const j = S.juegos[code]; if (!j) return; const R = S.leads[code+"_ref"] || {}; const hasta = j.until ? new Date(j.until).toISOString().slice(0,10) : "";
+  openModal(`<h3>Editar link de ${esc(j.ref||"")}</h3>
+    <div class="grid2"><label class="f">Nombre del cliente (el real, lo ven ustedes)<input class="i" id="el-n" value="${esc(j.ref||"")}" autocomplete="off"></label>
+      <label class="f">Teléfono<input class="i" id="el-t" value="${esc(telFmt(R.tel||""))}" inputmode="tel" autocomplete="off"></label>
+      <label class="f">Dirección<input class="i" id="el-d" value="${esc(R.dir||"")}" autocomplete="off"></label>
+      <label class="f">Ciudad<input class="i" id="el-c" value="${esc(R.ciudad||"")}" autocomplete="off"></label></div>
+    <label class="f">Nombre que sale en la ruleta y en la imagen<input class="i" id="el-a" value="${esc(j.alias||"")}" placeholder="${esc(j.ref||"")}" autocomplete="off"><span class="note">Vacío = sale el nombre del cliente. Si no quiere que salga, escribe otro o marca la casilla.</span></label>
+    <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="el-o" ${j.alias==="Tu amiga"?"checked":""}> No mostrar su nombre (sale "Tu amiga")</label>
+    <label class="f">Notas<textarea class="i" id="el-no">${esc(R.notas||"")}</textarea></label>
+    ${j.kind!=="amiga" ? `<label class="f">Válido hasta<input class="i" type="date" id="el-u" value="${hasta}" max="${new Date(Date.now()+60*864e5).toISOString().slice(0,10)}"></label>` : ""}
+    <div class="row"><button class="btn" id="el-s">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    const q = x => document.getElementById(x);
+    q("el-o").onchange = () => { if (q("el-o").checked) q("el-a").value = "Tu amiga"; else if (q("el-a").value==="Tu amiga") q("el-a").value = ""; };
+    q("el-s").onclick = async () => { const nm = q("el-n").value.trim().slice(0,60), tv = q("el-t").value.trim(), t = telOk(tv);
+      if (nm.length < 2){ toast("Escribe el nombre"); return; } if (tv && !t){ toast("El teléfono debe tener 10 dígitos"); return; }
+      const al = q("el-o").checked ? "Tu amiga" : q("el-a").value.trim().slice(0,60); const o = {ref:nm, alias:al};
+      if (q("el-u") && q("el-u").value){ const u = new Date(q("el-u").value+"T23:59:00").getTime(); if (u !== j.until) o.until = u; }
+      q("el-s").disabled = true;
+      try { await S.db.doc("juegos/"+code).update(o); Object.assign(j, o);
+        const lr = {name:nm, ref:nm, tel:t||"", dir:q("el-d").value.trim().slice(0,120), ciudad:q("el-c").value.trim().slice(0,60), notas:q("el-no").value.trim().slice(0,500)};
+        const ex = !!S.leads[code+"_ref"];
+        await (ex ? S.db.doc("leads/"+code+"_ref").update(lr) : S.db.doc("leads/"+code+"_ref").set({code, pid:j.pid, kind:"ref", status:"ref", socioId:j.socioId, up:j.up||"", tv:!!j.tv, by:j.by, at:Date.now(), ...lr}))
+          .then(() => { S.leads[code+"_ref"] = {...(S.leads[code+"_ref"]||{kind:"ref"}), ...lr}; }).catch(e => { console.log("ref", e); toast("El nombre se guardó; el teléfono y la dirección no (pega las reglas nuevas)"); });
+        toast("Guardado"); closeModal(); render(); } catch(e){ q("el-s").disabled = false; writeErr(e); } };
+  }); }
 /* Avance del cliente: cuántas amigas, cuántas visitas, regalos ganados y mensaje listo para mandarle */
 function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = avanceDe(code); const cli = S.leads[code+"_ref"] || {}; const tel = telOk(cli.tel);
   const ls = refsDe(code).map(([id,l]) => ({...l, _id:id})).sort((x,y)=>(y.at||0)-(x.at||0)); const R = S.leads[code+"_ref"] || {};
   openModal(`<h3>Avance de ${esc(j.ref)}</h3>
-    <details><summary class="note" style="cursor:pointer">✏️ Cambiar nombre, teléfono o el nombre que sale en la ruleta</summary><div class="grid2" style="margin-top:8px"><label class="f">Nombre<input class="i" id="av-rn" value="${esc(j.ref||"")}" autocomplete="off"></label><label class="f">Teléfono<input class="i" id="av-rt" value="${esc(telFmt(R.tel||""))}" inputmode="tel" autocomplete="off"></label></div><label class="f" style="margin-top:8px">Nombre que ven las amigas en la ruleta<input class="i" id="av-ra" value="${esc(j.alias||"")}" placeholder="${esc(j.ref||"")}" autocomplete="off"><span class="note">Vacío = sale su nombre. Si el cliente no quiere que salga, escribe otro (por ejemplo "Familia Royal") o toca el botón de abajo.</span></label>
-      <label class="note" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="av-ro" ${j.alias==="Tu amiga"?"checked":""}> No mostrar su nombre (sale "Tu amiga")</label>
-      <button class="btn small" id="av-rs" style="margin-top:8px">Guardar</button></details>
+    <button class="btn small ghost" id="av-ed" style="justify-self:start">✏️ Editar datos del link</button>
     <div class="tiles"><div class="tile"><b>${ls.length}</b><span>Referidos</span><small>${a.amigas} jugaron la ruleta</small></div><div class="tile"><b>${a.visitas}</b><span>Visitas hechas</span></div><div class="tile acc"><b>${a.ganados}</b><span>Regalos ganados</span><small>de ${a.max} · uno cada ${a.m.cada} ${a.m.cuenta==="amigas"?"amigas":"visitas"}</small></div></div>
     ${a.falta?`<p class="note" style="margin:0">Le faltan <b>${a.falta}</b> ${a.m.cuenta==="amigas"?"amigas":"visitas"} para el ${a.ganados?"siguiente ":""}regalo.</p>`:`<div class="banner good">🏆 Llegó a la meta.</div>`}
     <div class="eyebrow">Referidos de ${esc(firstName(j.ref))}</div>
@@ -495,12 +520,7 @@ function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = a
     <div class="row"><a class="btn" id="av-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="av-sms">Mensaje de texto</a><button class="btn ghost" data-close>Cerrar</button></div>
     ${j.by===S.uid || j.socioId===S.uid ? `<button class="btn small ghost" id="av-del" style="justify-self:start">🗑️ Borrar este link y sus prospectos</button>` : ""}`, () => {
     const q = x => document.getElementById(x);
-    q("av-ro").onchange = () => { if (q("av-ro").checked) q("av-ra").value = "Tu amiga"; else if (q("av-ra").value==="Tu amiga") q("av-ra").value = ""; };
-    q("av-rs").onclick = async () => { const nm = q("av-rn").value.trim().slice(0,60), tv = q("av-rt").value.trim(), t = telOk(tv); if (nm.length < 2){ toast("Escribe el nombre"); return; } if (tv && !t){ toast("El teléfono debe tener 10 dígitos"); return; }
-      const al = q("av-ro").checked ? "Tu amiga" : q("av-ra").value.trim().slice(0,60);
-      try { await S.db.doc("juegos/"+code).update({ref:nm, alias:al}); j.ref = nm; j.alias = al;
-        if (S.leads[code+"_ref"]) await S.db.doc("leads/"+code+"_ref").update({name:nm, ref:nm, tel:t||""}).then(() => Object.assign(S.leads[code+"_ref"], {name:nm, ref:nm, tel:t||""})).catch(e => console.log("ref", e));
-        toast("Guardado"); openAvance(code); render(); } catch(e){ writeErr(e); } };
+    q("av-ed").onclick = () => openEditLink(code);
     const upd = () => { const t = q("av-m").value; q("av-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(t)}`; q("av-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(t)}`; }; upd(); q("av-m").oninput = upd;
     const marcar = () => { if (a.ganados > (j.avisados||0)){ j.avisados = a.ganados; S.db.doc("juegos/"+code).update({avisados:a.ganados}).catch(e => console.log(e)); setTimeout(render, 300); } };
     q("av-wa").addEventListener("click", marcar); q("av-sms").addEventListener("click", marcar);
@@ -573,7 +593,7 @@ async function promoImg(j, p, link){
   x.textAlign = "center"; drawCrown(x, W/2, 46, 54);
   x.strokeStyle = goldGrad(x, W/2-260, 0, W/2-60, 0); x.lineWidth = 2; x.beginPath(); x.moveTo(W/2-260, 72); x.lineTo(W/2-50, 72); x.moveTo(W/2+50, 72); x.lineTo(W/2+260, 72); x.stroke();
   x.fillStyle = JGT.ink; x.font = `800 30px ${SANS}`; x.fillText(TX.top.toUpperCase().split("").join(" ").replace(/   /g,"   "), W/2, 128);
-  const words = String(j.ref||"Tu amiga").trim().split(/\s+/); const n1 = words.length > 1 ? words.slice(0,-1).join(" ") : "", n2 = words[words.length-1];
+  const words = String(j.alias||j.ref||"Tu amiga").trim().split(/\s+/); const n1 = words.length > 1 ? words.slice(0,-1).join(" ") : "", n2 = words[words.length-1];
   let f1 = 104, f2 = 136; const measure = () => { x.font = `600 ${f1}px ${SERIF}`; const w1 = n1 ? x.measureText(n1).width + 26 : 0; x.font = `${f2}px ${SCRIPT}`; return [w1, x.measureText(n2).width]; };
   let [w1, w2] = measure(); while (w1 + w2 > W - 200 && f1 > 50){ f1 -= 4; f2 -= 5; [w1, w2] = measure(); }
   const nx = W/2 - (w1 + w2)/2, ny = 262; x.textAlign = "left";

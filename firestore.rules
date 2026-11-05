@@ -276,7 +276,7 @@ service cloud.firestore {
          && getAfter(juegoPath(request.resource.data.code)).data.by == request.auth.uid;
       allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusAt', 'notes', 'apptId', 'lista', 'enviado', 'foto']);
       // Corregir el nombre o el teléfono del cliente dueño del link
-      allow update: if lv() && resource.data.kind == 'ref' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'ref', 'tel']);
+      allow update: if lv() && resource.data.kind == 'ref' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'ref', 'tel', 'dir', 'ciudad', 'notas']);
       allow delete: if lv() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid || isAdmin());
     }
 
