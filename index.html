@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041552"></script>
-<script src="juego.js?v=202611041552"></script>
+<script src="demo.js?v=202611041607"></script>
+<script src="juego.js?v=202611041607"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041552";
+const APP_VER = "202611041607";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -256,6 +256,19 @@ const REF_TIPOS = {nueva:"Referencia nueva (de una cita o demo reciente)", vieja
 const REF_CORTO = {nueva:"nuevas", vieja:"ref. vieja", base:"base vieja", abordaje:"abordaje viejo"};
 const refTipoSel = id => `<select class="i" id="${id}" required style="max-width:260px"><option value="">¿Qué tipo de referidos son?</option>${Object.entries(REF_TIPOS).map(([k,v]) => `<option value="${k}">${v}</option>`).join("")}</select>`;
 const refTipoTxt = x => x.tipo ? REF_CORTO[x.tipo] : "sin clasificar";
+const puedeTipo = x => x.teleId===S.uid || role()==="admin" || !!S.me?.lider;
+const tipoSelX = x => `<select class="i" data-reftipo="${x.teleId}|${x.at}" style="padding:4px 6px;max-width:160px;font-size:13px">${x.tipo?"":`<option value="" selected>Sin clasificar</option>`}${Object.entries(REF_CORTO).map(([k,v]) => `<option value="${k}" ${x.tipo===k?"selected":""}>${v[0].toUpperCase()+v.slice(1)}</option>`).join("")}</select>`;
+const tipoCell = x => puedeTipo(x) ? tipoSelX(x) : `<span class="tag ${x.tipo==="nueva"?"tg-good":"tg-mute"}">${refTipoTxt(x)}</span>`;
+function setRefTipo(teleId, at, tipo){ const id = `${laDate(at)}_${teleId}`;
+  return chain("log:"+id, async () => { const d = S.logs[id]; if (!d) throw {code:"not-found"}; const refs = (d.refs||[]).map(r => r.at===at ? {...r, tipo} : r); await S.db.doc("calllog/"+id).update({refs}); d.refs = refs; }); }
+function bindRefTipo(root){ (root||document).querySelectorAll("[data-reftipo]").forEach(sel => sel.onchange = () => { const [t, at] = sel.dataset.reftipo.split("|"); if (!sel.value) return;
+  setRefTipo(t, +at, sel.value).then(() => toast(sel.value==="nueva" ? "Marcadas como referencias nuevas: ya cuentan en el embudo" : "Tipo guardado"), writeErr); }); }
+/* Referidos de este mes que todavía no tienen tipo: cada telemarketer ve los suyos; la líder y Dirección ven los de todas */
+function refsPendCard(){ const r = range("mes"); const todos = role()==="admin" || !!S.me?.lider;
+  const l = allRefs().filter(x => !x.tipo && inR(x.at, r) && (todos || x.teleId===S.uid)).sort((a,b) => b.at - a.at);
+  if (!l.length) return "";
+  return `<div class="card" style="border:2px solid var(--warn,#a3651a)"><h2>Referidos sin clasificar<span class="note">${l.reduce((t,x)=>t+(+x.n||0),0)}</span></h2><p class="note" style="margin-top:-6px">Se anotaron antes de pedir el tipo. Escoge si son nuevas (de una cita o demo reciente) o viejas. Solo las nuevas cuentan en el embudo del socio.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Día</th><th>Para</th>${todos?"<th>Anotó</th>":""}<th class="n">Cant.</th><th>Tipo</th></tr></thead><tbody>${l.map(x => `<tr><td>${fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</td><td>${esc(memberName(x.socioId))}</td>${todos?`<td>${esc(memberName(x.teleId))}</td>`:""}<td class="n"><b>${+x.n||0}</b></td><td>${tipoSelX(x)}</td></tr>`).join("")}</tbody></table></div></div>`; }
 function logRefs(n, source, day, socioId, tipo){
   const at = (!day || day===today()) ? Date.now() : laToMs(day, "12:00"), date = laDate(at), id = `${date}_${S.uid}`;
   return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:d.calls||[], refs:[...(d.refs||[]), {at, socioId:socioId||S.world, teleId:S.uid, n, source, tipo:tipo||""}]}); });
@@ -582,10 +595,10 @@ function openEmbDet(sid){ const r = range("semana");
   const refs = allRefs().filter(x => x.socioId===sid && inR(x.at, r)).sort((a,b) => b.at - a.at);
   const ru = Object.values(S.leads||{}).filter(l => (l.kind==="jugador" || l.kind==="hoja") && l.socioId===sid && inR(l.at||0, r));
   openModal(`<h3>Números de ${esc(memberName(sid))}</h3><p class="note" style="margin-top:-6px">Esta semana. En el embudo solo cuentan las referencias nuevas. Las bases viejas, referencias viejas, abordajes viejos y lo anotado antes de este cambio ("sin clasificar") se ven aquí pero no suman.</p>
-    ${refs.length ? `<div class="tbl-wrap"><table><thead><tr><th>Día</th><th>Quién lo anotó</th><th>Tipo</th><th>Fuente</th><th class="n">Cantidad</th></tr></thead><tbody>${refs.map(x => `<tr><td>${fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</td><td>${esc(memberName(x.teleId))}</td><td><span class="tag ${x.tipo==="nueva"?"tg-good":"tg-mute"}">${refTipoTxt(x)}</span></td><td>${esc(x.source||"—")}</td><td class="n"><b>${+x.n||0}</b></td></tr>`).join("")}</tbody></table></div>` : `<p class="note">Sin referidos anotados.</p>`}
+    ${refs.length ? `<div class="tbl-wrap"><table><thead><tr><th>Día</th><th>Quién lo anotó</th><th>Tipo</th><th>Fuente</th><th class="n">Cantidad</th></tr></thead><tbody>${refs.map(x => `<tr><td>${fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</td><td>${esc(memberName(x.teleId))}</td><td>${tipoCell(x)}</td><td>${esc(x.source||"—")}</td><td class="n"><b>${+x.n||0}</b></td></tr>`).join("")}</tbody></table></div>` : `<p class="note">Sin referidos anotados.</p>`}
     ${ru.length ? `<p><b>${ru.length}</b> prospecto(s) de la ruleta.</p>` : ""}
-    <p class="note">Si alguno no es tuyo, la telemarketer que lo anotó lo puede borrar en Registrar y anotarlo con el socio correcto.</p>
-    <div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`); }
+    <p class="note">Si alguno no es de este socio, la telemarketer que lo anotó lo puede borrar en Registrar y anotarlo con el socio correcto.</p>
+    <div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`, () => bindRefTipo($("#modal"))); }
 /* ===== Metas de ventas (mes y año) =====
    Emprendedor: sus propias ventas. Distribuidor y Dirección: las suyas más las de su grupo. Cuentan las aprobadas; las pendientes se ven aparte. */
 function metaGrupo(uid){ const m = S.members[uid] || {}; return (m.tipo===DIST || m.role==="admin") ? [uid, ...grupoDe(uid).filter(x => x.role==="socio").map(x => x.id)] : [uid]; }
@@ -737,7 +750,7 @@ function socioRefCard(){
   return `<div class="card"><h2>Referidos entregados<span class="note">Hoy ${sumR(range("hoy"))} · semana ${sumR(range("semana"))} · mes ${sumR(range("mes"))}</span></h2>
     <p class="note" style="margin-top:-6px">Anota cuántos referidos le pasaste a las telemarketers. Si la telemarketer ya los anotó, no los repitas (abajo ves quién anotó cada uno).</p>
     <form id="sref-form" class="row"><input class="i" type="number" min="1" step="1" id="sref-n" placeholder="Cantidad" style="max-width:130px"><input class="i" type="date" id="sref-d" value="${today()}" max="${today()}" min="${addMonths(today().slice(0,8)+"01",-1)}" style="max-width:170px">${refTipoSel("sref-t")}<select class="i" id="sref-s" style="max-width:190px">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select><button class="btn" type="submit">Agregar referidos</button></form>
-    ${l.length?`<div class="hist" style="margin-top:10px">${l.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> ${refTipoTxt(x)} · ${esc(x.source||"")} · ${fmt(x.at,{weekday:"short",day:"numeric",month:"short"})} · anotó ${x.teleId===S.uid?"tú":esc(memberName(x.teleId))}</span>${x.teleId===S.uid?`<button class="btn small ghost" data-unref="${x.at}">Quitar</button>`:""}</div>`).join("")}</div>`:""}</div>`;
+    ${l.length?`<div class="hist" style="margin-top:10px">${l.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> ${x.teleId===S.uid?tipoSelX(x):refTipoTxt(x)} · ${esc(x.source||"")} · ${fmt(x.at,{weekday:"short",day:"numeric",month:"short"})} · anotó ${x.teleId===S.uid?"tú":esc(memberName(x.teleId))}</span>${x.teleId===S.uid?`<button class="btn small ghost" data-unref="${x.at}">Quitar</button>`:""}</div>`).join("")}</div>`:""}</div>`;
 }
 function driveCard(){
   const d = S.drives[S.uid];
@@ -820,7 +833,7 @@ function viewHoy(r){
     h += `<div class="card"><h2>Evaluación de telemarketers ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}
       <p class="note">% efectividad cita → demo: de cada 100 citas que agendó (y que ya pasaron), cuántas se convirtieron en demostración.</p></div>`;
     if (ext.length) h += `<div class="card"><h2>Telemarketers externas de distribuidores</h2><p class="note" style="margin-top:-6px">Las contrata y les paga cada distribuidor. No son del programa Lunaya: no entran en tus comisiones ni en el 5%.</p>${evalTable(ext, true)}</div>`;
-    h = metasCard(S.uid) + metaSemEquipoCard() + embudoEquipoCard() + h;
+    h = metasCard(S.uid) + metaSemEquipoCard() + embudoEquipoCard() + refsPendCard() + h;
     h += socioEvalCard(rg);
     const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
@@ -885,8 +898,8 @@ function viewRegistrar(){
   const refCard = `<div class="card"><h2>Referidos recibidos<span class="note">Hoy ${sumR(t0)} · semana ${sumR(wk)} · mes ${sumR(mo)}</span></h2>
     <p class="note" style="margin-top:-6px">Cuando ${esc(memberName(S.world))} te mande referidos para trabajar, anota cuántos son y de qué tipo. Solo las referencias nuevas (de citas o demos recientes) cuentan en el embudo del socio.</p>
     <form id="ref-form" class="row"><input class="i" type="number" min="1" step="1" id="ref-n" placeholder="Cantidad" style="max-width:130px" aria-label="Cantidad de referidos"><input class="i" type="date" id="ref-d" value="${today()}" max="${today()}" min="${addMonths(today().slice(0,8)+"01",-1)}" style="max-width:170px" aria-label="Día en que los recibiste">${refTipoSel("ref-t")}<button class="btn" type="submit">Agregar referidos</button></form>
-    ${myRefs.length?`<div class="hist" style="margin-top:10px">${myRefs.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> ${refTipoTxt(x)} · ${esc(x.source||"")} · ${laDate(x.at)===today()?fmt(x.at,{hour:"numeric",minute:"2-digit"}):fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</span><button class="btn small ghost" data-unref="${x.at}">Quitar</button></div>`).join("")}</div>`:""}</div>`;
-  return worldBar() + refCard + `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Fuente de la base que estás llamando</div><div class="chips">${sources().map(s=>`<button class="chip ${s===src?"on":""}" data-src="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>
+    ${myRefs.length?`<div class="hist" style="margin-top:10px">${myRefs.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> ${tipoSelX(x)} · ${esc(x.source||"")} · ${laDate(x.at)===today()?fmt(x.at,{hour:"numeric",minute:"2-digit"}):fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</span><button class="btn small ghost" data-unref="${x.at}">Quitar</button></div>`).join("")}</div>`:""}</div>`;
+  return refsPendCard() + worldBar() + refCard + `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Fuente de la base que estás llamando</div><div class="chips">${sources().map(s=>`<button class="chip ${s===src?"on":""}" data-src="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>
   <div class="card"><h2>¿Qué pasó en la llamada?<span class="note">${mine.length} hoy para este socio</span></h2>
     <div class="tally">${RESULTS.map(([k,l]) => `<button class="tb ${k==="cita"?"cita":""} ${S.flash===k?"flash":""}" data-res="${k}"><span class="l">${l}</span><span class="c">${cnt(k)}</span><span class="h">${k==="cita"?"Abre la ficha de la cita":"Se guarda al tocar"}</span></button>`).join("")}</div>
     ${last?`<div class="row" style="margin-top:12px;justify-content:space-between"><span class="note">Último: ${RLABEL[last.result]} · ${fmt(last.at,{hour:"numeric",minute:"2-digit"})}</span>${last.result!=="cita"?`<button class="btn small ghost" data-undo="${last.at}">Deshacer último</button>`:""}</div>`:""}
@@ -1249,7 +1262,7 @@ function viewLider(){
   const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
   let h = `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
   const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
-  h += metaSemEquipoCard() + citasEquipoCard();
+  h += refsPendCard() + metaSemEquipoCard() + citasEquipoCard();
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   h += `<div class="card"><h2>Día de inicio de cada telemarketer</h2><p class="note" style="margin-top:-6px">El sueldo se cuenta desde el día que realmente empezó a trabajar, aunque la hayas agregado a la app después. Cámbialo si no es el correcto.</p><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th>Empezó a trabajar</th></tr></thead><tbody>${telesLunaya().map(t => `<tr><td><b>${esc(t.name)}</b></td><td><input class="i" type="date" data-start="${t.id}" value="${startOf(t)==="2000-01-01"?"":startOf(t)}" max="${today()}" style="padding:4px 6px"></td></tr>`).join("")}</tbody></table></div></div>`;
   h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
@@ -1480,6 +1493,7 @@ function bindCommon(){
   all("[data-plan]", s => s.onchange = async () => { const [id,k] = s.dataset.plan.split("|"); const v = s.value.trim(); try { await S.db.doc("members/"+id).update({[k]: v==="" ? firebase.firestore.FieldValue.delete() : +v}); toast(v==="" ? "Vuelve al plan general" : "Plan de pago guardado"); } catch(e){ writeErr(e); } });
   document.querySelectorAll("[data-tacc]").forEach(c => c.onchange = async () => { const [did, tid] = c.dataset.tacc.split("|"); const cur = new Set(S.members[did]?.teleNo || []); if (c.checked) cur.delete(tid); else cur.add(tid);
     try { await S.db.doc("members/"+did).update({teleNo:[...cur]}); toast(c.checked ? `${memberName(tid)} ya tiene acceso` : `${memberName(tid)} ya no tiene acceso`); } catch(e){ c.checked = !c.checked; writeErr(e); } });
+  bindRefTipo(m);
   all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
