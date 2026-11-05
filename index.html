@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041608"></script>
-<script src="juego.js?v=202611041608"></script>
+<script src="demo.js?v=202611041627"></script>
+<script src="juego.js?v=202611041627"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041608";
+const APP_VER = "202611041627";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -950,10 +950,22 @@ function refByCard(ids, titulo){ const set = new Set(ids); const r = range(S.f.p
   const l = Object.values(g).sort((a,b) => b.citas - a.citas); if (!l.length) return "";
   return `<div class="card"><h2>${titulo||"Citas por cliente que refirió"}<span class="note">${S.f.period==="mesant"?"mes anterior":"este mes"}</span></h2><p class="note" style="margin-top:-6px">De quién salió cada cita (4 en 14, ruleta o cuaderno).</p>
     <div class="tbl-wrap"><table><thead><tr><th>Cliente que refirió</th>${ids.length>1?"<th>Socio</th>":""}<th>Fuente</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th></tr></thead><tbody>${l.map(x => `<tr><td><b>${esc(x.n)}</b></td>${ids.length>1?`<td>${esc(memberName(x.socio))}</td>`:""}<td class="note">${esc(Object.keys(x.src).join(", "))}</td><td class="n">${x.citas}</td><td class="n">${x.demos}</td><td class="n">${x.ventas}${x.monto?` <span class="note">${money(x.monto)}</span>`:""}</td></tr>`).join("")}</tbody></table></div></div>`; }
+/* Links de clientes inscritos (4 en 14 / ruleta) de este socio */
+const progsCli = socio => Object.entries(S.juegos||{}).filter(([,j]) => j.socioId===socio && j.kind!=="campana" && j.ref).sort((a,b) => String(a[1].ref).localeCompare(String(b[1].ref)));
+const avanceTxt = c => { try { const a = avanceDe(c); return `${a.base} de ${a.m.cada} ${a.unidad}`; } catch { return ""; } };
+/* La cita de una referida cuenta para el programa de quien la refirió, aunque no haya jugado:
+   si ya está en ese link (jugó o vino en la hoja) se le pone la cita; si no, se agrega como contacto de la hoja con la cita. */
+async function sumarAlPrograma(code, tel, name, apptId){ const j = S.juegos?.[code]; if (!j) return;
+  try { const ya = Object.entries(S.leads||{}).find(([,l]) => l.code===code && l.tel===tel && (l.kind==="jugador" || l.kind==="hoja"));
+    let id = ya ? ya[0] : `${code}_h_${tel}`;
+    if (!ya){ const l = {code, pid:j.pid, name, tel, kind:"hoja", status:"nuevo", socioId:j.socioId, up:j.up||"", tv:!!j.tv, by:j.by, ref:j.ref||"", at:Date.now(), addedBy:S.uid}; await S.db.doc("leads/"+id).set(l); S.leads[id] = l; }
+    await S.db.doc("leads/"+id).update({status:"cita", apptId, statusAt:Date.now()}); Object.assign(S.leads[id], {status:"cita", apptId});
+    toast(`Le suma al 4 en 14 de ${firstName2(j.ref)} cuando la demo quede hecha`); } catch(e){ console.log("programa", e); toast("La cita se guardó, pero no se pudo sumar al programa del cliente"); } }
 function openCitaForm(src, own, pre){
   const tomorrow = addDays(today(),1); const socio = own ? S.uid : S.world;
   openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>${creditSel(S.uid,"")}` : `<p class="note" style="margin:0">Hora de San Diego.</p><label class="f">¿De dónde salió la cita?<select class="i" id="c-src">${[...new Set([src, ...sources()])].filter(Boolean).map(x=>`<option ${x===src?"selected":""}>${esc(x)}</option>`).join("")}</select></label>`}
     <label class="f">¿Quién la refirió? (el cliente del 4 en 14, de la ruleta o del cuaderno)<input class="i" id="c-refby" list="c-refby-l" placeholder="Ej.: María López · opcional" autocomplete="off"><datalist id="c-refby-l">${refByNames(socio).map(n => `<option value="${esc(n)}">`).join("")}</datalist><span class="note">Así se va contando cuántas citas, demos y ventas salen de cada cliente.</span></label>
+    ${progsCli(socio).length ? `<label class="f">¿Le suma al 4 en 14 de algún cliente?<select class="i" id="c-prog"><option value="">No / no es de un programa</option>${progsCli(socio).map(([c,j]) => `<option value="${c}">${esc(j.ref||"Cliente")} · ${avanceTxt(c)}</option>`).join("")}</select><span class="note">Aunque no haya jugado la ruleta: cuando la demo quede hecha, cuenta como visita para el regalo de ese cliente.</span></label>` : ""}
     <div class="grid2">
       <label class="f">Nombre del cliente<input class="i" id="c-name" autocomplete="off"></label>
       <label class="f">Teléfono<input class="i" id="c-phone" inputmode="tel" autocomplete="off"></label>
@@ -965,11 +977,15 @@ function openCitaForm(src, own, pre){
       <label class="f" style="grid-column:1/-1">${own?"Notas":"Notas para el socio"}<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
     </div>
     <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
-    if (pre){ $("#c-name").value = pre.name||""; $("#c-phone").value = pre.phone||""; $("#c-notes").value = pre.notes||""; if (pre.refBy) $("#c-refby").value = pre.refBy; }
+    if (pre){ $("#c-name").value = pre.name||""; $("#c-phone").value = pre.phone||""; $("#c-notes").value = pre.notes||""; if (pre.refBy) $("#c-refby").value = pre.refBy; if (pre.code && $("#c-prog")) $("#c-prog").value = pre.code; }
+    const cp = $("#c-prog"); if (cp){ cp.onchange = () => { const j = S.juegos?.[cp.value]; if (j && !$("#c-refby").value.trim()) $("#c-refby").value = j.ref || ""; };
+      $("#c-refby").onchange = () => { if (cp.value) return; const v = $("#c-refby").value.trim().toLowerCase(); const m = progsCli(socio).find(([,j]) => String(j.ref||"").trim().toLowerCase()===v); if (m) cp.value = m[0]; }; }
     $("#c-phone").onchange = $("#c-phone").onblur = async () => { const h = await getHistAny(own ? S.uid : S.world, $("#c-phone").value); $("#c-hist").innerHTML = histHtml(h); if (h && h.name && !$("#c-name").value.trim()) $("#c-name").value = h.name; };
     $("#c-save").onclick = async () => {
       const name = $("#c-name").value.trim(), d = $("#c-date").value, t = timeVal("c-time");
       if (!name || !d || !t){ toast("Falta el nombre, la fecha o la hora"); return; }
+      const pcode = $("#c-prog") ? $("#c-prog").value : ""; const ptel = String($("#c-phone").value).replace(/\D/g,"").slice(-10);
+      if (pcode && !/^[2-9]\d{9}$/.test(ptel)){ toast("Para sumarle al 4 en 14 pon el teléfono completo (10 dígitos)"); return; }
       const at = Date.now(); $("#c-save").disabled = true;
       try {
         const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if ($("#c-src")) src = $("#c-src").value; const refBy = $("#c-refby").value.trim().slice(0,80); const cred = own && $("#c-cred") ? $("#c-cred").value : "";
@@ -980,6 +996,7 @@ function openCitaForm(src, own, pre){
         const bt = S.db.batch(); bt.set(ref, pub); bt.set(S.db.doc("apptp/"+ref.id), priv); await bt.commit();
         histAdd(socio, priv.phone, name, histEntry({...pub, id:ref.id}, {note:priv.notes}), [S.uid]);
         if (pre && pre.onSaved) pre.onSaved(ref.id);
+        if (pcode) sumarAlPrograma(pcode, ptel, name, ref.id);
         if (!own) await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
         closeModal(); toast("Cita guardada"); S.flash = "cita"; setTimeout(() => { if (S.appts[ref.id]) openAppt(ref.id); }, 400); setTimeout(()=>{ S.flash=null; render(); }, 600);
       } catch(e){ $("#c-save").disabled = false; writeErr(e); }

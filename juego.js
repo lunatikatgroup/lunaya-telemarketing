@@ -606,7 +606,7 @@ function openLead(id){
       S.db.doc("leads/"+id).delete().then(() => { delete S.leads[id]; closeModal(); toast("Prospecto borrado"); render(); }, writeErr); };
     q("ld-save").onclick = async () => { if (await upd({status:q("ld-st").value, notes:q("ld-n").value.trim().slice(0,1000)})){ closeModal(); toast("Guardado"); } };
     q("ld-cita").onclick = () => { const own = l.socioId===S.uid; if (!own){ if (!S.members[l.socioId]){ toast("Ese socio ya no está en el equipo"); return; } S.world = l.socioId; }
-      const pre = {name:l.name, phone:telFmt(t), refBy:l.ref||"", notes:`${l.kind==="hoja" ? "Referido" : "Ganó "+l.prize+" en la "+(S.programs[l.pid]?.tipo==="caja"?"caja sorpresa":"ruleta")} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
+      const pre = {name:l.name, phone:telFmt(t), refBy:l.ref||"", code:l.code, notes:`${l.kind==="hoja" ? "Referido" : "Ganó "+l.prize+" en la "+(S.programs[l.pid]?.tipo==="caja"?"caja sorpresa":"ruleta")} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
       closeModal(); openCitaForm(own ? "" : "Ruleta", own, pre); };
   });
 }
