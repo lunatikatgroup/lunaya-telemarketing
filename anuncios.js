@@ -93,6 +93,8 @@ async function crearAnuncio(o, msg){
   msg("Subiendo la imagen…");
   let b64; if (o.foto) b64 = await imgBase64(o.foto); else { const blob = await promoImg(j, S.programs[j.pid]||{}, jgLink(code)); b64 = await imgBase64(URL.createObjectURL(blob)); }
   const img = await fbApi(`/${o.ac}/adimages`, "post", {bytes: b64}); const hash = Object.values(img.images||{})[0]?.hash; if (!hash) throw new Error("Meta no aceptó la imagen");
+  msg("Preparando el anuncio…");
+  const cre = await fbApi(`/${o.ac}/adcreatives`, "post", {name:`Lunatikat · ${o.zona} · creativo`, object_story_spec:{page_id:o.pg, link_data:{link, message:o.texto, name:o.titulo||"Gira y gana", image_hash:hash, call_to_action:{type:"LEARN_MORE", value:{link}}}}});
   /* 3) campaña, conjunto (zona, edad, presupuesto, ubicaciones) y anuncio, todo en pausa */
   msg("Creando la campaña…"); const nombre = `Lunatikat · ${o.zona} · ${fmt(Date.now(),{day:"numeric",month:"short"})}`;
   const camp = await fbApi(`/${o.ac}/campaigns`, "post", {name:nombre, objective:"OUTCOME_TRAFFIC", status:"PAUSED", special_ad_categories:[], is_adset_budget_sharing_enabled:false});
@@ -106,7 +108,6 @@ async function crearAnuncio(o, msg){
     start_time:new Date(ini).toISOString(), end_time:new Date(fin).toISOString(),
     targeting:{geo_locations:{custom_locations:[{latitude:z[1], longitude:z[2], radius:Math.min(50,Math.max(1,o.radio)), distance_unit:"mile"}], location_types:["home","recent"]}, age_min:Math.max(18,o.e1), age_max:Math.min(65,o.e2), locales:[23,7], ...pl}});
   msg("Creando el anuncio…");
-  const cre = await fbApi(`/${o.ac}/adcreatives`, "post", {name:nombre + " · creativo", object_story_spec:{page_id:o.pg, link_data:{link, message:o.texto, name:o.titulo||"Gira y gana", image_hash:hash, call_to_action:{type:"LEARN_MORE", value:{link}}}}});
   const ad = await fbApi(`/${o.ac}/ads`, "post", {name:nombre, adset_id:set.id, creative:{creative_id:cre.id}, status:"PAUSED"});
   const doc = {owner:S.uid, at:Date.now(), nombre, ac:o.ac, campaign:camp.id, adset:set.id, ad:ad.id, code, zona:o.zona, diario:o.diario, dias:o.dias, ubic:{fbig:"Facebook e Instagram", wa:"Estados de WhatsApp", todo:"Facebook, Instagram y WhatsApp"}[o.ubic], estado:"PAUSED"};
   const ref = await S.db.collection("anuncios").add(doc); (S.anuncios ||= {})[ref.id] = doc; return doc; }
