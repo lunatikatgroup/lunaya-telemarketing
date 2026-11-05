@@ -110,11 +110,13 @@ async function crearAnuncio(o, msg){
     : {publisher_platforms:["facebook","instagram","whatsapp"], instagram_positions:["stream","story","reels"], whatsapp_positions:["status"]};
   const ini = Date.now() + 10*60e3, fin = ini + o.dias*864e5;
   msg("Configurando la zona y el presupuesto…");
-  const set = await fbApi(`/${o.ac}/adsets`, "post", {name:nombre + " · conjunto", campaign_id:camp.id, status:"PAUSED", daily_budget:Math.round(o.diario*100), billing_event:"IMPRESSIONS", optimization_goal:"LINK_CLICKS", bid_strategy:"LOWEST_COST_WITHOUT_CAP", destination_type:"WEBSITE",
+  let set, ad; try {
+  set = await fbApi(`/${o.ac}/adsets`, "post", {name:nombre + " · conjunto", campaign_id:camp.id, status:"PAUSED", daily_budget:Math.round(o.diario*100), billing_event:"IMPRESSIONS", optimization_goal:"LINK_CLICKS", bid_strategy:"LOWEST_COST_WITHOUT_CAP", destination_type:"WEBSITE",
     start_time:new Date(ini).toISOString(), end_time:new Date(fin).toISOString(),
     targeting:{geo_locations:{custom_locations:[{latitude:z[1], longitude:z[2], radius:Math.min(50,Math.max(1,o.radio)), distance_unit:"mile"}], location_types:["home","recent"]}, age_min:Math.max(18,o.e1), age_max:Math.min(65,o.e2), locales:[23,7], ...pl}});
   msg("Creando el anuncio…");
-  const ad = await fbApi(`/${o.ac}/ads`, "post", {name:nombre, adset_id:set.id, creative:{creative_id:cre.id}, status:"PAUSED"});
+  ad = await fbApi(`/${o.ac}/ads`, "post", {name:nombre, adset_id:set.id, creative:{creative_id:cre.id}, status:"PAUSED"});
+  } catch(e){ try { await fbApi(`/${camp.id}`, "delete", {}); } catch {} throw e; } /* si falla, borra la campaña vacía */
   const doc = {owner:S.uid, at:Date.now(), nombre, ac:o.ac, campaign:camp.id, adset:set.id, ad:ad.id, code, zona:o.zona, diario:o.diario, dias:o.dias, ubic:{fbig:"Facebook e Instagram", wa:"Estados de WhatsApp", todo:"Facebook, Instagram y WhatsApp"}[o.ubic], estado:"PAUSED"};
   const ref = await S.db.collection("anuncios").add(doc); (S.anuncios ||= {})[ref.id] = doc; return doc; }
 
