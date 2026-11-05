@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041859"></script>
-<script src="juego.js?v=202611041859"></script>
+<script src="demo.js?v=202611041911"></script>
+<script src="juego.js?v=202611041911"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041859";
+const APP_VER = "202611041911";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -910,6 +910,16 @@ function socioEval(id, r){
     refsDemo: demos.reduce((t,a)=>t+(+a.refsDemo||0),0),
     dadores: ap.filter(a=>origenDe(a)==="asig").reduce((o,a)=>{ const d = dadorDe(a); o[d]=(o[d]||0)+1; return o; }, {})};
 }
+/* De dónde salen las citas de un socio y qué tan efectivo es con cada una: por telemarketer, por quien se la asignó y las propias */
+function openOrigen(sid){ const rg = range(S.f.period||"mes"); const ap = Object.values(S.appts).filter(a => a.socioId===sid && inR(a.when||0, rg)); const g = {};
+  ap.forEach(a => { const o = origenDe(a), d = dadorDe(a); const k = o+"|"+(o==="propia" ? "" : d);
+    const x = g[k] ||= {o, d, citas:0, demos:0, ventas:0, monto:0, list:[]}; x.citas++; x.list.push(a); if (a.status==="hecha") x.demos++; if (a.sale && (a.saleStatus||"pendiente")!=="cancelada"){ x.ventas++; x.monto += +a.amount||0; } });
+  const rows = Object.values(g).sort((a,b) => ["tm","asig","propia"].indexOf(a.o) - ["tm","asig","propia"].indexOf(b.o) || b.citas - a.citas);
+  const lbl = x => x.o==="tm" ? `📞 Telemarketing · ${esc(memberName(x.d))}` : x.o==="asig" ? `🤝 Se la dio ${esc(memberName(x.d))}` : "🙋 Propias (las consiguió él/ella)";
+  openModal(`<h3>Citas de ${esc(memberName(sid))}</h3><p class="note" style="margin-top:-6px">${PLABEL[S.f.period||"mes"]||""} · quién le dio cada cita y cuánto vende con cada una.</p>
+    ${rows.length ? `<div class="tbl-wrap"><table><thead><tr><th>De dónde salió</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">% cierre</th><th class="n">Volumen</th></tr></thead><tbody>${rows.map(x => `<tr><td>${lbl(x)}</td><td class="n">${x.citas}</td><td class="n">${x.demos}</td><td class="n"><b>${x.ventas}</b></td><td class="n">${x.demos?Math.round(x.ventas*100/x.demos)+"%":"—"}</td><td class="n">${money(x.monto)}</td></tr>`).join("")}</tbody></table></div>
+    <div class="eyebrow" style="margin-top:8px">Cada cita</div><div class="tbl-wrap"><table><tbody>${ap.sort((a,b) => b.when - a.when).map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(cName(a))}</td><td class="note">${esc(origenTxt(a))}</td><td class="note">${a.sale?"💰 "+money(+a.amount||0):a.status==="hecha"?"Demo sin venta":esc(APPT_ST[a.status]||a.status||"")}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Sin citas en este periodo.</div>`}
+    <div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`); }
 function socioEvalCard(rg){ return socioTableCard(socios(), rg, "Evaluación de socios", "Distribuidores y emprendedores, según la fecha de cada cita."); }
 function socioTableCard(list, rg, title, sub){
   const rows = list.map(s => ({s, e:socioEval(s.id, rg)}));
@@ -917,8 +927,8 @@ function socioTableCard(list, rg, title, sub){
   const tr = (n, e, cls="") => `<tr class="${cls}"><td>${n}</td><td class="n">${e.referidos}</td><td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${money(e.monto)}</td><td class="n">${e.ventas?money(e.monto/e.ventas):"—"}</td><td class="n">${pctHtml(e.ventas,e.demos,40,20)}</td><td class="n">${e.refsDemo||0}<div class="note">${e.demos?(Math.round((e.refsDemo||0)/e.demos*10)/10)+" por casa":"—"}</div></td>${["tm","asig","propia"].map(k=>`<td class="n">${e["v_"+k]||0} <span class="note">· ${money(e["m_"+k]||0)}</span><div class="note">de ${e["c_"+k]||0} citas</div>${k==="asig"&&e.dadores&&Object.keys(e.dadores).length?`<div class="note">${Object.entries(e.dadores).map(([d,n])=>`${esc(memberName(d))} (${n})`).join(", ")}</div>`:""}</td>`).join("")}<td class="n"><b>${e.ventas?Math.round((e.v_tm||0)*100/e.ventas)+"%":"—"}</b></td></tr>`;
   return `<div class="card"><h2>${title} ${periodChips()}</h2><p class="note" style="margin-top:-6px">${sub}</p>
     <div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Referidos</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Ventas aprobadas</th><th class="n">Volumen de ventas</th><th class="n">Venta promedio</th><th class="n">% efectividad demo → venta</th><th class="n">👥 Referidos sacados en demos</th><th class="n">📞 Ventas de telemarketing</th><th class="n">🤝 Ventas de citas asignadas</th><th class="n">🙋 Ventas propias</th><th class="n">% de sus ventas que vienen de telemarketing</th></tr></thead>
-    <tbody>${rows.map(x => tr(`${who(x.s.id,28)}${x.s.tipo?`<div class="note">${esc(x.s.tipo)}</div>`:x.s.role==="admin"?`<div class="note">Dirección</div>`:""}`, x.e)).join("")}${rows.length>1?tr("Total", tot, "total"):""}</tbody></table></div>
-    <p class="note">Referidos: los que el socio le pasó a las telemarketers para trabajar (los anotan ellas). % efectividad demo → venta: de cada 100 demostraciones, cuántas cerraron en venta. 📞 Ventas de telemarketing: salieron de citas que agendaron las telemarketers. 🤝 Asignadas: citas que le dio otra persona del equipo (Dirección u otro socio), con el nombre de quién se las dio. 🙋 Propias: citas que el socio consiguió por su cuenta.</p></div>`;
+    <tbody>${rows.map(x => tr(`<button class="linkbtn" data-origen="${x.s.id}" style="background:none;border:0;padding:0;font:inherit;cursor:pointer;text-align:left">${who(x.s.id,28)}</button>${x.s.tipo?`<div class="note">${esc(x.s.tipo)}</div>`:x.s.role==="admin"?`<div class="note">Dirección</div>`:""}`, x.e)).join("")}${rows.length>1?tr("Total", tot, "total"):""}</tbody></table></div>
+    <p class="note"><b>Toca el nombre de un socio</b> para ver quién le dio cada cita y cuánto cierra con cada una. Referidos: los que el socio le pasó a las telemarketers para trabajar (los anotan ellas). % efectividad demo → venta: de cada 100 demostraciones, cuántas cerraron en venta. 📞 Ventas de telemarketing: salieron de citas que agendaron las telemarketers. 🤝 Asignadas: citas que le dio otra persona del equipo (Dirección u otro socio), con el nombre de quién se las dio. 🙋 Propias: citas que el socio consiguió por su cuenta.</p></div>`;
 }
 function evalTable(rows, calls){
   const tot = rows.reduce((t,x)=>{ for (const k in x.e) t[k]=(t[k]||0)+x.e[k]; return t; },{});
@@ -1597,6 +1607,7 @@ function bindCommon(){
     if (!b.dataset.sure){ b.dataset.sure = 1; b.textContent = `Toca otra vez para confirmar que pagaste ${money(monto)}`; return; }
     try { await S.db.doc("pagosdist/"+pagoKey(S.uid, p)).set({payer:S.uid, monto, desde:laDate(range(p)[0]), hasta:laDate(range(p)[1]-1), at:Date.now(), ok:false}); toast("Listo, le avisamos a Katerine"); } catch(e){ writeErr(e); } });
   all("[data-pagook]", b => b.onclick = () => S.db.doc("pagosdist/"+b.dataset.pagook).update({ok:true, okAt:Date.now()}).then(() => toast("Pago confirmado"), writeErr));
+  all("[data-origen]", b => b.onclick = () => openOrigen(b.dataset.origen));
   all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
