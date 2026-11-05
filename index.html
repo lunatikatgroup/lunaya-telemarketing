@@ -156,22 +156,22 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611051108"></script>
-<script src="juego.js?v=202611051108"></script>
+<script src="demo.js?v=202611051150"></script>
+<script src="juego.js?v=202611051150"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611051108";
+const APP_VER = "202611051150";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
 const DEFAULT_SOURCES = ["Referencias","4/14","Abordajes","Clientes del sistema","Redes sociales","Otro"];
 const RESULTS = [
   ["no_contesto","No contestó"],["buzon","Buzón / apagado"],["volver","Llamar después"],
-  ["no_interesa","No le interesa"],["no_califica","No califica"],["cita","Cita"]
+  ["no_interesa","No le interesa"],["no_califica","No califica"],["equivocado","Número equivocado"],["ingles","Habla inglés"],["cita","Cita"]
 ];
 const RLABEL = Object.fromEntries(RESULTS);
-const CONTACT = new Set(["volver","no_interesa","no_califica","cita"]);
+const CONTACT = new Set(["volver","no_interesa","no_califica","ingles","cita"]);
 const APPT_ST = {agendada:"Agendada", hecha:"Demostración hecha", no_se_hizo:"No se hizo", cancelada:"Cancelada"};
 const ROLE = {admin:"Dirección", tele:"Telemarketer", socio:"Socio", pendiente:"Pendiente"};
 const DEF_COM = {sueldo:200, pct:2, liderPct:1, distPct:5};
@@ -843,7 +843,7 @@ function evalTiles(e, showCalls=true){
     <div class="tile acc"><b>${money(e.monto)}</b><span>Volumen de ventas</span><small>${money(e.montoAprob)} aprobado</small></div></div>`;
 }
 function viewHoy(r){
-  const rg = range(S.f.period); let h = "";
+  const rg = range(S.f.period); let h = pendLlamarCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
@@ -1146,6 +1146,7 @@ function viewCitas(r){
     <div class="week">${week}</div></div>
     ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
     <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
+  h = pendLlamarCard() + h;
   h += citasDiaCard(true);
   if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
   return h;
@@ -1190,6 +1191,9 @@ function openAppt(id){
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b>${a.source?` · ${esc(a.source)}`:""}${a.refBy?` · referida por <b>${esc(a.refBy)}</b>`:""}</div>
     ${a.status!=="agendada" && (a.resNote || a.refsDemo || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.refsDemo?`<div>👥 <b>${a.refsDemo}</b> referidos sacados en la demo</div>`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado puesto por ${esc(memberName(a.resultBy))}</div>`:""}</div>` : ""}
+    ${a.pendCall && !a.pendCall.hecho ? `<div class="banner warn">📞 <b>Pendiente: llamar ${a.pendCall.dia===today()?"hoy":a.pendCall.dia<today()?"(atrasado) el "+fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"long",day:"numeric"}):"el "+fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"long",day:"numeric",month:"short"})}</b>${a.pendCall.hora?` · ${esc(a.pendCall.hora)}`:""} para confirmar la nueva hora${a.pendCall.intentos?` · ${a.pendCall.intentos} intento(s) sin contestar`:""}
+      ${(a.pendCall.log||[]).slice(-3).map(x => `<div class="note" style="color:inherit">• ${fmt(x.at,{weekday:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(x.by))}: ${esc(x.r)}</div>`).join("")}
+      ${canEdit||canResult ? `<div class="row" style="margin-top:8px"><button class="btn small" data-pc="ok">✅ Llamé: ya tiene nueva hora</button><button class="btn small ghost" data-pc="nc">📵 No contestó</button><button class="btn small ghost" data-pc="no">🚫 Ya no quiere</button></div>` : ""}</div>` : ""}
     ${a.segWhen && !a.sale ? `<div class="banner warn">🔁 Seguimiento: <b>${fmtWhen(a.segWhen)}</b> · si ese día vende, marca “Demo con venta”</div>` : ""}
     ${!a._priv && a.agendo===S.uid && S.privLoaded?.teleId ? `<div class="banner warn">⚠️ Los datos del cliente de esta cita no se guardaron (pasó con una versión anterior de la app). <button class="btn small" id="fix-priv">Completar datos del cliente</button></div>` : ""}
     ${a._priv || a.agendo===S.uid ?"":`<div class="banner">🔒 Los datos del cliente y los mensajes de esta cita son privados: solo los ven ${esc(memberName(a.socioId))} y ${esc(memberName(a.teleId))}. Aquí ves solo el resultado.</div>`}
@@ -1200,7 +1204,8 @@ function openAppt(id){
       <button class="opt ${a.status==="hecha"&&!a.sale&&!a.segWhen?"on":""}" data-ar="hecha">Demo hecha, sin venta</button>
       <button class="opt ${a.status==="hecha"&&!a.sale&&a.segWhen?"on":""}" data-ar="seguimiento">🔁 Demo hecha, dar seguimiento</button>
       <button class="opt ${a.sale?"on":""}" data-ar="venta">Demo con venta</button>
-      <button class="opt ${a.status==="no_se_hizo"?"on":""}" data-ar="no_se_hizo">No se hizo</button>
+      <button class="opt ${a.status==="no_se_hizo"&&!(a.pendCall&&!a.pendCall.hecho)?"on":""}" data-ar="no_se_hizo">No se hizo</button>
+      <button class="opt ${a.pendCall&&!a.pendCall.hecho?"on":""}" data-ar="llamar">📞 No pudo, llamar para reagendar</button>
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
       ${a.sale && (r!=="tele" || S.me?.lider)?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canClient?`<button class="btn small ghost" id="ap-cli">✏️ Editar datos del cliente</button>`:""}
@@ -1244,6 +1249,9 @@ function openAppt(id){
       document.querySelectorAll("[data-ar]").forEach(x => x.classList.toggle("on", x===b));
       if (k==="seguimiento"){ const w = a.segWhen || (Date.now()+2*864e5); $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Día del seguimiento<input class="i" type="date" id="sg-d" value="${laDate(w)}"></label><label class="f">Hora${timeSel("sg-t",a.segWhen?laTime(w):"18:00")}</label>${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="sg-save">Guardar seguimiento</button></div></div>`; bindAc();
         $("#sg-save").onclick = () => { const d=$("#sg-d").value, t=timeVal("sg-t"); if (!d||!t){ toast("Elige el día y la hora"); return; } saveR({status:"hecha", sale:false, amount:0, segWhen:laToMs(d,t), resultAt:Date.now(), resultBy:S.uid}); }; return; }
+      if (k==="llamar"){ const d0 = a.pendCall?.dia || addDays(today(),1); $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">¿Qué día hay que llamarlo?<input class="i" type="date" id="pc-d" value="${d0}" min="${today()}"></label><label class="f">¿A qué hora más o menos? (opcional)<input class="i" id="pc-h" placeholder="Ej.: después de las 5" value="${esc(a.pendCall?.hora||"")}"></label>${nb()}<div style="align-self:end"><button class="btn" id="pc-save">Guardar pendiente</button></div></div>`;
+        $("#pc-save").onclick = () => { const d = $("#pc-d").value; if (!d){ toast("Escoge el día para llamarlo"); return; }
+          saveR({status:"no_se_hizo", sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid, pendCall:{dia:d, hora:$("#pc-h").value.trim().slice(0,60), at:Date.now(), by:S.uid, intentos:a.pendCall?.intentos||0, log:a.pendCall?.log||[]}}); }; return; }
       if (k==="venta"){ $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Monto de la venta (USD)<input class="i" type="number" min="0" step="0.01" id="ar-amt" value="${a.amount||""}"></label>${pb()}${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="ar-save">Guardar venta</button></div></div>`; bindAc(); $("#ar-amt").focus();
         $("#ar-save").onclick = () => { const amt = +$("#ar-amt").value; if (!(amt>0)){ toast("Escribe el monto de la venta"); return; }
           const ps = $("#ar-paso"); if (ps && !ps.value){ toast("Escoge por cuál distribuidor pasó la venta"); ps.focus(); return; }
@@ -1265,7 +1273,11 @@ function openAppt(id){
       if (!this.dataset.sure){ this.dataset.sure="1"; this.textContent = "Toca otra vez para pasarla a "+memberName(to); this.classList.add("danger"); return; }
       if (sponsorDe(to)){ chain("appt:"+id, () => pedirTransfer(id, to)).then(() => { closeModal(); toast(`Le pedimos permiso a ${memberName(sponsorDe(to))}. Cuando apruebe, la cita pasa sola a ${memberName(to)}.`); }, writeErr); return; }
       chain("appt:"+id, () => transferAppt(id, to)).then(() => { closeModal(); toast("Cita transferida a "+memberName(to)); }, writeErr); });
-    $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=timeVal("ap-time"); if (d&&t) save({when:laToMs(d,t), status:"agendada", sale:false, amount:0}); });
+    $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=timeVal("ap-time"); if (d&&t) save({when:laToMs(d,t), status:"agendada", sale:false, amount:0, ...(a.pendCall && !a.pendCall.hecho ? {pendCall:{...a.pendCall, hecho:Date.now(), res:"reagendada", log:[...(a.pendCall.log||[]), {at:Date.now(), by:S.uid, r:"Reagendada para "+fmtWhen(laToMs(d,t))}]}} : {})}); });
+    document.querySelectorAll("[data-pc]").forEach(b => b.onclick = () => { const k = b.dataset.pc, pc = a.pendCall || {}, now = Date.now();
+      if (k==="ok"){ const el = $("#ap-date"); if (el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.focus(); toast("Pon la nueva fecha y hora y toca “Cambiar fecha”"); } return; }
+      if (k==="nc") return save({pendCall:{...pc, intentos:(pc.intentos||0)+1, dia:addDays(today(),1), log:[...(pc.log||[]), {at:now, by:S.uid, r:"No contestó"}]}});
+      if (k==="no") return save({status:"cancelada", pendCall:{...pc, hecho:now, res:"no_quiere", log:[...(pc.log||[]), {at:now, by:S.uid, r:"Ya no quiere la cita"}]}}); });
     $("#ap-del") && ($("#ap-del").onclick = function(){ if (this.dataset.sure){ chain("appt:"+id, async () => { await S.db.doc("apptp/"+id).delete().catch(()=>{}); await S.db.doc("appts/"+id).delete(); }).then(()=>{ closeModal(); toast("Cita borrada"); }, writeErr); } else { this.dataset.sure="1"; this.textContent="Toca otra vez para borrar"; this.classList.add("danger"); } });
   });
 }
@@ -1395,6 +1407,13 @@ function citasDiaCard(enCitas){ const d = enCitas ? (S.f.day || today()) : (S.f.
     <div class="chips" style="margin-bottom:6px">${ch("cdbase","cita","Citas de ese día",base)}${ch("cdbase","sacada","Citas sacadas ese día",base)}</div>
     <p class="note" style="margin-top:0">${fmt(laToMs(d,"12:00"),{weekday:"long",day:"numeric",month:"long"})} · ${base==="cita" ? "las citas que son ese día" : "las citas que se agendaron ese día (para cualquier fecha)"}${modo==="tele" ? " · solo citas de telemarketing" : ""}.</p>
     <div class="tbl-wrap"><table><thead><tr><th>${modo==="tele"?"Telemarketer":"Socio"}</th><th class="n">Citas</th><th>${modo==="tele"?"Para quién":"Quién se la sacó"}</th></tr></thead><tbody>${rows.map(([k,x]) => `<tr><td><span class="nm-av">${av(k,26)}<b>${esc(memberName(k))}</b></span></td><td class="n"><b>${x.n}</b></td><td class="note">${Object.entries(x.by).sort((a,b) => b[1]-a[1]).map(([q,n]) => `${esc(qName(q))} (${n})`).join(", ") || "—"}</td></tr>`).join("")}${rows.length>1?`<tr class="total"><td>Total</td><td class="n">${tot}</td><td></td></tr>`:""}</tbody></table></div></div>`; }
+/* Clientes que no pudieron recibir y pidieron que los llamen otro día para dar nueva hora */
+function pendLlamarCard(){ const r = role(); const vis = ([,a]) => r==="admin" || a.socioId===S.uid || a.teleId===S.uid || a.agendo===S.uid || a._priv || (isDist() && grupoDe(S.uid).some(m => m.id===a.socioId));
+  const l = Object.entries(S.appts).filter(([,a]) => a.pendCall && !a.pendCall.hecho).filter(vis).sort((x,y) => x[1].pendCall.dia.localeCompare(y[1].pendCall.dia));
+  if (!l.length) return "";
+  const hoyN = l.filter(([,a]) => a.pendCall.dia <= today()).length;
+  return `<div class="card" style="border:2px solid var(--warn,#a3651a)"><h2>📞 Llamar para reagendar${hoyN?` <span class="tag tg-bad">${hoyN} para hoy</span>`:""}</h2><p class="note" style="margin-top:-6px">Clientes que no pudieron recibir y pidieron que los llamen para dar nueva hora. Toca uno para marcar si se llamó.</p>
+    <div class="list">${l.map(([id,a]) => `<button class="item" data-appt="${id}" style="text-align:left;width:100%"><div><div class="t">${esc(cName(a))}</div><div class="m">${a.pendCall.dia<today()?"⚠️ Atrasado · ":a.pendCall.dia===today()?"Hoy · ":""}${fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"short",day:"numeric",month:"short"})}${a.pendCall.hora?" · "+esc(a.pendCall.hora):""} · socio ${esc(memberName(a.socioId))} · ${esc(memberName(a.teleId))}${a.pendCall.intentos?` · ${a.pendCall.intentos} sin contestar`:""}</div></div></button>`).join("")}</div></div>`; }
 function citasEquipoCard(){ const tl = telesLunaya(); const f = S.f.lt || ""; const desde = Date.now() - 7*864e5;
   const l = Object.entries(S.appts).filter(([,a]) => esTeleProg(a.agendo) && (a.when >= desde || a.createdAt >= desde) && (!f || a.agendo===f || a.teleId===f)).sort((x,y) => (y[1].createdAt||0) - (x[1].createdAt||0));
   return `<div class="card"><h2>Citas de mi equipo<span class="note">últimos 7 días y próximas</span></h2>
