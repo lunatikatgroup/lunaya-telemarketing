@@ -465,6 +465,16 @@ function openInscribir(){
   });
 }
 
+/* Desde una cita: se crea (o se reusa) el link de la ruleta del cliente con su nombre y teléfono, y se abre listo para mandarlo */
+const juegoDeCita = apptId => (Object.entries(S.juegos||{}).find(([,j]) => j.cita===apptId) || [])[0];
+async function ruletaDeCita(apptId){ const a = S.appts?.[apptId]; if (!a) return; const ya = juegoDeCita(apptId); if (ya){ openShare(ya); return; }
+  const pr = misProgramas(); if (!pr.length){ toast("Primero crea un programa"); openPrograma(); return; }
+  const pid = pr[0][0], sid = a.socioId, name = String(a.client||"Cliente").trim().slice(0,60), t = telOk(a.phone) || "";
+  const code = newCode() + newCode().slice(0,2); const base = juegoBase(sid, pid);
+  try { const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), {...base, ref:name, kind:"cliente", cita:apptId});
+    bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid, name, tel:t, kind:"ref", status:"ref", socioId:sid, up:base.up, tv:base.tv, by:S.uid, ref:name, at:Date.now()}); await bt.commit();
+    S.juegos[code] = {...base, ref:name, kind:"cliente", cita:apptId}; S.leads[code+"_ref"] = {name, tel:t, kind:"ref"}; closeModal(); openShare(code); } catch(e){ writeErr(e); } }
+window.ruletaDeCita = ruletaDeCita; window.juegoDeCita = juegoDeCita;
 /* Avance del cliente: cuántas amigas, cuántas visitas, regalos ganados y mensaje listo para mandarle */
 function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = avanceDe(code); const cli = S.leads[code+"_ref"] || {}; const tel = telOk(cli.tel);
   const ls = refsDe(code).map(([id,l]) => ({...l, _id:id})).sort((x,y)=>(y.at||0)-(x.at||0)); const R = S.leads[code+"_ref"] || {};
