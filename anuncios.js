@@ -12,10 +12,10 @@ function fbCargar(){ return new Promise((ok, no) => {
   window.fbAsyncInit = () => { FB.init({appId: adsAppId(), cookie:false, xfbml:false, version: META_VER}); AD.ready = true; ok(); };
   if (!document.getElementById("fb-sdk")){ const s = document.createElement("script"); s.id = "fb-sdk"; s.async = true; s.src = "https://connect.facebook.net/es_LA/sdk.js"; s.onerror = () => no(new Error("No se pudo cargar Facebook")); document.body.appendChild(s); }
   else if (window.FB){ window.fbAsyncInit(); } }); }
-function fbApi(path, method, params){ return new Promise((ok, no) => {
+function fbApi(path, method, params){ return fbListo().then(() => new Promise((ok, no) => {
   const p = {...(params||{}), access_token: AD.token};
   Object.keys(p).forEach(k => { if (p[k] && typeof p[k] === "object") p[k] = JSON.stringify(p[k]); });
-  FB.api(path, method || "get", p, r => { if (!r || r.error) { const e = r?.error || {}; AD.log.push(`${path}: ${e.message||"error"}`); no(Object.assign(new Error(e.error_user_msg || e.message || "Error de Meta"), {meta:e})); } else ok(r); }); }); }
+  FB.api(path, method || "get", p, r => { if (!r || r.error) { const e = r?.error || {}; AD.log.push(`${path}: ${e.message||"error"}`); if (e.code===190){ AD.token = ""; try { sessionStorage.removeItem("ly-fb"); } catch {} } no(Object.assign(new Error(e.error_user_msg || e.message || "Error de Meta"), {meta:e})); } else ok(r); }); })); }
 async function fbConectar(){
   await fbCargar();
   const cfg = String(S.config?.metaConfigId || "").trim();
@@ -24,7 +24,11 @@ async function fbConectar(){
   AD.token = r.authResponse.accessToken;
   const [me, ac, pg] = await Promise.all([fbApi("/me", "get", {fields:"name"}), fbApi("/me/adaccounts", "get", {fields:"name,account_id,currency,account_status", limit:50}), fbApi("/me/accounts", "get", {fields:"name,id", limit:50})]);
   AD.user = me; AD.cuentas = (ac.data||[]).filter(a => a.account_status === 1); AD.paginas = pg.data || [];
+  try { sessionStorage.setItem("ly-fb", JSON.stringify({t:AD.token, u:AD.user, c:AD.cuentas, p:AD.paginas, at:Date.now(), exp:Date.now() + (r.authResponse.expiresIn||3600)*1000})); } catch {}
   return true; }
+/* Recordar la conexión mientras la pestaña siga abierta (aunque la página se recargue); se borra al cerrar la pestaña */
+(function(){ try { const x = JSON.parse(sessionStorage.getItem("ly-fb")||"null"); if (x && x.t && x.exp > Date.now() + 60e3){ AD.token = x.t; AD.user = x.u; AD.cuentas = x.c||[]; AD.paginas = x.p||[]; } } catch {} })();
+async function fbListo(){ if (!window.FB || !AD.ready) await fbCargar(); }
 
 /* Imagen del anuncio: la de la ruleta (con el QR) o una foto que suba la persona; se manda como JPG */
 async function imgBase64(src){ const im = await loadImg(src); const c = document.createElement("canvas"); const W = Math.min(1080, im.naturalWidth||im.width), H = Math.round(W * (im.naturalHeight||im.height) / (im.naturalWidth||im.width));
