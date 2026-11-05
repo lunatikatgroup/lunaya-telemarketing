@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041852"></script>
-<script src="juego.js?v=202611041852"></script>
+<script src="demo.js?v=202611041859"></script>
+<script src="juego.js?v=202611041859"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041852";
+const APP_VER = "202611041859";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -723,8 +723,14 @@ function commissions(r, up=""){
 }
 
 /* ===== Render ===== */
+/* Si alguien está escribiendo en un formulario y llega un cambio de la base (otra persona registró algo),
+   no se redibuja la pantalla hasta que suelte el campo: así no se borra lo que estaba escribiendo. */
+["input","change","click","keydown","submit"].forEach(ev => document.addEventListener(ev, () => { S.userAct = Date.now(); }, true));
+document.addEventListener("focusout", () => { if (!S.pendingRender) return; setTimeout(() => { const ae = document.activeElement; if (S.pendingRender && !(ae && $("#main")?.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))){ S.pendingRender = false; render(); } }, 400); }, true);
 function render(){
   if (S.publicGame) return;
+  { const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && $("#main")?.contains(ae) && Date.now() - (S.userAct||0) > 200){ S.pendingRender = true; return; } }
+  S.pendingRender = false;
   const ae = document.activeElement; const fid = ae && ae.id; const sel = (ae && "selectionStart" in ae) ? [ae.selectionStart, ae.selectionEnd] : null;
   if ($("#modal").innerHTML) { /* no tocar el modal abierto */ }
   const r = role(); renderHeader(r); bindHeader();
@@ -1304,7 +1310,7 @@ function inviteCard(){
       <label class="f">WhatsApp (con código de país)<input class="i" id="inv-phone" inputmode="tel" placeholder="+58 412 555 1234"></label>
       <label class="f">Es<select class="i" id="inv-gen"><option value="m">Mujer (bienvenida)</option><option value="h">Hombre (bienvenido)</option></select></label>
       <div class="f" id="inv-plan"><span>Plan de pago (solo telemarketers, opcional)</span><div class="row" style="gap:6px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" id="inv-sueldo" placeholder="${com().sueldo}" style="width:80px;padding:6px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" id="inv-pct" placeholder="${com().pct}" style="width:64px;padding:6px"></label></div><span class="note">Vacío = plan general. Ej: a prueba, sueldo 0 y 2%.</span></div>
-      <label class="f" id="inv-start-w">Día en que empezó a trabajar<input class="i" type="date" id="inv-start" value="${today()}" max="${today()}"><span class="note">Si ya venía trabajando antes de entrar a la app, pon el día real: el sueldo se le cuenta desde ese día.</span></label>
+      <label class="f" id="inv-start-w">Día en que empezó a trabajar (obligatorio)<input class="i" type="date" id="inv-start" value="" max="${addDays(today(),14)}"><span class="note">Si ya venía trabajando antes de entrar a la app, pon el día real: el sueldo se le cuenta desde ese día.</span></label>
       ${role()==="admin" ? `<label class="f" id="inv-aporte-w">% que paga por telemarketing (solo distribuidores, opcional)<input class="i" type="number" min="0" step="0.5" id="inv-aporte" placeholder="${com().distPct}"><span class="note">Vacío = ${com().distPct}% general.</span></label>` : ""}
       <label class="f">Entra como<select class="i" id="inv-role">${Object.entries(INV_ROLES).filter(([k]) => role()==="tele" ? k==="tele" : (!isDist() || k!=="distribuidor")).map(([k,l])=>`<option value="${k}">${isDist() && k==="tele" ? "Telemarketer externa (tuya, fuera del programa Lunaya)" : l}</option>`).join("")}${isAdmin?`<option value="admin">Dirección (ve todo, igual que Katerine)</option>`:""}</select></label>
       <div><button class="btn" type="submit">Crear invitación</button></div>
@@ -1570,6 +1576,7 @@ function bindCommon(){
   const invf = m.querySelector("#inv-form"); if (invf) invf.onsubmit = async e => { e.preventDefault();
     const genero = $("#inv-gen") ? $("#inv-gen").value : "", name = $("#inv-name").value.trim(), email = $("#inv-email").value.trim().toLowerCase(), phone = $("#inv-phone").value.trim(), rl = $("#inv-role").value;
     if (!name){ toast("Escribe el nombre de la persona"); return; }
+    if ($("#inv-role").value==="tele" && !/^\d{4}-\d{2}-\d{2}$/.test($("#inv-start")?.value||"")){ toast("Pon el día en que empezó a trabajar (o empieza)"); $("#inv-start")?.focus(); return; }
     if (rl==="admin" && role()!=="admin") return;
     if (email && Object.values(S.invites).some(v => v.email===email && v.status!=="aceptada")){ toast("Ese correo ya tiene una invitación pendiente"); return; }
     try { const code = newCode(); if (isDist() && !["emprendedor","tele"].includes(rl)) return; if (role()==="tele" && rl!=="tele") return;
