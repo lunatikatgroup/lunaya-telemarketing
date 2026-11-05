@@ -288,6 +288,14 @@ service cloud.firestore {
       allow delete: if lv() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid || isAdmin());
     }
 
+    // Anuncios de Meta que crea cada persona con su propia cuenta (aquí solo se guarda el registro y los resultados)
+    match /anuncios/{id} {
+      allow read: if isAdmin() || (isMember() && resource.data.owner == request.auth.uid);
+      allow create: if isMember() && request.resource.data.owner == request.auth.uid;
+      allow update: if isMember() && resource.data.owner == request.auth.uid && request.resource.data.owner == request.auth.uid;
+      allow delete: if isMember() && resource.data.owner == request.auth.uid;
+    }
+
     // Pagos de los distribuidores a Lunaya: el distribuidor marca que pagó, Dirección lo confirma
     match /pagosdist/{id} {
       allow read: if isAdmin() || (isMember() && resource.data.payer == request.auth.uid);

@@ -311,7 +311,7 @@ async function startJuego(code, avance){
 }
 
 /* ================= DENTRO DE LUNAYA ================= */
-function subJuegos(){
+function subJuegos(){ if (window.subAnuncios) setTimeout(subAnuncios, 0);
   S.programs = {}; S.juegos = {}; S.leads = {}; S.jl = {}; S.ll = {}; S.leadsReady = false;
   const r = S.me?.role; const q = [["by", S.uid], ["socioId", S.uid]]; if (S.isOwner || r==="admin" || isDist()) q.push(["up", S.uid]); if (r==="tele" && !S.me?.upline) q.push(["tv", true]);
   S.unsub.push(S.db.collection("programs").onSnapshot(s => { S.programs = {}; s.docs.forEach(d => S.programs[d.id] = d.data()); if (S.view==="juego") render(); }, e => console.log("programs", e)));
@@ -381,6 +381,7 @@ function viewJuego(r){
   return `${porAvisar.map(([c,j]) => `<div class="banner good" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🎁 <b>${esc(j.ref)}</b> se ganó su regalo${avanceDe(c).ganados>1?" #"+avanceDe(c).ganados:""} (${avanceDe(c).base} ${avanceDe(c).unidad}). ¡Avísale!</span><button class="btn small" data-avance="${c}">Avisarle</button></div>`).join("")}
     <div class="card"><div class="row"><button class="btn" id="jg-ins">🎁 Inscribir cliente</button><button class="btn dark" id="jg-camp">📣 Campaña por mensaje</button><button class="btn ghost" id="jg-newp">➕ Nuevo programa</button></div>
       ${progs.length?"":`<p class="note" style="margin-bottom:0">Primero crea un programa: los regalos con su foto, la probabilidad de cada uno y la meta de referidos.</p>`}</div>
+    ${window.anunciosCard ? anunciosCard() : ""}
     <div class="card"><h2>Prospectos que llegaron<span class="note">${nuevosLeads()} nuevo(s)</span></h2>
       ${socs.length > 1 ? `<select class="i" id="jg-lsoc" style="margin-bottom:8px"><option value="">Todos los socios</option>${socs.map(id => `<option value="${id}" ${fs===id?"selected":""}>${esc(memberName(id))}</option>`).join("")}</select>` : ""}
       <div class="row" style="margin-bottom:10px"><button class="btn small ghost" id="jg-csv">⬇️ Descargar para el Drive</button>${fs && S.drives?.[fs]?.url ? `<a class="btn small ghost" href="${esc(S.drives[fs].url)}" target="_blank" rel="noopener">📂 Drive de ${esc(firstName(memberName(fs)))}</a>` : ""}</div>
@@ -412,6 +413,7 @@ function bindJuego(){
   on("[data-lead]", b => b.onclick = () => openLead(b.dataset.lead));
   on("[data-share]", b => b.onclick = () => openShare(b.dataset.share));
   on("[data-avance]", b => b.onclick = () => openAvance(b.dataset.avance));
+  if (window.bindAnuncios) bindAnuncios(m);
   on("[data-lgrp]", b => b.onclick = () => { S.f.lgrp = b.dataset.lgrp; render(); });
   on("[data-editlink]", b => b.onclick = () => openEditLink(b.dataset.editlink));
   on("[data-jdel]", b => b.onclick = async function(){ const code = this.dataset.jdel, j = S.juegos[code] || {};
