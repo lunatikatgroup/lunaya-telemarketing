@@ -63,11 +63,21 @@ const SVG_PPL = `<svg viewBox="0 0 24 24" width="24" height="22"><path d="M9 11a
 function nameHtml(full){ const w = String(full||"").trim().split(/\s+/); if (w.length < 2) return `<div class="jg-name"><span class="n2w"><span class="n2">${esc(w[0]||"Tu amiga")}</span>${SVG_HEART}</span></div>`;
   return `<div class="jg-name"><span class="n1">${esc(w.slice(0,-1).join(" "))}</span><span class="n2w"><span class="n2">${esc(w[w.length-1])}</span>${SVG_HEART}</span></div>`; }
 
+/* Desbloquear el sonido en el iPhone: Safari solo deja sonar después de un toque (touchend/click, no basta "pointerdown"),
+   y el sonido de la app se calla con el interruptor de silencio. Se pide modo "reproducción" (como un video) para que suene igual. */
+let jgUnlocked = false, jgSilent = null;
+function silentWav(){ const n = 4410, b = new ArrayBuffer(44 + n*2), v = new DataView(b); const w = (o, t) => [...t].forEach((c,i) => v.setUint8(o+i, c.charCodeAt(0)));
+  w(0,"RIFF"); v.setUint32(4, 36+n*2, true); w(8,"WAVE"); w(12,"fmt "); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,44100,true); v.setUint32(28,88200,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,"data"); v.setUint32(40,n*2,true);
+  return URL.createObjectURL(new Blob([b], {type:"audio/wav"})); }
+function jgUnlock(){ try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+  try { if (!jgSilent){ jgSilent = new Audio(silentWav()); jgSilent.loop = true; jgSilent.setAttribute("playsinline", ""); jgSilent.volume = 0.01; } const pr = jgSilent.play(); if (pr && pr.catch) pr.catch(() => {}); } catch {}
+  try { jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); if (jgAudio.state !== "running") jgAudio.resume(); const bf = jgAudio.createBuffer(1, 1, 22050), src = jgAudio.createBufferSource(); src.buffer = bf; src.connect(jgAudio.destination); src.start(0); } catch {}
+  jgUnlocked = true; }
 /* Música alegre (hecha por la app, sin archivos ni licencias) */
 let jgMus = null;
 const jgMuted = () => { try { return localStorage.getItem("ly-jg-mute")==="1"; } catch { return false; } };
 function jgNote(ctx, out, midi, t, d, type, v){ const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = 440*Math.pow(2,(midi-69)/12); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t+0.015); g.gain.exponentialRampToValueAtTime(0.0001, t+d); o.connect(g); g.connect(out); o.start(t); o.stop(t+d+0.05); }
-function musicStart(){ if (jgMus || jgMuted()) return; try { jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); const ctx = jgAudio; if (ctx.state==="suspended") ctx.resume();
+function musicStart(){ if (jgMus || jgMuted()) return; if (!jgUnlocked) jgUnlock(); try { jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); const ctx = jgAudio; if (ctx.state==="suspended") ctx.resume();
   const out = ctx.createGain(); out.gain.value = 0.05; out.connect(ctx.destination); const step = 60/132/2;
   const mel = [76,0,79,81,79,0,76,74, 72,0,74,76,79,0,76,0, 77,0,81,84,81,0,79,77, 76,79,77,74,72,0,0,0];
   const bas = [48,55,52,55, 45,52,48,52, 41,48,45,48, 43,50,47,50]; const ch = [[64,67],[60,64],[57,60],[59,62]];
@@ -80,7 +90,7 @@ function musicStop(){ if (!jgMus) return; clearInterval(jgMus.timer); try { jgMu
 
 /* Sonido de la ruleta (sin archivos) */
 let jgAudio = null;
-function jgCtx(){ jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); if (jgAudio.state==="suspended") jgAudio.resume(); return jgAudio; }
+function jgCtx(){ if (!jgUnlocked) jgUnlock(); jgAudio = jgAudio || new (window.AudioContext||window.webkitAudioContext)(); if (jgAudio.state==="suspended") jgAudio.resume(); return jgAudio; }
 function jgTick(f=1400, d=0.035, v=0.22){ try { const c = jgCtx(), t = c.currentTime;
   const o = c.createOscillator(), g = c.createGain(); o.type = "square"; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f*0.55, t+d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t+d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+d+0.02);
   const b = c.createBuffer(1, c.sampleRate*0.02, c.sampleRate), dt = b.getChannelData(0); for (let i=0;i<dt.length;i++) dt[i] = (Math.random()*2-1) * (1 - i/dt.length);
@@ -183,7 +193,9 @@ async function startJuego(code, avance){
   const fsrc = fondoSrc(P); if (fsrc){ document.body.classList.add("foto"); document.querySelectorAll(".jg-rib").forEach(r => r.remove()); const bg = document.createElement("div"); bg.className = "jg-bgimg"; bg.style.backgroundImage = `linear-gradient(rgba(250,245,238,.75), rgba(250,245,238,.35) 40%, rgba(250,245,238,0) 60%), url("${fsrc}")`; document.body.prepend(bg); } const shownName = J.alias || J.ref; const ref = firstName(shownName) ? shownName : "Tu amiga";
   const vence = J.until ? new Intl.DateTimeFormat("es-US",{weekday:"long", day:"numeric", month:"long"}).format(new Date(J.until)) : "";
   const meta = P.meta || {refs:14, cada:4};
-  if (P.musica === false) mb.remove(); else document.addEventListener("pointerdown", () => { if (!saved.done) musicStart(); }, {once:true});
+  { const go = () => { jgUnlock(); if (P.musica !== false && !saved.done) musicStart(); ["touchend","click","keydown"].forEach(ev => document.removeEventListener(ev, go, true)); };
+    ["touchend","click","keydown"].forEach(ev => document.addEventListener(ev, go, true)); }
+  if (P.musica === false) mb.remove();
   if (avance){ return showAvance(); }
   if (J.until && J.until < Date.now() && !saved.done){ box.innerHTML = `<div class="jg-top">Juega y gana</div><div class="jg-h">Esta promoción ya terminó</div><p class="jg-p">Pídele a ${esc(ref)} que te mande un link nuevo.</p>`; return; }
   if (saved.done) return showDone();
