@@ -16,10 +16,12 @@ function fbApi(path, method, params){ return fbListo().then(() => new Promise((o
   const p = {...(params||{}), access_token: AD.token};
   Object.keys(p).forEach(k => { if (p[k] && typeof p[k] === "object") p[k] = JSON.stringify(p[k]); });
   FB.api(path, method || "get", p, r => { if (!r || r.error) { const e = r?.error || {}; AD.log.push(`${path}: ${e.message||"error"}`); if (e.code===190){ AD.token = ""; try { sessionStorage.removeItem("ly-fb"); } catch {} } no(Object.assign(new Error(e.error_user_msg || e.message || "Error de Meta"), {meta:e})); } else ok(r); }); })); }
+/* Safari solo deja abrir la ventanita de Facebook si se abre en el mismo toque: por eso el SDK se carga antes y FB.login se llama sin esperar */
+function fbLoginSync(){ return new Promise((ok, no) => { const cfg = String(S.config?.metaConfigId || "").trim(); let done = false;
+  const t = setTimeout(() => { if (!done) no(new Error("No se completó el inicio de sesión. Revisa si se abrió una pestaña de Facebook, o permite las ventanas emergentes en Safari y vuelve a tocar Conectar.")); }, 90000);
+  try { FB.login(r => { done = true; clearTimeout(t); ok(r); }, cfg ? {config_id: cfg} : {scope:"ads_management,ads_read,pages_show_list,pages_read_engagement,business_management", return_scopes:true}); } catch(e){ clearTimeout(t); no(e); } }); }
 async function fbConectar(){
-  await fbCargar();
-  const cfg = String(S.config?.metaConfigId || "").trim();
-  const r = await new Promise(ok => FB.login(ok, cfg ? {config_id: cfg} : {scope:"ads_management,ads_read,pages_show_list,pages_read_engagement,business_management", return_scopes:true}));
+  const r = (window.FB && AD.ready) ? await fbLoginSync() : await (async () => { await fbCargar(); return fbLoginSync(); })();
   if (!r || !r.authResponse) throw new Error("No se conectó Facebook");
   AD.token = r.authResponse.accessToken;
   const [me, ac, pg] = await Promise.all([fbApi("/me", "get", {fields:"name"}), fbApi("/me/adaccounts", "get", {fields:"name,account_id,currency,account_status", limit:50}), fbApi("/me/accounts", "get", {fields:"name,id", limit:50})]);
@@ -36,7 +38,7 @@ async function imgBase64(src){ const im = await loadImg(src); const c = document
 
 function anunciosCard(){
   if (role()!=="admin" && !S.me?.anuncios) return "";
-  const id = adsAppId(); const mis = Object.entries(S.anuncios||{}).filter(([,a]) => a.owner===S.uid).sort((a,b) => (b[1].at||0) - (a[1].at||0));
+  const id = adsAppId(); if (id && !AD.ready) fbCargar().catch(e => console.log("fb", e)); const mis = Object.entries(S.anuncios||{}).filter(([,a]) => a.owner===S.uid).sort((a,b) => (b[1].at||0) - (a[1].at||0));
   return `<div class="card"><h2>📣 Anuncios en Meta<span class="note">Facebook · Instagram · Estados de WhatsApp</span></h2>
     ${!id ? (role()==="admin" ? `<p class="note" style="margin-top:-6px">Pega aquí el <b>ID de la app</b> que creaste en developers.facebook.com.</p><div class="row" style="flex-wrap:nowrap"><input class="i" id="ad-appid" inputmode="numeric" placeholder="ID de la app (solo números)"><button class="btn small" id="ad-appid-s">Guardar</button></div>` : `<div class="note">Todavía no está lista la conexión con Meta.</div>`)
     : role()==="admin" && !S.config?.metaConfigId && !AD.token ? `<p class="note" style="margin-top:-6px">ID de la app: <b>${esc(id)}</b>. Falta el <b>ID de configuración</b> del inicio de sesión (Meta → Inicio de sesión con Facebook → Configuraciones).</p><div class="row" style="flex-wrap:nowrap"><input class="i" id="ad-cfgid" inputmode="numeric" placeholder="ID de configuración (solo números)"><button class="btn small" id="ad-cfgid-s">Guardar</button></div><button class="btn small ghost" id="ad-con" style="margin-top:8px">Probar sin configuración</button>`
