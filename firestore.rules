@@ -234,7 +234,7 @@ service cloud.firestore {
          && request.resource.data.n == resource.data.get('n', 0) + 1
          && request.resource.data.last.matches('^' + code + '_[0-9]{10}$')
          && existsAfter(leadPath(request.resource.data.last)) && !exists(leadPath(request.resource.data.last));
-      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref', 'alias', 'visitas', 'ganados', 'avisados']);
+      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref', 'alias', 'regalos', 'visitas', 'ganados', 'avisados']);
       allow delete: if isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid);
     }
 
