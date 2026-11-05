@@ -158,6 +158,11 @@ service cloud.firestore {
              && request.resource.data.up == request.auth.uid
              && socioDoc().get('upline', '') == request.auth.uid
              && request.resource.data.dir == false)
+         // Cambio de grupo del emprendedor: Dirección o su director anterior pasan sus citas al grupo nuevo (solo up, dir y tv, con los valores correctos)
+         || ((isAdmin() || upline()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['up', 'dir', 'tv'])
+             && request.resource.data.get('up', '') == get(memberPath(resource.data.socioId)).data.get('upline', '')
+             && request.resource.data.dir == (get(memberPath(resource.data.socioId)).data.get('tipo', '') != 'Socio distribuidor' && get(memberPath(resource.data.socioId)).data.get('upline', '') == '')
+             && request.resource.data.tv == tvDe(resource.data.socioId))
          // La líder corrige los datos del cliente y escribe en las citas de sus telemarketers
          || (liderDe(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['client', 'phone', 'city', 'address', 'notes', 'chat', 'seen', 'resNote']))
          // Corregir tv (territorio de Dirección) cuando quedó mal: solo se acepta el valor correcto según el socio de la cita
