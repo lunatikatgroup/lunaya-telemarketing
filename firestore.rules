@@ -78,6 +78,9 @@ service cloud.firestore {
              || (isDist() && request.resource.data.role in ['emprendedor', 'tele']
                  && request.resource.data.upline == request.auth.uid));
       allow update: if isAdmin()
+         // Quien invitó corrige los datos mientras no se haya aceptado
+         || ((isLeader() || isDist()) && resource.data.invitedBy == request.auth.uid && resource.data.status == 'enviada'
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'email', 'phone', 'startDate']))
          || (signedIn() && resource.data.status == 'enviada'
              && request.resource.data.status == 'aceptada'
              && request.resource.data.uid == request.auth.uid

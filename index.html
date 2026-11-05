@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611042152"></script>
-<script src="juego.js?v=202611042152"></script>
+<script src="demo.js?v=202611050756"></script>
+<script src="juego.js?v=202611050756"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611042152";
+const APP_VER = "202611050756";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1335,13 +1335,25 @@ function inviteCard(){
       <div><button class="btn" type="submit">Crear invitación</button></div>
     </form>
 
-    ${list.length ? `<div class="tbl-wrap" style="margin-top:12px"><table><thead><tr><th>Persona</th><th>Rol</th>${isAdmin?"<th>Invitó</th>":""}<th>Estado</th><th></th></tr></thead><tbody>${list.map(([id,v])=>`<tr><td><b>${esc(v.name)}</b><div class="note">${esc(v.email||"")}${v.email?" · ":""}código <b>${esc(v.code||"")}</b></div></td><td>${esc(v.role==="admin"?"Dirección":(INV_ROLES[v.role]||""))}</td>${isAdmin?`<td class="note">${esc(memberName(v.invitedBy))}</td>`:""}<td>${v.status==="aceptada"?`<span class="tag tg-good">Ya entró</span>`:`<span class="tag tg-warn">Pendiente</span>`}</td><td>${v.status!=="aceptada"?`<div class="row"><button class="btn small ghost" data-inv-send="${id}">Enviar mensaje</button><button class="btn small ghost" data-inv-del="${id}">Borrar</button></div>`:""}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    ${list.length ? `<div class="tbl-wrap" style="margin-top:12px"><table><thead><tr><th>Persona</th><th>Rol</th>${isAdmin?"<th>Invitó</th>":""}<th>Estado</th><th></th></tr></thead><tbody>${list.map(([id,v])=>`<tr><td><b>${esc(v.name)}</b><div class="note">${esc(v.email||"")}${v.email?" · ":""}código <b>${esc(v.code||"")}</b></div></td><td>${esc(v.role==="admin"?"Dirección":(INV_ROLES[v.role]||""))}</td>${isAdmin?`<td class="note">${esc(memberName(v.invitedBy))}</td>`:""}<td>${v.status==="aceptada"?`<span class="tag tg-good">Ya entró</span>`:`<span class="tag tg-warn">Pendiente</span>`}</td><td>${v.status!=="aceptada"?`<div class="row"><button class="btn small ghost" data-inv-send="${id}">Enviar mensaje</button><button class="btn small ghost" data-inv-edit="${id}">✏️ Editar</button><button class="btn small ghost" data-inv-del="${id}">Borrar</button></div>`:""}</td></tr>`).join("")}</tbody></table></div>` : ""}
   </div>`;
 }
 function inviteLink(v){ return `${APP_URL}#unirme-${v.code}`; }
 function inviteText(v){
   return `Hola ${v.name}, te invito a unirte a Lunaya, el sistema de telemarketing del equipo Lunaya, como ${v.role==="admin"?"parte de la dirección":(INV_ROLES[v.role]||"parte del equipo")}.\n\n1. Abre este enlace: ${inviteLink(v)}\n2. Entra con tu cuenta de Google o crea tu usuario con tu correo.\n\nListo, quedas ${v.genero==="h"?"registrado":v.genero==="m"?"registrada":"registrado(a)"} automáticamente. Si te pide código, es: ${v.code}\n— ${memberName(v.invitedBy)}`;
 }
+/* Corregir una invitación que todavía no se ha aceptado: nombre, correo, WhatsApp y día de inicio */
+function openInviteEdit(id){ const v = S.invites[id]; if (!v) return;
+  openModal(`<h3>Editar invitación</h3><p class="note" style="margin:0">El código de invitación sigue siendo el mismo (${esc(id)}).</p>
+    <div class="grid2"><label class="f">Nombre<input class="i" id="ie-n" value="${esc(v.name||"")}"></label>
+      <label class="f">Correo<input class="i" id="ie-e" type="email" inputmode="email" value="${esc(v.email||"")}"></label>
+      <label class="f">WhatsApp (con código de país)<input class="i" id="ie-p" inputmode="tel" value="${esc(v.phone||"")}"></label>
+      ${v.role==="tele" ? `<label class="f">Día en que empezó a trabajar<input class="i" type="date" id="ie-d" value="${esc(v.startDate||"")}" max="${addDays(today(),14)}"></label>` : ""}</div>
+    <div class="row"><button class="btn" id="ie-s">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#ie-s").onclick = async () => { const name = $("#ie-n").value.trim(), email = $("#ie-e").value.trim().toLowerCase(), phone = $("#ie-p").value.trim();
+      if (!name){ toast("Escribe el nombre"); return; } if (email && !/^\S+@\S+\.\S+$/.test(email)){ toast("Ese correo no se ve bien"); return; }
+      const o = {name, email, phone}; if ($("#ie-d")){ const d = $("#ie-d").value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast("Pon el día en que empezó a trabajar"); return; } o.startDate = d; }
+      try { await S.db.doc("invites/"+id).update(o); Object.assign(S.invites[id], o); closeModal(); toast("Invitación corregida. Si cambiaste el WhatsApp, vuelve a mandarle el mensaje."); render(); } catch(e){ writeErr(e); } }; }); }
 function openInviteMsg(id, data){
   const v = data || S.invites[id]; if (!v) return; const txt = inviteText(v); const ph = digits(v.phone);
   openModal(`<h3>Invitación para ${esc(v.name)}</h3>
@@ -1589,6 +1601,7 @@ function bindCommon(){
     else if (a==="backup-calls") doBackup("calls");
   });
   all("[data-approve]", b => b.onclick = async () => { const k = b.dataset.role; try { await S.db.doc("members/"+b.dataset.approve).update({role: k==="tele"?"tele":"socio", tipo: k==="tele"?"":INV_ROLES[k], upline: k==="emprendedor" ? S.uid : "", approvedAt:Date.now()}); toast("Acceso aprobado"); } catch(e){ writeErr(e); } });
+  all("[data-inv-edit]", b => b.onclick = () => openInviteEdit(b.dataset.invEdit));
   all("[data-inv-send]", b => b.onclick = () => openInviteMsg(b.dataset.invSend));
   all("[data-inv-del]", b => b.onclick = function(){ if (this.dataset.sure){ S.db.doc("invites/"+this.dataset.invDel).delete().then(()=>toast("Invitación borrada"), writeErr); } else { this.dataset.sure="1"; this.textContent="¿Seguro?"; this.classList.add("danger"); } });
   const ir = m.querySelector("#inv-role"); if (ir){ const tog = () => { const pl = m.querySelector("#inv-plan"), ap = m.querySelector("#inv-aporte-w"); if (pl) pl.style.display = ir.value==="tele" ? "" : "none"; const sw = m.querySelector("#inv-start-w"); if (sw) sw.style.display = ir.value==="tele" ? "" : "none"; if (ap) ap.style.display = ir.value==="distribuidor" ? "" : "none"; }; ir.addEventListener("change", tog); tog(); }
