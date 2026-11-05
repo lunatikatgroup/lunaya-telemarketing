@@ -479,6 +479,7 @@ window.ruletaDeCita = ruletaDeCita; window.juegoDeCita = juegoDeCita;
 function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = avanceDe(code); const cli = S.leads[code+"_ref"] || {}; const tel = telOk(cli.tel);
   const ls = refsDe(code).map(([id,l]) => ({...l, _id:id})).sort((x,y)=>(y.at||0)-(x.at||0)); const R = S.leads[code+"_ref"] || {};
   openModal(`<h3>Avance de ${esc(j.ref)}</h3>
+    <details><summary class="note" style="cursor:pointer">✏️ Cambiar nombre o teléfono del cliente</summary><div class="grid2" style="margin-top:8px"><label class="f">Nombre<input class="i" id="av-rn" value="${esc(j.ref||"")}" autocomplete="off"></label><label class="f">Teléfono<input class="i" id="av-rt" value="${esc(telFmt(R.tel||""))}" inputmode="tel" autocomplete="off"></label></div><button class="btn small" id="av-rs" style="margin-top:8px">Guardar</button></details>
     <div class="tiles"><div class="tile"><b>${ls.length}</b><span>Referidos</span><small>${a.amigas} jugaron la ruleta</small></div><div class="tile"><b>${a.visitas}</b><span>Visitas hechas</span></div><div class="tile acc"><b>${a.ganados}</b><span>Regalos ganados</span><small>de ${a.max} · uno cada ${a.m.cada} ${a.m.cuenta==="amigas"?"amigas":"visitas"}</small></div></div>
     ${a.falta?`<p class="note" style="margin:0">Le faltan <b>${a.falta}</b> ${a.m.cuenta==="amigas"?"amigas":"visitas"} para el ${a.ganados?"siguiente ":""}regalo.</p>`:`<div class="banner good">🏆 Llegó a la meta.</div>`}
     <div class="eyebrow">Referidos de ${esc(firstName(j.ref))}</div>
@@ -491,7 +492,12 @@ function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = a
     <label class="f">Mensaje para ${esc(firstName(j.ref))}<textarea class="i" id="av-m" style="min-height:150px">${esc(msgAvance(code))}</textarea></label>
     <div class="row"><a class="btn" id="av-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="av-sms">Mensaje de texto</a><button class="btn ghost" data-close>Cerrar</button></div>
     ${j.by===S.uid || j.socioId===S.uid ? `<button class="btn small ghost" id="av-del" style="justify-self:start">🗑️ Borrar este link y sus prospectos</button>` : ""}`, () => {
-    const q = x => document.getElementById(x); const upd = () => { const t = q("av-m").value; q("av-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(t)}`; q("av-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(t)}`; }; upd(); q("av-m").oninput = upd;
+    const q = x => document.getElementById(x);
+    q("av-rs").onclick = async () => { const nm = q("av-rn").value.trim().slice(0,60), tv = q("av-rt").value.trim(), t = telOk(tv); if (nm.length < 2){ toast("Escribe el nombre"); return; } if (tv && !t){ toast("El teléfono debe tener 10 dígitos"); return; }
+      try { await S.db.doc("juegos/"+code).update({ref:nm}); j.ref = nm;
+        if (S.leads[code+"_ref"]) await S.db.doc("leads/"+code+"_ref").update({name:nm, ref:nm, tel:t||""}).then(() => Object.assign(S.leads[code+"_ref"], {name:nm, ref:nm, tel:t||""})).catch(e => console.log("ref", e));
+        toast("Guardado"); openAvance(code); render(); } catch(e){ writeErr(e); } };
+    const upd = () => { const t = q("av-m").value; q("av-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(t)}`; q("av-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(t)}`; }; upd(); q("av-m").oninput = upd;
     const marcar = () => { if (a.ganados > (j.avisados||0)){ j.avisados = a.ganados; S.db.doc("juegos/"+code).update({avisados:a.ganados}).catch(e => console.log(e)); setTimeout(render, 300); } };
     q("av-wa").addEventListener("click", marcar); q("av-sms").addEventListener("click", marcar);
     document.querySelectorAll("[data-envia]").forEach(x => x.addEventListener("click", () => { S.db.doc("leads/"+x.dataset.envia).update({enviado:Date.now()}).catch(e => console.log(e)); setTimeout(() => openAvance(code), 800); }));
