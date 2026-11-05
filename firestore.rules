@@ -257,7 +257,7 @@ service cloud.firestore {
          && get(juegoPath(request.resource.data.code)).data.get('tv', false) == request.resource.data.tv
          && get(juegoPath(request.resource.data.code)).data.by == request.resource.data.by
          && get(juegoPath(request.resource.data.code)).data.ref == request.resource.data.ref
-         && get(juegoPath(request.resource.data.code)).data.until > request.time.toMillis()
+         && (get(juegoPath(request.resource.data.code)).data.until == 0 || get(juegoPath(request.resource.data.code)).data.until > request.time.toMillis())
          && getAfter(juegoPath(request.resource.data.code)).data.n == get(juegoPath(request.resource.data.code)).data.get('n', 0) + 1;
       // Contactos de la hoja del cliente (los pasa el socio o la telemarketer): quedan con los mismos datos del link
       allow create: if isMember() && request.resource.data.kind == 'hoja' && request.resource.data.status == 'nuevo'

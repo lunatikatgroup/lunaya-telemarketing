@@ -260,7 +260,7 @@ async function startJuego(code, avance){
       <p class="jg-small">Regalo sujeto a disponibilidad en tu zona y a la coordinación con un representante autorizado.</p>`;
     document.getElementById("jg-inv").onclick = async () => {
       const b = document.getElementById("jg-inv"); b.disabled = true;
-      try { if (!saved.child){ const c = newCode() + newCode().slice(0,2); await S.db.doc("juegos/"+c).set({pid:J.pid, ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||""), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, n:0, until:Date.now()+14*864e5, padre:code, refLead:code+"_"+saved.tel, createdAt:Date.now(), kind:"amiga", meta}); saved.child = c; save(); }
+      try { if (!saved.child){ const c = newCode() + newCode().slice(0,2); await S.db.doc("juegos/"+c).set({pid:J.pid, ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||""), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, n:0, until:(J.until===0 ? 0 : Date.now()+14*864e5), padre:code, refLead:code+"_"+saved.tel, createdAt:Date.now(), kind:"amiga", meta}); saved.child = c; save(); }
         const msg = fillMsg(P.msg || defMsg(tipo), {link:jgLink(saved.child)});
         if (navigator.share) { try { await navigator.share({text:msg}); } catch {} } else location.href = "https://wa.me/?text="+encodeURIComponent(msg);
         showDone();
@@ -398,7 +398,7 @@ function openPrograma(pid, copia){
       <div class="row" style="margin-top:8px;justify-content:space-between"><button class="btn small ghost" id="pg-add">+ Agregar regalo</button><span class="note" id="pg-tot"></span></div>
       <p class="note" style="margin:4px 0 0">Pon 0% al regalo que quieres que se vea pero que nunca salga.</p></div>
     <label class="f">Cada regalo se gana por<select class="i" id="pg-cuenta"><option value="visitas" ${P.meta.cuenta!=="amigas"?"selected":""}>Visitas hechas a sus referidos (demostración)</option><option value="amigas" ${P.meta.cuenta==="amigas"?"selected":""}>Amigas que juegan la ruleta</option></select></label>
-    <div class="grid2"><label class="f">Meta de referidos<input class="i" type="number" min="1" id="pg-refs" value="${P.meta.refs}"></label><label class="f">Un regalo cada<input class="i" type="number" min="1" id="pg-cada" value="${P.meta.cada}"></label><label class="f">Días que dura cada link<input class="i" type="number" min="1" max="60" id="pg-dias" value="${P.dias||7}"></label></div>
+    <div class="grid2"><label class="f">Meta de referidos<input class="i" type="number" min="1" id="pg-refs" value="${P.meta.refs}"></label><label class="f">Un regalo cada<input class="i" type="number" min="1" id="pg-cada" value="${P.meta.cada}"></label><label class="f">Días que dura cada link<input class="i" type="number" min="0" max="60" id="pg-dias" value="${P.dias===0?0:(P.dias||7)}"><span class="note">0 = sin vencimiento (ilimitado)</span></label></div>
     <label class="f">Mensaje que el cliente manda a sus amigas ({link} es donde va el link)<textarea class="i" id="pg-msg" style="min-height:160px">${esc(P.msg || defMsg(P.tipo))}</textarea></label>
     <div><div class="eyebrow" style="margin-bottom:6px">Diseño</div>
       <div class="opts">${Object.entries(TEMAS).map(([k,t])=>`<button class="opt ${(P.tema||"oro")===k?"on":""}" data-tema="${k}" style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;flex:none;background:linear-gradient(135deg,${t.g[0]},${t.g[1]} 50%,${t.bg[2]});border:2px solid ${t.ink}"></span>${t.n}</button>`).join("")}</div></div>
@@ -432,7 +432,7 @@ function openPrograma(pid, copia){
       if (!P.name){ toast("Ponle un nombre al programa"); return; } if (prizes.length < 2){ toast("Pon al menos 2 regalos con nombre"); return; }
       if (!prizes.some(p => p.w > 0)) prizes.forEach(p => p.w = 1);
       const msg = q("pg-msg").value.trim(); if (!msg.includes("{link}")){ toast("El mensaje necesita {link} para poner el link"); return; }
-      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4), cuenta:q("pg-cuenta").value}, dias:Math.min(60,Math.max(1,+q("pg-dias").value||7)), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), fondo: P.fondo || "", createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
+      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4), cuenta:q("pg-cuenta").value}, dias:(q("pg-dias").value.trim()==="0" ? 0 : Math.min(60,Math.max(1,+q("pg-dias").value||7))), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), fondo: P.fondo || "", createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
       if (JSON.stringify(doc).length > 900000){ toast("Las fotos pesan mucho. Quita alguna e intenta de nuevo."); return; }
       q("pg-save").disabled = true;
       try { if (pid) await S.db.doc("programs/"+pid).set(doc); else await S.db.collection("programs").add(doc); closeModal(); toast("Programa guardado"); } catch(e){ q("pg-save").disabled = false; writeErr(e); }
@@ -444,7 +444,7 @@ function openPrograma(pid, copia){
 function socioOpts(sel){ const r = role(); const l = r==="tele" ? sociosPara(S.me ? {...S.me, id:S.uid} : null) : r==="admin" ? [{id:S.uid, name:S.me?.name||"Yo"}, ...socios().filter(s=>s.id!==S.uid && S.members[s.id]?.upline===S.uid)] : [{id:S.uid, name:S.me?.name||"Yo"}];
   return l.map(s => `<option value="${s.id}" ${s.id===sel?"selected":""}>${s.id===S.uid?"Yo ("+esc(s.name)+")":esc(s.name)}</option>`).join(""); }
 function juegoBase(sid, pid){ const sm = S.members[sid] || {}; const p = S.programs[pid] || {};
-  return {pid, socioId:sid, up: sm.upline || "", tv: S.members[pagadorDe(sid)]?.role==="admin", by:S.uid, n:0, until: Date.now() + (p.dias||7)*864e5, createdAt:Date.now(), meta:p.meta||{refs:14,cada:4}}; }
+  return {pid, socioId:sid, up: sm.upline || "", tv: S.members[pagadorDe(sid)]?.role==="admin", by:S.uid, n:0, until: p.dias===0 ? 0 : Date.now() + (p.dias||7)*864e5, createdAt:Date.now(), meta:p.meta||{refs:14,cada:4}}; }
 function progSel(id){ const l = misProgramas(); return `<label class="f">Programa<select class="i" id="${id}">${l.map(([pid,p])=>`<option value="${pid}">${p.tipo==="caja"?"🎁":"🎡"} ${esc(p.name)}${p.owner!==S.uid?(esDir(p.owner)?" · Lunaya (listo para usar)":" · de "+esc(firstName(memberName(p.owner)))):""}</option>`).join("")}</select></label>`; }
 
 function openInscribir(){
@@ -486,14 +486,17 @@ function openEditLink(code){ const j = S.juegos[code]; if (!j) return; const R =
     <label class="f">Nombre que sale en la ruleta y en la imagen<input class="i" id="el-a" value="${esc(j.alias||"")}" placeholder="${esc(j.ref||"")}" autocomplete="off"><span class="note">Vacío = sale el nombre del cliente. Si no quiere que salga, escribe otro o marca la casilla.</span></label>
     <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="el-o" ${j.alias==="Tu amiga"?"checked":""}> No mostrar su nombre (sale "Tu amiga")</label>
     <label class="f">Notas<textarea class="i" id="el-no">${esc(R.notas||"")}</textarea></label>
-    ${j.kind!=="amiga" ? `<label class="f">Válido hasta<input class="i" type="date" id="el-u" value="${hasta}" max="${new Date(Date.now()+60*864e5).toISOString().slice(0,10)}"></label>` : ""}
+    ${j.kind!=="amiga" ? `<label class="f">Válido hasta<input class="i" type="date" id="el-u" value="${hasta}" max="${new Date(Date.now()+60*864e5).toISOString().slice(0,10)}" ${j.until?"":"disabled"}></label>
+    <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="el-ui" ${j.until?"":"checked"}> Sin vencimiento (ilimitado)</label>` : ""}
     <div class="row"><button class="btn" id="el-s">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     const q = x => document.getElementById(x);
+    if (q("el-ui")) q("el-ui").onchange = () => { q("el-u").disabled = q("el-ui").checked; if (!q("el-ui").checked && !q("el-u").value) q("el-u").value = new Date(Date.now()+30*864e5).toISOString().slice(0,10); };
     q("el-o").onchange = () => { if (q("el-o").checked) q("el-a").value = "Tu amiga"; else if (q("el-a").value==="Tu amiga") q("el-a").value = ""; };
     q("el-s").onclick = async () => { const nm = q("el-n").value.trim().slice(0,60), tv = q("el-t").value.trim(), t = telOk(tv);
       if (nm.length < 2){ toast("Escribe el nombre"); return; } if (tv && !t){ toast("El teléfono debe tener 10 dígitos"); return; }
       const al = q("el-o").checked ? "Tu amiga" : q("el-a").value.trim().slice(0,60); const o = {ref:nm, alias:al};
-      if (q("el-u") && q("el-u").value){ const u = new Date(q("el-u").value+"T23:59:00").getTime(); if (u !== j.until) o.until = u; }
+      if (q("el-ui") && q("el-ui").checked){ if (j.until) o.until = 0; }
+      else if (q("el-u") && q("el-u").value){ const u = new Date(q("el-u").value+"T23:59:00").getTime(); if (u !== j.until) o.until = u; }
       q("el-s").disabled = true;
       try { await S.db.doc("juegos/"+code).update(o); Object.assign(j, o);
         const lr = {name:nm, ref:nm, tel:t||"", dir:q("el-d").value.trim().slice(0,120), ciudad:q("el-c").value.trim().slice(0,60), notas:q("el-no").value.trim().slice(0,500)};
