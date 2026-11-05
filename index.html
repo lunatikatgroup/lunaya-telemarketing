@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Lunaya TM">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#e8dcc6">
+<script>try{var t=localStorage.getItem("ly-tema");if(t&&t!=="crema"){document.documentElement.setAttribute("data-apptema",t);document.documentElement.setAttribute("data-theme",{negro:"dark",azul:"dark",verde:"dark"}[t]||"light");}}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Manrope:wght@400;500;600;700;800&family=Great+Vibes&display=swap" rel="stylesheet">
 <style>
@@ -31,6 +32,16 @@
 :root[data-theme="dark"]{
   --bg:#262624; --card:#30302e; --ink:#f3f1ea; --muted:#a8a69c; --line:#43423e; --soft:#3a3936;
   --accent-soft:#4a3329; --deep:#e8e4d6; --good:#8cc79a; --good-bg:#2c3a2e; --warn:#e6b46a; --warn-bg:#40331f; --bad:#f09a86; --bad-bg:#45291f; color-scheme:dark;}
+
+/* Colores de la app (cada persona escoge el suyo en Mi perfil) */
+:root[data-apptema="negro"]{--bg:#0e0e0e;--card:#1a1a1a;--ink:#f4ecd8;--muted:#b3a98f;--line:#3a3325;--soft:#25211a;--accent:#c9a24a;--accent-ink:#141414;--accent-soft:#3a3018;--deep:#ecdcb0;--good:#8cc79a;--good-bg:#1f2e22;--warn:#e6b46a;--warn-bg:#3a2e18;--bad:#f09a86;--bad-bg:#3f241c;color-scheme:dark}
+:root[data-apptema="blanco"]{--bg:#f6f3ec;--card:#ffffff;--ink:#1d1b16;--muted:#6b665b;--line:#e6dfcf;--soft:#f3eee3;--accent:#a8843a;--accent-ink:#ffffff;--accent-soft:#f1e8d2;--deep:#3d3929;--good:#3f7d4e;--good-bg:#e5efe2;--warn:#a3651a;--warn-bg:#f8ecd6;--bad:#b4442f;--bad-bg:#f7e1db;color-scheme:light}
+:root[data-apptema="azul"]{--bg:#0f1b2d;--card:#172640;--ink:#eef2f8;--muted:#a7b4c8;--line:#2a3a55;--soft:#1d2e4a;--accent:#d4af5a;--accent-ink:#0f1b2d;--accent-soft:#33405a;--deep:#e9dcb8;--good:#8cc79a;--good-bg:#1f3330;--warn:#e6b46a;--warn-bg:#3a3424;--bad:#f09a86;--bad-bg:#43292a;color-scheme:dark}
+:root[data-apptema="rosa"]{--bg:#f4e6e8;--card:#fffafa;--ink:#2a1f22;--muted:#7a6468;--line:#ecd3d8;--soft:#f8eef0;--accent:#b4566f;--accent-ink:#ffffff;--accent-soft:#f3dbe1;--deep:#4a2c35;--good:#3f7d4e;--good-bg:#e5efe2;--warn:#a3651a;--warn-bg:#f8ecd6;--bad:#b4442f;--bad-bg:#f7e1db;color-scheme:light}
+:root[data-apptema="verde"]{--bg:#0e2720;--card:#15342a;--ink:#eef5f0;--muted:#a8c0b4;--line:#24493a;--soft:#1b3f32;--accent:#d1aa55;--accent-ink:#0e2720;--accent-soft:#2d4634;--deep:#e6dab5;--good:#9fd4ab;--good-bg:#1e3a2a;--warn:#e6b46a;--warn-bg:#3a3420;--bad:#f09a86;--bad-bg:#43292a;color-scheme:dark}
+:root[data-apptema="negro"] .msg,:root[data-apptema="azul"] .msg,:root[data-apptema="verde"] .msg{background:var(--soft)}
+:root[data-apptema="negro"] .chip.on,:root[data-apptema="negro"] .opt.on,:root[data-apptema="azul"] .chip.on,:root[data-apptema="azul"] .opt.on,:root[data-apptema="verde"] .chip.on,:root[data-apptema="verde"] .opt.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.temas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.temas button{border:2px solid var(--line);border-radius:12px;padding:8px 6px;background:var(--card);cursor:pointer;display:grid;justify-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--ink)}.temas button.on{border-color:var(--accent)}.temas i{display:block;width:44px;height:26px;border-radius:8px}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
@@ -156,12 +167,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611051238"></script>
-<script src="juego.js?v=202611051238"></script>
+<script src="demo.js?v=202611051245"></script>
+<script src="juego.js?v=202611051245"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611051238";
+const APP_VER = "202611051245";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -731,6 +742,11 @@ function commissions(r, up=""){
    no se redibuja la pantalla hasta que suelte el campo: así no se borra lo que estaba escribiendo. */
 ["input","change","click","keydown","submit"].forEach(ev => document.addEventListener(ev, () => { S.userAct = Date.now(); }, true));
 document.addEventListener("focusout", () => { if (!S.pendingRender) return; setTimeout(() => { const ae = document.activeElement; if (S.pendingRender && !(ae && $("#main")?.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))){ S.pendingRender = false; render(); } }, 400); }, true);
+const TEMAS_APP = [["crema","Crema","#e8dcc6","#d97757"],["negro","Negro y dorado","#111111","#c9a24a"],["blanco","Blanco y dorado","#ffffff","#a8843a"],["azul","Azul y dorado","#0f1b2d","#d4af5a"],["verde","Verde y dorado","#0e2720","#d1aa55"],["rosa","Rosa","#f4e6e8","#b4566f"]];
+const temaApp = () => { try { return localStorage.getItem("ly-tema") || "crema"; } catch { return "crema"; } };
+function setTemaApp(t){ try { localStorage.setItem("ly-tema", t); } catch {} const h = document.documentElement;
+  if (t==="crema"){ h.removeAttribute("data-apptema"); h.removeAttribute("data-theme"); } else { h.setAttribute("data-apptema", t); h.setAttribute("data-theme", ["negro","azul","verde"].includes(t) ? "dark" : "light"); }
+  const bg = (TEMAS_APP.find(x => x[0]===t)||[])[2]; const m = document.querySelector('meta[name="theme-color"]'); if (m && bg) m.setAttribute("content", bg); }
 function render(){
   if (S.publicGame) return;
   { const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && $("#main")?.contains(ae) && Date.now() - (S.userAct||0) > 200){ S.pendingRender = true; return; } }
@@ -1555,9 +1571,12 @@ function openProfile(){
       <div class="row" style="justify-content:center"><label class="btn small" style="cursor:pointer">${photo?"Cambiar foto":"Elegir foto"}<input type="file" id="pf-file" accept="image/*" hidden></label>${photo?`<button class="btn small ghost" id="pf-rm">Quitar foto</button>`:""}</div>
     </div>
     <div class="grid2"><label class="f">Nombre<input class="i" id="pf-name" value="${esc(m.name||"")}"></label><label class="f">Teléfono / WhatsApp<input class="i" id="pf-phone" inputmode="tel" value="${esc(m.phone||"")}"></label><label class="f">Correo de contacto<input class="i" id="pf-email" type="email" inputmode="email" value="${esc(m.email||"")}"></label><label class="f" style="grid-column:1/-1">Calendario de Google para mis citas (opcional)<input class="i" id="pf-gcal" value="${esc(m.gcalId||"")}" placeholder="Ej: abc123@group.calendar.google.com"><span class="note">Si lo pones, el botón 📅 guarda las citas directo en ese calendario (por ejemplo "Citas Lunaya").</span></label></div>
+    <div class="eyebrow">Colores de la app</div><div class="temas">${TEMAS_APP.map(([k,l,a,b]) => `<button type="button" data-apptema="${k}" class="${temaApp()===k?"on":""}"><i style="background:linear-gradient(135deg,${a} 55%,${b} 55%)"></i>${l}</button>`).join("")}</div>
+    <p class="note" style="margin:0">Solo cambia cómo la ves tú en este teléfono.</p>
     <p class="note" style="margin:0">Entras con: <b>${esc(S.email)}</b> · versión ${APP_VER}</p>
     <div class="row"><button class="btn" id="pf-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button><button class="btn small ghost" id="pf-out" style="margin-left:auto">Cerrar sesión</button></div>`, () => {
     $("#pf-out").onclick = () => { closeModal(); S.auth.signOut(); };
+    document.querySelectorAll(".temas [data-apptema]").forEach(b => b.onclick = () => { setTemaApp(b.dataset.apptema); document.querySelectorAll(".temas [data-apptema]").forEach(x => x.classList.toggle("on", x===b)); });
     const cv = $("#pf-cv"), ctx = cv.getContext("2d");
     const draw = () => { ctx.clearRect(0,0,OUT,OUT);
       if (crop){ const {img} = crop; const base = OUT / Math.min(img.width, img.height); const sc = base * crop.z; const w = img.width*sc, h = img.height*sc;
