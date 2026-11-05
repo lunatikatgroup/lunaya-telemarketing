@@ -183,8 +183,12 @@ async function startJuego(code, avance){
   const mb = document.createElement("button"); mb.className = "jg-mute"; mb.setAttribute("aria-label", "Música"); const paintMb = () => mb.textContent = jgMuted() ? "🔇" : "🎵"; paintMb();
   mb.onclick = e => { e.stopPropagation(); try { localStorage.setItem("ly-jg-mute", jgMuted() ? "0" : "1"); } catch {} paintMb(); if (jgMuted()) musicStop(); else musicStart(); }; document.body.appendChild(mb);
   const box = document.getElementById("jg"); code = String(code).toUpperCase().replace(/[^A-Z0-9]/g,"");
-  let J, P; try { const js = await S.db.doc("juegos/"+code).get(); if (!js.exists) throw 0; J = js.data(); const ps = await S.db.doc("programs/"+J.pid).get(); if (!ps.exists) throw 0; P = ps.data(); }
-  catch { box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
+  let J, P; const padreQ = String(new URLSearchParams(location.search).get("p")||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  const leer = async c => { for (let k = 0; k < 3; k++){ try { const js = await S.db.doc("juegos/"+c).get(); if (!js.exists) return {no:true}; const jd = js.data(); const ps = await S.db.doc("programs/"+jd.pid).get(); if (!ps.exists) return {no:true}; return {J:jd, P:ps.data()}; } catch(e){ console.log("juego", e); await new Promise(r => setTimeout(r, 1200*(k+1))); } } return {red:true}; };
+  let rr = await leer(code); if (rr.no && padreQ && padreQ !== code){ const r2 = await leer(padreQ); if (r2.J){ rr = r2; code = padreQ; } }
+  if (rr.red){ box.innerHTML = `<div class="jg-h">No se pudo cargar</div><p class="jg-p">Revisa tu conexión a internet y vuelve a intentar.</p><button class="jg-btn" onclick="location.reload()">Reintentar</button>`; return; }
+  if (!rr.J){ box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
+  J = rr.J; P = rr.P;
   const key = "ly-jg-" + code; let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
   const save = () => { try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const T = setTema(P.tema), TX = txtDe(P);
@@ -270,14 +274,28 @@ async function startJuego(code, avance){
         <button class="jg-btn alt" id="jg-inv">Invitar a mis amigas por WhatsApp</button>
         ${mine?`<a class="jg-btn sec" style="text-decoration:none;display:block" href="${jgLink(mine)}&a=1">Ver cuántas amigas llevo</a>`:""}</div>
       <p class="jg-small">Regalo sujeto a disponibilidad en tu zona y a la coordinación con un representante autorizado.</p>`;
+    /* El link de ella se crea y se comprueba enseguida (no al tocar el botón), y se prepara la imagen con el QR:
+       así, al tocar "Invitar", se comparte al instante el link correcto con la foto (el iPhone no deja compartir si se espera mucho). */
+    const linkDe = c => jgLink(c) + (c !== code ? "&p=" + code : "");
+    const preparar = async () => { try {
+        if (saved.child){ const ok = await S.db.doc("juegos/"+saved.child).get().then(d => d.exists, () => true); if (!ok){ saved.child = null; save(); } }
+        if (!saved.child && saved.tel){ const c = newCode() + newCode().slice(0,2);
+          await S.db.doc("juegos/"+c).set({pid:J.pid, ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||""), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, n:0, until:(J.until===0 ? 0 : Date.now()+14*864e5), padre:code, refLead:code+"_"+saved.tel, createdAt:Date.now(), kind:"amiga", meta});
+          const ok = await S.db.doc("juegos/"+c).get().then(d => d.exists, () => false); if (ok){ saved.child = c; save(); } }
+      } catch(e){ console.log("hija", e); }
+      const c = saved.child || code; const jj = saved.child ? {ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||"")} : J;
+      try { const blob = await promoImg(jj, P, linkDe(c)); S.jgFile = {c, file: new File([blob], "regalo.png", {type:"image/png"})}; } catch(e){ console.log("img", e); }
+      return c; };
+    const listo = preparar();
     document.getElementById("jg-inv").onclick = async () => {
-      const b = document.getElementById("jg-inv"); b.disabled = true;
-      try { if (!saved.child){ const c = newCode() + newCode().slice(0,2); await S.db.doc("juegos/"+c).set({pid:J.pid, ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||""), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, n:0, until:(J.until===0 ? 0 : Date.now()+14*864e5), padre:code, refLead:code+"_"+saved.tel, createdAt:Date.now(), kind:"amiga", meta}); saved.child = c; save(); }
-        const msg = fillMsg(P.msg || defMsg(tipo), {link:jgLink(saved.child)});
-        if (navigator.share) { try { await navigator.share({text:msg}); } catch {} } else location.href = "https://wa.me/?text="+encodeURIComponent(msg);
-        showDone();
-      } catch(e){ console.log(e); b.disabled = false; location.href = "https://wa.me/?text="+encodeURIComponent(fillMsg(P.msg || defMsg(tipo), {link:jgLink(code)})); }
+      const b = document.getElementById("jg-inv"); const c = saved.child || code; const msg = fillMsg(P.msg || defMsg(tipo), {link:linkDe(c)});
+      const f = S.jgFile && S.jgFile.c === c ? S.jgFile.file : null;
+      try {
+        if (navigator.share){ const d = f && navigator.canShare && navigator.canShare({files:[f]}) ? {files:[f], text:msg} : {text:msg}; await navigator.share(d); }
+        else location.href = "https://wa.me/?text="+encodeURIComponent(msg);
+      } catch(e){ if (e && e.name === "AbortError") return; try { await navigator.share({text:msg}); } catch { location.href = "https://wa.me/?text="+encodeURIComponent(msg); } }
     };
+    listo.then(c => { if (c !== code && !mine) showDone(); });
   }
   function showAvance(){
     const vis = meta.cuenta !== "amigas"; const n = vis ? (J.visitas||0) : (J.n||0), cada = meta.cada||4, tot = meta.refs||14, ganados = Math.min(Math.floor(n/cada), Math.floor(tot/cada)), falta = n >= tot ? 0 : cada - (n % cada);
