@@ -18,7 +18,8 @@ function fbApi(path, method, params){ return new Promise((ok, no) => {
   FB.api(path, method || "get", p, r => { if (!r || r.error) { const e = r?.error || {}; AD.log.push(`${path}: ${e.message||"error"}`); no(Object.assign(new Error(e.error_user_msg || e.message || "Error de Meta"), {meta:e})); } else ok(r); }); }); }
 async function fbConectar(){
   await fbCargar();
-  const r = await new Promise(ok => FB.login(ok, {scope:"ads_management,ads_read,pages_show_list,pages_read_engagement,business_management", return_scopes:true}));
+  const cfg = String(S.config?.metaConfigId || "").trim();
+  const r = await new Promise(ok => FB.login(ok, cfg ? {config_id: cfg} : {scope:"ads_management,ads_read,pages_show_list,pages_read_engagement,business_management", return_scopes:true}));
   if (!r || !r.authResponse) throw new Error("No se conectó Facebook");
   AD.token = r.authResponse.accessToken;
   const [me, ac, pg] = await Promise.all([fbApi("/me", "get", {fields:"name"}), fbApi("/me/adaccounts", "get", {fields:"name,account_id,currency,account_status", limit:50}), fbApi("/me/accounts", "get", {fields:"name,id", limit:50})]);
@@ -34,6 +35,7 @@ function anunciosCard(){
   const id = adsAppId(); const mis = Object.entries(S.anuncios||{}).filter(([,a]) => a.owner===S.uid).sort((a,b) => (b[1].at||0) - (a[1].at||0));
   return `<div class="card"><h2>📣 Anuncios en Meta<span class="note">Facebook · Instagram · Estados de WhatsApp</span></h2>
     ${!id ? (role()==="admin" ? `<p class="note" style="margin-top:-6px">Pega aquí el <b>ID de la app</b> que creaste en developers.facebook.com.</p><div class="row" style="flex-wrap:nowrap"><input class="i" id="ad-appid" inputmode="numeric" placeholder="ID de la app (solo números)"><button class="btn small" id="ad-appid-s">Guardar</button></div>` : `<div class="note">Todavía no está lista la conexión con Meta.</div>`)
+    : role()==="admin" && !S.config?.metaConfigId && !AD.token ? `<p class="note" style="margin-top:-6px">ID de la app: <b>${esc(id)}</b>. Falta el <b>ID de configuración</b> del inicio de sesión (Meta → Inicio de sesión con Facebook → Configuraciones).</p><div class="row" style="flex-wrap:nowrap"><input class="i" id="ad-cfgid" inputmode="numeric" placeholder="ID de configuración (solo números)"><button class="btn small" id="ad-cfgid-s">Guardar</button></div><button class="btn small ghost" id="ad-con" style="margin-top:8px">Probar sin configuración</button>`
     : AD.token ? `<p class="note" style="margin-top:-6px">Conectada como <b>${esc(AD.user?.name||"")}</b>. Los anuncios salen de <b>tu</b> cuenta de anuncios y se cobran a <b>tu</b> tarjeta en Meta.</p><button class="btn" id="ad-new">➕ Nuevo anuncio</button>`
     : `<p class="note" style="margin-top:-6px">Conecta tu Facebook para crear anuncios con tu página y tu cuenta de anuncios. Lunaya no guarda tu contraseña ni tu tarjeta.</p><button class="btn" id="ad-con">Conectar mi Facebook</button>`}
     ${mis.length ? `<div class="list" style="margin-top:10px">${mis.slice(0,20).map(([k,a]) => `<div class="item" style="cursor:default;display:grid;gap:4px"><div class="row" style="justify-content:space-between"><b>${esc(a.nombre)}</b><span class="tag ${a.estado==="ACTIVE"?"tg-good":a.estado==="PAUSED"?"tg-warn":"tg-mute"}">${a.estado==="ACTIVE"?"Activo":a.estado==="PAUSED"?"En pausa":esc(a.estado||"")}</span></div>
@@ -45,6 +47,7 @@ const prospDe = code => Object.values(S.leads||{}).filter(l => (l.kind==="jugado
 
 function bindAnuncios(m){ const q = x => m.querySelector(x);
   if (q("#ad-appid-s")) q("#ad-appid-s").onclick = async () => { const v = q("#ad-appid").value.replace(/\D/g,""); if (v.length < 10){ toast("Ese ID no se ve bien: son solo números"); return; } try { await S.db.doc("config/main").set({...S.config, metaAppId:v}); toast("Guardado"); } catch(e){ writeErr(e); } };
+  if (q("#ad-cfgid-s")) q("#ad-cfgid-s").onclick = async () => { const v = q("#ad-cfgid").value.replace(/\D/g,""); if (v.length < 8){ toast("Ese ID no se ve bien: son solo números"); return; } try { await S.db.doc("config/main").set({...S.config, metaConfigId:v}); toast("Guardado"); } catch(e){ writeErr(e); } };
   if (q("#ad-con")) q("#ad-con").onclick = async () => { const b = q("#ad-con"); b.disabled = true; b.textContent = "Conectando…";
     try { await fbConectar(); if (!AD.cuentas.length) toast("Tu Facebook no tiene cuentas de anuncios activas"); else if (!AD.paginas.length) toast("Tu Facebook no administra ninguna página"); render(); }
     catch(e){ console.log(e); toast(e.message || "No se pudo conectar"); b.disabled = false; b.textContent = "Conectar mi Facebook"; } };
