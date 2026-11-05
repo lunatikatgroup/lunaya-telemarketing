@@ -280,6 +280,14 @@ service cloud.firestore {
       allow delete: if lv() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid || isAdmin());
     }
 
+    // Pagos de los distribuidores a Lunaya: el distribuidor marca que pagó, Dirección lo confirma
+    match /pagosdist/{id} {
+      allow read: if isAdmin() || (isMember() && resource.data.payer == request.auth.uid);
+      allow create: if isMember() && request.resource.data.payer == request.auth.uid && id.matches('^' + request.auth.uid + '_.*')
+         && request.resource.data.ok == false;
+      allow update, delete: if isAdmin();
+    }
+
     match /config/{id} {
       allow read: if isMember();
       allow write: if isAdmin();

@@ -152,12 +152,12 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611041845"></script>
-<script src="juego.js?v=202611041845"></script>
+<script src="demo.js?v=202611041852"></script>
+<script src="juego.js?v=202611041852"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611041845";
+const APP_VER = "202611041852";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -202,10 +202,14 @@ function range(p){
   const t = today();
   if (p==="hoy") return [laToMs(t,"00:00"), laToMs(addDays(t,1),"00:00")];
   if (p==="semana"){ const mo = mondayOf(t); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
+  if (p==="quin" || p==="quinant"){ const m1 = t.slice(0,8)+"01", m16 = t.slice(0,8)+"16", prim = t < m16;
+    const cur = prim ? [m1, m16] : [m16, addMonths(m1,1)]; const ant = prim ? [addMonths(m1,-1).slice(0,8)+"16", m1] : [m1, m16];
+    const [a,b] = p==="quin" ? cur : ant; return [laToMs(a,"00:00"), laToMs(b,"00:00")]; }
   if (p==="mesant"){ const f = addMonths(t.slice(0,8)+"01",-1); return [laToMs(f,"00:00"), laToMs(t.slice(0,8)+"01","00:00")]; }
   const f = t.slice(0,8)+"01"; return [laToMs(f,"00:00"), laToMs(addMonths(f,1),"00:00")];
 }
-const PLABEL = {hoy:"Hoy", semana:"Esta semana", mes:"Este mes", mesant:"Mes anterior"};
+const PLABEL = {hoy:"Hoy", semana:"Esta semana", quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"};
+const rangoTxt = p => { const [a,b] = range(p); return `${fmt(a,{day:"numeric",month:"short"})} al ${fmt(b-1,{day:"numeric",month:"short"})}`; };
 const money = n => "$" + (Math.round((n||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2});
 const pctN = (a,b) => b ? Math.round(a*100/b) : null;
 function pctHtml(a,b,good=50,mid=30){ const p = pctN(a,b); if (p===null) return `<span class="note">—</span>`; return `<span class="${p>=good?"pct-good":p>=mid?"pct-mid":"pct-low"}">${p}%</span>`; }
@@ -350,6 +354,8 @@ function subscribeAll(){
   privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; (S.privLoaded = S.privLoaded||{})[f] = true; mergeAppts(); render(); }, e => console.log(e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
+  { const q = (S.isOwner || S.me?.role==="admin") ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
+    S.unsub.push(q.onSnapshot(s => { S.pagosDist = {}; s.docs.forEach(d => S.pagosDist[d.id] = d.data()); render(); }, e => console.log("pagosdist", e))); }
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
   else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
   if (S.me?.role === "socio" && S.me?.tipo === "Socio distribuidor"){
@@ -663,6 +669,22 @@ function aportes(r){ const c = com(); const out = {};
   return out; }
 /* % que paga cada distribuidor por las ventas de telemarketing: el suyo si Dirección se lo puso, o el general */
 const aporteDe = uid => { const m = S.members[uid] || {}; return (m.aporte ?? "") === "" ? (+com().distPct||0) : +m.aporte; };
+/* Pagarle a Lunaya: monto del periodo y los datos para transferir (Zelle con el celular, Venmo, Cash App) */
+const pagoKey = (payer, p) => `${payer}_${laDate(range(p)[0])}_${laDate(range(p)[1]-1)}`;
+function pagarCard(payer, p){ const o = aportes(range(p))[payer]; const monto = Math.round((o?.monto||0)*100)/100; const pg = S.config.pago || {}; const k = pagoKey(payer, p); const hecho = (S.pagosDist||{})[k];
+  if (!monto) return `<div class="card"><h2>Pagar a Lunaya<span class="note">${rangoTxt(p)}</span></h2><div class="empty">No hay comisión por pagar en este periodo.</div></div>`;
+  const nota = `Comisión telemarketing ${rangoTxt(p)} · ${memberName(payer)}`;
+  const tel = String(pg.zelle||"").replace(/\D/g,"").slice(-10);
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>Pagar a Lunaya<span class="note">${rangoTxt(p)}</span></h2>
+    <div class="tiles"><div class="tile acc"><b>${money(monto)}</b><span>Te toca pagar</span><small>${o.ventas} venta(s) · ${aporteDe(payer)}%</small></div></div>
+    ${hecho ? `<div class="banner good">✅ Marcaste que pagaste ${money(hecho.monto)} el ${fmt(hecho.at,{day:"numeric",month:"short"})}${hecho.ok?" · Katerine lo confirmó":" · falta que Katerine lo confirme"}.</div>` : ""}
+    ${tel ? `<div class="eyebrow" style="margin-top:8px">Zelle (transferencia por celular)</div><p style="margin:4px 0"><b>${telFmt2(tel)}</b>${pg.nombre?` · ${esc(pg.nombre)}`:""}</p>
+      <div class="row"><button class="btn small" data-copy="${tel}">📋 Copiar número</button><button class="btn small ghost" data-copy="${monto}">📋 Copiar monto</button><button class="btn small ghost" data-copy="${esc(nota)}">📋 Copiar nota</button></div>
+      <p class="note">Abre la app de tu banco → Zelle → pega el número y el monto.</p>` : ""}
+    <div class="row">${pg.venmo ? `<a class="btn small ghost" target="_blank" rel="noopener" href="https://venmo.com/${encodeURIComponent(String(pg.venmo).replace(/^@/,""))}?txn=pay&amount=${monto}&note=${encodeURIComponent(nota)}">Venmo</a>` : ""}${pg.cashapp ? `<a class="btn small ghost" target="_blank" rel="noopener" href="https://cash.app/$${encodeURIComponent(String(pg.cashapp).replace(/^\$/,""))}/${monto}">Cash App</a>` : ""}</div>
+    ${!tel && !pg.venmo && !pg.cashapp ? `<p class="note">Katerine todavía no puso sus datos de pago.</p>` : ""}
+    ${hecho ? "" : `<button class="btn" data-yapague="${p}" style="margin-top:8px">✅ Ya pagué ${money(monto)}</button>`}</div>`; }
+const telFmt2 = d => d.length===10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d;
 function aporteCard(payer, p){ const o = aportes(range(p))[payer]; const pm = S.members[payer]||{}; const dist = pm.tipo===DIST;
   const H = aportes(range("hoy"))[payer], W = aportes(range("semana"))[payer];
   return `<div class="card"><h2>Comisión telemarketing<span class="note">${PLABEL[p]}</span></h2>
@@ -675,7 +697,7 @@ function aporteDetalle(p){ const ap = aportes(range(p)); const rows = Object.val
   if (!rows.length) return "";
   const nom = a => a._priv && a.client ? a.client : (a.nomVenta || "(nombre pendiente)");
   return `<div class="card"><h2>Ventas aprobadas por distribuidor<span class="note">${PLABEL[p]}</span></h2><p class="note" style="margin-top:-6px">Para la nómina: cada venta de telemarketing por la que te paga cada distribuidor. Solo se ve el nombre del cliente y el monto. Si sale "nombre pendiente", se llena solo cuando el distribuidor o la telemarketer abran la app.</p>
-    ${rows.map(x => `<details style="margin-top:8px" open><summary style="cursor:pointer"><b>${esc(memberName(x.payer))}</b> · ${x.ventas} venta(s) · ${money(x.vol)} · <b>te paga ${money(x.monto)}</b> (${aporteDe(x.payer)}%)</summary>
+    ${rows.map(x => `<details style="margin-top:8px" open><summary style="cursor:pointer"><b>${esc(memberName(x.payer))}</b> · ${x.ventas} venta(s) · ${money(x.vol)} · <b>te paga ${money(x.monto)}</b> (${aporteDe(x.payer)}%) ${(() => { const k = pagoKey(x.payer, p), pd = (S.pagosDist||{})[k]; return pd ? (pd.ok ? `<span class="tag tg-good">✅ pagado ${money(pd.monto)}</span>` : `<span class="tag tg-warn">dice que pagó ${money(pd.monto)} · ${fmt(pd.at,{day:"numeric",month:"short"})}</span> <button class="btn small" data-pagook="${k}">Confirmar recibido</button>`) : `<span class="tag tg-mute">sin pagar</span>`; })()}</summary>
       <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Emprendedor</th><th>Telemarketer</th><th class="n">Venta</th><th class="n">Comisión</th></tr></thead><tbody>${x.rows.sort((a,b) => a.a.when - b.a.when).map(r => `<tr><td class="note">${fmt(r.a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nom(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td>${esc(memberName(r.a.teleId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`).join("")}
     <button class="btn small ghost" id="ap-csv" style="margin-top:10px">⬇️ Descargar para la nómina</button></div>`; }
 function aporteCsv(p){ const ap = aportes(range(p)); const L = [["Distribuidor","Fecha","Cliente","Emprendedor","Telemarketer","Venta","Porcentaje","Comisión"]];
@@ -1223,12 +1245,12 @@ function openAppt(id){
 
 /* ===== PAGOS (directora) ===== */
 function viewPagos(){
-  const p = ["semana","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
+  const p = ["semana","quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
   const sales = Object.entries(S.appts).filter(([,a]) => a.sale && inR(a.when||0, rg)).sort((a,b)=>a[1].when-b[1].when);
   const live = sales.filter(([,a]) => (a.saleStatus||"pendiente")!=="cancelada");
   const total = live.reduce((s,[,a])=>s+(+a.amount||0),0);
   const aprob = sales.filter(([,a]) => a.saleStatus==="aprobada"); const tAprob = aprob.reduce((s,[,a])=>s+(+a.amount||0),0);
-  let h = `<div class="card"><h2>Ventas del territorio ${periodChips(["semana","mes","mesant"])}</h2><div class="tiles"><div class="tile"><b>${live.length}</b><span>Cantidad de ventas</span><small>${sales.length-live.length} canceladas</small></div><div class="tile"><b>${aprob.length}</b><span>Ventas aprobadas</span><small>${money(tAprob)}</small></div><div class="tile"><b>${live.length-aprob.length}</b><span>Pendientes de aprobación</span></div><div class="tile acc"><b>${money(total)}</b><span>Volumen de ventas</span><small>sin canceladas</small></div></div></div>`;
+  let h = `<div class="card"><h2>Ventas del territorio ${periodChips(["semana","quin","quinant","mes","mesant"])}</h2><div class="tiles"><div class="tile"><b>${live.length}</b><span>Cantidad de ventas</span><small>${sales.length-live.length} canceladas</small></div><div class="tile"><b>${aprob.length}</b><span>Ventas aprobadas</span><small>${money(tAprob)}</small></div><div class="tile"><b>${live.length-aprob.length}</b><span>Pendientes de aprobación</span></div><div class="tile acc"><b>${money(total)}</b><span>Volumen de ventas</span><small>sin canceladas</small></div></div></div>`;
   h += `<div class="card"><h2>Detalle de ventas</h2>${sales.length?`<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th>Telemarketer</th><th>Estado</th><th class="n">Monto</th></tr></thead><tbody>${sales.map(([id,a])=>{ const st=a.saleStatus||"pendiente"; return `<tr data-appt="${id}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(cName(a))}</b>${a.city?`<div class="note">${esc(a.city)}</div>`:""}</td><td>${esc(memberName(a.socioId))}</td><td>${esc(memberName(a.teleId))}</td><td><span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">${SALE_ST[st]}</span></td><td class="n">${money(a.amount)}</td></tr>`; }).join("")}<tr class="total"><td colspan="5">Total sin canceladas</td><td class="n">${money(total)}</td></tr></tbody></table></div><p class="note">Toca una venta para marcarla como aprobada o cancelada.</p>`:`<div class="empty">No hay ventas registradas en este periodo.</div>`}</div>`;
   const ss = socios().map(s => { const e = teleEval(null, rg, s.id); return {s, e}; });
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
@@ -1348,8 +1370,9 @@ function viewGrupo(){
 }
 /* ===== PAGOS del distribuidor: lo que aporta a telemarketing, lo que paga a sus emprendedores y a sus telemarketers ===== */
 function viewPagosDist(){
-  const p = S.f.period==="mesant" ? "mesant" : "mes";
-  let h = `<div class="card"><h2>Mis pagos ${periodChips(["mes","mesant"])}</h2><p class="note" style="margin-top:-6px">Lo que te toca pagar en el periodo, calculado solo sobre ventas aprobadas.</p></div>`;
+  const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "quinant";
+  let h = `<div class="card"><h2>Mis pagos ${periodChips(["quin","quinant","mes","mesant"])}</h2><p class="note" style="margin-top:-6px">Lo que te toca pagar en el periodo, calculado solo sobre ventas aprobadas.</p></div>`;
+  h += pagarCard(S.uid, p);
   h += aporteCard(S.uid, p);
   h += empPagosCard(S.uid, p);
   if (grupoDe(S.uid).some(m => m.role==="tele")) h += comCard(p, S.uid);
@@ -1374,6 +1397,11 @@ function viewEquipo(){
     <label class="f">% extra de la líder sobre todo el equipo<input class="i" type="number" min="0" step="0.1" id="k-lider" value="${c.liderPct}"></label>
     <label class="f">% que aporta cada distribuidor al programa de telemarketing<input class="i" type="number" min="0" step="0.5" id="k-dist" value="${c.distPct}"></label></div>
     <div class="row" style="margin-top:10px"><button class="btn small" data-act="comision">Guardar comisiones</button></div></div>`;
+  const pg = S.config.pago || {};
+  h += `<div class="card"><h2>Cómo te pagan los distribuidores</h2><p class="note" style="margin-top:-6px">Les sale en Pagos con el monto de la quincena, listo para copiar.</p><div class="grid2">
+    <label class="f">Tu celular de Zelle<input class="i" id="pg-z" inputmode="tel" value="${esc(pg.zelle||"")}"></label><label class="f">Nombre que sale en Zelle<input class="i" id="pg-n" value="${esc(pg.nombre||"")}" placeholder="Ej.: Lunatikat Group LLC"></label>
+    <label class="f">Venmo (opcional)<input class="i" id="pg-v" value="${esc(pg.venmo||"")}" placeholder="@usuario"></label><label class="f">Cash App (opcional)<input class="i" id="pg-c" value="${esc(pg.cashapp||"")}" placeholder="$usuario"></label></div>
+    <div class="row" style="margin-top:10px"><button class="btn small" data-act="pago">Guardar</button></div></div>`;
   h += `<div class="card"><h2>Metas y fuentes</h2><div class="grid2"><label class="f">Llamadas por día<input class="i" type="number" min="1" id="m-l" value="${+S.config.metaLlamadas||80}"></label><label class="f">Citas por semana (mínimo)<input class="i" type="number" min="1" id="m-cs" value="${metaSem()}"></label><label class="f">Citas por día<input class="i" type="number" min="1" id="m-c" value="${+S.config.metaCitas||4}"></label></div>
     <label class="f" style="margin-top:10px">Fuentes (separadas por coma)<input class="i" id="m-src" value="${esc(sources().join(", "))}"></label>
     <div class="row" style="margin-top:10px"><button class="btn small" data-act="metas">Guardar</button></div></div>`;
@@ -1527,6 +1555,7 @@ function bindCommon(){
   all("[data-act]", b => b.onclick = async () => { const a = b.dataset.act;
     if (a==="world") setWorld("");
     else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
+    else if (a==="pago"){ try { await S.db.doc("config/main").set({...S.config, pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
     else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0, distPct:+$("#k-dist").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
     else if (a==="embudo"){ const e = {}; document.querySelectorAll("[data-emb]").forEach(x => e[x.dataset.emb] = Math.max(0, +x.value||0)); try { await S.db.doc("config/main").set({...S.config, embudo:e}); toast("Meta del embudo guardada"); } catch(err){ writeErr(err); } }
     else if (a==="export") doExport("mes");
@@ -1556,6 +1585,11 @@ function bindCommon(){
     try { await S.db.doc("members/"+did).update({teleNo:[...cur]}); toast(c.checked ? `${memberName(tid)} ya tiene acceso` : `${memberName(tid)} ya no tiene acceso`); } catch(e){ c.checked = !c.checked; writeErr(e); } });
   bindRefTipo(m);
   const apc = m.querySelector("#ap-csv"); if (apc) apc.onclick = () => aporteCsv(["semana","mes","mesant"].includes(S.f.period) ? S.f.period : "mes");
+  all("[data-copy]", b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); toast("Copiado"); } catch { toast(b.dataset.copy); } });
+  all("[data-yapague]", b => b.onclick = async () => { const p = b.dataset.yapague; const o = aportes(range(p))[S.uid]; const monto = Math.round((o?.monto||0)*100)/100;
+    if (!b.dataset.sure){ b.dataset.sure = 1; b.textContent = `Toca otra vez para confirmar que pagaste ${money(monto)}`; return; }
+    try { await S.db.doc("pagosdist/"+pagoKey(S.uid, p)).set({payer:S.uid, monto, desde:laDate(range(p)[0]), hasta:laDate(range(p)[1]-1), at:Date.now(), ok:false}); toast("Listo, le avisamos a Katerine"); } catch(e){ writeErr(e); } });
+  all("[data-pagook]", b => b.onclick = () => S.db.doc("pagosdist/"+b.dataset.pagook).update({ok:true, okAt:Date.now()}).then(() => toast("Pago confirmado"), writeErr));
   all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
