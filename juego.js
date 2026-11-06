@@ -325,7 +325,7 @@ async function startJuego(code, avance){
         <div id="tr-r" style="width:56px;height:56px;margin:0 auto;border-radius:12px;background:#fff;border:3px solid #e2bb4f;display:grid;place-items:center;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.15)">${p.img?`<img src="${p.img}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:32px">🎁</span>`}</div></div>
       <div id="tr-shot" style="position:absolute;left:50%;bottom:62px;font-size:26px;transform:translateX(-50%);opacity:0">⭐</div>
       <div id="tr-msg" style="position:absolute;left:0;right:0;top:48%;text-align:center;font:800 26px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .2s;text-shadow:0 2px 0 #fff"></div>
-      <div style="position:absolute;left:10px;bottom:6px;font-size:40px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))">🧺</div>
+      <div style="position:absolute;left:4px;bottom:0;font-size:72px;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))">🧺</div>
       <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:46px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">🪄</div></div>
       <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${esc(p.n)}: dale al regalo y cae en tu canasta.</p>`; }
   function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"), bird = document.getElementById("tr-b"); if (!cont) return; const i = saved.pend;
@@ -341,7 +341,7 @@ async function startJuego(code, avance){
         if (Math.abs(gc - cx) <= 32){ fin = true; msg("¡LE DISTE! 🎉", "#1f7a3a"); jgFanfare && jgFanfare(); const r = document.getElementById("tr-r"), cu = document.getElementById("tr-cu");
           const rr = r.getBoundingClientRect(), cr = cont.getBoundingClientRect(); const box2 = r.cloneNode(true); box2.style.cssText += `;position:absolute;left:${rr.left-cr.left}px;top:${rr.top-cr.top}px;margin:0;z-index:5`; cont.append(box2); r.style.visibility = "hidden"; cu.style.visibility = "hidden";
           g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x + dir*160}px,${y-160}px)`}], {duration:900, easing:"ease-in", fill:"forwards"});
-          box2.animate([{transform:"translate(0,0) rotate(0)"},{transform:`translate(${14+20-(rr.left-cr.left)}px,${H-60-(rr.top-cr.top)}px) rotate(540deg) scale(.7)`}], {duration:900, easing:"cubic-bezier(.5,0,.9,.6)", fill:"forwards"});
+          box2.animate([{transform:"translate(0,0) rotate(0)"},{transform:`translate(${4+36-28-(rr.left-cr.left)}px,${H-84-(rr.top-cr.top)}px) rotate(540deg) scale(.75)`}], {duration:900, easing:"cubic-bezier(.5,0,.9,.6)", fill:"forwards"});
           saved.quiz = `Tiro: le dio ${intentos===1?"al primer intento":"en el intento "+intentos}`; save(); setTimeout(() => won(i), 1100); }
         else { msg(["¡Uy, casi!","¡Fallaste!","¡Otra vez!"][intentos%3], "#b3261e"); vel = Math.max(210, vel*0.93);
           document.getElementById("tr-int").textContent = `Intento ${intentos}. ¡Sigue intentando, tú puedes!`; setTimeout(() => busy = false, 350); } }, F); };
