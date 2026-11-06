@@ -368,7 +368,8 @@ async function startJuego(code, avance){
         <div id="pn-p" style="position:absolute;left:-55px;top:100px;width:110px;text-align:center;font-size:96px;line-height:1">🪅</div></div>
       <div id="pn-msg" style="position:absolute;left:0;right:0;top:56%;text-align:center;font:900 30px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .15s;text-shadow:0 2px 0 #fff"></div>
       <div id="pn-hits" style="position:absolute;right:10px;bottom:10px;font:800 15px Manrope,sans-serif;color:#14213d;background:#fff;border-radius:99px;padding:6px 10px">Golpes: 0 / 3</div>
-      <div id="pn-palo" style="position:absolute;left:50%;bottom:-6px;width:12px;height:150px;margin-left:-6px;border-radius:8px;background:linear-gradient(90deg,#c48a3a,#e6b066,#a8742c);transform-origin:50% 100%;transform:rotate(28deg)"></div></div>
+      <div id="pn-palo" style="position:absolute;left:50%;bottom:-6px;width:14px;height:260px;margin-left:-7px;border-radius:8px;background:linear-gradient(90deg,#c48a3a,#e6b066,#a8742c);transform-origin:50% 100%;transform:rotate(32deg);box-shadow:0 2px 6px rgba(0,0,0,.25)"></div>
+      <div id="pn-pow" style="position:absolute;left:50%;top:0;font-size:46px;transform:translate(-50%,-50%) scale(0);pointer-events:none;transition:transform .12s">💥</div></div>
       <button class="jg-btn go" id="pn-go">¡DALE! 🪅</button><p class="jg-small" style="margin-top:0" id="pn-int">Toca cuando la piñata pase por el centro. Con 3 golpes se rompe.</p>`; }
   function bindPinata(){ const cont = document.getElementById("pn"), arm = document.getElementById("pn-arm"), pin = document.getElementById("pn-p"), palo = document.getElementById("pn-palo"); if (!cont) return; const i = saved.pend;
     let ang = 0, t0 = performance.now(), w = 2.6, A = 42, golpes = 0, busy = false, fin = false, fase = 0, last = t0;
@@ -377,9 +378,13 @@ async function startJuego(code, avance){
     const dulces = (n, desde) => { const r = cont.getBoundingClientRect(); for (let k = 0; k < n; k++){ const d = document.createElement("div"); d.textContent = ["🍬","🍭","🍫","🎊","⭐","🍬"][k%6];
         d.style.cssText = `position:absolute;left:${desde.x}px;top:${desde.y}px;font-size:${20+Math.random()*14}px;--dx:${(Math.random()-.5)*260}px;--r:${(Math.random()-.5)*720}deg;animation:pnfall ${0.9+Math.random()*0.7}s cubic-bezier(.3,-.4,.8,.6) forwards;pointer-events:none`; cont.append(d); setTimeout(() => d.remove(), 1800); } };
     const pos = () => { const r = pin.getBoundingClientRect(), c = cont.getBoundingClientRect(); return {x:r.left-c.left+r.width/2, y:r.top-c.top+r.height/2}; };
-    const pegar = () => { if (busy || fin) return; busy = true; jgCtx(); palo.animate([{transform:"rotate(28deg)"},{transform:"rotate(-8deg)"},{transform:"rotate(28deg)"}], {duration:260, easing:"ease-out"});
-      setTimeout(() => { const p = pos(), cx = cont.clientWidth/2;
-        if (Math.abs(p.x - cx) <= 38){ golpes++; jgTick(160,.5,.08); document.getElementById("pn-hits").textContent = `Golpes: ${golpes} / 3`; pin.animate([{transform:"rotate(0) scale(1)"},{transform:"rotate(-18deg) scale(1.12)"},{transform:"rotate(12deg) scale(.95)"},{transform:"rotate(0) scale(1)"}], {duration:350});
+    /* el palo mide lo justo para llegar a la piñata cuando pasa por el centro */
+    const ajustarPalo = () => { const p = pos(); palo.style.height = Math.max(160, cont.clientHeight - p.y + 6) + "px"; }; setTimeout(ajustarPalo, 60);
+    const pow = document.getElementById("pn-pow");
+    const pegar = () => { if (busy || fin) return; busy = true; jgCtx(); const p0 = pos(), cx = cont.clientWidth/2, pega = Math.abs(p0.x - cx) <= 52; /* se decide en el momento del toque */
+      palo.animate([{transform:"rotate(32deg)"},{transform:"rotate(0deg)", offset:.45},{transform:"rotate(0deg)", offset:.6},{transform:"rotate(32deg)"}], {duration:320, easing:"ease-out"});
+      setTimeout(() => { const p = pega ? pos() : p0;
+        if (pega){ pow.style.top = p.y + "px"; pow.style.left = cx + "px"; pow.style.transform = "translate(-50%,-50%) scale(1)"; setTimeout(() => pow.style.transform = "translate(-50%,-50%) scale(0)", 220); golpes++; jgTick(160,.5,.08); document.getElementById("pn-hits").textContent = `Golpes: ${golpes} / 3`; pin.animate([{transform:"rotate(0) scale(1)"},{transform:"rotate(-18deg) scale(1.12)"},{transform:"rotate(12deg) scale(.95)"},{transform:"rotate(0) scale(1)"}], {duration:350});
           if (golpes >= 3){ fin = true; msg("¡SE ROMPIÓ! 🎉", "#1f7a3a"); pin.animate([{transform:"scale(1)", opacity:1},{transform:"scale(1.6)", opacity:0}], {duration:450, fill:"forwards"}); dulces(26, p); confetti(); jgFanfare && jgFanfare();
             setTimeout(() => won(i), 1300); return; }
           msg(["¡PUM! 💥","¡ZAS! 💥"][golpes-1] || "¡PUM!", "#d14b00"); dulces(5, p); w *= 1.15; setTimeout(() => busy = false, 280); }
