@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611051542"></script>
-<script src="anuncios.js?v=202611051542"></script>
-<script src="juego.js?v=202611051542"></script>
+<script src="demo.js?v=202611051720"></script>
+<script src="anuncios.js?v=202611051720"></script>
+<script src="juego.js?v=202611051720"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611051542";
+const APP_VER = "202611051720";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1210,7 +1210,9 @@ const famOf = m => !m ? "" : (m.tipo===DIST || m.role==="admin") ? m.id : (m.upl
 function canTransfer(a){ return a._priv && (a.socioId===S.uid || role()==="admin" || (isDist() && S.members[a.socioId]?.upline===S.uid)); }
 /* Se le puede pasar una cita a cualquier socio; si es emprendedor de otro patrocinador, ese patrocinador tiene que aprobarlo */
 function transferTargets(a){ return socios().filter(m => m.id!==a.socioId && m.role!=="baja"); }
-const sponsorDe = to => { const m = S.members[to] || {}; return esEmp(m) && m.upline && m.upline!==S.uid ? m.upline : ""; };
+/* La dirección (Katerine) y Andrés Mantilla pasan citas a cualquier emprendedor sin pedir permiso; los demás distribuidores sí piden aprobación al patrocinador */
+const sinPermisoTransf = () => role()==="admin" || /andr[eé]s\s+mantilla/i.test(S.me?.name || memberName(S.uid) || "");
+const sponsorDe = to => { const m = S.members[to] || {}; return !sinPermisoTransf() && esEmp(m) && m.upline && m.upline!==S.uid ? m.upline : ""; };
 function pedirTransfer(id, to){ return S.db.doc("appts/"+id).update({transferReq:{to, by:S.uid, sponsor:sponsorDe(to), at:Date.now()}}); }
 /* Lo que espera aprobación de este patrocinador */
 const transfPorAprobar = () => Object.entries(S.appts||{}).filter(([,a]) => a.transferReq && a.transferReq.sponsor===S.uid && !a.transferReq.ok && !a.transferReq.rej);
@@ -1262,7 +1264,7 @@ function openAppt(id){
     ${liderAcc ? `<div class="eyebrow">📞 Telemarketer de esta cita</div><div class="grid2"><select class="i" id="lc-sel">${telesLunaya().map(t=>`<option value="${t.id}" ${a.teleId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select><div style="align-self:end"><button class="btn small ghost" id="lc-save">Cambiar telemarketer</button></div></div>` : ""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
     ${a.transferReq && !a.transferReq.rej ? `<div class="banner warn">⏳ Esperando que <b>${esc(memberName(a.transferReq.sponsor))}</b> apruebe pasar esta cita a ${esc(memberName(a.transferReq.to))}.${a.transferReq.by===S.uid?` <button class="btn small ghost" data-tclr="${id}">Cancelar</button>`:""}</div>` : ""}
-    ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div><p class="note" style="margin:0 0 6px">Si es emprendedor de otro patrocinador, su patrocinador tiene que aprobarlo.</p><div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
+    ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div>${sinPermisoTransf() ? "" : `<p class="note" style="margin:0 0 6px">Si es emprendedor de otro patrocinador, su patrocinador tiene que aprobarlo.</p>`}<div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
     ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a._priv && a.status==="agendada" && r==="tele" && (a.teleId===S.uid || a.agendo===S.uid) ? (() => { const sc = S.members[a.socioId]?.gcalId || ""; return `<a class="btn dark" href="${esc(gcalUrl(a, sc))}" target="_blank" rel="noopener">📅 Agregar al calendario de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">${sc ? `Se abre directo en el calendario de citas de ${esc(memberName(a.socioId))}: solo toca <b>Guardar</b> y le aparece en su TimeTree.` : `${esc(memberName(a.socioId))} todavía no puso su calendario de citas en su perfil. Al abrirse, elige su calendario en la lista y guarda.`} Funciona si ${esc(memberName(a.socioId))} te compartió ese calendario con permiso para <b>hacer cambios</b>.</p>`; })() : ""}
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
     ${(() => { if (!a._priv || !window.avanceDe) return ""; const ln = Object.values(S.leads||{}).find(l => l.apptId===id && (l.kind==="jugador" || l.kind==="hoja"));
