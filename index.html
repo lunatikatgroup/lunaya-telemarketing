@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611061311"></script>
-<script src="anuncios.js?v=202611061311"></script>
-<script src="juego.js?v=202611061311"></script>
+<script src="demo.js?v=202611061342"></script>
+<script src="anuncios.js?v=202611061342"></script>
+<script src="juego.js?v=202611061342"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611061311";
+const APP_VER = "202611061342";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -518,7 +518,7 @@ const enBaseTxt = sid => { const l = enBase(sid); return l.length ? `<div class=
 /* ===== Métricas ===== */
 function teleEval(teleId, r, socioId){
   const calls = allCalls().filter(c => inR(c.at, r) && (!teleId || c.teleId===teleId) && (!socioId || c.socioId===socioId));
-  const ap = Object.values(S.appts).filter(a => (!teleId || a.teleId===teleId) && (!socioId || a.socioId===socioId));
+  const ap = Object.values(S.appts).filter(a => a.tipoVisita!=="servicio" && (!teleId || a.teleId===teleId) && (!socioId || a.socioId===socioId));
   const agendadas = ap.filter(a => inR(a.createdAt||0, r));
   const held = ap.filter(a => inR(a.when||0, r) && a.when <= Date.now() && a.status !== "cancelada");
   const conRes = held.filter(a => a.status !== "agendada");
@@ -1037,7 +1037,7 @@ function origenDe(a){ const t = S.members[a.teleId]; if (a.teleCredit || a.orige
 function dadorDe(a){ const o = origenDe(a); return o==="tm" ? a.teleId : o==="asig" ? (a.transferredFrom && a.transferredFrom!==a.socioId ? a.transferredFrom : (a.agendo||a.teleId)) : a.socioId; }
 function origenTxt(a){ const o = origenDe(a); return o==="tm" ? `📞 Telemarketing · ${memberName(a.teleId)}` : o==="asig" ? `🤝 Asignada por ${memberName(dadorDe(a))}` : "🙋 Propia"; }
 function socioEval(id, r){
-  const ap = Object.values(S.appts).filter(a => a.socioId===id && inR(a.when||0, r));
+  const ap = Object.values(S.appts).filter(a => a.socioId===id && a.tipoVisita!=="servicio" && inR(a.when||0, r));
   const past = ap.filter(a => a.when <= Date.now());
   const demos = past.filter(a => a.status==="hecha"), noHizo = past.filter(a => a.status==="no_se_hizo"), canc = past.filter(a => a.status==="cancelada"), sinRes = past.filter(a => a.status==="agendada");
   const sales = demos.filter(a => a.sale), ventas = sales.filter(a => (a.saleStatus||"pendiente")!=="cancelada"), aprob = sales.filter(a => a.saleStatus==="aprobada");
@@ -1154,7 +1154,7 @@ async function sumarAlPrograma(code, tel, name, apptId){ const j = S.juegos?.[co
     toast(`Le suma al 4 en 14 de ${firstName2(j.ref)} cuando la demo quede hecha`); } catch(e){ console.log("programa", e); toast("La cita se guardó, pero no se pudo sumar al programa del cliente"); } }
 function openCitaForm(src, own, pre){
   const tomorrow = addDays(today(),1); const socio = own ? S.uid : S.world;
-  openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>${creditSel(S.uid,"")}` : `<p class="note" style="margin:0">Hora de San Diego.</p><label class="f">¿De dónde salió la cita?<select class="i" id="c-src">${[...new Set([src, ...sources()])].filter(Boolean).map(x=>`<option ${x===src?"selected":""}>${esc(x)}</option>`).join("")}</select></label>`}
+  openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3><label class="f">Tipo de visita<select class="i" id="c-tv"><option value="">🍳 Demostración (para vender)</option><option value="servicio">🛠️ Servicio a un cliente</option></select></label>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>${creditSel(S.uid,"")}` : `<p class="note" style="margin:0">Hora de San Diego.</p><label class="f">¿De dónde salió la cita?<select class="i" id="c-src">${[...new Set([src, ...sources()])].filter(Boolean).map(x=>`<option ${x===src?"selected":""}>${esc(x)}</option>`).join("")}</select></label>`}
     <label class="f">¿Quién la refirió? (el cliente del 4 en 14, de la ruleta o del cuaderno)<input class="i" id="c-refby" list="c-refby-l" placeholder="Ej.: María López · opcional" autocomplete="off"><datalist id="c-refby-l">${refByNames(socio).map(n => `<option value="${esc(n)}">`).join("")}</datalist><span class="note">Así se va contando cuántas citas, demos y ventas salen de cada cliente.</span></label>
     ${progsCli(socio).length ? `<label class="f">¿Le suma al 4 en 14 de algún cliente?<select class="i" id="c-prog"><option value="">No / no es de un programa</option>${progsCli(socio).map(([c,j]) => `<option value="${c}">${esc(j.ref||"Cliente")} · ${avanceTxt(c)}</option>`).join("")}</select><span class="note">Aunque no haya jugado la ruleta: cuando la demo quede hecha, cuenta como visita para el regalo de ese cliente.</span></label>` : ""}
     <div class="grid2">
@@ -1168,6 +1168,10 @@ function openCitaForm(src, own, pre){
       <label class="f" style="grid-column:1/-1">${own?"Notas":"Notas para el socio"}<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
     </div>
     <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    /* Servicio: solo la agenda (sin fuente, sin referido, sin 4 en 14) */
+    const tvSync = () => { const serv = $("#c-tv").value==="servicio"; ["c-src","c-cred","c-refby","c-prog"].forEach(k => { const e = document.getElementById(k); const f = e && e.closest(".f"); if (f) f.style.display = serv ? "none" : ""; });
+      document.querySelector("#modal h3").textContent = serv ? "Nueva visita de servicio" : (own ? "Nueva cita propia" : "Nueva cita para "+memberName(S.world)); $("#c-save").textContent = serv ? "Guardar servicio" : "Guardar cita"; };
+    $("#c-tv").onchange = tvSync;
     if (pre){ $("#c-name").value = pre.name||""; $("#c-phone").value = pre.phone||""; $("#c-notes").value = pre.notes||""; if (pre.refBy) $("#c-refby").value = pre.refBy; if (pre.code && $("#c-prog")) $("#c-prog").value = pre.code; }
     const cp = $("#c-prog"); if (cp){ cp.onchange = () => { const j = S.juegos?.[cp.value]; if (j && !$("#c-refby").value.trim()) $("#c-refby").value = j.ref || ""; };
       $("#c-refby").onchange = () => { if (cp.value) return; const v = $("#c-refby").value.trim().toLowerCase(); const m = progsCli(socio).find(([,j]) => String(j.ref||"").trim().toLowerCase()===v); if (m) cp.value = m[0]; }; }
@@ -1175,12 +1179,12 @@ function openCitaForm(src, own, pre){
     $("#c-save").onclick = async () => {
       const name = $("#c-name").value.trim(), d = $("#c-date").value, t = timeVal("c-time");
       if (!name || !d || !t){ toast("Falta el nombre, la fecha o la hora"); return; }
-      const pcode = $("#c-prog") ? $("#c-prog").value : ""; const ptel = String($("#c-phone").value).replace(/\D/g,"").slice(-10);
+      const pcode = $("#c-prog") && !($("#c-tv") && $("#c-tv").value==="servicio") ? $("#c-prog").value : ""; const ptel = String($("#c-phone").value).replace(/\D/g,"").slice(-10);
       if (pcode && !/^[2-9]\d{9}$/.test(ptel)){ toast("Para sumarle al 4 en 14 pon el teléfono completo (10 dígitos)"); return; }
       const at = Date.now(); $("#c-save").disabled = true;
       try {
-        const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if ($("#c-src")) src = $("#c-src").value; const refBy = $("#c-refby").value.trim().slice(0,80); const cred = own && $("#c-cred") ? $("#c-cred").value : "";
-        const pub = {when:laToMs(d,t), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at};
+        const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if ($("#c-src")) src = $("#c-src").value; const servV = $("#c-tv") && $("#c-tv").value==="servicio"; const refBy = servV ? "" : $("#c-refby").value.trim().slice(0,80); const cred = !servV && own && $("#c-cred") ? $("#c-cred").value : ""; if (servV) src = "Servicio";
+        const pub = {when:laToMs(d,t), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at, ...($("#c-tv") && $("#c-tv").value==="servicio" ? {tipoVisita:"servicio"} : {})};
         const priv = {client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(), ...(refBy?{refBy}:{}),
           socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", tv: S.members[pagadorDe(socio)]?.role==="admin", createdAt:at};
         /* Se guardan juntas: o quedan las dos partes o ninguna (así nunca queda una cita sin los datos del cliente) */
@@ -1188,7 +1192,7 @@ function openCitaForm(src, own, pre){
         histAdd(socio, priv.phone, name, histEntry({...pub, id:ref.id}, {note:priv.notes}), [S.uid]);
         if (pre && pre.onSaved) pre.onSaved(ref.id);
         if (pcode) sumarAlPrograma(pcode, ptel, name, ref.id);
-        if (!own) await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
+        if (!own && !servV) await logCall({at, teleId:S.uid, socioId:S.world, source:src, result:"cita"});
         closeModal(); toast("Cita guardada"); S.flash = "cita"; setTimeout(() => { if (S.appts[ref.id]) openAppt(ref.id); }, 400); setTimeout(()=>{ S.flash=null; render(); }, 600);
       } catch(e){ $("#c-save").disabled = false; writeErr(e); }
     };
@@ -1242,8 +1246,8 @@ function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
   if (role()==="tele" && a.teleId!==S.uid && a.agendo!==S.uid && !a._priv) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de ${esc(memberName(a.agendo||a.teleId))} con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
-  const est = estadoDe(a);
-  return `<button class="appt ${a.status}" data-appt="${id}" ${est?`style="border-left-color:#1d4ed8;background:linear-gradient(90deg,rgba(29,78,216,.10),transparent 60%)"`:""}><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))} ${estTag(a)}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
+  const est = estadoDe(a), serv = a.tipoVisita==="servicio";
+  return `<button class="appt ${a.status}" data-appt="${id}" ${serv?`style="border-left-color:#0f766e;background:linear-gradient(90deg,rgba(15,118,110,.13),transparent 65%)"`:est?`style="border-left-color:#1d4ed8;background:linear-gradient(90deg,rgba(29,78,216,.10),transparent 60%)"`:""}><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))} ${serv?`<span class="tag" style="background:#0f766e;color:#fff">🛠️ Servicio</span>`:""}${estTag(a)}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
 }
 /* Territorio: resumen por socio o por telemarketer (hoy, semana, mes) */
 function terrResumen(){
