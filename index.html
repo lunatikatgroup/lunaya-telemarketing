@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611061253"></script>
-<script src="anuncios.js?v=202611061253"></script>
-<script src="juego.js?v=202611061253"></script>
+<script src="demo.js?v=202611061307"></script>
+<script src="anuncios.js?v=202611061307"></script>
+<script src="juego.js?v=202611061307"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611061253";
+const APP_VER = "202611061307";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -288,7 +288,7 @@ function writeErr(e){
   else if (e && e.code === "resource-exhausted") toast("La app llegó al límite diario del plan gratis. Se libera mañana; avísale a Katerine.");
   else toast("No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
 }
-function logCall(call){
+function logCall(call){ try { if (role()==="tele" && call && call.socioId) S.db.doc("presencia/"+S.uid).set({socio:call.socioId, at:Date.now(), name:S.me?.name||""}).catch(()=>{}); } catch {}
   const date = laDate(call.at); const id = `${date}_${S.uid}`;
   return chain("log:"+id, async () => { const d = S.logs[id] || {}; await S.db.doc("calllog/"+id).set({...d, date, teleId:S.uid, calls:[...(d.calls||[]), call]}); });
 }
@@ -508,10 +508,11 @@ function marcarPresencia(){ if (role()!=="tele" || !S.db || !S.uid) return; clea
   put(); if (S.world) presT = setInterval(put, 60e3); }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && role()==="tele") marcarPresencia(); });
 /* Tarjeta "En vivo": todas las telemarketers que están llamando ahora y en qué base */
-function enVivoCard(){ const act = Object.entries(S.presencia||{}).filter(([u,p]) => p.socio && Date.now() - (p.at||0) < 3*60e3 && S.members[u]?.role==="tele").sort((a,b) => memberName(a[0]).localeCompare(memberName(b[0])));
+const PRES_MS = 60*60e3;
+function enVivoCard(){ const act = Object.entries(S.presencia||{}).filter(([u,p]) => p.socio && Date.now() - (p.at||0) < PRES_MS && S.members[u]?.role==="tele").sort((a,b) => memberName(a[0]).localeCompare(memberName(b[0])));
   if (role()==="tele" && S.world && !act.some(([u]) => u===S.uid)) act.unshift([S.uid, {socio:S.world, at:Date.now()}]);
-  return `<div class="card" style="border:2px solid var(--good,#2e7d4f)"><h2>🟢 Llamando ahora<span class="note">${act.length} en línea</span></h2>${act.length ? `<div class="list">${act.map(([u,p]) => `<div class="item" style="cursor:default"><div><div class="t nm-av">${av(u,26)}${u===S.uid?"Tú":esc(memberName(u))}</div><div class="m">en la base de <b>${esc(memberName(p.socio))}</b></div></div></div>`).join("")}</div>` : `<div class="empty">Nadie está llamando en este momento. Cuando una telemarketer entra a la base de un socio, sale aquí.</div>`}</div>`; }
-const enBase = sid => Object.entries(S.presencia||{}).filter(([u,p]) => p.socio===sid && u!==S.uid && Date.now() - (p.at||0) < 3*60e3 && S.members[u]?.role==="tele").map(([u]) => u);
+  return `<div class="card" style="border:2px solid var(--good,#2e7d4f)"><h2>🟢 Llamando ahora<span class="note">${act.length} en línea</span></h2>${act.length ? `<div class="list">${act.map(([u,p]) => `<div class="item" style="cursor:default"><div><div class="t nm-av">${av(u,26)}${u===S.uid?"Tú":esc(memberName(u))}</div><div class="m">en la base de <b>${esc(memberName(p.socio))}</b>${u!==S.uid && Date.now()-(p.at||0) > 5*60e3 ? ` · hace ${Math.round((Date.now()-p.at)/60e3)} min` : ""}</div></div></div>`).join("")}</div>` : `<div class="empty">Nadie está llamando en este momento. Cuando una telemarketer entra a la base de un socio o registra una llamada, sale aquí por una hora.</div>`}</div>`; }
+const enBase = sid => Object.entries(S.presencia||{}).filter(([u,p]) => p.socio===sid && u!==S.uid && Date.now() - (p.at||0) < PRES_MS && S.members[u]?.role==="tele").map(([u]) => u);
 const enBaseTxt = sid => { const l = enBase(sid); return l.length ? `<div class="m" style="color:var(--good);font-weight:700">🟢 ${l.map(u => esc(firstName2(memberName(u)))).join(", ")} ${l.length>1?"están":"está"} trabajando esta base ahora</div>` : ""; };
 
 /* ===== Métricas ===== */
