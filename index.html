@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611052121"></script>
-<script src="anuncios.js?v=202611052121"></script>
-<script src="juego.js?v=202611052121"></script>
+<script src="demo.js?v=202611052132"></script>
+<script src="anuncios.js?v=202611052132"></script>
+<script src="juego.js?v=202611052132"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611052121";
+const APP_VER = "202611052132";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1251,6 +1251,16 @@ function transfBanner(){ const l = transfPorAprobar(); const mias = Object.entri
     + mias.map(([id,a]) => `<div class="banner bad" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>🔀 ${esc(memberName(a.transferReq.sponsor))} no aprobó pasarle la cita del ${fmtWhen(a.when)} a ${esc(memberName(a.transferReq.to))}.</span><button class="btn small ghost" data-tclr="${id}">Entendido</button></div>`).join(""); }
 /* Cuando el patrocinador aprueba, quien la pidió hace el traspaso solo */
 let trDoing = new Set();
+/* Cita que se le dio a otro socio y no se pudo hacer (no se hizo o se canceló): regresa sola a su dueño (quien la dio), para que la reprograme o se la pase a otro */
+const duenoDe = a => { if (a.transferredFrom && a.transferredFrom !== a.socioId) return a.transferredFrom; const ag = a.agendo || a.teleId, m = S.members[ag];
+  return ag && ag !== a.socioId && m && (m.role==="socio" || m.role==="admin") ? ag : ""; };
+const devDoing = new Set();
+async function devolverAppt(id){ const a = S.appts[id]; if (!a) return; const to = duenoDe(a), m = S.members[to]; if (!to || !m) return; const now = Date.now(), de = a.socioId;
+  try { await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", tv: S.members[pagadorDe(to)]?.role==="admin", dador: de, chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`↩️ La cita no se pudo hacer con ${memberName(de)} y regresó a ${m.name}`})}); } catch(e){ if (!/not.found|invalid/i.test(String(e?.code||e?.message||e))) throw e; }
+  await S.db.doc("appts/"+id).update({socioId:to, status:"agendada", sale:false, amount:0, transferredFrom:firebase.firestore.FieldValue.delete(), devuelta:{at:now, de, st:a.status}}); }
+function procesarDevoluciones(){ Object.entries(S.appts||{}).forEach(([id,a]) => { if (!["no_se_hizo","cancelada"].includes(a.status) || devDoing.has(id) || (a.when||0) < Date.now() - 10*864e5) return; /* solo las recientes, no las viejas */
+    const to = duenoDe(a); if (!to || to === a.socioId) return; if (!(S.uid === a.socioId || S.uid === to || role()==="admin")) return;
+    devDoing.add(id); chain("appt:"+id, () => devolverAppt(id)).then(() => { if (S.uid === to) avisar("↩️ Te regresó una cita", `${memberName(a.socioId)} no pudo hacer la cita de ${cName(a)}. Ya es tuya otra vez.`); else if (S.uid === a.socioId) toast(`La cita regresó a ${memberName(to)}`); }, e => { devDoing.delete(id); console.log("devolver", e); }); }); }
 function procesarTransfers(){ S.trSeen = S.trSeen || new Set(transfPorAprobar().map(([id]) => id));
   transfPorAprobar().forEach(([id,a]) => { if (!S.trSeen.has(id)){ S.trSeen.add(id); avisar("🔀 Te piden pasar una cita a tu emprendedor", `${memberName(a.transferReq.by)} → ${memberName(a.transferReq.to)} · ${fmtWhen(a.when)}`); } }); Object.entries(S.appts||{}).forEach(([id,a]) => { const t = a.transferReq; if (!t || !t.ok || t.by!==S.uid || trDoing.has(id) || !a._priv) return; trDoing.add(id);
   chain("appt:"+id, () => transferAppt(id, t.to, true)).then(() => toast(`${memberName(t.sponsor)} aprobó: cita pasada a ${memberName(t.to)}`), e => { trDoing.delete(id); console.log(e); }); }); }
@@ -1293,7 +1303,7 @@ function openAppt(id){
     ${r==="admin" && esEmp(S.members[a.socioId]) && a.status==="hecha" ? `<div class="eyebrow">🤝 Acompañamiento (Dirección)</div><div id="ac-edit"></div><button class="btn small ghost" id="ac-save" style="margin-top:6px">Guardar acompañamiento</button>` : ""}
     ${liderAcc ? `<div class="eyebrow">📞 Telemarketer de esta cita</div><div class="grid2"><select class="i" id="lc-sel">${telesLunaya().map(t=>`<option value="${t.id}" ${a.teleId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select><div style="align-self:end"><button class="btn small ghost" id="lc-save">Cambiar telemarketer</button></div></div>` : ""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
-    ${a.transferReq && !a.transferReq.rej ? `<div class="banner warn">⏳ Esperando que <b>${esc(memberName(a.transferReq.sponsor))}</b> apruebe pasar esta cita a ${esc(memberName(a.transferReq.to))}.${a.transferReq.by===S.uid?` <div class="row" style="margin-top:6px">${sinPermisoTransf()?`<button class="btn small" id="tr-ya">Pasarla ahora</button>`:""}<button class="btn small ghost" id="tr-clr">Cancelar</button></div>`:""}</div>` : ""}
+    ${a.devuelta && a.status==="agendada" ? `<div class="banner warn">↩️ Esta cita regresó de <b>${esc(memberName(a.devuelta.de))}</b> (${a.devuelta.st==="cancelada"?"se canceló":"no se pudo hacer"}) el ${fmt(a.devuelta.at,{day:"numeric",month:"short"})}. Reprográmala o pásasela a otro socio.</div>` : ""}${a.transferReq && !a.transferReq.rej ? `<div class="banner warn">⏳ Esperando que <b>${esc(memberName(a.transferReq.sponsor))}</b> apruebe pasar esta cita a ${esc(memberName(a.transferReq.to))}.${a.transferReq.by===S.uid?` <div class="row" style="margin-top:6px">${sinPermisoTransf()?`<button class="btn small" id="tr-ya">Pasarla ahora</button>`:""}<button class="btn small ghost" id="tr-clr">Cancelar</button></div>`:""}</div>` : ""}
     ${canTransfer(a) && transferTargets(a).length ? `<div class="eyebrow">🔀 Transferir cita</div>${sinPermisoTransf() ? "" : `<p class="note" style="margin:0 0 6px">Si es emprendedor de otro patrocinador, su patrocinador tiene que aprobarlo.</p>`}<div class="grid2"><select class="i" id="tr-to" aria-label="Transferir a"><option value="">¿A quién se la pasas?</option>${transferTargets(a).map(m=>`<option value="${m.id}">${esc(m.name)}${m.tipo?" · "+esc(m.tipo):m.role==="admin"?" · dirección":""}</option>`).join("")}</select><button class="btn small ghost" id="tr-go">Transferir</button></div>` : ""}
     ${a._priv && a.status==="agendada" && (a.socioId===S.uid || r==="admin") ? `<a class="btn dark" href="${esc(gcalUrl(a))}" target="_blank" rel="noopener">📅 Agregar a mi Google Calendar</a>` : ""}${a._priv && a.status==="agendada" && r==="tele" && (a.teleId===S.uid || a.agendo===S.uid) ? (() => { const sc = S.members[a.socioId]?.gcalId || ""; return `<a class="btn dark" href="${esc(gcalUrl(a, sc))}" target="_blank" rel="noopener">📅 Agregar al calendario de ${esc(memberName(a.socioId))}</a><p class="note" style="margin:0">${sc ? `Se abre directo en el calendario de citas de ${esc(memberName(a.socioId))}: solo toca <b>Guardar</b> y le aparece en su TimeTree.` : `${esc(memberName(a.socioId))} todavía no puso su calendario de citas en su perfil. Al abrirse, elige su calendario en la lista y guarda.`} Funciona si ${esc(memberName(a.socioId))} te compartió ese calendario con permiso para <b>hacer cambios</b>.</p>`; })() : ""}
     ${canChat(a)?`<div class="eyebrow">💬 Mensajes de esta cita</div><div id="chat-list" class="chat">${chatHtml(a)}</div><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="i" id="chat-in" placeholder="Ej: no contesta, ¿lo puedes llamar?" maxlength="500" style="flex:1"><button class="btn" id="chat-send">Enviar</button></div>`:""}
@@ -1698,7 +1708,7 @@ function bindCommon(){
   document.querySelectorAll("[data-tok]").forEach(b => b.onclick = () => { const id = b.dataset.tok, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, ok:true, okAt:Date.now()}}).then(() => toast("Aprobado. La cita pasa a "+memberName(t.to)), writeErr); });
   document.querySelectorAll("[data-trej]").forEach(b => b.onclick = () => { const id = b.dataset.trej, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, rej:true, rejAt:Date.now()}}).then(() => toast("No aprobado"), writeErr); });
   document.querySelectorAll("[data-tclr]").forEach(b => b.onclick = () => { S.db.doc("appts/"+b.dataset.tclr).update({transferReq:firebase.firestore.FieldValue.delete()}).then(() => { closeModal(); render(); }, writeErr); });
-  procesarTransfers();
+  procesarTransfers(); procesarDevoluciones();
   document.querySelectorAll("[data-wk2]").forEach(b => b.onclick = () => { S.f.wk2 = b.dataset.wk2; render(); });
   document.querySelectorAll("[data-ruta]").forEach(b => b.onclick = () => openRuta(b.dataset.ruta));
   all("[data-lt]", b => b.onclick = () => { S.f.lt = b.dataset.lt; render(); });

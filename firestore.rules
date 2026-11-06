@@ -94,6 +94,9 @@ service cloud.firestore {
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid && noClientData();
       allow update: if noClientData() && (isAdmin()
          || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid))
+         // La cita que no se pudo hacer regresa a quien la dio (solo puede devolvérsela a sí mismo)
+         || (isMember() && request.resource.data.socioId == request.auth.uid
+             && (resource.data.get('transferredFrom', '') == request.auth.uid || resource.data.get('agendo', '') == request.auth.uid))
          || (isDist() && get(memberPath(resource.data.socioId)).data.get('upline', '') == request.auth.uid)
          // Telemarketers del programa: reportan el resultado (venta, no venta, seguimiento) y reprograman las citas
          // de los socios a los que tienen acceso (territorio de Dirección o distribuidor que no las quitó). No aprueban ventas.
@@ -149,7 +152,8 @@ service cloud.firestore {
               && request.resource.data.get('up', '') == resource.data.get('up', '')
               && (request.resource.data.get('tv', false) == resource.data.get('tv', false) || !('tv' in resource.data)))
           || (request.resource.data.socioId != resource.data.socioId
-              && (resource.data.socioId == request.auth.uid || upline() || isAdmin())
+              && (resource.data.socioId == request.auth.uid || upline() || isAdmin()
+                  || (request.resource.data.socioId == request.auth.uid && (resource.data.get('dador', '') == request.auth.uid || resource.data.teleId == request.auth.uid)))
               && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
               && request.resource.data.get('up', '') == socioDoc().get('upline', ''))))
          // Separar Dirección: un director pasa a ver las citas de sus emprendedores (up = su grupo)
