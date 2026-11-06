@@ -852,6 +852,7 @@ async function promoImg(j, p, link){
   /* ruleta */
   const prizes = p.prizes||[], n = prizes.length||1, cx = W/2, cy = fimg ? 665 : 760, R = fimg ? 240 : 300, a = 2*Math.PI/n; const SL = JG_SL(n);
   const imgs = await Promise.all(prizes.map(pr => pr.img ? loadImg(pr.img).catch(()=>null) : null));
+  if ((p.tipo||"ruleta") === "ruleta"){
   x.save(); x.shadowColor = "rgba(120,90,20,.4)"; x.shadowBlur = 44; x.shadowOffsetY = 18; x.beginPath(); x.arc(cx, cy, R+32, 0, 7); x.fillStyle = goldGrad(x, cx-R, cy-R, cx+R, cy+R); x.fill(); x.restore();
   prizes.forEach((pr,i) => { const a0 = -Math.PI/2 + i*a; x.beginPath(); x.moveTo(cx,cy); x.arc(cx,cy,R,a0,a0+a); x.closePath(); x.fillStyle = SL[i%SL.length]; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 5; x.stroke(); });
   prizes.forEach((pr,i) => { const mid = -Math.PI/2 + i*a + a/2, ir = R*0.56, ix = cx + ir*Math.cos(mid), iy = cy + ir*Math.sin(mid), s = Math.min(230, 2*Math.PI*ir/n*0.78);
@@ -863,6 +864,20 @@ async function promoImg(j, p, link){
   for (let i=0;i<32;i++){ const t = i*2*Math.PI/32, bx = cx+(R+16)*Math.cos(t), by = cy+(R+16)*Math.sin(t); const rg = x.createRadialGradient(bx,by,0,bx,by,18); rg.addColorStop(0,"rgba(255,250,225,1)"); rg.addColorStop(.35,`rgba(${JGT.glow},.95)`); rg.addColorStop(1,`rgba(${JGT.glow},0)`); x.fillStyle = rg; x.fillRect(bx-18,by-18,36,36); }
   x.beginPath(); x.arc(cx, cy, 58, 0, 7); x.fillStyle = JGT.ink; x.fill(); x.lineWidth = 10; x.strokeStyle = goldGrad(x, cx-60, cy-60, cx+60, cy+60); x.stroke(); drawGift(x, cx-40, cy-44, 80);
   x.beginPath(); x.moveTo(cx-34, cy-R-56); x.lineTo(cx+34, cy-R-56); x.lineTo(cx, cy-R+14); x.closePath(); x.fillStyle = JGT.ink; x.fill(); x.strokeStyle = JGT.g[1]; x.lineWidth = 3; x.stroke();
+  } else {
+    /* Los demás juegos: círculo dorado con el dibujo del juego en el centro y los regalos alrededor */
+    x.save(); x.shadowColor = "rgba(120,90,20,.4)"; x.shadowBlur = 44; x.shadowOffsetY = 18; x.beginPath(); x.arc(cx, cy, R+32, 0, 7); x.fillStyle = goldGrad(x, cx-R, cy-R, cx+R, cy+R); x.fill(); x.restore();
+    const fg = x.createRadialGradient(cx, cy-R*0.3, 20, cx, cy, R); fg.addColorStop(0, "#ffffff"); fg.addColorStop(1, JGT.sl[1]); x.beginPath(); x.arc(cx, cy, R, 0, 7); x.fillStyle = fg; x.fill();
+    x.textAlign = "center"; x.font = `${Math.round(R*0.62)}px serif`; x.fillText(TI(p.tipo).e, cx, cy + R*0.04);
+    const ttl = TI(p.tipo).n; x.font = `800 40px ${SANS}`; const tw0 = x.measureText(ttl).width + 50; x.fillStyle = JGT.ink; rr(x, cx-tw0/2, cy + R*0.18, tw0, 64, 32); x.fill(); x.fillStyle = "#fff"; x.fillText(ttl, cx, cy + R*0.18 + 45);
+    const show = prizes.slice(0, 8), m = show.length, sz = m > 5 ? 120 : 150;
+    const ANG = m === 1 ? [35] : [-145,-35,145,35,180,0,-108,-72]; show.forEach((pr, k) => { const ang = ANG[k] * Math.PI/180;
+      const ix = cx + (R+20)*Math.cos(ang), iy = cy + (R+20)*Math.sin(ang);
+      x.save(); x.shadowColor = "rgba(0,0,0,.2)"; x.shadowBlur = 14; x.beginPath(); x.arc(ix, iy, sz/2+8, 0, 7); x.fillStyle = "#fff"; x.fill(); x.restore();
+      x.beginPath(); x.arc(ix, iy, sz/2+8, 0, 7); x.strokeStyle = JGT.g[1]; x.lineWidth = 5; x.stroke();
+      if (imgs[k]){ x.save(); x.beginPath(); x.arc(ix, iy, sz/2, 0, 7); x.clip(); x.drawImage(imgs[k], ix-sz/2, iy-sz/2, sz, sz); x.restore(); } else { x.font = `${sz*0.5}px serif`; x.fillText("🎁", ix, iy+sz*0.18); }
+      const lbl = String(pr.n).slice(0,18); x.font = `800 24px ${SANS}`; const lw = x.measureText(lbl).width + 28; const ly = iy + sz/2 + 30; x.fillStyle = JGT.ink; rr(x, ix-lw/2, ly-28, lw, 40, 20); x.fill(); x.fillStyle = "#fff"; x.fillText(lbl, ix, ly); });
+  }
   if (!fimg) drawGift(x, 34, 970, 190);
   /* tarjeta con QR */
   const cardX = fimg ? 145 : 250, cardY = fimg ? 1120 : 1110, cardW = 790, cardH = 200;
