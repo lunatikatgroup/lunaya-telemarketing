@@ -78,7 +78,7 @@ function wheelSvg(prizes, id="jg-wheel"){
   prizes.forEach((p,i) => { const a0 = i*a, a1 = (i+1)*a, [x0,y0] = pt(a0,R), [x1,y1] = pt(a1,R), mid = a0+a/2; const col = SL[i % SL.length];
     s += n===1 ? `<circle cx="${R}" cy="${R}" r="${R}" fill="${col}"/>` : `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a>180?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}" stroke="${JGT.g[1]}" stroke-width="2.5"/>`;
     const cy = R - R*0.57, sz = Math.min(108, Math.max(42, 2*Math.PI*R*0.57/n*0.8)); const lbl = esc(String(p.n||"").slice(0,16));
-    s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${cy}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${cy}" r="${sz/2+3.5}" fill="#fff" stroke="${JGT.g[1]}" stroke-width="2"/><image href="${p.img}" x="${R-sz/2}" y="${cy-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:`<text x="${R}" y="${cy+12}" text-anchor="middle" font-size="34">🎁</text>`}
+    s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${cy}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${cy}" r="${sz/2+3.5}" fill="#fff" stroke="${JGT.g[1]}" stroke-width="2"/><image href="${p.img}" x="${R-sz/2}" y="${cy-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:`<text x="${R}" y="${cy+12}" text-anchor="middle" font-size="34">${p.emo||"🎁"}</text>`}
       <rect x="${R - Math.min(sz*0.95, lbl.length*6.6+16)/2}" y="${cy-sz/2-5}" width="${Math.min(sz*0.95, lbl.length*6.6+16)}" height="17" rx="8.5" fill="${JGT.ink}"/><text x="${R}" y="${cy-sz/2+7}" text-anchor="middle" font-size="${n>6?9:10.5}" font-weight="800" fill="#fff">${lbl}</text></g>`; });
   for (let i=0;i<24;i++){ const [x,y] = pt(i*15, R+9); s += `<circle cx="${x}" cy="${y}" r="5.5" fill="#ffe9a8" opacity=".55" filter="url(#jg-glow)" class="jg-bulb${i%2}"/><circle cx="${x}" cy="${y}" r="2.8" fill="#fffdf2"/>`; }
   return `<div class="jg-wrap"><svg viewBox="-14 -14 ${2*R+28} ${2*R+28}" class="jg-svg"><defs><linearGradient id="jg-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${JGT.g[0]}"/><stop offset=".5" stop-color="${JGT.g[1]}"/><stop offset="1" stop-color="${JGT.g[2]}"/></linearGradient><filter id="jg-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="2.2"/></filter></defs><circle cx="${R}" cy="${R}" r="${R+14}" fill="url(#jg-gold)"/>
@@ -241,7 +241,10 @@ async function startJuego(code, avance){
   J = rr.J; P = conJuego(rr.P, J);
   const key = "ly-jg-" + code; let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
   if (demo) saved = {}; const save = () => { if (demo) return; try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
-  const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const T = setTema(P.tema), TX = txtDe(P);
+  const prizes = P.prizes || []; const tipo = P.tipo || "ruleta";
+  /* "Otra oportunidad": el primer intento no gana (casilla de girar otra vez, caja vacía, tarjeta "sigue participando", el pajarito esquiva) para que quiera seguir jugando */
+  const otraVez = P.otraVez !== false; const usarOtra = () => otraVez && !saved.otra;
+  const OTRA = {n:"¡Otra vez!", w:0, img:"", emo:"🔄", otra:true}; const rueda = otraVez && prizes.length >= 2 ? [...prizes.slice(0,1), OTRA, ...prizes.slice(1)] : prizes; const T = setTema(P.tema), TX = txtDe(P);
   const bs = document.body.style; [["--b1",T.bg[0]],["--b2",T.bg[1]],["--b3",T.bg[2]],["--g1",T.g[0]],["--g2",T.g[1]],["--g3",T.g[2]],["--g4",T.g[3]],["--ink",T.ink],["--acc",T.acc],["--glow",T.glow]].forEach(([k,v]) => bs.setProperty(k, v));
   document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r"));
   const fsrc = fondoSrc(P); if (fsrc){ document.body.classList.add("foto"); document.querySelectorAll(".jg-rib").forEach(r => r.remove()); const bg = document.createElement("div"); bg.className = "jg-bgimg"; bg.style.backgroundImage = `linear-gradient(rgba(250,245,238,.75), rgba(250,245,238,.35) 40%, rgba(250,245,238,0) 60%), url("${fsrc}")`; document.body.prepend(bg); } const shownName = J.alias || J.ref; const ref = firstName(shownName) ? shownName : "Tu amiga";
@@ -262,7 +265,7 @@ async function startJuego(code, avance){
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>
       <p class="jg-p"><b>${esc(TX.sub)}</b><br>¡Totalmente gratis! 🎉</p>
       ${tipo==="rasca" ? scratchHtml() : tipo==="tiro" ? tiroHtml() : tipo==="pinata" ? pinataHtml() : tipo==="quiz" || tipo==="precio" || tipo==="puzzle" ? `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` + (tipo==="precio" ? precioHtml() : "") : tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
-        ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(prizes)}
+        ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(rueda)}
       <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
       ${tipo==="caja" || tipo==="rasca" || tipo==="precio" || tipo==="tiro" || tipo==="pinata" ? "" : `<button class="jg-btn go" id="jg-spin">${esc(TX.btn||"¡GIRAR!")} <span style="font-size:22px">›</span></button>`}
       <p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`;
@@ -279,18 +282,24 @@ async function startJuego(code, avance){
   function won(i){ saved.prize = i; save(); setTimeout(() => { confetti(); jgFanfare(); showForm(i, true); if (jgMus) setTimeout(() => { try { jgMus.out.gain.setTargetAtTime(0.05, jgAudio.currentTime, 0.4); } catch {} }, 3500); }, 450); }
   function spin(){
     const btn = document.getElementById("jg-spin"); btn.disabled = true; btn.textContent = "Girando…";
-    const i = pickPrize(prizes), n = prizes.length, a = 360/n; const target = 360*6 + (360 - (i*a + a/2)) + (Math.random()-.5)*a*0.6;
-    const g = document.getElementById("jg-wheel"); const T = 5200, t0 = performance.now(); let lastSeg = 0;
+    const otra = usarOtra() && rueda !== prizes; const i = pickPrize(prizes), ri = otra ? 1 : rueda.indexOf(prizes[i]), n = rueda.length, a = 360/n; const want = ((360 - (ri*a + a/2)) + (Math.random()-.5)*a*0.6 + 720) % 360;
+    const g = document.getElementById("jg-wheel"); const rot0 = +g.dataset.rot || 0, target = rot0 + 360*6 + ((want - rot0 % 360) + 360) % 360; const T = 5200, t0 = performance.now(); let lastSeg = Math.floor(rot0 / Math.min(a, 30));
     jgCtx(); if (jgMus) try { jgMus.out.gain.setTargetAtTime(0.012, jgAudio.currentTime, 0.1); } catch {}
-    (function f(t){ const k = Math.min(1, (t-t0)/T), e = 1 - Math.pow(1-k, 4), ang = target*e; g.style.transform = `rotate(${ang}deg)`;
+    (function f(t){ const k = Math.min(1, (t-t0)/T), e = 1 - Math.pow(1-k, 4), ang = rot0 + (target-rot0)*e; g.style.transform = `rotate(${ang}deg)`;
       const seg = Math.floor(ang / Math.min(a, 30)); if (seg !== lastSeg){ lastSeg = seg; jgTick(); }
-      if (k < 1) requestAnimationFrame(f); else won(i); })(t0);
+      if (k < 1) requestAnimationFrame(f); else if (otra){ saved.otra = true; save(); g.dataset.rot = target; otraMsg("🔄 ¡Casi! Te ganaste <b>otro giro</b>", () => { btn.disabled = false; btn.innerHTML = "¡GIRAR OTRA VEZ! ›"; }); } else won(i); })(t0);
   }
-  function openBox(b){ if (box.dataset.busy) return; box.dataset.busy = "1"; b.classList.add("shake"); jgTick(300,0.4,0.05); const i = pickPrize(prizes);
+  function openBox(b){ if (box.dataset.busy || b.disabled) return; box.dataset.busy = "1"; b.classList.add("shake"); jgTick(300,0.4,0.05); const i = pickPrize(prizes);
+    if (usarOtra()){ setTimeout(() => { b.classList.remove("shake"); b.textContent = "💨"; b.disabled = true; b.style.opacity = ".5"; saved.otra = true; save(); otraMsg("💨 ¡Esta caja estaba vacía! <b>Escoge otra</b>", () => { delete box.dataset.busy; }); }, 1300); return; }
     setTimeout(() => { b.textContent = "✨"; won(i); }, 1300); }
+  /* Aviso de "otra oportunidad" encima del juego */
+  function otraMsg(html, after){ const d = document.createElement("div"); d.style.cssText = "position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.8);z-index:60;background:#fff;border:3px solid #e2bb4f;border-radius:20px;padding:18px 22px;text-align:center;font:700 20px Manrope,sans-serif;color:#14213d;box-shadow:0 14px 40px rgba(0,0,0,.25);transition:transform .25s;max-width:86vw";
+    d.innerHTML = html + `<div style="font-size:14px;font-weight:600;color:#666;margin-top:6px">¡Sigue participando!</div>`; document.body.append(d); jgTick(520,.3,.06); setTimeout(() => jgTick(700,.3,.06), 140); requestAnimationFrame(() => d.style.transform = "translate(-50%,-50%) scale(1)");
+    setTimeout(() => { d.remove(); after && after(); }, 1900); }
   /* ===== Rasca y gana ===== */
+  function rascaOtra(){ return tipo==="rasca" && usarOtra(); }
   function scratchHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Un regalo"};
-    return `<div class="jg-scr" id="jg-scr"><div class="under"><div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:64px">🎁</div>`}<div class="pn">${esc(p.n)}</div></div></div><canvas id="jg-cv" width="600" height="400" aria-label="Raspa aquí"></canvas></div><p class="jg-small" style="margin-top:0">👆 Pasa tu dedo sobre la tarjeta para raspar</p>`; }
+    return `<div class="jg-scr" id="jg-scr"><div class="under">${rascaOtra() ? `<div><div style="font-size:54px">🍀</div><div class="pn">¡Sigue participando!</div><div style="font-size:13px;color:#555">Tienes otra tarjeta</div></div>` : `<div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:64px">🎁</div>`}<div class="pn">${esc(p.n)}</div></div>`}</div><canvas id="jg-cv" width="600" height="400" aria-label="Raspa aquí"></canvas></div><p class="jg-small" style="margin-top:0">👆 Pasa tu dedo sobre la tarjeta para raspar</p>`; }
   function bindScratch(){ const cv = document.getElementById("jg-cv"); if (!cv) return; const x = cv.getContext("2d"); const W = cv.width, H = cv.height;
     const g = x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#d9b45a"); g.addColorStop(.5,"#f5e1a0"); g.addColorStop(1,"#b8861b"); x.fillStyle = g; x.fillRect(0,0,W,H);
     x.fillStyle = "rgba(255,255,255,.35)"; for (let k=0;k<70;k++){ x.beginPath(); x.arc(Math.random()*W, Math.random()*H, 1+Math.random()*3, 0, 7); x.fill(); }
@@ -299,7 +308,9 @@ async function startJuego(code, avance){
     const pt = e => { const r = cv.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return [(t.clientX - r.left) * W / r.width, (t.clientY - r.top) * H / r.height]; };
     const draw = e => { if (!down || fin) return; e.preventDefault(); const [a,b] = pt(e); x.lineWidth = 70; x.lineCap = "round"; x.beginPath(); if (last) x.moveTo(last[0], last[1]); else x.moveTo(a, b); x.lineTo(a+0.1, b); x.stroke(); last = [a,b];
       if (++n % 8 === 0){ jgTick(500 + Math.random()*300, 0.15, 0.03); const d = x.getImageData(0,0,W,H).data; let c = 0, tt = 0; for (let k = 3; k < d.length; k += 64){ tt++; if (d[k] < 40) c++; } if (c/tt > 0.5) acabar(); } };
-    const acabar = () => { if (fin) return; fin = true; cv.style.transition = "opacity .5s"; cv.style.opacity = "0"; const i = saved.pend; setTimeout(() => won(i), 500); };
+    const acabar = () => { if (fin) return; fin = true; cv.style.transition = "opacity .5s"; cv.style.opacity = "0"; const i = saved.pend;
+      if (rascaOtra()){ saved.otra = true; save(); setTimeout(() => otraMsg("🍀 ¡Esta no tenía premio! <b>Raspa otra tarjeta</b>", () => { const w = document.getElementById("jg-scr"); if (w){ w.outerHTML = scratchHtml(); bindScratch(); } }), 600); return; }
+      setTimeout(() => won(i), 500); };
     cv.addEventListener("pointerdown", e => { down = true; last = null; jgCtx(); draw(e); }); cv.addEventListener("pointermove", draw); ["pointerup","pointerleave","pointercancel"].forEach(ev => cv.addEventListener(ev, () => { down = false; last = null; }));
     cv.addEventListener("touchmove", e => e.preventDefault(), {passive:false}); }
   /* Después del test o del precio: se raspa el regalo */
@@ -338,6 +349,8 @@ async function startJuego(code, avance){
       const top = y + 66 + 28, F = 500; /* centro del regalo */
       sh.getAnimations().forEach(a => a.cancel()); sh.animate([{bottom:"62px", opacity:1, transform:"translateX(-50%) rotate(0)"}, {bottom:(H-top-14)+"px", opacity:1, transform:"translateX(-50%) rotate(360deg)"}], {duration:F, easing:"linear", fill:"forwards"});
       setTimeout(() => { const gc = x + g.offsetWidth/2, cx = cont.clientWidth/2; sh.getAnimations().forEach(an => an.cancel()); sh.style.opacity = 0;
+        if (Math.abs(gc - cx) <= 32 && usarOtra()){ saved.otra = true; save(); msg("¡Lo esquivó! 🕊️💨", "#b3261e"); g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${y-40}px)`},{transform:`translate(${x}px,${y}px)`}], {duration:450});
+          document.getElementById("tr-int").textContent = "¡Casi! El pajarito lo esquivó. Inténtalo otra vez."; setTimeout(() => busy = false, 450); return; }
         if (Math.abs(gc - cx) <= 32){ fin = true; msg("¡LE DISTE! 🎉", "#1f7a3a"); jgFanfare && jgFanfare(); const r = document.getElementById("tr-r"), cu = document.getElementById("tr-cu");
           const rr = r.getBoundingClientRect(), cr = cont.getBoundingClientRect(); const box2 = r.cloneNode(true); box2.style.cssText += `;position:absolute;left:${rr.left-cr.left}px;top:${rr.top-cr.top}px;margin:0;z-index:5`; cont.append(box2); r.style.visibility = "hidden"; cu.style.visibility = "hidden";
           g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x + dir*160}px,${y-160}px)`}], {duration:900, easing:"ease-in", fill:"forwards"});
@@ -626,6 +639,7 @@ function openPrograma(pid, copia){
     <div class="grid2">${[["top","Texto de arriba"],["pill","Debajo del nombre"],["sub","Frase de invitación"],["btn","Botón"]].map(([k,l])=>`<label class="f">${l}<input class="i" data-tx="${k}" value="${esc((P.textos||{})[k]||TXT_DEF(P.tipo)[k]||"")}" maxlength="60"></label>`).join("")}</div>
     <div class="row"><button class="btn small" id="pg-try" type="button">▶️ Probar el juego</button><button class="btn small ghost" id="pg-prev" type="button">🖼️ Ver la imagen con QR</button></div><div id="pg-pv"></div>
     <label class="f">⏰ Cuenta regresiva para reservar el regalo<select class="i" id="pg-reloj">${[[0,"Sin cuenta regresiva"],[24,"24 horas"],[48,"48 horas"],[72,"72 horas"]].map(([v,l])=>`<option value="${v}" ${(+P.reloj||0)===v?"selected":""}>${l}</option>`).join("")}</select><span class="note">Al ganar, le sale un reloj: si no deja sus datos a tiempo, pierde el regalo. Hace que respondan más rápido.</span></label>
+    <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-otra" ${P.otraVez!==false?"checked":""}> 🔄 Otra oportunidad: el primer intento no gana (ruleta: casilla "¡Otra vez!"; caja: sale vacía; rasca: "sigue participando"; tiro: el pajarito esquiva) y en el segundo sí gana</label>
     <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-mus" ${P.musica!==false?"checked":""}> Música alegre en el juego (la persona la puede apagar)</label>
     ${pid?`<label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-act" ${P.activo!==false?"checked":""}> Programa activo (se puede usar para inscribir clientes)</label>`:""}
     <div class="row"><button class="btn" id="pg-save">Guardar programa</button><button class="btn ghost" data-close>Cancelar</button></div>`, bind);
@@ -648,7 +662,7 @@ function openPrograma(pid, copia){
     q("pg-prev").onclick = async () => { q("pg-prev").disabled = true; try { const bl = await promoImg({ref:"Amada Segura"}, {...P, textos:readTx(), prizes:P.prizes.filter(x=>x.n)}, APP_URL+"?j=EJEMPLO1"); q("pg-pv").innerHTML = `<img src="${URL.createObjectURL(bl)}" style="width:100%;border-radius:12px;margin-top:6px">`; } catch(e){ console.log(e); toast("No se pudo crear la vista previa"); } q("pg-prev").disabled = false; };
     q("pg-try").onclick = () => { const pr = P.prizes.map(p => ({n:(p.n||"").trim(), w:Math.max(0,+p.w||0), img:p.img||""})).filter(p => p.n); if (pr.length < minReg()){ toast("Pon al menos "+minReg()+" regalo"+(minReg()>1?"s":"")+" con nombre para probar"); return; }
       const precio = P.tipo==="precio" ? {n:q("pg-pn").value.trim() || "Producto", v:Math.round(+q("pg-pv").value||0) || 100, img:P.precio?.img||""} : null;
-      probarJuego({...P, prizes:pr, textos:readTx(), musica:q("pg-mus").checked, reloj:+q("pg-reloj").value||0, seg:+(q("pg-seg")?.value)||60, ...(precio?{precio}:{})}); };
+      probarJuego({...P, prizes:pr, textos:readTx(), otraVez:q("pg-otra").checked, musica:q("pg-mus").checked, reloj:+q("pg-reloj").value||0, seg:+(q("pg-seg")?.value)||60, ...(precio?{precio}:{})}); };
     q("pg-add").onclick = () => { if (P.prizes.length >= 8){ toast("Máximo 8 regalos"); return; } P.prizes.push({n:"", w:0, img:""}); paint(); };
     q("pg-pfile").onchange = async () => { const f = q("pg-pfile").files[0]; if (!f) return; try { P.precio = {...(P.precio||{}), img: await fotoChica(f)}; q("pg-pimg").innerHTML = `<img src="${P.precio.img}" style="width:48px;height:48px;border-radius:10px;object-fit:cover">`; } catch { toast("No se pudo leer esa foto"); } };
     document.querySelectorAll("[data-ptipo]").forEach(b => b.onclick = () => { const old = P.tipo; P.tipo = b.dataset.ptipo; document.querySelectorAll("[data-ptipo]").forEach(x => x.classList.toggle("on", x===b)); q("pg-td").textContent = TI(P.tipo).d; q("pg-precio").hidden = P.tipo!=="precio"; q("pg-quiz").hidden = P.tipo!=="quiz"; q("pg-pz").hidden = P.tipo!=="puzzle"; if (q("pg-msg").value === defMsg(old)) q("pg-msg").value = defMsg(P.tipo);
@@ -660,7 +674,7 @@ function openPrograma(pid, copia){
       const msg = q("pg-msg").value.trim(); if (!msg.includes("{link}")){ toast("El mensaje necesita {link} para poner el link"); return; }
       const precio = P.tipo==="precio" ? {n:q("pg-pn").value.trim().slice(0,60), v:Math.round(+q("pg-pv").value||0), img:P.precio?.img||""} : null;
       if (precio && (!precio.n || precio.v < 5)){ toast("Pon el nombre y el precio real del producto"); return; }
-      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4), cuenta:q("pg-cuenta").value}, dias:(q("pg-dias").value.trim()==="0" ? 0 : Math.min(60,Math.max(1,+q("pg-dias").value||7))), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), fondo: P.fondo || "", reloj: +q("pg-reloj").value || 0, ...(P.tipo==="puzzle" ? {seg: Math.min(180, Math.max(20, +q("pg-seg").value || 60))} : {}), ...(precio ? {precio} : {}), createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
+      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4), cuenta:q("pg-cuenta").value}, dias:(q("pg-dias").value.trim()==="0" ? 0 : Math.min(60,Math.max(1,+q("pg-dias").value||7))), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), fondo: P.fondo || "", reloj: +q("pg-reloj").value || 0, otraVez: q("pg-otra").checked, ...(P.tipo==="puzzle" ? {seg: Math.min(180, Math.max(20, +q("pg-seg").value || 60))} : {}), ...(precio ? {precio} : {}), createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
       if (JSON.stringify(doc).length > 900000){ toast("Las fotos pesan mucho. Quita alguna e intenta de nuevo."); return; }
       q("pg-save").disabled = true;
       try { if (pid) await S.db.doc("programs/"+pid).set(doc); else await S.db.collection("programs").add(doc); closeModal(); toast("Programa guardado"); } catch(e){ q("pg-save").disabled = false; writeErr(e); }
