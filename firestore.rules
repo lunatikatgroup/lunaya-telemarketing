@@ -228,7 +228,7 @@ service cloud.firestore {
          && request.resource.data.until <= request.time.toMillis() + 61 * 86400000;
       // La amiga que ya participó invita a las suyas: su link copia el de quien la invitó
       allow create: if request.resource.data.kind == 'amiga' && request.resource.data.n == 0
-         && request.resource.data.keys().hasOnly(['pid', 'ref', 'socioId', 'up', 'tv', 'by', 'n', 'until', 'padre', 'refLead', 'createdAt', 'kind', 'meta'])
+         && request.resource.data.keys().hasOnly(['pid', 'ref', 'socioId', 'up', 'tv', 'by', 'n', 'until', 'padre', 'refLead', 'createdAt', 'kind', 'meta', 'tipo'])
          && request.resource.data.ref is string && request.resource.data.ref.size() <= 61
          && request.resource.data.refLead.matches('^' + request.resource.data.padre + '_[0-9]{10}$')
          && exists(leadPath(request.resource.data.refLead))

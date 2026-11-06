@@ -23,6 +23,14 @@ const TIPOS_JG = {
   precio:{e:"💲", n:"Adivina el precio", una:"un juego de adivina el precio", cta:"Adivina", corto:"¡Adivina y gana!", pill:"te retó a adivinar un precio 🎁", sub:"Adivina cuánto cuesta y gana un regalo para tu cocina.", btn:"", d:"Adivina el precio de un producto + rasca y gana."}
 };
 const TI = t => TIPOS_JG[t] || TIPOS_JG.ruleta;
+/* Cada link puede llevar su propio juego (el que escogiste al mandarlo); si es distinto al del programa, se usan los textos de ese juego */
+const conJuego = (p, j) => !p ? {} : (j && j.tipo && TIPOS_JG[j.tipo] && j.tipo !== (p.tipo||"ruleta")) ? {...p, tipo:j.tipo, textos:{}, msg:""} : p;
+const juegosDe = p => Object.entries(TIPOS_JG).filter(([k]) => k!=="precio" || (p?.precio?.v > 0));
+function juegoSel(id, pidSel){ return `<label class="f">¿Qué juego le mandas?<select class="i" id="${id}"></select><span class="note" id="${id}-d"></span></label>`; }
+function bindJuegoSel(id, pidSel){ const s = document.getElementById(id), ps = document.getElementById(pidSel); if (!s || !ps) return;
+  const fill = () => { const p = S.programs?.[ps.value] || {}; const cur = s.value; s.innerHTML = juegosDe(p).map(([k,t]) => `<option value="${k}">${t.e} ${t.n}${k===(p.tipo||"ruleta")?" (el del programa)":""}</option>`).join(""); s.value = juegosDe(p).some(([k]) => k===cur) ? cur : (p.tipo||"ruleta"); desc(); };
+  const desc = () => { const d = document.getElementById(id+"-d"); if (d) d.textContent = TI(s.value).d + " Mismos regalos y mismo 4 en 14 del programa."; };
+  fill(); ps.addEventListener("change", fill); s.addEventListener("change", desc); }
 /* Test "¿Qué tan sana es tu cocina?": cada respuesta suma puntos (más puntos = más por mejorar) */
 const QUIZ = [
   {q:"¿De qué material son la mayoría de tus ollas y sartenes?", o:[["Acero inoxidable de buena calidad",0],["Teflón o antiadherente",2],["Aluminio",2],["De todo un poco",1]]},
@@ -222,7 +230,7 @@ async function startJuego(code, avance){
   let rr = await leer(code); if (rr.no && padreQ && padreQ !== code){ const r2 = await leer(padreQ); if (r2.J){ rr = r2; code = padreQ; } }
   if (rr.red){ box.innerHTML = `<div class="jg-h">No se pudo cargar</div><p class="jg-p">Revisa tu conexión a internet y vuelve a intentar.</p><button class="jg-btn" onclick="location.reload()">Reintentar</button>`; return; }
   if (!rr.J){ box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
-  J = rr.J; P = rr.P;
+  J = rr.J; P = conJuego(rr.P, J);
   const key = "ly-jg-" + code; let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
   const save = () => { try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const T = setTema(P.tema), TX = txtDe(P);
@@ -371,7 +379,7 @@ async function startJuego(code, avance){
     const preparar = async () => { try {
         if (saved.child){ const ok = await S.db.doc("juegos/"+saved.child).get().then(d => d.exists, () => true); if (!ok){ saved.child = null; save(); } }
         if (!saved.child && saved.tel){ const c = newCode() + newCode().slice(0,2);
-          await S.db.doc("juegos/"+c).set({pid:J.pid, ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||""), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, n:0, until:(J.until===0 ? 0 : Date.now()+14*864e5), padre:code, refLead:code+"_"+saved.tel, createdAt:Date.now(), kind:"amiga", meta});
+          await S.db.doc("juegos/"+c).set({pid:J.pid, ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||""), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, n:0, until:(J.until===0 ? 0 : Date.now()+14*864e5), padre:code, refLead:code+"_"+saved.tel, createdAt:Date.now(), kind:"amiga", meta, ...(J.tipo ? {tipo:J.tipo} : {})});
           const ok = await S.db.doc("juegos/"+c).get().then(d => d.exists, () => false); if (ok){ saved.child = c; save(); } }
       } catch(e){ console.log("hija", e); }
       const c = saved.child || code; const jj = saved.child ? {ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||"")} : J;
@@ -436,7 +444,7 @@ function msgAvance(code){ const j = S.juegos[code], a = avanceDe(code), nm = fir
   return a.ganados > (j.avisados||0)
     ? `¡Hola ${nm}! 🎉 Te tengo una gran noticia: ${linea}, ¡y ya te ganaste tu ${regaloDe(j,a.ganados-1) ? regaloDe(j,a.ganados-1) : "regalo"+(a.ganados>1?" número "+a.ganados:"")}! 🎁 Te escribo para coordinar la entrega.\n\n${a.falta ? `Te faltan ${a.falta} más para ${regaloDe(j,a.ganados) ? "tu "+regaloDe(j,a.ganados) : "el siguiente regalo"}. ` : ""}Mira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`
     : `¡Hola ${nm}! 😊 Te cuento cómo va tu programa de regalos: ${linea}. Te faltan ${a.falta} para tu ${regaloDe(j,a.ganados) || (a.ganados ? "siguiente regalo" : "regalo")} 🎁\n\nMira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`; }
-function msgReferido(code, nombre){ const j = S.juegos[code] || {}; const p = S.programs[j.pid] || {}; const r = firstName(j.ref);
+function msgReferido(code, nombre){ const j = S.juegos[code] || {}; const p = conJuego(S.programs[j.pid] || {}, j); const r = firstName(j.ref);
   return `¡Hola${nombre?" "+firstName(nombre):""}! 👋 Te escribo de parte de ${r}, que nos recomendó contigo 😊 Somos de Royal Prestige.\n\n${r} está participando por regalos para su cocina y tú también puedes ganarte uno, sin costo y sin obligación de compra 🎁\n\n${TI(p.tipo).cta==="Ábrela"?"Abre tu caja sorpresa":TI(p.tipo).cta==="Gira"?"Gira la ruleta":TI(p.tipo).cta} aquí 👉 ${jgLink(code)}`; }
 /* Guarda el avance en el link (lo ve el cliente en su página) y avisa cuando alguien se gana un regalo */
 function syncAvance(){ Object.entries(S.juegos||{}).forEach(([code,j]) => { if (j.kind==="campana" || !(j.by===S.uid || j.socioId===S.uid)) return; const a = avanceDe(code);
@@ -603,33 +611,36 @@ const leerRegalos = pre => [...document.querySelectorAll(`[data-rg="${pre}"]`)].
 function openInscribir(){
   if (!misProgramas().length){ toast("Primero crea un programa"); openPrograma(); return; }
   openModal(`<h3>Inscribir cliente</h3><p class="note" style="margin:0">El cliente le manda el link a sus amigas. Ellas giran, ganan y te llegan como prospectos.</p>
-    ${progSel("in-p")}
+    ${progSel("in-p")}${juegoSel("in-j")}
     <label class="f">Para el socio<select class="i" id="in-s">${socioOpts(S.world && role()==="tele" ? S.world : S.uid)}</select></label>
     <div class="grid2"><label class="f">Nombre del cliente<input class="i" id="in-n" placeholder="Ej.: Amada Segura" autocomplete="off"></label><label class="f">Su teléfono<input class="i" id="in-t" inputmode="tel" autocomplete="off"></label></div>
     <div id="in-h"></div>
     <div id="in-rgw"></div>
     <div class="row"><button class="btn" id="in-ok">Crear link</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     const q = id => document.getElementById(id);
+    bindJuegoSel("in-j", "in-p");
     const rg = () => { const pid = q("in-p").value; const vals = leerRegalos("in"); q("in-rgw").innerHTML = regalosHtml("in", S.programs?.[pid]?.meta, vals, pid); }; rg(); q("in-p").addEventListener("change", rg);
     q("in-t").onchange = async () => { const h = await getHistAny(q("in-s").value, q("in-t").value); q("in-h").innerHTML = histHtml(h); if (h && h.name && !q("in-n").value.trim()) q("in-n").value = h.name; };
     q("in-ok").onclick = async () => { const name = q("in-n").value.trim(), t = telOk(q("in-t").value), pid = q("in-p").value, sid = q("in-s").value;
       if (!name){ toast("Escribe el nombre del cliente"); return; } if (q("in-t").value.trim() && !t){ toast("El teléfono debe tener 10 dígitos"); return; }
       q("in-ok").disabled = true; const code = newCode() + newCode().slice(0,2); const base = juegoBase(sid, pid);
-      try { const bt = S.db.batch(); const regalos = leerRegalos("in"); bt.set(S.db.doc("juegos/"+code), {...base, ref:name.slice(0,60), kind:"cliente", ...(regalos.some(Boolean)?{regalos}:{})});
+      try { const bt = S.db.batch(); const regalos = leerRegalos("in"); const tj = q("in-j").value; bt.set(S.db.doc("juegos/"+code), {...base, ref:name.slice(0,60), kind:"cliente", tipo:tj, ...(regalos.some(Boolean)?{regalos}:{})});
         bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid, name:name.slice(0,60), tel:t||"", kind:"ref", status:"ref", socioId:sid, up:base.up, tv:base.tv, by:S.uid, ref:name.slice(0,60), at:Date.now()}); await bt.commit();
-        S.juegos[code] = {...base, ref:name, kind:"cliente", regalos}; S.leads[code+"_ref"] = {name, tel:t, kind:"ref"}; closeModal(); openShare(code); } catch(e){ q("in-ok").disabled = false; writeErr(e); } };
+        S.juegos[code] = {...base, ref:name, kind:"cliente", regalos, tipo:tj}; S.leads[code+"_ref"] = {name, tel:t, kind:"ref"}; closeModal(); openShare(code); } catch(e){ q("in-ok").disabled = false; writeErr(e); } };
   });
 }
 
 /* Desde una cita: se crea (o se reusa) el link de la ruleta del cliente con su nombre y teléfono, y se abre listo para mandarlo */
 const juegoDeCita = apptId => (Object.entries(S.juegos||{}).find(([,j]) => j.cita===apptId) || [])[0];
-async function ruletaDeCita(apptId){ const a = S.appts?.[apptId]; if (!a) return; const ya = juegoDeCita(apptId); if (ya){ openShare(ya); return; }
+async function ruletaDeCita(apptId, opt){ const a = S.appts?.[apptId]; if (!a) return; const ya = juegoDeCita(apptId); if (ya){ openShare(ya); return; }
   const pr = misProgramas(); if (!pr.length){ toast("Primero crea un programa"); openPrograma(); return; }
-  const pid = pr[0][0], sid = a.socioId, name = String(a.client||"Cliente").trim().slice(0,60), t = telOk(a.phone) || "";
+  if (!opt){ openModal(`<h3>Mandarle un juego a ${esc(a.client||"el cliente")}</h3>${progSel("rc-p")}${juegoSel("rc-j")}<div class="row"><button class="btn" id="rc-ok">Crear link</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+      bindJuegoSel("rc-j", "rc-p"); document.getElementById("rc-ok").onclick = () => ruletaDeCita(apptId, {pid:document.getElementById("rc-p").value, tipo:document.getElementById("rc-j").value}); }); return; }
+  const pid = opt.pid || pr[0][0], sid = a.socioId, name = String(a.client||"Cliente").trim().slice(0,60), t = telOk(a.phone) || "";
   const code = newCode() + newCode().slice(0,2); const base = juegoBase(sid, pid);
-  try { const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), {...base, ref:name, kind:"cliente", cita:apptId});
+  try { const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), {...base, ref:name, kind:"cliente", cita:apptId, tipo:opt.tipo||""});
     bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid, name, tel:t, kind:"ref", status:"ref", socioId:sid, up:base.up, tv:base.tv, by:S.uid, ref:name, at:Date.now()}); await bt.commit();
-    S.juegos[code] = {...base, ref:name, kind:"cliente", cita:apptId}; S.leads[code+"_ref"] = {name, tel:t, kind:"ref"}; closeModal(); openShare(code); } catch(e){ writeErr(e); } }
+    S.juegos[code] = {...base, ref:name, kind:"cliente", cita:apptId, tipo:opt.tipo||""}; S.leads[code+"_ref"] = {name, tel:t, kind:"ref"}; closeModal(); openShare(code); } catch(e){ writeErr(e); } }
 window.ruletaDeCita = ruletaDeCita; window.juegoDeCita = juegoDeCita;
 /* Editar los datos de un link: nombre real, nombre que sale en la ruleta y la imagen, teléfono, dirección, notas y vigencia */
 function openEditLink(code){ const j = S.juegos[code]; if (!j) return; const R = S.leads[code+"_ref"] || {}; const hasta = j.until ? new Date(j.until).toISOString().slice(0,10) : "";
@@ -702,7 +713,7 @@ function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = a
 
 /* Mandar el link: al cliente por WhatsApp o texto, imagen con QR, copiar */
 function openShare(code){
-  const j = S.juegos[code]; if (!j) return; const p = S.programs[j.pid] || {}; const link = jgLink(code); const cli = S.leads[code+"_ref"] || {};
+  const j = S.juegos[code]; if (!j) return; const p = conJuego(S.programs[j.pid] || {}, j); const link = jgLink(code); const cli = S.leads[code+"_ref"] || {};
   const msg = j.kind==="campana" ? "" : fillMsg(p.msg || defMsg(p.tipo), {link});
   const tel = telOk(cli.tel);
   openModal(`<h3>${j.kind==="campana"?"Campaña":"Link de "+esc(j.ref)}</h3>
@@ -816,7 +827,7 @@ function openCampana(code){
   if (!code && !misProgramas().length){ toast("Primero crea un programa"); openPrograma(); return; }
   if (!code){
     openModal(`<h3>📣 Campaña por mensaje</h3><p class="note" style="margin:0">Crea un link de ${esc(role()==="tele"?"un socio":"tu ruleta")} y mándaselo a una lista de personas, una por una, con su nombre.</p>
-      ${progSel("cp-p")}<label class="f">De parte de<select class="i" id="cp-s">${socioOpts(S.world && role()==="tele" ? S.world : S.uid)}</select></label>
+      ${progSel("cp-p")}${juegoSel("cp-j")}<label class="f">De parte de<select class="i" id="cp-s">${socioOpts(S.world && role()==="tele" ? S.world : S.uid)}</select></label>
       <label class="f">Contactos: uno por línea, nombre y teléfono<textarea class="i" id="cp-l" style="min-height:140px" placeholder="María López, 619 555 1234&#10;Rosa Pérez, (858) 555-9876"></textarea></label>
       <button class="btn small ghost" id="cp-from" type="button">Agregar prospectos nuevos de la ruleta</button>
       <label class="f">Mensaje ({nombre}, {yo}, {socio} y {link} se llenan solos)<textarea class="i" id="cp-m" style="min-height:130px">${esc(defCamp(S.programs[misProgramas()[0]?.[0]]?.tipo))}</textarea></label>
@@ -827,13 +838,13 @@ function openCampana(code){
         q("cp-l").value.split(/\n+/).map(s=>s.trim()).filter(Boolean).forEach(line => { const t = telOk(line.replace(/[^\d+]/g," ").trim().split(/\s+/).join("")) || telOk((line.match(/[\d\s().+-]{10,}/)||[""])[0]); const nm = line.replace(/[\d().+-]/g,"").replace(/[,;]+/g," ").trim(); if (t && !lista.some(x=>x.t===t)) lista.push({n:nm.slice(0,60), t, s:0}); });
         if (!lista.length){ toast("No encontré teléfonos de 10 dígitos en la lista"); return; }
         q("cp-ok").disabled = true; const code = newCode() + newCode().slice(0,2); const base = juegoBase(sid, pid); const sname = memberName(sid);
-        try { const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), {...base, ref:sname.slice(0,60), kind:"campana"});
+        try { const bt = S.db.batch(); const tj = q("cp-j").value; bt.set(S.db.doc("juegos/"+code), {...base, ref:sname.slice(0,60), kind:"campana", tipo:tj});
           bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid, name:"Campaña "+fmt(Date.now(),{day:"numeric",month:"short"}), tel:"", kind:"ref", status:"ref", socioId:sid, up:base.up, tv:base.tv, by:S.uid, ref:sname.slice(0,60), at:Date.now(), lista, msg:q("cp-m").value.slice(0,1500)}); await bt.commit();
-          S.juegos[code] = {...base, ref:sname, kind:"campana"}; S.leads[code+"_ref"] = {kind:"ref", lista, msg:q("cp-m").value}; closeModal(); openCampana(code); } catch(e){ q("cp-ok").disabled = false; writeErr(e); } };
+          S.juegos[code] = {...base, ref:sname, kind:"campana", tipo:tj}; S.leads[code+"_ref"] = {kind:"ref", lista, msg:q("cp-m").value}; closeModal(); openCampana(code); } catch(e){ q("cp-ok").disabled = false; writeErr(e); } };
     }); return; }
   const j = S.juegos[code], L = S.leads[code+"_ref"] || {}; const lista = L.lista || []; const link = jgLink(code);
   const yo = firstName(S.me?.name), socio = memberName(j.socioId);
-  const msgFor = c => fillMsg(L.msg || defCamp(S.programs[j.pid]?.tipo), {nombre:firstName(c.n), yo, socio, link});
+  const msgFor = c => fillMsg(L.msg || defCamp(j.tipo || S.programs[j.pid]?.tipo), {nombre:firstName(c.n), yo, socio, link});
   openModal(`<h3>📣 Campaña · ${lista.filter(c=>c.s).length} de ${lista.length} enviados</h3><p class="note" style="margin:0">Toca WhatsApp o Texto en cada persona. Cada mensaje sale con su nombre.</p>
     <div class="list">${lista.map((c,i)=>`<div class="item" style="cursor:default;${c.s?"opacity:.55":""}"><div><div class="t">${c.s?"✅ ":""}${esc(c.n||"Sin nombre")}</div><div class="m">${telFmt(c.t)}</div></div><div class="row" style="flex-wrap:nowrap"><a class="btn small" target="_blank" rel="noopener" data-cs="${i}" href="https://wa.me/1${c.t}?text=${encodeURIComponent(msgFor(c))}">WhatsApp</a><a class="btn small dark" data-cs="${i}" href="sms:+1${c.t}&body=${encodeURIComponent(msgFor(c))}">Texto</a></div></div>`).join("")}</div>
     <div class="row"><button class="btn ghost" id="cp-img">🖼️ Imagen con QR</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
