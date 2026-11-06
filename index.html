@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611052132"></script>
-<script src="anuncios.js?v=202611052132"></script>
-<script src="juego.js?v=202611052132"></script>
+<script src="demo.js?v=202611052134"></script>
+<script src="anuncios.js?v=202611052134"></script>
+<script src="juego.js?v=202611052134"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611052132";
+const APP_VER = "202611052134";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -965,12 +965,15 @@ function viewHoy(r){
   return h;
 }
 /* Citas que yo le pasé a otros socios: qué pasó con cada una (demostración, venta) */
-function pasadasCard(rg){ const l = Object.entries(S.appts||{}).filter(([,a]) => a.socioId!==S.uid && (a.transferredFrom===S.uid || dadorDe(a)===S.uid) && inR(a.when||0, rg)).sort((a,b) => b[1].when - a[1].when);
-  if (!l.length) return `<div class="card"><h2>Citas que pasé a otros socios ${periodChips()}</h2><div class="empty">No le has pasado citas a otros socios en este periodo.</div></div>`;
+function pasadasCard(rg){ const l = Object.entries(S.appts||{}).filter(([,a]) => a.socioId!==S.uid && (a.transferredFrom===S.uid || dadorDe(a)===S.uid) && (inR(a.when||0, rg) || inR(a.transferredAt||0, rg))).sort((a,b) => b[1].when - a[1].when);
+  /* las que pediste pasar y todavía esperan que el patrocinador apruebe */
+  const esp = Object.entries(S.appts||{}).filter(([,a]) => a.transferReq && a.transferReq.by===S.uid && !a.transferReq.ok && !a.transferReq.rej);
+  const espHtml = esp.length ? `<div class="banner warn" style="margin-bottom:8px">⏳ ${esp.length} cita(s) todavía no se han pasado porque esperan aprobación: ${esp.map(([id,a]) => `<a href="#" data-appt="${id}" style="color:inherit"><b>${esc(cName(a))}</b> → ${esc(memberName(a.transferReq.to))}</a>`).join(", ")}. Ábrela y toca <b>Pasarla ahora</b>${sinPermisoTransf()?"":" o espera la aprobación"}.</div>` : "";
+  if (!l.length) return `<div class="card"><h2>Citas que pasé a otros socios ${periodChips()}</h2>${espHtml}<div class="empty">No le has pasado citas a otros socios en este periodo.</div></div>`;
   const past = l.filter(([,a]) => a.when <= Date.now()), demos = l.filter(([,a]) => a.status==="hecha"), vent = l.filter(([,a]) => a.sale && (a.saleStatus||"pendiente")!=="cancelada"), vol = vent.reduce((t,[,a]) => t+(+a.amount||0), 0);
   const est = a => a.sale && (a.saleStatus||"pendiente")!=="cancelada" ? `<b style="color:var(--good)">💰 Vendió ${money(+a.amount||0)}</b><div class="note">${a.saleStatus==="aprobada"?"aprobada":"pendiente de aprobar"}</div>` : a.status==="hecha" ? "Demostración sin venta" : a.status==="no_se_hizo" ? "No se hizo" : a.status==="cancelada" ? "Cancelada" : a.when > Date.now() ? "Próxima" : `<span style="color:var(--warn)">Sin resultado</span>`;
   const porS = {}; l.forEach(([,a]) => { const x = porS[a.socioId] ||= {c:0, d:0, v:0, m:0}; x.c++; if (a.status==="hecha") x.d++; if (a.sale && (a.saleStatus||"pendiente")!=="cancelada"){ x.v++; x.m += +a.amount||0; } });
-  return `<div class="card"><h2>Citas que pasé a otros socios ${periodChips()}</h2>
+  return `<div class="card"><h2>Citas que pasé a otros socios ${periodChips()}</h2>${espHtml}<p class="note" style="margin-top:-6px">Cuenta las citas que pasaste en este periodo o cuya fecha cae en este periodo.</p>
     <div class="tiles"><div class="tile"><b>${l.length}</b><span>Citas que pasaste</span></div><div class="tile"><b>${demos.length}</b><span>Demostraciones</span><small>de ${past.length} que ya pasaron</small></div><div class="tile"><b>${vent.length}</b><span>Ventas</span></div><div class="tile acc"><b>${money(vol)}</b><span>Volumen</span></div></div>
     <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">Volumen</th></tr></thead><tbody>${Object.entries(porS).sort((a,b)=>b[1].m-a[1].m||b[1].c-a[1].c).map(([sid,x]) => `<tr><td><b>${esc(memberName(sid))}</b></td><td class="n">${x.c}</td><td class="n">${x.d}</td><td class="n">${x.v}</td><td class="n">${money(x.m)}</td></tr>`).join("")}</tbody></table></div>
     <details style="margin-top:8px"><summary class="note" style="cursor:pointer">Ver cada cita (${l.length})</summary><div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Se la pasaste a</th><th>Resultado</th></tr></thead><tbody>${l.map(([id,a]) => `<tr data-appt="${id}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(cName(a))}</td><td>${esc(memberName(a.socioId))}</td><td>${est(a)}</td></tr>`).join("")}</tbody></table></div></details></div>`; }
