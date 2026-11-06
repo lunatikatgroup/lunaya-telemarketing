@@ -28,7 +28,7 @@ const TIPOS_JG = {
 const TI = t => TIPOS_JG[t] || TIPOS_JG.ruleta;
 /* Cada link puede llevar su propio juego (el que escogiste al mandarlo); si es distinto al del programa, se usan los textos de ese juego */
 const conJuego = (p, j) => !p ? {} : (j && j.tipo && TIPOS_JG[j.tipo] && j.tipo !== (p.tipo||"ruleta")) ? {...p, tipo:j.tipo, textos:{}, msg:""} : p;
-const juegosDe = p => Object.entries(TIPOS_JG).filter(([k]) => k!=="precio" || (p?.precio?.v > 0));
+const juegosDe = p => Object.entries(TIPOS_JG).filter(([k]) => (k!=="precio" || (p?.precio?.v > 0)) && (k!=="ruleta" || (p?.prizes||[]).length >= 2));
 function juegoSel(id, pidSel){ return `<label class="f">¿Qué juego le mandas?<select class="i" id="${id}"></select><span class="note" id="${id}-d"></span></label><button class="btn small ghost" type="button" id="${id}-try" style="justify-self:start">▶️ Probar este juego</button>`; }
 function bindJuegoSel(id, pidSel){ const s = document.getElementById(id), ps = document.getElementById(pidSel); if (!s || !ps) return;
   const fill = () => { const p = S.programs?.[ps.value] || {}; const cur = s.value; s.innerHTML = juegosDe(p).map(([k,t]) => `<option value="${k}">${t.e} ${t.n}${k===(p.tipo||"ruleta")?" (el del programa)":""}</option>`).join(""); s.value = juegosDe(p).some(([k]) => k===cur) ? cur : (p.tipo||"ruleta"); desc(); };
@@ -567,7 +567,7 @@ function openPrograma(pid, copia){
       <input class="i" data-pn="${i}" value="${esc(p.n)}" placeholder="Regalo ${i+1}" style="flex:1;min-width:0">
       <label class="note" style="display:flex;align-items:center;gap:3px;flex:none"><input class="i" type="number" min="0" max="100" data-pw="${i}" value="${p.w}" style="width:64px;padding:8px 6px">%</label>
       <button class="btn small ghost" data-pdel="${i}" aria-label="Quitar" style="flex:none">✕</button></div>`).join("");
-  const tot = () => P.prizes.reduce((t,p)=>t+(+p.w||0),0);
+  const tot = () => P.prizes.reduce((t,p)=>t+(+p.w||0),0); const minReg = () => P.tipo==="puzzle" ? 1 : 2;
   openModal(`<h3>${pid?"Editar programa":"Nuevo programa"}</h3>
     <label class="f">Nombre del programa<input class="i" id="pg-name" value="${esc(P.name)}" placeholder="Ej.: Ruleta 4 en 14"></label>
     <div><div class="eyebrow" style="margin-bottom:6px">Tipo de juego</div><div class="opts">${Object.entries(TIPOS_JG).map(([k,t])=>`<button class="opt ${(P.tipo||"ruleta")===k?"on":""}" data-ptipo="${k}">${t.e} ${t.n}</button>`).join("")}</div><p class="note" id="pg-td" style="margin:4px 0 0">${esc(TI(P.tipo).d)}</p></div>
@@ -595,7 +595,7 @@ function openPrograma(pid, copia){
     function binds(){
       document.querySelectorAll("[data-pn]").forEach(x => x.oninput = () => { P.prizes[+x.dataset.pn].n = x.value; });
       document.querySelectorAll("[data-pw]").forEach(x => x.oninput = () => { P.prizes[+x.dataset.pw].w = Math.max(0, +x.value||0); const t = tot(); q("pg-tot").innerHTML = `Total: <b>${t}%</b>${t!==100?" (se ajusta solo)":""}`; });
-      document.querySelectorAll("[data-pdel]").forEach(x => x.onclick = () => { if (P.prizes.length <= 2){ toast("Deja al menos 2 regalos"); return; } P.prizes.splice(+x.dataset.pdel, 1); paint(); });
+      document.querySelectorAll("[data-pdel]").forEach(x => x.onclick = () => { if (P.prizes.length <= minReg()){ toast(minReg()===1 ? "Deja al menos 1 regalo" : "Deja al menos 2 regalos (en el rompecabezas puede ser 1)"); return; } P.prizes.splice(+x.dataset.pdel, 1); paint(); });
       document.querySelectorAll("[data-pimg]").forEach(x => x.onchange = async () => { const f = x.files[0]; if (!f) return; try { P.prizes[+x.dataset.pimg].img = await fotoChica(f); paint(); } catch { toast("No se pudo leer esa foto"); } });
     }
     paint();
@@ -606,7 +606,7 @@ function openPrograma(pid, copia){
     q("pg-ffile").onchange = async () => { const f = q("pg-ffile").files[0]; if (!f) return; try { const url = URL.createObjectURL(f); const img = await loadImg(url); URL.revokeObjectURL(url); const k = Math.min(1, 900/Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); P.fondo = c.toDataURL("image/jpeg", 0.7); paintF(); } catch { toast("No se pudo leer esa foto"); } };
     const readTx = () => { const t = {}; document.querySelectorAll("[data-tx]").forEach(i => { const v = i.value.trim(); if (v && v !== (TXT_DEF(P.tipo)[i.dataset.tx]||"")) t[i.dataset.tx] = v.slice(0,60); }); return t; };
     q("pg-prev").onclick = async () => { q("pg-prev").disabled = true; try { const bl = await promoImg({ref:"Amada Segura"}, {...P, textos:readTx(), prizes:P.prizes.filter(x=>x.n)}, APP_URL+"?j=EJEMPLO1"); q("pg-pv").innerHTML = `<img src="${URL.createObjectURL(bl)}" style="width:100%;border-radius:12px;margin-top:6px">`; } catch(e){ console.log(e); toast("No se pudo crear la vista previa"); } q("pg-prev").disabled = false; };
-    q("pg-try").onclick = () => { const pr = P.prizes.map(p => ({n:(p.n||"").trim(), w:Math.max(0,+p.w||0), img:p.img||""})).filter(p => p.n); if (pr.length < 2){ toast("Pon al menos 2 regalos con nombre para probar"); return; }
+    q("pg-try").onclick = () => { const pr = P.prizes.map(p => ({n:(p.n||"").trim(), w:Math.max(0,+p.w||0), img:p.img||""})).filter(p => p.n); if (pr.length < minReg()){ toast("Pon al menos "+minReg()+" regalo"+(minReg()>1?"s":"")+" con nombre para probar"); return; }
       const precio = P.tipo==="precio" ? {n:q("pg-pn").value.trim() || "Producto", v:Math.round(+q("pg-pv").value||0) || 100, img:P.precio?.img||""} : null;
       probarJuego({...P, prizes:pr, textos:readTx(), musica:q("pg-mus").checked, reloj:+q("pg-reloj").value||0, seg:+(q("pg-seg")?.value)||60, ...(precio?{precio}:{})}); };
     q("pg-add").onclick = () => { if (P.prizes.length >= 8){ toast("Máximo 8 regalos"); return; } P.prizes.push({n:"", w:0, img:""}); paint(); };
@@ -615,7 +615,7 @@ function openPrograma(pid, copia){
       document.querySelectorAll("[data-tx]").forEach(i => { const k = i.dataset.tx; if (!i.value.trim() || i.value.trim() === (TXT_DEF(old)[k]||"")) i.value = TXT_DEF(P.tipo)[k] || ""; }); });
     q("pg-save").onclick = async () => {
       P.name = q("pg-name").value.trim(); const prizes = P.prizes.map(p => ({n:p.n.trim().slice(0,40), w:Math.max(0,+p.w||0), img:p.img||""})).filter(p => p.n);
-      if (!P.name){ toast("Ponle un nombre al programa"); return; } if (prizes.length < 2){ toast("Pon al menos 2 regalos con nombre"); return; }
+      if (!P.name){ toast("Ponle un nombre al programa"); return; } if (prizes.length < minReg()){ toast(minReg()===1 ? "Pon al menos 1 regalo con nombre" : "Pon al menos 2 regalos con nombre (en el rompecabezas puede ser 1)"); return; }
       if (!prizes.some(p => p.w > 0)) prizes.forEach(p => p.w = 1);
       const msg = q("pg-msg").value.trim(); if (!msg.includes("{link}")){ toast("El mensaje necesita {link} para poner el link"); return; }
       const precio = P.tipo==="precio" ? {n:q("pg-pn").value.trim().slice(0,60), v:Math.round(+q("pg-pv").value||0), img:P.precio?.img||""} : null;
