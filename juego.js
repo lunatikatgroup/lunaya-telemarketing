@@ -45,7 +45,7 @@ const quizNivel = pts => pts <= 3 ? {k:"verde", e:"🟢", t:"¡Tu cocina está m
   : {k:"rojo", e:"🔴", t:"Tu cocina necesita atención", c:"Varios de tus utensilios y hábitos podrían estar quitándole nutrientes a tu comida o agregándole cosas que no quieres. Vale la pena una asesoría gratuita en tu casa."};
 const precioOpc = v => { const r = x => Math.max(5, Math.round(x/10)*10); const o = [v, r(v*0.55), r(v*1.6)]; return [...new Set(o)].sort(() => Math.random()-.5); };
 const defMsg = tipo => `¡Hola, amiga! 🥰 ¿Cómo estás?\n\nTe quiero invitar a participar en ${TI(tipo).una} de Royal Prestige 🎁 donde puedes ganar productos gratis para tu cocina 😍\n\nY si participas, también me ayudas a mí a ganarme un regalito 🤭💕\n\n👇 ¡Participa aquí!\n{link}\n\n¡Muchas gracias, amiga! ❤️`;
-const defCamp = (tipo) => `¡Hola {nombre}! 👋 Te escribe {yo}, de parte de {socio} de Royal Prestige.\n\nTenemos ${TI(tipo).una} de regalos para ti 🎁 ${TI(tipo).cta} y gana un producto para tu cocina, sin costo y sin obligación de compra:\n{link}`;
+const defCamp = (tipo) => `¡Hola {nombre}! 👋 Te escribe {yo}, de parte de {socio} de Royal Prestige.\n\nTenemos ${TI(tipo).una} de regalos para ti 🎁 ${TI(tipo).cta} y gana un regalo para tu cocina. ¡Es totalmente gratis! 🎉\n{link}`;
 const fillMsg = (m, o) => String(m||"").replace(/\{link\}/g, o.link||"").replace(/\{nombre\}/g, o.nombre||"").replace(/\{yo\}/g, o.yo||"").replace(/\{socio\}/g, o.socio||"");
 
 /* QR como SVG */
@@ -253,7 +253,7 @@ async function startJuego(code, avance){
     const n = J.n || 0;
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div><div class="jg-top">${esc(TX.top)}</div>
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>
-      <p class="jg-p"><b>${esc(TX.sub)}</b><br>Sin costo y sin obligación de compra.</p>
+      <p class="jg-p"><b>${esc(TX.sub)}</b><br>¡Totalmente gratis! 🎉</p>
       ${tipo==="rasca" ? scratchHtml() : tipo==="tiro" ? tiroHtml() : tipo==="quiz" || tipo==="precio" || tipo==="puzzle" ? `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` + (tipo==="precio" ? precioHtml() : "") : tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
         ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(prizes)}
       <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
@@ -358,13 +358,13 @@ async function startJuego(code, avance){
   function prizeHtml(i){ const p = prizes[i] || {n:"Un regalo"}; return `<div class="jg-prize">${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:90px">🎁</div>`}<div class="pn">${esc(p.n)}</div></div>`; }
   function showForm(i, fresh){
     box.innerHTML = `<div class="jg-top">${fresh?"🎉 ¡Felicidades! 🎉":"Tu regalo te está esperando"}</div><h1 class="jg-h">¡Ganaste!</h1>${prizeHtml(i)}${relojHtml()}
-      <div class="jg-card"><h3>Reserva tu regalo</h3><p style="margin:0;color:#555">Déjanos tus datos para coordinar la entrega.</p>
+      <div class="jg-card"><h3>¡Felicitaciones! 🎉</h3><p style="margin:0;color:#555">Déjanos tu nombre y tu celular: uno de nuestros representantes te va a llamar para coordinar la entrega de tu regalo.</p>
         <input type="text" id="jg-name" placeholder="Tu nombre y apellido" autocomplete="name">
         <input type="tel" id="jg-tel" placeholder="Tu celular (10 dígitos)" inputmode="tel" autocomplete="tel">
-        <label class="ck"><input type="checkbox" id="jg-ok"><span>Confirmo que soy mayor de 18 años y autorizo que me contacten por llamada, mensaje de texto o WhatsApp para coordinar la entrega de mi regalo.</span></label>
+        <label class="ck"><input type="checkbox" id="jg-ok"><span>Confirmo que soy mayor de 18 años y autorizo que me llamen o me escriban por mensaje o WhatsApp para coordinar la entrega de mi regalo.</span></label>
         <div class="jg-err" id="jg-err"></div>
         <button class="jg-btn" id="jg-send">Reservar mi regalo</button></div>
-      <p class="jg-small">Sin costo. Sin obligación de compra. Un regalo por persona.</p>`;
+      <p class="jg-small">Totalmente gratis. Un regalo por persona.</p>`;
     relojTick(); const tel = document.getElementById("jg-tel");
     tel.oninput = () => { const d = tel.value.replace(/\D/g,"").replace(/^1(?=\d{10})/,"").slice(0,10); tel.value = d.length>6 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d.length>3 ? `(${d.slice(0,3)}) ${d.slice(3)}` : d; };
     document.getElementById("jg-send").onclick = async () => {
@@ -389,13 +389,13 @@ async function startJuego(code, avance){
   function showDone(){
     setTimeout(musicStop, 2500);
     const i = saved.prize ?? 0; const mine = saved.child;
-    box.innerHTML = `<div class="jg-top">✅ Regalo reservado</div><h1 class="jg-h">¡Listo${saved.name?", "+esc(firstName(saved.name)):""}!</h1>${prizeHtml(i)}
-      <p class="jg-p">Tu regalo quedó reservado. Muy pronto te contactamos para coordinar la entrega.</p>
+    box.innerHTML = `<div class="jg-top">🎉 ¡Felicitaciones! 🎉</div><h1 class="jg-h">¡Ganaste${saved.name?", "+esc(firstName(saved.name)):""}!</h1>${prizeHtml(i)}
+      <p class="jg-p">Uno de nuestros representantes te va a llamar para coordinar la entrega de tu regalo. ¡Es totalmente gratis!</p>
       <div class="jg-card" style="text-align:center"><h3>🎁 ¿Quieres ganar más regalos?</h3>
         <p style="margin:0;color:#555">Invita a tus amigas a jugar. Cada ${meta.cada||4} amigas que ${meta.cuenta==="amigas"?"participen":"reciban nuestra visita"}, ganas otro regalo (hasta ${Math.floor((meta.refs||14)/(meta.cada||4))}).</p>
         <button class="jg-btn alt" id="jg-inv">Invitar a mis amigas por WhatsApp</button>
         ${mine?`<a class="jg-btn sec" style="text-decoration:none;display:block" href="${jgLink(mine)}&a=1">Ver cuántas amigas llevo</a>`:""}</div>
-      <p class="jg-small">Regalo sujeto a disponibilidad en tu zona y a la coordinación con un representante autorizado.</p>`;
+      `;
     /* El link de ella se crea y se comprueba enseguida (no al tocar el botón), y se prepara la imagen con el QR:
        así, al tocar "Invitar", se comparte al instante el link correcto con la foto (el iPhone no deja compartir si se espera mucho). */
     const linkDe = c => jgLink(c) + (c !== code ? "&p=" + code : "");
@@ -468,7 +468,7 @@ function msgAvance(code){ const j = S.juegos[code], a = avanceDe(code), nm = fir
     ? `¡Hola ${nm}! 🎉 Te tengo una gran noticia: ${linea}, ¡y ya te ganaste tu ${regaloDe(j,a.ganados-1) ? regaloDe(j,a.ganados-1) : "regalo"+(a.ganados>1?" número "+a.ganados:"")}! 🎁 Te escribo para coordinar la entrega.\n\n${a.falta ? `Te faltan ${a.falta} más para ${regaloDe(j,a.ganados) ? "tu "+regaloDe(j,a.ganados) : "el siguiente regalo"}. ` : ""}Mira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`
     : `¡Hola ${nm}! 😊 Te cuento cómo va tu programa de regalos: ${linea}. Te faltan ${a.falta} para tu ${regaloDe(j,a.ganados) || (a.ganados ? "siguiente regalo" : "regalo")} 🎁\n\nMira tu avance aquí: ${jgLink(code)}&a=1\n\n¡Gracias por recomendarnos! ❤️`; }
 function msgReferido(code, nombre){ const j = S.juegos[code] || {}; const p = conJuego(S.programs[j.pid] || {}, j); const r = firstName(j.ref);
-  return `¡Hola${nombre?" "+firstName(nombre):""}! 👋 Te escribo de parte de ${r}, que nos recomendó contigo 😊 Somos de Royal Prestige.\n\n${r} está participando por regalos para su cocina y tú también puedes ganarte uno, sin costo y sin obligación de compra 🎁\n\n${TI(p.tipo).cta==="Ábrela"?"Abre tu caja sorpresa":TI(p.tipo).cta==="Gira"?"Gira la ruleta":TI(p.tipo).cta} aquí 👉 ${jgLink(code)}`; }
+  return `¡Hola${nombre?" "+firstName(nombre):""}! 👋 Te escribo de parte de ${r}, que nos recomendó contigo 😊 Somos de Royal Prestige.\n\n${r} está participando por regalos para su cocina y tú también puedes ganarte uno, ¡totalmente gratis! 🎁\n\n${TI(p.tipo).cta==="Ábrela"?"Abre tu caja sorpresa":TI(p.tipo).cta==="Gira"?"Gira la ruleta":TI(p.tipo).cta} aquí 👉 ${jgLink(code)}`; }
 /* Guarda el avance en el link (lo ve el cliente en su página) y avisa cuando alguien se gana un regalo */
 function syncAvance(){ Object.entries(S.juegos||{}).forEach(([code,j]) => { if (j.kind==="campana" || !(j.by===S.uid || j.socioId===S.uid)) return; const a = avanceDe(code);
   if (a.visitas !== (j.visitas||0) || a.ganados !== (j.ganados||0)){ if (a.ganados > (j.ganados||0)) avisar("🎁 Un cliente se ganó su regalo", `${j.ref} ya tiene ${a.base} ${a.unidad}. Avísale desde Ruleta.`);
@@ -819,7 +819,7 @@ async function promoImg(j, p, link){
   for (let r=0;r<nm;r++) for (let k=0;k<nm;k++) if (q.isDark(r,k)) x.fillRect(qx+k*cell, qy+r*cell, Math.ceil(cell), Math.ceil(cell));
   x.textAlign = "left"; const tx = qx+qs+40; x.fillStyle = JGT.ink; x.font = `700 50px ${SERIF}`; x.fillText(TI(p.tipo).corto, tx, cardY+68);
   x.font = `italic 700 30px ${SERIF}`; x.fillText("Escanea el código o toca el link", tx, cardY+110);
-  x.fillStyle = "#5b5547"; x.font = `600 23px ${SANS}`; x.fillText("Sin costo · Sin obligación de compra", tx, cardY+148); x.fillText("Solo mayores de 18 años", tx, cardY+178);
+  x.fillStyle = "#5b5547"; x.font = `600 23px ${SANS}`; x.fillText("¡Totalmente gratis!", tx, cardY+148); x.fillText("Solo mayores de 18 años", tx, cardY+178);
   return await new Promise(res => c.toBlob(res, "image/png"));
 }
 
