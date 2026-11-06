@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611052058"></script>
-<script src="anuncios.js?v=202611052058"></script>
-<script src="juego.js?v=202611052058"></script>
+<script src="demo.js?v=202611052059"></script>
+<script src="anuncios.js?v=202611052059"></script>
+<script src="juego.js?v=202611052059"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611052058";
+const APP_VER = "202611052059";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -725,7 +725,7 @@ function aporteCard(payer, p){ const o = aportes(range(p))[payer]; const pm = S.
   return `<div class="card"><h2>Comisión telemarketing<span class="note">${PLABEL[p]}</span></h2>
     <p class="note" style="margin-top:-6px">${dist?`Aportas el <b>${aporteDe(payer)}%</b> de las ventas aprobadas que salen de citas de telemarketing (tuyas y de tu grupo).`:`Pagas lo de cada telemarketer + ${com().liderPct}% de la líder (normalmente 3%) de las ventas aprobadas que salen de citas de telemarketing.`}</p>
     <div class="tiles"><div class="tile"><b>${money(H?.monto||0)}</b><span>Hoy</span></div><div class="tile"><b>${money(W?.monto||0)}</b><span>Esta semana</span></div><div class="tile"><b>${dist ? aporteDe(payer)+"%" : (o ? pctTxt(o) : (com().pct+com().liderPct)+"%")}</b><span>Porcentaje que pagas</span><small>${dist?"fijo, de cada venta de telemarketing":"telemarketer + líder"}</small></div><div class="tile acc"><b>${money(o?.monto||0)}</b><span>${PLABEL[p]}</span><small>${o?.ventas||0} venta(s) · ${money(o?.vol||0)}</small></div></div>
-    ${o&&o.rows.length?`<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Telemarketer</th><th class="n">Venta</th><th class="n">%</th><th class="n">A pagar</th></tr></thead><tbody>${o.rows.sort((x,y)=>y.a.when-x.a.when).map(x=>`<tr><td class="note">${fmt(x.a.when,{day:"numeric",month:"short"})}</td><td>${esc(memberName(x.a.socioId))}</td><td>${esc(memberName(x.a.teleId))}</td><td class="n">${money(x.a.amount)}</td><td class="n">${x.pct}%${x.txt && x.txt!=="fijo"?`<div class="note">${esc(x.txt)}</div>`:""}</td><td class="n"><b>${money(x.m)}</b></td></tr>`).join("")}</tbody></table></div>`:""}</div>`; }
+    ${o&&o.rows.length?`<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th>Telemarketer</th><th class="n">Venta</th><th class="n">%</th><th class="n">A pagar</th></tr></thead><tbody>${o.rows.sort((x,y)=>y.a.when-x.a.when).map(x=>`<tr><td class="note">${fmt(x.a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(x.a._priv && x.a.client ? x.a.client : (x.a.nomVenta || "(nombre pendiente)"))}</b></td><td>${esc(memberName(x.a.socioId))}</td><td>${esc(memberName(x.a.teleId))}</td><td class="n">${money(x.a.amount)}</td><td class="n">${x.pct}%${x.txt && x.txt!=="fijo"?`<div class="note">${esc(x.txt)}</div>`:""}</td><td class="n"><b>${money(x.m)}</b></td></tr>`).join("")}</tbody></table></div>`:""}</div>`; }
 const pctTxt = o => { const l = [...new Set(o.rows.map(x=>x.pct))].sort((a,b)=>a-b); return l.length===1 ? `${l[0]}%` : `${l[0]}% – ${l.at(-1)}%`; };
 /* Nómina: cada venta aprobada por la que paga cada distribuidor, con el nombre del cliente y el monto */
 function aporteDetalle(p){ const ap = aportes(range(p)); const rows = Object.values(ap).filter(x => S.members[x.payer]?.role!=="admin").sort((a,b) => memberName(a.payer).localeCompare(memberName(b.payer)));
