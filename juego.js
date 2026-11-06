@@ -13,6 +13,8 @@ function telOk(t){ const d = String(t||"").replace(/\D/g,""); const x = d.length
 function pickPrize(prizes){ const ok = prizes.map((p,i) => ({i, w: Math.max(0, +p.w||0)})); let tot = ok.reduce((t,x)=>t+x.w,0);
   const pool = tot > 0 ? ok.filter(x=>x.w>0) : ok.map(x=>({...x, w:1})); tot = pool.reduce((t,x)=>t+x.w,0);
   let r = Math.random()*tot; for (const x of pool){ if ((r -= x.w) < 0) return x.i; } return pool[pool.length-1].i; }
+/* Probar un juego en la misma pantalla, sin guardar nada */
+function probarJuego(prog, tipo){ if (!prog) return; window.__demo = {...JSON.parse(JSON.stringify(prog)), ...(tipo ? {tipo} : {})}; window.__demo = conJuego(window.__demo, {tipo: tipo || prog.tipo}); closeModal && closeModal(); window.scrollTo(0,0); startJuego("PRUEBA"); }
 /* ===== Tipos de juego: el distribuidor escoge el que quiera ===== */
 const TIPOS_JG = {
   ruleta:{e:"🎡", n:"Ruleta", una:"una ruleta", cta:"Gira", corto:"¡Gira y gana!", pill:"te regaló un giro 🎁", sub:"Gira la ruleta y gana un regalo para tu cocina.", btn:"¡GIRAR!", d:"La clásica: gira y gana."},
@@ -27,11 +29,12 @@ const TI = t => TIPOS_JG[t] || TIPOS_JG.ruleta;
 /* Cada link puede llevar su propio juego (el que escogiste al mandarlo); si es distinto al del programa, se usan los textos de ese juego */
 const conJuego = (p, j) => !p ? {} : (j && j.tipo && TIPOS_JG[j.tipo] && j.tipo !== (p.tipo||"ruleta")) ? {...p, tipo:j.tipo, textos:{}, msg:""} : p;
 const juegosDe = p => Object.entries(TIPOS_JG).filter(([k]) => k!=="precio" || (p?.precio?.v > 0));
-function juegoSel(id, pidSel){ return `<label class="f">¿Qué juego le mandas?<select class="i" id="${id}"></select><span class="note" id="${id}-d"></span></label>`; }
+function juegoSel(id, pidSel){ return `<label class="f">¿Qué juego le mandas?<select class="i" id="${id}"></select><span class="note" id="${id}-d"></span></label><button class="btn small ghost" type="button" id="${id}-try" style="justify-self:start">▶️ Probar este juego</button>`; }
 function bindJuegoSel(id, pidSel){ const s = document.getElementById(id), ps = document.getElementById(pidSel); if (!s || !ps) return;
   const fill = () => { const p = S.programs?.[ps.value] || {}; const cur = s.value; s.innerHTML = juegosDe(p).map(([k,t]) => `<option value="${k}">${t.e} ${t.n}${k===(p.tipo||"ruleta")?" (el del programa)":""}</option>`).join(""); s.value = juegosDe(p).some(([k]) => k===cur) ? cur : (p.tipo||"ruleta"); desc(); };
   const desc = () => { const d = document.getElementById(id+"-d"); if (d) d.textContent = TI(s.value).d + " Mismos regalos y mismo 4 en 14 del programa."; };
-  fill(); ps.addEventListener("change", fill); s.addEventListener("change", desc); }
+  fill(); ps.addEventListener("change", fill); s.addEventListener("change", desc);
+  const tb = document.getElementById(id+"-try"); if (tb) tb.onclick = () => probarJuego(S.programs?.[ps.value], s.value); }
 /* Test "¿Qué tan sana es tu cocina?": cada respuesta suma puntos (más puntos = más por mejorar) */
 const QUIZ = [
   {q:"¿De qué material son la mayoría de tus ollas y sartenes?", o:[["Acero inoxidable de buena calidad",0],["Teflón o antiadherente",2],["Aluminio",2],["De todo un poco",1]]},
@@ -228,12 +231,15 @@ async function startJuego(code, avance){
   const box = document.getElementById("jg"); code = String(code).toUpperCase().replace(/[^A-Z0-9]/g,"");
   let J, P; const padreQ = String(new URLSearchParams(location.search).get("p")||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
   const leer = async c => { for (let k = 0; k < 3; k++){ try { const js = await S.db.doc("juegos/"+c).get(); if (!js.exists) return {no:true}; const jd = js.data(); const ps = await S.db.doc("programs/"+jd.pid).get(); if (!ps.exists) return {no:true}; return {J:jd, P:ps.data()}; } catch(e){ console.log("juego", e); await new Promise(r => setTimeout(r, 1200*(k+1))); } } return {red:true}; };
-  let rr = await leer(code); if (rr.no && padreQ && padreQ !== code){ const r2 = await leer(padreQ); if (r2.J){ rr = r2; code = padreQ; } }
+  const demo = code === "PRUEBA" && window.__demo; let rr = demo ? {J:{pid:"prueba", ref:"Tu cliente", n:0, until:0, tipo:window.__demo.tipo}, P:window.__demo} : await leer(code);
+  if (demo){ const bar = document.createElement("div"); bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99;background:#14213d;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;font:600 14px Manrope,sans-serif";
+    bar.innerHTML = `<span>👀 Modo prueba: no se guarda nada</span><span style="display:flex;gap:8px"><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#e2bb4f;color:#14213d" id="dm-re">Otra vez</button><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#fff;color:#14213d" id="dm-x">Salir</button></span>`;
+    document.body.append(bar); document.getElementById("dm-x").onclick = () => { musicStop(); location.reload(); }; document.getElementById("dm-re").onclick = () => { musicStop(); startJuego("PRUEBA"); }; } if (rr.no && padreQ && padreQ !== code){ const r2 = await leer(padreQ); if (r2.J){ rr = r2; code = padreQ; } }
   if (rr.red){ box.innerHTML = `<div class="jg-h">No se pudo cargar</div><p class="jg-p">Revisa tu conexión a internet y vuelve a intentar.</p><button class="jg-btn" onclick="location.reload()">Reintentar</button>`; return; }
   if (!rr.J){ box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
   J = rr.J; P = conJuego(rr.P, J);
   const key = "ly-jg-" + code; let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
-  const save = () => { try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
+  if (demo) saved = {}; const save = () => { if (demo) return; try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta"; const T = setTema(P.tema), TX = txtDe(P);
   const bs = document.body.style; [["--b1",T.bg[0]],["--b2",T.bg[1]],["--b3",T.bg[2]],["--g1",T.g[0]],["--g2",T.g[1]],["--g3",T.g[2]],["--g4",T.g[3]],["--ink",T.ink],["--acc",T.acc],["--glow",T.glow]].forEach(([k,v]) => bs.setProperty(k, v));
   document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r"));
@@ -374,6 +380,7 @@ async function startJuego(code, avance){
       if (!document.getElementById("jg-ok").checked){ err.textContent = "Marca la casilla para poder contactarte."; return; }
       err.textContent = ""; const b = document.getElementById("jg-send"); b.disabled = true; b.textContent = "Guardando…";
       const lid = code + "_" + t;
+      if (demo){ saved.done = true; saved.name = name; showDone(); return; }
       try {
         const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:String(prizes[i]?.n||"").slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
         const go = async conQ => { const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), conQ && saved.quiz ? {...ld, quiz:String(saved.quiz).slice(0,120)} : ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit(); };
@@ -408,7 +415,7 @@ async function startJuego(code, avance){
       const c = saved.child || code; const jj = saved.child ? {ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||"")} : J;
       try { const blob = await promoImg(jj, P, linkDe(c)); S.jgFile = {c, file: new File([blob], "regalo.png", {type:"image/png"})}; } catch(e){ console.log("img", e); }
       return c; };
-    const listo = preparar();
+    const listo = demo ? Promise.resolve(code) : preparar();
     document.getElementById("jg-inv").onclick = async () => {
       const b = document.getElementById("jg-inv"); const c = saved.child || code; const msg = fillMsg(P.msg || defMsg(tipo), {link:linkDe(c)});
       const f = S.jgFile && S.jgFile.c === c ? S.jgFile.file : null;
@@ -516,10 +523,12 @@ function viewJuego(r){
     <div class="card"><h2>Links activos<span class="note">${links.length}</span></h2>
       ${links.length?`<div class="list">${links.slice(0,40).map(([c,j])=>{ const m = j.meta || S.programs?.[j.pid]?.meta || {refs:14,cada:4}; const venc = j.until && j.until < Date.now();
         const av = avanceDe(c); return `<div class="item" style="cursor:default"><div style="min-width:0;flex:1"><div class="t">${j.kind==="campana"?"📣 ":j.kind==="amiga"?"👭 ":""}${esc(j.ref||"")}${av.ganados?` <span class="tag tg-good">🎁 ${av.ganados} ganado${av.ganados>1?"s":""}</span>`:""}</div><div class="m">${esc(progName(j.pid))} · ${av.amigas} amiga${av.amigas===1?"":"s"} · ${av.visitas} visita${av.visitas===1?"":"s"}${j.kind!=="campana"?` · faltan ${av.falta} para ${regaloDe(j,av.ganados) ? "🎁 "+esc(regaloDe(j,av.ganados)) : `el ${av.ganados?"siguiente ":""}regalo`}`:""}${venc?" · vencido":j.until?" · hasta "+fmt(j.until,{day:"numeric",month:"short"}):""}${j.socioId!==S.uid?" · "+esc(memberName(j.socioId)):""}</div><div class="bar"><i style="width:${Math.min(100, av.base*100/(av.m.refs||14))}%"></i></div></div><div class="row" style="flex-wrap:nowrap;flex:none">${j.kind!=="campana"?`<button class="btn small ghost" data-avance="${c}">Avance</button><button class="btn small ghost" data-editlink="${c}" title="Editar">✏️</button>`:""}<button class="btn small" data-share="${c}">Mandar</button>${j.by===S.uid || j.socioId===S.uid ? `<button class="btn small ghost" data-jdel="${c}" aria-label="Borrar link">🗑️</button>` : ""}</div></div>`; }).join("")}</div>`:`<div class="empty">Todavía no hay links. Toca “Inscribir cliente”.</div>`}</div>
+    ${misProgramas().length ? `<div class="card"><h2>👀 Prueba los juegos</h2><p class="note" style="margin-top:-6px">Juégalos tú misma para ver cómo los ve el cliente. No se guarda nada.</p><div class="opts">${juegosDe(S.programs?.[misProgramas()[0][0]]).map(([k,t])=>`<button class="opt" data-try="${k}">${t.e} ${t.n}</button>`).join("")}</div></div>` : ""}
     <div class="card"><h2>Mis programas</h2>${mine.length?`<div class="list">${mine.map(([id,p])=>`<button class="item" data-prog="${id}"><div><div class="t">${TI(p.tipo).e} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div><div class="m">Meta: ${p.meta?.refs||14} referidos, un regalo cada ${p.meta?.cada||4}${p.activo===false?" · pausado":""}</div></div><span class="note">Editar</span></button>`).join("")}</div>`:`<div class="empty">No has creado programas.${progs.length?" Puedes usar los de tu equipo.":""}</div>`}</div>
     ${(() => { const cp = Object.entries(S.programs||{}).filter(([,p]) => p.owner!==S.uid && p.activo!==false && S.members[p.owner]?.role==="admin"); return cp.length ? `<div class="card"><h2>Diseña tu propia ruleta</h2><p class="note" style="margin-top:-6px">La ruleta de Lunaya ya está lista para usar: solo toca "Inscribir cliente". Si quieres una a tu gusto, cópiala y cámbiale lo que quieras: colores, textos, regalos, fotos y mensaje. La copia es solo tuya.</p><div class="list">${cp.map(([id,p])=>`<div class="item" style="cursor:default"><div><div class="t">${TI(p.tipo).e} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div></div><button class="btn small" data-pcopy="${id}">Copiar y diseñar</button></div>`).join("")}</div></div>` : ""; })()}`;
 }
 function bindJuego(){
+  document.querySelectorAll("[data-try]").forEach(b => b.onclick = () => probarJuego(S.programs?.[misProgramas()[0]?.[0]], b.dataset.try));
   const m = document.getElementById("main"); if (!m) return; const on = (sel, fn) => m.querySelectorAll(sel).forEach(fn);
   const q = id => document.getElementById(id);
   if (q("jg-newp")) q("jg-newp").onclick = () => openPrograma();
@@ -575,7 +584,7 @@ function openPrograma(pid, copia){
       <div class="opts">${Object.entries(TEMAS).map(([k,t])=>`<button class="opt ${(P.tema||"oro")===k?"on":""}" data-tema="${k}" style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;flex:none;background:linear-gradient(135deg,${t.g[0]},${t.g[1]} 50%,${t.bg[2]});border:2px solid ${t.ink}"></span>${t.n}</button>`).join("")}</div></div>
     <div><div class="eyebrow" style="margin-bottom:6px">Fondo</div><div class="opts" id="pg-fondos"></div><input type="file" accept="image/*" id="pg-ffile" hidden></div>
     <div class="grid2">${[["top","Texto de arriba"],["pill","Debajo del nombre"],["sub","Frase de invitación"],["btn","Botón"]].map(([k,l])=>`<label class="f">${l}<input class="i" data-tx="${k}" value="${esc((P.textos||{})[k]||TXT_DEF(P.tipo)[k]||"")}" maxlength="60"></label>`).join("")}</div>
-    <button class="btn small ghost" id="pg-prev" type="button">👀 Ver cómo se ve</button><div id="pg-pv"></div>
+    <div class="row"><button class="btn small" id="pg-try" type="button">▶️ Probar el juego</button><button class="btn small ghost" id="pg-prev" type="button">🖼️ Ver la imagen con QR</button></div><div id="pg-pv"></div>
     <label class="f">⏰ Cuenta regresiva para reservar el regalo<select class="i" id="pg-reloj">${[[0,"Sin cuenta regresiva"],[24,"24 horas"],[48,"48 horas"],[72,"72 horas"]].map(([v,l])=>`<option value="${v}" ${(+P.reloj||0)===v?"selected":""}>${l}</option>`).join("")}</select><span class="note">Al ganar, le sale un reloj: si no deja sus datos a tiempo, pierde el regalo. Hace que respondan más rápido.</span></label>
     <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-mus" ${P.musica!==false?"checked":""}> Música alegre en el juego (la persona la puede apagar)</label>
     ${pid?`<label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="pg-act" ${P.activo!==false?"checked":""}> Programa activo (se puede usar para inscribir clientes)</label>`:""}
@@ -597,6 +606,9 @@ function openPrograma(pid, copia){
     q("pg-ffile").onchange = async () => { const f = q("pg-ffile").files[0]; if (!f) return; try { const url = URL.createObjectURL(f); const img = await loadImg(url); URL.revokeObjectURL(url); const k = Math.min(1, 900/Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); P.fondo = c.toDataURL("image/jpeg", 0.7); paintF(); } catch { toast("No se pudo leer esa foto"); } };
     const readTx = () => { const t = {}; document.querySelectorAll("[data-tx]").forEach(i => { const v = i.value.trim(); if (v && v !== (TXT_DEF(P.tipo)[i.dataset.tx]||"")) t[i.dataset.tx] = v.slice(0,60); }); return t; };
     q("pg-prev").onclick = async () => { q("pg-prev").disabled = true; try { const bl = await promoImg({ref:"Amada Segura"}, {...P, textos:readTx(), prizes:P.prizes.filter(x=>x.n)}, APP_URL+"?j=EJEMPLO1"); q("pg-pv").innerHTML = `<img src="${URL.createObjectURL(bl)}" style="width:100%;border-radius:12px;margin-top:6px">`; } catch(e){ console.log(e); toast("No se pudo crear la vista previa"); } q("pg-prev").disabled = false; };
+    q("pg-try").onclick = () => { const pr = P.prizes.map(p => ({n:(p.n||"").trim(), w:Math.max(0,+p.w||0), img:p.img||""})).filter(p => p.n); if (pr.length < 2){ toast("Pon al menos 2 regalos con nombre para probar"); return; }
+      const precio = P.tipo==="precio" ? {n:q("pg-pn").value.trim() || "Producto", v:Math.round(+q("pg-pv").value||0) || 100, img:P.precio?.img||""} : null;
+      probarJuego({...P, prizes:pr, textos:readTx(), musica:q("pg-mus").checked, reloj:+q("pg-reloj").value||0, seg:+(q("pg-seg")?.value)||60, ...(precio?{precio}:{})}); };
     q("pg-add").onclick = () => { if (P.prizes.length >= 8){ toast("Máximo 8 regalos"); return; } P.prizes.push({n:"", w:0, img:""}); paint(); };
     q("pg-pfile").onchange = async () => { const f = q("pg-pfile").files[0]; if (!f) return; try { P.precio = {...(P.precio||{}), img: await fotoChica(f)}; q("pg-pimg").innerHTML = `<img src="${P.precio.img}" style="width:48px;height:48px;border-radius:10px;object-fit:cover">`; } catch { toast("No se pudo leer esa foto"); } };
     document.querySelectorAll("[data-ptipo]").forEach(b => b.onclick = () => { const old = P.tipo; P.tipo = b.dataset.ptipo; document.querySelectorAll("[data-ptipo]").forEach(x => x.classList.toggle("on", x===b)); q("pg-td").textContent = TI(P.tipo).d; q("pg-precio").hidden = P.tipo!=="precio"; q("pg-quiz").hidden = P.tipo!=="quiz"; q("pg-pz").hidden = P.tipo!=="puzzle"; if (q("pg-msg").value === defMsg(old)) q("pg-msg").value = defMsg(P.tipo);
