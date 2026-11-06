@@ -254,7 +254,8 @@ service cloud.firestore {
         || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)); }
       allow read: if lv();
       // La amiga que juega (sin cuenta): teléfono completo de 10 dígitos, un registro por número y por link
-      allow create: if request.resource.data.keys().hasOnly(['code', 'pid', 'name', 'tel', 'prize', 'at', 'socioId', 'up', 'tv', 'by', 'ref', 'status', 'kind', 'acepta'])
+      allow create: if request.resource.data.keys().hasOnly(['code', 'pid', 'name', 'tel', 'prize', 'at', 'socioId', 'up', 'tv', 'by', 'ref', 'status', 'kind', 'acepta', 'quiz'])
+         && (!('quiz' in request.resource.data) || (request.resource.data.quiz is string && request.resource.data.quiz.size() <= 120))
          && request.resource.data.kind == 'jugador' && request.resource.data.status == 'nuevo' && request.resource.data.acepta == true
          && request.resource.data.tel is string && request.resource.data.tel.matches('^[2-9][0-9]{9}$')
          && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60
