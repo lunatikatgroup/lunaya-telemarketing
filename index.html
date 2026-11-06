@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611052134"></script>
-<script src="anuncios.js?v=202611052134"></script>
-<script src="juego.js?v=202611052134"></script>
+<script src="demo.js?v=202611052137"></script>
+<script src="anuncios.js?v=202611052137"></script>
+<script src="juego.js?v=202611052137"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611052134";
+const APP_VER = "202611052137";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1487,10 +1487,13 @@ function ventasLider(p){
    Se puede contar por el día en que se sacó la cita o por el día de la cita. */
 function citasDiaCard(enCitas){ const d = enCitas ? (S.f.day || today()) : (S.f.cdia || today()); const r = [laToMs(d,"00:00"), laToMs(addDays(d,1),"00:00")];
   const modo = S.f.cdmode==="socio" ? "socio" : "tele"; const base = S.f.cdbase || (enCitas ? "cita" : "sacada");
-  const ap = Object.values(S.appts).filter(a => inR((base==="cita" ? a.when : a.createdAt)||0, r) && a.status!=="cancelada");
+  /* Una cita que se le pasó a otro socio cuenta como "sacada" el día que se pasó, y para quien la dio */
+  const sacadaAt = a => a.transferredFrom && a.transferredAt ? a.transferredAt : a.createdAt;
+  const ap = Object.values(S.appts).filter(a => inR((base==="cita" ? a.when : sacadaAt(a))||0, r) && a.status!=="cancelada");
   const quien = a => origenDe(a)==="tm" ? a.teleId : origenDe(a)==="asig" ? "_asig:"+dadorDe(a) : "_propia";
   const qName = k => k==="_propia" ? "🙋 Propia" : k.startsWith("_asig:") ? "🤝 "+memberName(k.slice(6)) : memberName(k);
-  const g = {}; ap.forEach(a => { if (modo==="tele" && origenDe(a)!=="tm") return; const k = modo==="tele" ? a.teleId : a.socioId; const sub = modo==="tele" ? a.socioId : quien(a);
+  const dio = a => a.transferredFrom && a.transferredFrom!==a.socioId ? a.transferredFrom : origenDe(a)==="tm" ? a.teleId : origenDe(a)==="propia" ? "" : dadorDe(a);
+  const g = {}; ap.forEach(a => { const qd = dio(a); if (modo==="tele" && !qd) return; const k = modo==="tele" ? qd : a.socioId; const sub = modo==="tele" ? a.socioId : quien(a);
     const x = g[k] ||= {n:0, by:{}}; x.n++; x.by[sub] = (x.by[sub]||0) + 1; });
   if (modo==="tele") [...byRole("tele")].filter(t => !t.upline || role()==="admin").forEach(t => { g[t.id] ||= {n:0, by:{}}; });
   const rows = Object.entries(g).sort((a,b) => b[1].n - a[1].n || memberName(a[0]).localeCompare(memberName(b[0])));
@@ -1498,10 +1501,10 @@ function citasDiaCard(enCitas){ const d = enCitas ? (S.f.day || today()) : (S.f.
   const ch = (k, v, l, cur) => `<button class="chip ${cur===v?"on":""}" data-${k}="${v}">${l}</button>`;
   return `<div class="card"><h2>${enCitas ? "Resumen del día" : "Citas por día"}<span class="note">${tot} cita(s)</span></h2>
     ${enCitas ? "" : `<div class="row" style="margin-bottom:8px">${ch("cdia", ayer, "Ayer", d)}${ch("cdia", today(), "Hoy", d)}<input class="i" type="date" id="cdia" value="${d}" style="max-width:170px;padding:6px 8px"></div>`}
-    <div class="chips" style="margin-bottom:6px">${ch("cdmode","tele","📞 Por telemarketer",modo)}${ch("cdmode","socio","👥 Por socio",modo)}</div>
+    <div class="chips" style="margin-bottom:6px">${ch("cdmode","tele","📞 Por quién la dio",modo)}${ch("cdmode","socio","👥 Por socio",modo)}</div>
     <div class="chips" style="margin-bottom:6px">${ch("cdbase","cita","Citas de ese día",base)}${ch("cdbase","sacada","Citas sacadas ese día",base)}</div>
-    <p class="note" style="margin-top:0">${fmt(laToMs(d,"12:00"),{weekday:"long",day:"numeric",month:"long"})} · ${base==="cita" ? "las citas que son ese día" : "las citas que se agendaron ese día (para cualquier fecha)"}${modo==="tele" ? " · solo citas de telemarketing" : ""}.</p>
-    <div class="tbl-wrap"><table><thead><tr><th>${modo==="tele"?"Telemarketer":"Socio"}</th><th class="n">Citas</th><th>${modo==="tele"?"Para quién":"Quién se la sacó"}</th></tr></thead><tbody>${rows.map(([k,x]) => `<tr><td><span class="nm-av">${av(k,26)}<b>${esc(memberName(k))}</b></span></td><td class="n"><b>${x.n}</b></td><td class="note">${Object.entries(x.by).sort((a,b) => b[1]-a[1]).map(([q,n]) => `${esc(qName(q))} (${n})`).join(", ") || "—"}</td></tr>`).join("")}${rows.length>1?`<tr class="total"><td>Total</td><td class="n">${tot}</td><td></td></tr>`:""}</tbody></table></div></div>`; }
+    <p class="note" style="margin-top:0">${fmt(laToMs(d,"12:00"),{weekday:"long",day:"numeric",month:"long"})} · ${base==="cita" ? "las citas que son ese día" : "las citas que se agendaron ese día (para cualquier fecha)"}${modo==="tele" ? " · telemarketers y quien le pasó una cita a otro socio (aunque sea de otro grupo)" : ""}.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>${modo==="tele"?"Quién la dio":"Socio"}</th><th class="n">Citas</th><th>${modo==="tele"?"Para quién":"Quién se la sacó"}</th></tr></thead><tbody>${rows.map(([k,x]) => `<tr><td><span class="nm-av">${av(k,26)}<b>${esc(memberName(k))}</b></span></td><td class="n"><b>${x.n}</b></td><td class="note">${Object.entries(x.by).sort((a,b) => b[1]-a[1]).map(([q,n]) => `${esc(qName(q))} (${n})`).join(", ") || "—"}</td></tr>`).join("")}${rows.length>1?`<tr class="total"><td>Total</td><td class="n">${tot}</td><td></td></tr>`:""}</tbody></table></div></div>`; }
 /* Clientes que no pudieron recibir y pidieron que los llamen otro día para dar nueva hora */
 function pendLlamarCard(){ const r = role(); const vis = ([,a]) => r==="admin" || a.socioId===S.uid || a.teleId===S.uid || a.agendo===S.uid || a._priv || (isDist() && grupoDe(S.uid).some(m => m.id===a.socioId));
   const l = Object.entries(S.appts).filter(([,a]) => a.pendCall && !a.pendCall.hecho).filter(vis).sort((x,y) => x[1].pendCall.dia.localeCompare(y[1].pendCall.dia));
