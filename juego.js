@@ -317,17 +317,16 @@ async function startJuego(code, avance){
   /* ===== Tiro al regalo: un pajarito vuela por el cielo llevando el regalo colgado; si la estrella le pega, el regalo cae a la canasta ===== */
   function tiroHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Regalo"};
     return `<style>@keyframes trnube{from{transform:translateX(-120px)}to{transform:translateX(480px)}}@keyframes tral{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.8)}}</style>
-      <div id="tr" style="position:relative;width:100%;max-width:360px;height:min(64vh,480px);margin:6px auto;border-radius:18px;overflow:hidden;background:linear-gradient(#8fd0f5,#cdeefd 55%,#f2fbe9 80%,#cfe9b6);border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
-      <div style="position:absolute;right:14px;top:10px;font-size:38px">☀️</div>
-      ${[[40,22,0],[120,30,-7],[200,26,-13]].map(([t,sz,d])=>`<div style="position:absolute;top:${t}px;left:0;font-size:${sz}px;opacity:.9;animation:trnube ${18+Math.abs(d)}s linear ${d}s infinite">☁️</div>`).join("")}
+      <div id="tr" style="position:relative;width:100%;max-width:360px;height:min(64vh,480px);margin:6px auto;border-radius:18px;overflow:hidden;background:${(() => { const f = fondoSrc(P) || "fondo-cocina.jpg?v=2"; return `linear-gradient(rgba(255,250,240,.15),rgba(255,250,240,0) 40%),url(&quot;${f}&quot;) center bottom/cover no-repeat,#f7efe0`; })()};border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
+      ${[[30,18,0],[95,14,-6],[160,16,-12]].map(([t,sz,d])=>`<div style="position:absolute;top:${t}px;left:0;font-size:${sz}px;opacity:.85;animation:trnube ${14+Math.abs(d)}s linear ${d}s infinite">✨</div>`).join("")}
       <div id="tr-g" style="position:absolute;top:0;left:0;width:80px;text-align:center;will-change:transform">
         <div id="tr-b" style="font-size:44px;line-height:1;display:inline-block">🕊️</div>
         <div id="tr-cu" style="width:2px;height:22px;margin:-4px auto 0;background:#8a6a2a"></div>
         <div id="tr-r" style="width:56px;height:56px;margin:0 auto;border-radius:12px;background:#fff;border:3px solid #e2bb4f;display:grid;place-items:center;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.15)">${p.img?`<img src="${p.img}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:32px">🎁</span>`}</div></div>
       <div id="tr-shot" style="position:absolute;left:50%;bottom:62px;font-size:26px;transform:translateX(-50%);opacity:0">⭐</div>
       <div id="tr-msg" style="position:absolute;left:0;right:0;top:48%;text-align:center;font:800 26px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .2s;text-shadow:0 2px 0 #fff"></div>
-      <div style="position:absolute;left:14px;bottom:6px;font-size:40px">🧺</div>
-      <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:46px">🪄</div></div>
+      <div style="position:absolute;left:10px;bottom:6px;font-size:40px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))">🧺</div>
+      <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:46px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">🪄</div></div>
       <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${esc(p.n)}: dale al regalo y cae en tu canasta.</p>`; }
   function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"), bird = document.getElementById("tr-b"); if (!cont) return; const i = saved.pend;
     let x = 0, y = 70, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0;
