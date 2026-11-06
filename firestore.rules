@@ -308,6 +308,8 @@ service cloud.firestore {
       allow read: if isAdmin() || (isMember() && resource.data.payer == request.auth.uid);
       allow create: if isMember() && request.resource.data.payer == request.auth.uid && id.matches('^' + request.auth.uid + '_.*')
          && request.resource.data.ok == false;
+      // Katerine registra el pago (el distribuidor solo lo ve)
+      allow create: if isAdmin();
       allow update, delete: if isAdmin();
     }
 
