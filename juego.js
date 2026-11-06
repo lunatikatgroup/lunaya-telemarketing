@@ -330,22 +330,22 @@ async function startJuego(code, avance){
     return `<style>@keyframes trnube{from{transform:translateX(-120px)}to{transform:translateX(480px)}}@keyframes tral{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.8)}}</style>
       <div id="tr" style="position:relative;width:min(100%,360px,48vh);aspect-ratio:3/4;margin:6px auto;border-radius:18px;overflow:hidden;background:url(&quot;fondo-ave.jpg?v=1&quot;) center/100% 100% no-repeat,#f7efe0;border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
       ${[[30,18,0],[95,14,-6],[160,16,-12]].map(([t,sz,d])=>`<div style="position:absolute;top:${t}px;left:0;font-size:${sz}px;opacity:.85;animation:trnube ${14+Math.abs(d)}s linear ${d}s infinite">✨</div>`).join("")}
-      <div id="tr-g" style="position:absolute;top:0;left:0;width:80px;text-align:center;will-change:transform">
-        <div id="tr-b" style="font-size:44px;line-height:1;display:inline-block">🕊️</div>
-        <div id="tr-cu" style="width:2px;height:22px;margin:-4px auto 0;background:#8a6a2a"></div>
-        <div id="tr-r" style="width:56px;height:56px;margin:0 auto;border-radius:12px;background:#fff;border:3px solid #e2bb4f;display:grid;place-items:center;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.15)">${p.img?`<img src="${p.img}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:32px">🎁</span>`}</div></div>
+      <div id="tr-g" style="position:absolute;top:0;left:0;width:80px;height:142px;will-change:transform">
+        <img id="tr-b" src="ave.png?v=1" alt="" style="position:absolute;left:-52px;top:0;width:104px;height:auto;transform-origin:94px 47px;filter:drop-shadow(0 4px 6px rgba(120,80,0,.35))">
+        <div id="tr-cu" style="position:absolute;left:39px;top:46px;width:2px;height:40px;background:linear-gradient(#e2bb4f,#b8861b)"></div>
+        <div id="tr-r" style="position:absolute;left:12px;top:84px;width:56px;height:56px;border-radius:12px;background:#fff;border:3px solid #e2bb4f;display:grid;place-items:center;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.15)">${p.img?`<img src="${p.img}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:32px">🎁</span>`}</div></div>
       <div id="tr-shot" style="position:absolute;left:50%;bottom:30%;font-size:28px;transform:translateX(-50%);opacity:0">⭐</div>
       <div id="tr-msg" style="position:absolute;left:0;right:0;top:48%;text-align:center;font:800 26px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .2s;text-shadow:0 2px 0 #fff"></div>
             </div>
       <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${esc(p.n)}: lánzale una estrella y si le das, cae en la canasta.</p>`; }
   function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"), bird = document.getElementById("tr-b"); if (!cont) return; const i = saved.pend;
-    let x = 0, y = 70, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0;
-    (function mv(t){ if (!document.body.contains(g) || fin) return; const dt = Math.min(.05, (t-last)/1000); last = t; const max = cont.clientWidth - g.offsetWidth;
-      x += dir*vel*dt; if (x >= max){ x = max; dir = -1; } else if (x <= 0){ x = 0; dir = 1; }
-      y = 46 + Math.sin((t-t0)/260)*14; g.style.transform = `translate(${x}px,${y}px)`; bird.style.transform = `scaleX(${dir>0?-1:1}) translateY(${Math.sin((t-t0)/90)*3}px)`; requestAnimationFrame(mv); })(last);
+    let x = 46, y = 14, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0;
+    (function mv(t){ if (!document.body.contains(g) || fin) return; const dt = Math.min(.05, (t-last)/1000); last = t; const max = cont.clientWidth - g.offsetWidth - 46;
+      x += dir*vel*dt; if (x >= max){ x = max; dir = -1; } else if (x <= 46){ x = 46; dir = 1; }
+      y = 14 + Math.sin((t-t0)/260)*12; g.style.transform = `translate(${x}px,${y}px)`; bird.style.transform = `scaleX(${dir>0?1:-1}) rotate(${Math.sin((t-t0)/90)*4}deg)`; requestAnimationFrame(mv); })(last);
     const msg = (tx, c) => { const m = document.getElementById("tr-msg"); m.textContent = tx; m.style.color = c; m.style.opacity = 1; setTimeout(() => { if (m) m.style.opacity = 0; }, 750); };
     const tirar = () => { if (busy || fin) return; busy = true; intentos++; jgCtx(); jgTick(900,.25,.05); const sh = document.getElementById("tr-shot"), H = cont.clientHeight;
-      const top = y + 66 + 28, F = 500; /* centro del regalo */
+      const top = y + 112, F = 500; /* centro del regalo */
       sh.getAnimations().forEach(a => a.cancel()); sh.animate([{bottom:(H*0.30)+"px", opacity:1, transform:"translateX(-50%) rotate(0)"}, {bottom:(H-top-14)+"px", opacity:1, transform:"translateX(-50%) rotate(360deg)"}], {duration:F, easing:"linear", fill:"forwards"});
       setTimeout(() => { const gc = x + g.offsetWidth/2, cx = cont.clientWidth/2; sh.getAnimations().forEach(an => an.cancel()); sh.style.opacity = 0;
         if (Math.abs(gc - cx) <= 32 && usarOtra()){ saved.otra = true; save(); msg("¡Lo esquivó! 🕊️💨", "#b3261e"); g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${y-40}px)`},{transform:`translate(${x}px,${y}px)`}], {duration:450});
