@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611061205"></script>
-<script src="anuncios.js?v=202611061205"></script>
-<script src="juego.js?v=202611061205"></script>
+<script src="demo.js?v=202611061217"></script>
+<script src="anuncios.js?v=202611061217"></script>
+<script src="juego.js?v=202611061217"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611061205";
+const APP_VER = "202611061217";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -770,7 +770,8 @@ function teleNominaCard(){ const p = ["quin","quinant","mes","mesant"].includes(
   return h; }
 /* ===== Comisión por pasar una cita (5%): quien dio la cita cobra; paga la compañía por donde pasó la venta ===== */
 const PASE_PCT = () => +(S.config.pasePct ?? 5);
-function quienDio(a){ if (a.transferredFrom && a.transferredFrom !== a.socioId) return a.transferredBy || a.transferredFrom; const o = origenDe(a); if (o !== "asig") return ""; const d = dadorDe(a); const m = S.members[d]; return m && (m.role==="socio" || m.role==="admin") ? d : ""; }
+const pasoQuien = a => { const b = S.members[a.transferredBy]; return a.transferredBy && b && (b.role==="socio" || b.role==="admin") ? a.transferredBy : a.transferredFrom; };
+function quienDio(a){ if (a.transferredFrom && a.transferredFrom !== a.socioId) return pasoQuien(a); const o = origenDe(a); if (o !== "asig") return ""; const d = dadorDe(a); const m = S.members[d]; return m && (m.role==="socio" || m.role==="admin") ? d : ""; }
 function pases(r){ const out = [];
   Object.entries(S.appts).forEach(([id,a]) => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r)) return; const da = quienDio(a); if (!da || da === a.socioId) return;
     const sm = S.members[a.socioId] || {}; const paga = a.pasoPor || (esEmp(sm) ? pagadorDe(a.socioId) : a.socioId); if (!paga || paga === da) return;
@@ -1001,7 +1002,7 @@ function viewHoy(r){
   return h;
 }
 /* Citas que yo le pasé a otros socios: qué pasó con cada una (demostración, venta) */
-function pasadasCard(rg){ const yoDi = a => (a.transferredFrom && a.transferredFrom!==a.socioId) ? (a.transferredBy||a.transferredFrom)===S.uid || a.transferredFrom===S.uid : dadorDe(a)===S.uid;
+function pasadasCard(rg){ const yoDi = a => (a.transferredFrom && a.transferredFrom!==a.socioId) ? pasoQuien(a)===S.uid || a.transferredFrom===S.uid : dadorDe(a)===S.uid;
   const l = Object.entries(S.appts||{}).filter(([,a]) => (a.socioId!==S.uid && yoDi(a) || (a.devuelta && a.devuelta.dio===S.uid && a.devuelta.de!==S.uid)) && (inR(a.when||0, rg) || inR((a.transferredFrom ? a.transferredAt : a.createdAt)||0, rg))).sort((a,b) => b[1].when - a[1].when);
   /* las que pediste pasar y todavía esperan que el patrocinador apruebe */
   const esp = Object.entries(S.appts||{}).filter(([,a]) => a.transferReq && a.transferReq.by===S.uid && !a.transferReq.ok && !a.transferReq.rej);
@@ -1289,7 +1290,7 @@ function gcalUrl(a, calId){
   return "https://calendar.google.com/calendar/render?" + q.toString();
 }
 const famOf = m => !m ? "" : (m.tipo===DIST || m.role==="admin") ? m.id : (m.upline || "dir");
-function canTransfer(a){ return a._priv && (a.socioId===S.uid || role()==="admin" || (isDist() && S.members[a.socioId]?.upline===S.uid)); }
+function canTransfer(a){ return a._priv && (a.socioId===S.uid || role()==="admin" || (isDist() && S.members[a.socioId]?.upline===S.uid) || (role()==="tele" && !S.me?.upline)); }
 /* Se le puede pasar una cita a cualquier socio; si es emprendedor de otro patrocinador, ese patrocinador tiene que aprobarlo */
 function transferTargets(a){ return socios().filter(m => m.id!==a.socioId && m.role!=="baja"); }
 /* La dirección (Katerine) y Andrés Mantilla pasan citas a cualquier emprendedor sin pedir permiso; los demás distribuidores sí piden aprobación al patrocinador */
@@ -1311,7 +1312,7 @@ async function devolverAppt(id){ const a = S.appts[id]; if (!a) return; const to
   try { await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", tv: S.members[pagadorDe(to)]?.role==="admin", dador: firebase.firestore.FieldValue.delete(), chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`↩️ La cita no se pudo hacer con ${memberName(de)} y regresó a ${m.name}`})}); } catch(e){ if (!/not.found|invalid/i.test(String(e?.code||e?.message||e))) throw e; }
   /* Queda como "no se hizo" y entra a "Llamar para reagendar" para que las telemarketers vuelvan a llamar al cliente (no queda como pendiente de resultado) */
   const pc = a.pendCall && !a.pendCall.hecho ? a.pendCall : {dia:today(), hora:"", at:now, by:S.uid, intentos:a.pendCall?.intentos||0, log:[...(a.pendCall?.log||[]), {at:now, by:S.uid, r:`Regresó de ${memberName(de)}: ${a.status==="cancelada"?"se canceló":"no se pudo hacer"}`}]};
-  await S.db.doc("appts/"+id).update({socioId:to, sale:false, amount:0, transferredFrom:firebase.firestore.FieldValue.delete(), devuelta:{at:now, de, st:a.status, dio:a.transferredBy || a.transferredFrom || duenoDe(a)}, pendCall:pc}); }
+  await S.db.doc("appts/"+id).update({socioId:to, sale:false, amount:0, transferredFrom:firebase.firestore.FieldValue.delete(), devuelta:{at:now, de, st:a.status, dio:(a.transferredFrom ? pasoQuien(a) : "") || duenoDe(a)}, pendCall:pc}); }
 /* Las que regresaron antes quedaron como "sin resultado": se vuelven a poner como no se hizo + llamar para reagendar */
 const devFix = new Set();
 function arreglarDevueltas(){ Object.entries(S.appts||{}).forEach(([id,a]) => { if (!a.devuelta || a.status!=="agendada" || (a.when||0) > Date.now() || devFix.has(id) || (a.resultAt||0) > a.devuelta.at) return;
@@ -1595,7 +1596,7 @@ function citasDiaCard(enCitas){ const d = enCitas ? (S.f.day || today()) : (S.f.
   const ap = Object.values(S.appts).filter(a => inR((base==="cita" ? a.when : sacadaAt(a))||0, r) && a.status!=="cancelada");
   const quien = a => origenDe(a)==="tm" ? a.teleId : origenDe(a)==="asig" ? "_asig:"+dadorDe(a) : "_propia";
   const qName = k => k==="_propia" ? "🙋 Propia" : k.startsWith("_asig:") ? "🤝 "+memberName(k.slice(6)) : memberName(k);
-  const dio = a => a.transferredFrom && a.transferredFrom!==a.socioId ? (a.transferredBy || a.transferredFrom) : origenDe(a)==="tm" ? a.teleId : origenDe(a)==="propia" ? "" : dadorDe(a);
+  const dio = a => a.transferredFrom && a.transferredFrom!==a.socioId ? pasoQuien(a) : origenDe(a)==="tm" ? a.teleId : origenDe(a)==="propia" ? "" : dadorDe(a);
   const g = {}; ap.forEach(a => { if (modo==="tele" && origenDe(a)!=="tm") return; const k = modo==="tele" ? a.teleId : a.socioId; const sub = modo==="tele" ? a.socioId : quien(a);
     const x = g[k] ||= {n:0, by:{}}; x.n++; x.by[sub] = (x.by[sub]||0) + 1; });
   if (modo==="tele") [...byRole("tele")].filter(t => !t.upline || role()==="admin").forEach(t => { g[t.id] ||= {n:0, by:{}}; });

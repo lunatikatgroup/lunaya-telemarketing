@@ -95,6 +95,9 @@ service cloud.firestore {
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid && noClientData();
       allow update: if noClientData() && (isAdmin()
          || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid))
+         // Las telemarketers del programa pueden pasar la cita de un socio a otro (ayudan cuando los socios están ocupados)
+         || (isProgramTele() && teleApptOk(resource.data.socioId) && request.resource.data.teleId == resource.data.teleId
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['socioId', 'transferredFrom', 'transferredAt', 'transferredBy', 'transferReq']))
          // La cita que no se pudo hacer regresa a quien la dio (solo puede devolvérsela a sí mismo)
          || (isMember() && request.resource.data.socioId == request.auth.uid
              && (resource.data.get('transferredFrom', '') == request.auth.uid || resource.data.get('agendo', '') == request.auth.uid))
@@ -157,6 +160,12 @@ service cloud.firestore {
                   || (request.resource.data.socioId == request.auth.uid && (resource.data.get('dador', '') == request.auth.uid || resource.data.teleId == request.auth.uid)))
               && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
               && request.resource.data.get('up', '') == socioDoc().get('upline', ''))))
+         // Las telemarketers del programa pasan la cita de un socio a otro (la privacidad se recalcula para el nuevo socio)
+         || (isProgramTele() && (teleVe() || teleDistDe(resource.data) || resource.data.teleId == request.auth.uid)
+             && request.resource.data.teleId == resource.data.teleId
+             && request.resource.data.socioId != resource.data.socioId
+             && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
+             && request.resource.data.get('up', '') == socioDoc().get('upline', ''))
          // Separar Dirección: un director pasa a ver las citas de sus emprendedores (up = su grupo)
          || (isAdmin() && resource.data.get('up', '') == ''
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['up', 'dir'])
