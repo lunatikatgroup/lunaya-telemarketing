@@ -12,7 +12,8 @@ service cloud.firestore {
     function memberPath(uid) { return /databases/$(database)/documents/members/$(uid); }
     function hasDoc() { return signedIn() && exists(memberPath(request.auth.uid)); }
     function meData() { return get(memberPath(request.auth.uid)).data; }
-    function myRole() { return hasDoc() ? meData().role : ''; }
+    // Quien tiene el acceso suspendido (bloqueado) se trata como sin rol: no puede leer ni escribir hasta que Dirección se lo devuelva
+    function myRole() { return hasDoc() ? (('bloqueado' in meData()) && meData().role != 'admin' ? 'bloqueado' : meData().role) : ''; }
     function isAdmin() { return isOwnerEmail() || myRole() == 'admin'; }
     function isMember() { return isAdmin() || myRole() in ['tele', 'socio']; }
     function isLeader() { return myRole() == 'tele' && meData().get('lider', false) == true; }
