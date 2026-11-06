@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611052214"></script>
-<script src="anuncios.js?v=202611052214"></script>
-<script src="juego.js?v=202611052214"></script>
+<script src="demo.js?v=202611052225"></script>
+<script src="anuncios.js?v=202611052225"></script>
+<script src="juego.js?v=202611052225"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611052214";
+const APP_VER = "202611052225";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1261,7 +1261,7 @@ const duenoDe = a => { if (a.transferredFrom && a.transferredFrom !== a.socioId)
   return ag && ag !== a.socioId && m && (m.role==="socio" || m.role==="admin") ? ag : ""; };
 const devDoing = new Set();
 async function devolverAppt(id){ const a = S.appts[id]; if (!a) return; const to = duenoDe(a), m = S.members[to]; if (!to || !m) return; const now = Date.now(), de = a.socioId;
-  try { await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", tv: S.members[pagadorDe(to)]?.role==="admin", dador: de, chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`↩️ La cita no se pudo hacer con ${memberName(de)} y regresó a ${m.name}`})}); } catch(e){ if (!/not.found|invalid/i.test(String(e?.code||e?.message||e))) throw e; }
+  try { await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", tv: S.members[pagadorDe(to)]?.role==="admin", dador: firebase.firestore.FieldValue.delete(), chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`↩️ La cita no se pudo hacer con ${memberName(de)} y regresó a ${m.name}`})}); } catch(e){ if (!/not.found|invalid/i.test(String(e?.code||e?.message||e))) throw e; }
   /* Queda como "no se hizo" y entra a "Llamar para reagendar" para que las telemarketers vuelvan a llamar al cliente (no queda como pendiente de resultado) */
   const pc = a.pendCall && !a.pendCall.hecho ? a.pendCall : {dia:today(), hora:"", at:now, by:S.uid, intentos:a.pendCall?.intentos||0, log:[...(a.pendCall?.log||[]), {at:now, by:S.uid, r:`Regresó de ${memberName(de)}: ${a.status==="cancelada"?"se canceló":"no se pudo hacer"}`}]};
   await S.db.doc("appts/"+id).update({socioId:to, sale:false, amount:0, transferredFrom:firebase.firestore.FieldValue.delete(), devuelta:{at:now, de, st:a.status, dio:a.transferredBy || a.transferredFrom || duenoDe(a)}, pendCall:pc}); }
@@ -1271,7 +1271,12 @@ function arreglarDevueltas(){ Object.entries(S.appts||{}).forEach(([id,a]) => { 
     if (!(role()==="admin" || a.socioId===S.uid)) return; devFix.add(id); const now = Date.now();
     const pc = a.pendCall && !a.pendCall.hecho ? a.pendCall : {dia:today(), hora:"", at:now, by:S.uid, intentos:a.pendCall?.intentos||0, log:[...(a.pendCall?.log||[]), {at:now, by:S.uid, r:`Regresó de ${memberName(a.devuelta.de)}: ${a.devuelta.st==="cancelada"?"se canceló":"no se pudo hacer"}`}]};
     chain("appt:"+id, () => S.db.doc("appts/"+id).update({status:a.devuelta.st || "no_se_hizo", pendCall:pc})).catch(e => { devFix.delete(id); console.log("devfix", e); }); }); }
-function procesarDevoluciones(){ arreglarDevueltas(); Object.entries(S.appts||{}).forEach(([id,a]) => { if (!["no_se_hizo","cancelada"].includes(a.status) || devDoing.has(id) || (a.when||0) < Date.now() - 10*864e5 || (a.devuelta && a.devuelta.at >= (a.transferredAt||0))) return; /* solo las recientes, no las viejas */
+/* Al regresar, la otra persona ya no ve la cita ni los datos del cliente */
+const devQuitar = new Set();
+function quitarAccesoDevueltas(){
+  Object.entries(S.appts||{}).forEach(([id,a]) => { if (!a.devuelta || !a._priv || devQuitar.has(id) || a.socioId!==S.uid && role()!=="admin") return; const p = Object.assign({}, ...Object.values(S.privs||{}))[id]; if (!p || !p.dador || p.dador!==a.devuelta.de || p.socioId===p.dador) return;
+    devQuitar.add(id); S.db.doc("apptp/"+id).update({dador:firebase.firestore.FieldValue.delete()}).catch(e => { devQuitar.delete(id); console.log("quitar", e); }); }); }
+function procesarDevoluciones(){ arreglarDevueltas(); quitarAccesoDevueltas(); Object.entries(S.appts||{}).forEach(([id,a]) => { if (!["no_se_hizo","cancelada"].includes(a.status) || devDoing.has(id) || (a.when||0) < Date.now() - 10*864e5 || (a.devuelta && a.devuelta.at >= (a.transferredAt||0))) return; /* solo las recientes, no las viejas */
     const to = duenoDe(a); if (!to || to === a.socioId) return; if (!(S.uid === a.socioId || S.uid === to || role()==="admin")) return;
     devDoing.add(id); chain("appt:"+id, () => devolverAppt(id)).then(() => { if (S.uid === to) avisar("↩️ Te regresó una cita", `${memberName(a.socioId)} no pudo hacer la cita de ${cName(a)}. Ya es tuya otra vez.`); else if (S.uid === a.socioId) toast(`La cita regresó a ${memberName(to)}`); }, e => { devDoing.delete(id); console.log("devolver", e); }); }); }
 function procesarTransfers(){ S.trSeen = S.trSeen || new Set(transfPorAprobar().map(([id]) => id));
