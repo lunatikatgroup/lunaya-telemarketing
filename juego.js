@@ -22,7 +22,7 @@ const TIPOS_JG = {
   rasca:{e:"🪙", n:"Rasca y gana", una:"un rasca y gana", cta:"Raspa", corto:"¡Raspa y gana!", pill:"te regaló un rasca y gana 🎁", sub:"Raspa la tarjeta con tu dedo y descubre tu regalo.", btn:"", d:"Raspa con el dedo y descubre el premio."},
   quiz:{e:"📝", n:"Test cocina sana", una:"un test de cocina saludable", cta:"Haz el test", corto:"¡Haz el test y gana!", pill:"te invitó al test de cocina sana 🥗", sub:"Responde 5 preguntas rápidas, descubre qué tan sana es tu cocina y gana un regalo.", btn:"EMPEZAR EL TEST", d:"5 preguntas + resultado + rasca y gana. Trae clientes más interesados."},
   puzzle:{e:"🧩", n:"Rompecabezas", una:"un rompecabezas de regalos", cta:"Arma el rompecabezas", corto:"¡Ármalo y gana!", pill:"te retó a un rompecabezas 🧩", sub:"Arma la foto del regalo antes de que se acabe el tiempo y es tuyo.", btn:"¡EMPEZAR!", d:"Arma la foto del regalo contra reloj: lo que arma es lo que se gana."},
-  tiro:{e:"🎯", n:"Tiro al regalo", una:"un tiro al regalo", cta:"Dispara", corto:"¡Dispara y gana!", pill:"te retó al tiro al regalo 🎯", sub:"Tu regalo pasa rápido allá arriba: dispárale y si le das, es tuyo.", btn:"", d:"Un regalo pasa rápido arriba y la persona tiene que darle. Puede intentar las veces que quiera."},
+  tiro:{e:"🎯", n:"Tiro al regalo", una:"un tiro al regalo", cta:"Dispara", corto:"¡Dispara y gana!", pill:"te retó al tiro al regalo 🎯", sub:"Un pajarito se lleva tu regalo: dispárale una estrella y si le das, cae en tu canasta.", btn:"", d:"Un pajarito vuela con el regalo colgado y la persona le dispara estrellas: si le da, el regalo cae en su canasta. Puede intentar las veces que quiera."},
   precio:{e:"💲", n:"Adivina el precio", una:"un juego de adivina el precio", cta:"Adivina", corto:"¡Adivina y gana!", pill:"te retó a adivinar un precio 🎁", sub:"Adivina cuánto cuesta y gana un regalo para tu cocina.", btn:"", d:"Adivina el precio de un producto + rasca y gana."}
 };
 const TI = t => TIPOS_JG[t] || TIPOS_JG.ruleta;
@@ -312,25 +312,37 @@ async function startJuego(code, avance){
     return `<div class="jg-res"><div style="font-weight:800;font-size:18px">${esc(pr.n||"Producto Royal Prestige")}</div>${pr.img?`<img src="${pr.img}" alt="" style="width:60%;max-width:200px;aspect-ratio:1;object-fit:cover;border-radius:14px;margin:8px auto;display:block">`:`<div style="font-size:64px">🍳</div>`}<p style="margin:0;color:#555">¿Cuánto crees que cuesta?</p></div><div class="jg-q">${saved.opc.map(v=>`<button data-pr="${v}" style="text-align:center;font-size:22px">$${v.toLocaleString("en-US")}</button>`).join("")}</div>`; }
   function adivino(v){ const real = +(P.precio?.v)||0, ok = v === real; saved.quiz = `Precio: ${ok?"adivinó":"dijo $"+v}`; save(); if (ok){ confetti(); jgFanfare(); }
     showScratch(ok ? "🎯 ¡Adivinaste!" : "¡Casi!", `<div class="jg-res"><p style="margin:0">${ok?"¡Ese es el precio!":"El precio real es"} <b style="font-size:22px">$${real.toLocaleString("en-US")}</b></p><p style="margin:4px 0 0;color:#555">${ok?"Eres toda una experta 😉":"Pero igual te ganaste un regalo 😉"}</p></div>`); }
-  /* ===== Tiro al regalo: un solo regalo pasa rápido arriba, de lado a lado; la persona dispara desde abajo y tiene que darle ===== */
+  /* ===== Tiro al regalo: un pajarito vuela por el cielo llevando el regalo colgado; si la estrella le pega, el regalo cae a la canasta ===== */
   function tiroHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Regalo"};
-    return `<div id="tr" style="position:relative;width:100%;max-width:360px;height:min(62vh,470px);margin:6px auto;border-radius:18px;overflow:hidden;background:linear-gradient(#fbf3df,#fff 40%,#fbf3df);border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
-      <div id="tr-g" style="position:absolute;top:10px;left:0;width:74px;text-align:center;will-change:transform"><div style="width:66px;height:66px;margin:auto;border-radius:50%;background:#fff;border:3px solid #e2bb4f;display:grid;place-items:center;overflow:hidden">${p.img?`<img src="${p.img}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:36px">🎁</span>`}</div><div style="font-size:11px;font-weight:800;color:var(--ink,#14213d);white-space:nowrap">${esc(p.n)}</div></div>
-      <div id="tr-shot" style="position:absolute;left:50%;bottom:64px;font-size:28px;transform:translateX(-50%);opacity:0">⭐</div>
-      <div id="tr-msg" style="position:absolute;left:0;right:0;top:45%;text-align:center;font:800 24px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .2s"></div>
-      <div style="position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-size:50px">🎯</div></div>
-      <button class="jg-btn go" id="tr-go">¡DISPARAR! <span style="font-size:22px">›</span></button><p class="jg-small" style="margin-top:0" id="tr-int">Toca para disparar cuando el regalo pase por el centro.</p>`; }
-  function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"); if (!cont) return; const i = saved.pend;
-    let x = 0, dir = 1, last = performance.now(), vel = Math.max(320, cont.clientWidth * 1.15), busy = false, fin = false, intentos = 0;
+    return `<style>@keyframes trnube{from{transform:translateX(-120px)}to{transform:translateX(480px)}}@keyframes tral{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.8)}}</style>
+      <div id="tr" style="position:relative;width:100%;max-width:360px;height:min(64vh,480px);margin:6px auto;border-radius:18px;overflow:hidden;background:linear-gradient(#8fd0f5,#cdeefd 55%,#f2fbe9 80%,#cfe9b6);border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
+      <div style="position:absolute;right:14px;top:10px;font-size:38px">☀️</div>
+      ${[[40,22,0],[120,30,-7],[200,26,-13]].map(([t,sz,d])=>`<div style="position:absolute;top:${t}px;left:0;font-size:${sz}px;opacity:.9;animation:trnube ${18+Math.abs(d)}s linear ${d}s infinite">☁️</div>`).join("")}
+      <div id="tr-g" style="position:absolute;top:0;left:0;width:80px;text-align:center;will-change:transform">
+        <div id="tr-b" style="font-size:44px;line-height:1;display:inline-block">🕊️</div>
+        <div id="tr-cu" style="width:2px;height:22px;margin:-4px auto 0;background:#8a6a2a"></div>
+        <div id="tr-r" style="width:56px;height:56px;margin:0 auto;border-radius:12px;background:#fff;border:3px solid #e2bb4f;display:grid;place-items:center;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.15)">${p.img?`<img src="${p.img}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:32px">🎁</span>`}</div></div>
+      <div id="tr-shot" style="position:absolute;left:50%;bottom:62px;font-size:26px;transform:translateX(-50%);opacity:0">⭐</div>
+      <div id="tr-msg" style="position:absolute;left:0;right:0;top:48%;text-align:center;font:800 26px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .2s;text-shadow:0 2px 0 #fff"></div>
+      <div style="position:absolute;left:14px;bottom:6px;font-size:40px">🧺</div>
+      <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:46px">🪄</div></div>
+      <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${esc(p.n)}: dale al regalo y cae en tu canasta.</p>`; }
+  function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"), bird = document.getElementById("tr-b"); if (!cont) return; const i = saved.pend;
+    let x = 0, y = 70, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0;
     (function mv(t){ if (!document.body.contains(g) || fin) return; const dt = Math.min(.05, (t-last)/1000); last = t; const max = cont.clientWidth - g.offsetWidth;
-      x += dir*vel*dt; if (x >= max){ x = max; dir = -1; } else if (x <= 0){ x = 0; dir = 1; } g.style.transform = `translateX(${x}px)`; requestAnimationFrame(mv); })(last);
-    const msg = (t, c) => { const m = document.getElementById("tr-msg"); m.textContent = t; m.style.color = c; m.style.opacity = 1; setTimeout(() => { if (m) m.style.opacity = 0; }, 700); };
-    const tirar = () => { if (busy || fin) return; busy = true; intentos++; jgCtx(); jgTick(300,.3,.06); const sh = document.getElementById("tr-shot"), F = 520, H = cont.clientHeight;
-      sh.getAnimations().forEach(a => a.cancel()); sh.animate([{bottom:"64px", opacity:1}, {bottom:(H-50)+"px", opacity:1}], {duration:F, easing:"linear", fill:"forwards"});
-      setTimeout(() => { const gc = x + g.offsetWidth/2, cx = cont.clientWidth/2; if (Math.abs(gc - cx) <= 30){ fin = true; sh.style.opacity = 0;
-          g.animate([{transform:`translateX(${x}px) scale(1)`},{transform:`translateX(${x}px) scale(1.35)`},{transform:`translateX(${x}px) scale(1)`}], {duration:600}); msg("¡LE DISTE! 🎉", "#1f7a3a");
-          saved.quiz = `Tiro: le dio ${intentos===1?"al primer intento":"en el intento "+intentos}`; save(); setTimeout(() => won(i), 800); }
-        else { sh.style.opacity = 0; msg(["¡Uy, casi!","¡Fallaste!","¡Otra vez!"][intentos%3], "#b3261e"); vel = Math.max(220, vel*0.93);
+      x += dir*vel*dt; if (x >= max){ x = max; dir = -1; } else if (x <= 0){ x = 0; dir = 1; }
+      y = 46 + Math.sin((t-t0)/260)*14; g.style.transform = `translate(${x}px,${y}px)`; bird.style.transform = `scaleX(${dir>0?-1:1}) translateY(${Math.sin((t-t0)/90)*3}px)`; requestAnimationFrame(mv); })(last);
+    const msg = (tx, c) => { const m = document.getElementById("tr-msg"); m.textContent = tx; m.style.color = c; m.style.opacity = 1; setTimeout(() => { if (m) m.style.opacity = 0; }, 750); };
+    const tirar = () => { if (busy || fin) return; busy = true; intentos++; jgCtx(); jgTick(900,.25,.05); const sh = document.getElementById("tr-shot"), H = cont.clientHeight;
+      const top = y + 66 + 28, F = 500; /* centro del regalo */
+      sh.getAnimations().forEach(a => a.cancel()); sh.animate([{bottom:"62px", opacity:1, transform:"translateX(-50%) rotate(0)"}, {bottom:(H-top-14)+"px", opacity:1, transform:"translateX(-50%) rotate(360deg)"}], {duration:F, easing:"linear", fill:"forwards"});
+      setTimeout(() => { const gc = x + g.offsetWidth/2, cx = cont.clientWidth/2; sh.getAnimations().forEach(an => an.cancel()); sh.style.opacity = 0;
+        if (Math.abs(gc - cx) <= 32){ fin = true; msg("¡LE DISTE! 🎉", "#1f7a3a"); jgFanfare && jgFanfare(); const r = document.getElementById("tr-r"), cu = document.getElementById("tr-cu");
+          const rr = r.getBoundingClientRect(), cr = cont.getBoundingClientRect(); const box2 = r.cloneNode(true); box2.style.cssText += `;position:absolute;left:${rr.left-cr.left}px;top:${rr.top-cr.top}px;margin:0;z-index:5`; cont.append(box2); r.style.visibility = "hidden"; cu.style.visibility = "hidden";
+          g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x + dir*160}px,${y-160}px)`}], {duration:900, easing:"ease-in", fill:"forwards"});
+          box2.animate([{transform:"translate(0,0) rotate(0)"},{transform:`translate(${14+20-(rr.left-cr.left)}px,${H-60-(rr.top-cr.top)}px) rotate(540deg) scale(.7)`}], {duration:900, easing:"cubic-bezier(.5,0,.9,.6)", fill:"forwards"});
+          saved.quiz = `Tiro: le dio ${intentos===1?"al primer intento":"en el intento "+intentos}`; save(); setTimeout(() => won(i), 1100); }
+        else { msg(["¡Uy, casi!","¡Fallaste!","¡Otra vez!"][intentos%3], "#b3261e"); vel = Math.max(210, vel*0.93);
           document.getElementById("tr-int").textContent = `Intento ${intentos}. ¡Sigue intentando, tú puedes!`; setTimeout(() => busy = false, 350); } }, F); };
     document.getElementById("tr-go").onclick = tirar; cont.onclick = tirar; }
   /* ===== Rompecabezas: la foto del regalo en 9 piezas; toca dos piezas para cambiarlas de lugar ===== */
