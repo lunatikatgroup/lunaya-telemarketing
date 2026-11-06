@@ -322,6 +322,12 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Recordatorios de llamada: cada quien ve y maneja solo los suyos
+    match /recordatorios/{id} {
+      allow read, update, delete: if isMember() && resource.data.owner == request.auth.uid;
+      allow create: if isMember() && request.resource.data.owner == request.auth.uid;
+    }
+
     // En vivo: en qué base (socio) está trabajando cada telemarketer
     match /presencia/{uid} {
       allow read: if isMember();

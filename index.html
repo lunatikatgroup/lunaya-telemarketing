@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611061342"></script>
-<script src="anuncios.js?v=202611061342"></script>
-<script src="juego.js?v=202611061342"></script>
+<script src="demo.js?v=202611061345"></script>
+<script src="anuncios.js?v=202611061345"></script>
+<script src="juego.js?v=202611061345"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611061342";
+const APP_VER = "202611061345";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -392,6 +392,7 @@ function subscribeAll(){
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
   { const q = (S.isOwner || S.me?.role==="admin") ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
     S.unsub.push(q.onSnapshot(s => { S.pagosDist = {}; s.docs.forEach(d => S.pagosDist[d.id] = d.data()); render(); }, e => console.log("pagosdist", e))); }
+  S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
   if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
   else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
@@ -955,8 +956,23 @@ function evalTiles(e, showCalls=true){
     <div class="tile"><b>${e.aprob}</b><span>Ventas aprobadas</span><small>${e.pend} pendientes · ${e.cancel} canceladas</small></div>
     <div class="tile acc"><b>${money(e.monto)}</b><span>Volumen de ventas</span><small>${money(e.montoAprob)} aprobado</small></div></div>`;
 }
+/* ===== Recordatorios de llamada: "llámame a las 5" (no es una cita, es un aviso para volver a llamar) ===== */
+const telOkX = t => window.telOk ? telOk(t) : String(t||"").replace(/\D/g,"").slice(-10); const telFmtX = t => window.telFmt ? telFmt(t) : telFmt2(String(t||"").replace(/\D/g,"").slice(-10));
+function recCard(){ const l = Object.entries(S.recs||{}).filter(([,x]) => !x.hecho).sort((a,b) => a[1].when - b[1].when); const now = Date.now();
+  const recCal = x => { const z = ms => new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""); return "https://calendar.google.com/calendar/render?" + new URLSearchParams({action:"TEMPLATE", text:`📞 Llamar a ${x.nombre||"cliente"}`, dates:`${z(x.when)}/${z(x.when+15*60e3)}`, details:`${x.tel?telFmtX(x.tel)+"\n":""}${x.nota||""}`, ctz:TZ}).toString(); };
+  return `<div class="card"><h2>⏰ Recordatorios de llamada${l.filter(([,x]) => x.when <= now).length ? ` <span class="tag tg-bad">${l.filter(([,x]) => x.when <= now).length} para llamar ya</span>` : ""}</h2>
+    <p class="note" style="margin-top:-6px">Para cuando alguien te dice "llámame más tarde". No es una cita: es un aviso para volver a llamar. Solo lo ves tú.</p>
+    <form id="rec-form" class="grid2"><label class="f">Nombre<input class="i" id="rec-n" placeholder="Ej.: María López" autocomplete="off"></label><label class="f">Teléfono<input class="i" id="rec-t" inputmode="tel" autocomplete="off"></label>
+      <label class="f">Día<input class="i" type="date" id="rec-d" value="${today()}" min="${today()}"></label><label class="f">Hora${timeSel("rec-h","17:00")}</label>
+      <label class="f" style="grid-column:1/-1">Nota (opcional)<input class="i" id="rec-x" placeholder="Ej.: interesada en el extractor" maxlength="200"></label>
+      <div style="grid-column:1/-1"><button class="btn" type="submit">➕ Guardar recordatorio</button></div></form>
+    ${l.length ? `<div class="list" style="margin-top:10px">${l.map(([id,x]) => { const late = x.when <= now; const t = telOkX(x.tel||""); return `<div class="item" style="cursor:default;flex-wrap:wrap;gap:8px;${late?"border-color:var(--bad,#b3261e);background:rgba(179,38,30,.06)":""}"><div style="flex:1;min-width:180px"><div class="t">${late?"🔔 ":""}${esc(x.nombre||"Sin nombre")}</div><div class="m">${late ? "<b>Ya es hora</b> · " : ""}${fmtWhen(x.when)}${t ? " · "+telFmtX(t) : ""}</div>${x.nota?`<div class="m">📝 ${esc(x.nota)}</div>`:""}</div>
+      <div class="row" style="gap:6px">${t ? `<a class="btn small" href="tel:+1${t}">📞 Llamar</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}">WhatsApp</a>` : ""}<a class="btn small ghost" target="_blank" rel="noopener" href="${esc(recCal(x))}">📅</a><button class="btn small ghost" data-rec-ok="${id}">✅ Listo</button><button class="btn small ghost" data-rec-del="${id}" aria-label="Borrar">🗑️</button></div></div>`; }).join("")}</div>` : ""}</div>`; }
+/* Aviso en el teléfono cuando llega la hora (con la app abierta) */
+const recAvisados = new Set();
+setInterval(() => { Object.entries(S.recs||{}).forEach(([id,x]) => { if (!x.hecho && x.when <= Date.now() && x.when > Date.now() - 30*60e3 && !recAvisados.has(id)){ recAvisados.add(id); avisar("⏰ Hora de llamar", `${x.nombre||"Cliente"}${x.tel?" · "+telFmtX(x.tel):""}${x.nota?" · "+x.nota:""}`); toast(`⏰ Hora de llamar a ${x.nombre||"tu cliente"}`); render(); } }); }, 30e3);
 function viewHoy(r){
-  const rg = range(S.f.period); let h = pendLlamarCard();
+  const rg = range(S.f.period); let h = pendLlamarCard() + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
@@ -1906,6 +1922,11 @@ function bindCommon(){
   all("[data-tper]", b => b.onclick = () => { S.f.tper = b.dataset.tper; render(); });
   all("[data-origen]", b => b.onclick = () => openOrigen(b.dataset.origen));
   all("[data-perfil]", b => b.onclick = () => openPerfil(b.dataset.perfil));
+  { const rf = m.querySelector("#rec-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = $("#rec-n").value.trim(), t = telOkX($("#rec-t").value), d = $("#rec-d").value, h = timeVal("rec-h");
+      if (!n && !t){ toast("Escribe el nombre o el teléfono"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
+      try { await S.db.collection("recordatorios").add({owner:S.uid, nombre:n.slice(0,60), tel:t||"", when:laToMs(d,h), nota:$("#rec-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); toast("Recordatorio guardado"); } catch(err){ writeErr(err); } }; }
+  all("[data-rec-ok]", b => b.onclick = () => S.db.doc("recordatorios/"+b.dataset.recOk).update({hecho:true, hechoAt:Date.now()}).then(() => toast("Listo"), writeErr));
+  all("[data-rec-del]", b => b.onclick = () => S.db.doc("recordatorios/"+b.dataset.recDel).delete().then(() => toast("Borrado"), writeErr));
   all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
   all("[data-setup]", sel => sel.onchange = async () => { const id = sel.dataset.setup, to = sel.value, m = S.members[id]; if (!m || to===(m.upline||"")) return;
