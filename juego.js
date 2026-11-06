@@ -23,6 +23,7 @@ const TIPOS_JG = {
   quiz:{e:"📝", n:"Test cocina sana", una:"un test de cocina saludable", cta:"Haz el test", corto:"¡Haz el test y gana!", pill:"te invitó al test de cocina sana 🥗", sub:"Responde 5 preguntas rápidas, descubre qué tan sana es tu cocina y gana un regalo.", btn:"EMPEZAR EL TEST", d:"5 preguntas + resultado + rasca y gana. Trae clientes más interesados."},
   puzzle:{e:"🧩", n:"Rompecabezas", una:"un rompecabezas de regalos", cta:"Arma el rompecabezas", corto:"¡Ármalo y gana!", pill:"te retó a un rompecabezas 🧩", sub:"Arma la foto del regalo antes de que se acabe el tiempo y es tuyo.", btn:"¡EMPEZAR!", d:"Arma la foto del regalo contra reloj: lo que arma es lo que se gana."},
   tiro:{e:"🎯", n:"Tiro al regalo", una:"un tiro al regalo", cta:"Dispara", corto:"¡Dispara y gana!", pill:"te retó al tiro al regalo 🎯", sub:"Un pajarito se lleva tu regalo: dispárale una estrella y si le das, cae en tu canasta.", btn:"", d:"Un pajarito vuela con el regalo colgado y la persona le dispara estrellas: si le da, el regalo cae en su canasta. Puede intentar las veces que quiera."},
+  pinata:{e:"🪅", n:"La piñata", una:"una piñata de regalos", cta:"Rompe la piñata", corto:"¡Rómpela y gana!", pill:"te invitó a romper la piñata 🪅", sub:"Dale 3 palazos a la piñata cuando pase por el centro, rómpela y descubre tu regalo.", btn:"", d:"La piñata se mueve de lado a lado; con 3 golpes se rompe, caen dulces y sale el regalo."},
   precio:{e:"💲", n:"Adivina el precio", una:"un juego de adivina el precio", cta:"Adivina", corto:"¡Adivina y gana!", pill:"te retó a adivinar un precio 🎁", sub:"Adivina cuánto cuesta y gana un regalo para tu cocina.", btn:"", d:"Adivina el precio de un producto + rasca y gana."}
 };
 const TI = t => TIPOS_JG[t] || TIPOS_JG.ruleta;
@@ -260,16 +261,17 @@ async function startJuego(code, avance){
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div><div class="jg-top">${esc(TX.top)}</div>
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>
       <p class="jg-p"><b>${esc(TX.sub)}</b><br>¡Totalmente gratis! 🎉</p>
-      ${tipo==="rasca" ? scratchHtml() : tipo==="tiro" ? tiroHtml() : tipo==="quiz" || tipo==="precio" || tipo==="puzzle" ? `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` + (tipo==="precio" ? precioHtml() : "") : tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
+      ${tipo==="rasca" ? scratchHtml() : tipo==="tiro" ? tiroHtml() : tipo==="pinata" ? pinataHtml() : tipo==="quiz" || tipo==="precio" || tipo==="puzzle" ? `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` + (tipo==="precio" ? precioHtml() : "") : tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
         ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(prizes)}
       <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
-      ${tipo==="caja" || tipo==="rasca" || tipo==="precio" || tipo==="tiro" ? "" : `<button class="jg-btn go" id="jg-spin">${esc(TX.btn||"¡GIRAR!")} <span style="font-size:22px">›</span></button>`}
+      ${tipo==="caja" || tipo==="rasca" || tipo==="precio" || tipo==="tiro" || tipo==="pinata" ? "" : `<button class="jg-btn go" id="jg-spin">${esc(TX.btn||"¡GIRAR!")} <span style="font-size:22px">›</span></button>`}
       <p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`;
     const sh = document.getElementById("jg-show"); if (sh && sh.scrollWidth > sh.clientWidth + 10){ let dir = 1; const iv = setInterval(() => { if (!document.body.contains(sh)) return clearInterval(iv); const max = sh.scrollWidth - sh.clientWidth; if (sh.scrollLeft >= max - 4) dir = -1; else if (sh.scrollLeft <= 4) dir = 1; sh.scrollBy({left: dir * sh.clientWidth * 0.5, behavior:"smooth"}); }, 2200); sh.addEventListener("touchstart", () => clearInterval(iv), {once:true}); }
     if (tipo==="caja") box.querySelectorAll("[data-box]").forEach(b => b.onclick = () => openBox(b));
     else if (tipo==="rasca") bindScratch();
     else if (tipo==="quiz") document.getElementById("jg-spin").onclick = () => showQuiz(0, 0);
     else if (tipo==="tiro") bindTiro();
+    else if (tipo==="pinata") bindPinata();
     else if (tipo==="puzzle") document.getElementById("jg-spin").onclick = () => showPuzzle();
     else if (tipo==="precio") box.querySelectorAll("[data-pr]").forEach(b => b.onclick = () => adivino(+b.dataset.pr));
     else document.getElementById("jg-spin").onclick = spin;
@@ -345,6 +347,33 @@ async function startJuego(code, avance){
         else { msg(["¡Uy, casi!","¡Fallaste!","¡Otra vez!"][intentos%3], "#b3261e"); vel = Math.max(210, vel*0.93);
           document.getElementById("tr-int").textContent = `Intento ${intentos}. ¡Sigue intentando, tú puedes!`; setTimeout(() => busy = false, 350); } }, F); };
     document.getElementById("tr-go").onclick = tirar; cont.onclick = tirar; }
+  /* ===== La piñata: se balancea colgada de una cuerda; hay que pegarle 3 veces cuando pasa por el centro ===== */
+  function pinataHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); }
+    return `<style>@keyframes pnfall{from{transform:translate(0,0) rotate(0)}to{transform:translate(var(--dx),420px) rotate(var(--r))}}</style>
+      <div id="pn" style="position:relative;width:100%;max-width:360px;height:min(60vh,440px);margin:6px auto;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 50% 0,#fff6d8,#ffd9b0 45%,#f7b5c4);border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
+      <div style="position:absolute;top:0;left:0;right:0;height:26px;background:repeating-linear-gradient(90deg,#e94f64 0 22px,#ffcf33 22px 44px,#33b5e5 44px 66px,#7ac74f 66px 88px);clip-path:polygon(0 0,100% 0,100% 40%,95% 100%,90% 40%,85% 100%,80% 40%,75% 100%,70% 40%,65% 100%,60% 40%,55% 100%,50% 40%,45% 100%,40% 40%,35% 100%,30% 40%,25% 100%,20% 40%,15% 100%,10% 40%,5% 100%,0 40%)"></div>
+      <div id="pn-arm" style="position:absolute;left:50%;top:0;width:0;height:0;transform-origin:0 0">
+        <div style="position:absolute;left:-1px;top:0;width:2px;height:110px;background:#6b4b1f"></div>
+        <div id="pn-p" style="position:absolute;left:-55px;top:100px;width:110px;text-align:center;font-size:96px;line-height:1">🪅</div></div>
+      <div id="pn-msg" style="position:absolute;left:0;right:0;top:56%;text-align:center;font:900 30px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .15s;text-shadow:0 2px 0 #fff"></div>
+      <div id="pn-hits" style="position:absolute;right:10px;bottom:10px;font:800 15px Manrope,sans-serif;color:#14213d;background:#fff;border-radius:99px;padding:6px 10px">Golpes: 0 / 3</div>
+      <div id="pn-palo" style="position:absolute;left:50%;bottom:-6px;width:12px;height:150px;margin-left:-6px;border-radius:8px;background:linear-gradient(90deg,#c48a3a,#e6b066,#a8742c);transform-origin:50% 100%;transform:rotate(28deg)"></div></div>
+      <button class="jg-btn go" id="pn-go">¡DALE! 🪅</button><p class="jg-small" style="margin-top:0" id="pn-int">Toca cuando la piñata pase por el centro. Con 3 golpes se rompe.</p>`; }
+  function bindPinata(){ const cont = document.getElementById("pn"), arm = document.getElementById("pn-arm"), pin = document.getElementById("pn-p"), palo = document.getElementById("pn-palo"); if (!cont) return; const i = saved.pend;
+    let ang = 0, t0 = performance.now(), w = 2.6, A = 42, golpes = 0, busy = false, fin = false, fase = 0, last = t0;
+    (function mv(t){ if (!document.body.contains(arm) || fin) return; fase += (t-last)/1000 * w; last = t; ang = A*Math.sin(fase); arm.style.transform = `rotate(${ang}deg)`; requestAnimationFrame(mv); })(t0);
+    const msg = (tx, c) => { const m = document.getElementById("pn-msg"); m.textContent = tx; m.style.color = c; m.style.opacity = 1; setTimeout(() => { if (m) m.style.opacity = 0; }, 600); };
+    const dulces = (n, desde) => { const r = cont.getBoundingClientRect(); for (let k = 0; k < n; k++){ const d = document.createElement("div"); d.textContent = ["🍬","🍭","🍫","🎊","⭐","🍬"][k%6];
+        d.style.cssText = `position:absolute;left:${desde.x}px;top:${desde.y}px;font-size:${20+Math.random()*14}px;--dx:${(Math.random()-.5)*260}px;--r:${(Math.random()-.5)*720}deg;animation:pnfall ${0.9+Math.random()*0.7}s cubic-bezier(.3,-.4,.8,.6) forwards;pointer-events:none`; cont.append(d); setTimeout(() => d.remove(), 1800); } };
+    const pos = () => { const r = pin.getBoundingClientRect(), c = cont.getBoundingClientRect(); return {x:r.left-c.left+r.width/2, y:r.top-c.top+r.height/2}; };
+    const pegar = () => { if (busy || fin) return; busy = true; jgCtx(); palo.animate([{transform:"rotate(28deg)"},{transform:"rotate(-8deg)"},{transform:"rotate(28deg)"}], {duration:260, easing:"ease-out"});
+      setTimeout(() => { const p = pos(), cx = cont.clientWidth/2;
+        if (Math.abs(p.x - cx) <= 38){ golpes++; jgTick(160,.5,.08); document.getElementById("pn-hits").textContent = `Golpes: ${golpes} / 3`; pin.animate([{transform:"rotate(0) scale(1)"},{transform:"rotate(-18deg) scale(1.12)"},{transform:"rotate(12deg) scale(.95)"},{transform:"rotate(0) scale(1)"}], {duration:350});
+          if (golpes >= 3){ fin = true; msg("¡SE ROMPIÓ! 🎉", "#1f7a3a"); pin.animate([{transform:"scale(1)", opacity:1},{transform:"scale(1.6)", opacity:0}], {duration:450, fill:"forwards"}); dulces(26, p); confetti(); jgFanfare && jgFanfare();
+            setTimeout(() => won(i), 1300); return; }
+          msg(["¡PUM! 💥","¡ZAS! 💥"][golpes-1] || "¡PUM!", "#d14b00"); dulces(5, p); w *= 1.15; setTimeout(() => busy = false, 280); }
+        else { msg("¡Al aire! 😅", "#b3261e"); document.getElementById("pn-int").textContent = "¡Casi! Espera a que pase por el centro."; setTimeout(() => busy = false, 380); } }, 130); };
+    document.getElementById("pn-go").onclick = pegar; cont.onclick = pegar; }
   /* ===== Rompecabezas: la foto del regalo en 9 piezas; toca dos piezas para cambiarlas de lugar ===== */
   const PZ_SEG = () => Math.min(180, Math.max(20, +P.seg || 60));
   async function puzzleImg(i){ const p = prizes[i] || {n:"Regalo"}; const c = document.createElement("canvas"); c.width = c.height = 600; const x = c.getContext("2d");
