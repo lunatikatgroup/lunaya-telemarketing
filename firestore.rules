@@ -313,6 +313,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // En vivo: en qué base (socio) está trabajando cada telemarketer
+    match /presencia/{uid} {
+      allow read: if isMember();
+      allow write: if isMember() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['socio', 'at', 'name'])
+         && request.resource.data.socio is string && request.resource.data.socio.size() <= 64;
+    }
+
     match /config/{id} {
       allow read: if isMember();
       allow write: if isAdmin();
