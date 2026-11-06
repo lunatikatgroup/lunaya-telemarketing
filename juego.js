@@ -22,7 +22,7 @@ const TIPOS_JG = {
   rasca:{e:"🪙", n:"Rasca y gana", una:"un rasca y gana", cta:"Raspa", corto:"¡Raspa y gana!", pill:"te regaló un rasca y gana 🎁", sub:"Raspa la tarjeta con tu dedo y descubre tu regalo.", btn:"", d:"Raspa con el dedo y descubre el premio."},
   quiz:{e:"📝", n:"Test cocina sana", una:"un test de cocina saludable", cta:"Haz el test", corto:"¡Haz el test y gana!", pill:"te invitó al test de cocina sana 🥗", sub:"Responde 5 preguntas rápidas, descubre qué tan sana es tu cocina y gana un regalo.", btn:"EMPEZAR EL TEST", d:"5 preguntas + resultado + rasca y gana. Trae clientes más interesados."},
   puzzle:{e:"🧩", n:"Rompecabezas", una:"un rompecabezas de regalos", cta:"Arma el rompecabezas", corto:"¡Ármalo y gana!", pill:"te retó a un rompecabezas 🧩", sub:"Arma la foto del regalo antes de que se acabe el tiempo y es tuyo.", btn:"¡EMPEZAR!", d:"Arma la foto del regalo contra reloj: lo que arma es lo que se gana."},
-  tiro:{e:"🎯", n:"Tiro al regalo", una:"un tiro al regalo", cta:"Dispara", corto:"¡Dispara y gana!", pill:"te retó al tiro al regalo 🎯", sub:"Un pajarito se lleva tu regalo: dispárale una estrella y si le das, cae en tu canasta.", btn:"", d:"Un pajarito vuela con el regalo colgado y la persona le dispara estrellas: si le da, el regalo cae en su canasta. Puede intentar las veces que quiera."},
+  tiro:{e:"🎯", n:"Tiro al regalo", una:"un tiro al regalo", cta:"Dispara", corto:"¡Dispara y gana!", pill:"te retó al tiro al regalo 🎯", sub:"Un pajarito se lleva tu regalo: lánzale una estrella desde la canasta y si le das, el regalo es tuyo.", btn:"", d:"Un pajarito vuela con el regalo colgado y la persona le dispara estrellas: si le da, el regalo cae en su canasta. Puede intentar las veces que quiera."},
   pinata:{e:"🪅", n:"La piñata", una:"una piñata de regalos", cta:"Rompe la piñata", corto:"¡Rómpela y gana!", pill:"te invitó a romper la piñata 🪅", sub:"Dale 3 palazos a la piñata cuando pase por el centro, rómpela y descubre tu regalo.", btn:"", d:"La piñata se mueve de lado a lado; con 3 golpes se rompe, caen dulces y sale el regalo."},
   precio:{e:"💲", n:"Adivina el precio", una:"un juego de adivina el precio", cta:"Adivina", corto:"¡Adivina y gana!", pill:"te retó a adivinar un precio 🎁", sub:"Adivina cuánto cuesta y gana un regalo para tu cocina.", btn:"", d:"Adivina el precio de un producto + rasca y gana."}
 };
@@ -328,17 +328,16 @@ async function startJuego(code, avance){
   /* ===== Tiro al regalo: un pajarito vuela por el cielo llevando el regalo colgado; si la estrella le pega, el regalo cae a la canasta ===== */
   function tiroHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Regalo"};
     return `<style>@keyframes trnube{from{transform:translateX(-120px)}to{transform:translateX(480px)}}@keyframes tral{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.8)}}</style>
-      <div id="tr" style="position:relative;width:100%;max-width:360px;height:min(64vh,480px);margin:6px auto;border-radius:18px;overflow:hidden;background:${(() => { const f = fondoSrc(P) || "fondo-cocina.jpg?v=2"; return `linear-gradient(rgba(255,250,240,.15),rgba(255,250,240,0) 40%),url(&quot;${f}&quot;) center bottom/cover no-repeat,#f7efe0`; })()};border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
+      <div id="tr" style="position:relative;width:min(100%,360px,48vh);aspect-ratio:3/4;margin:6px auto;border-radius:18px;overflow:hidden;background:url(&quot;fondo-ave.jpg?v=1&quot;) center/100% 100% no-repeat,#f7efe0;border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
       ${[[30,18,0],[95,14,-6],[160,16,-12]].map(([t,sz,d])=>`<div style="position:absolute;top:${t}px;left:0;font-size:${sz}px;opacity:.85;animation:trnube ${14+Math.abs(d)}s linear ${d}s infinite">✨</div>`).join("")}
       <div id="tr-g" style="position:absolute;top:0;left:0;width:80px;text-align:center;will-change:transform">
         <div id="tr-b" style="font-size:44px;line-height:1;display:inline-block">🕊️</div>
         <div id="tr-cu" style="width:2px;height:22px;margin:-4px auto 0;background:#8a6a2a"></div>
         <div id="tr-r" style="width:56px;height:56px;margin:0 auto;border-radius:12px;background:#fff;border:3px solid #e2bb4f;display:grid;place-items:center;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.15)">${p.img?`<img src="${p.img}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:32px">🎁</span>`}</div></div>
-      <div id="tr-shot" style="position:absolute;left:50%;bottom:62px;font-size:26px;transform:translateX(-50%);opacity:0">⭐</div>
+      <div id="tr-shot" style="position:absolute;left:50%;bottom:30%;font-size:28px;transform:translateX(-50%);opacity:0">⭐</div>
       <div id="tr-msg" style="position:absolute;left:0;right:0;top:48%;text-align:center;font:800 26px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .2s;text-shadow:0 2px 0 #fff"></div>
-      <div style="position:absolute;left:4px;bottom:0;font-size:72px;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))">🧺</div>
-      <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:46px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">🪄</div></div>
-      <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${esc(p.n)}: dale al regalo y cae en tu canasta.</p>`; }
+            </div>
+      <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${esc(p.n)}: lánzale una estrella y si le das, cae en la canasta.</p>`; }
   function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"), bird = document.getElementById("tr-b"); if (!cont) return; const i = saved.pend;
     let x = 0, y = 70, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0;
     (function mv(t){ if (!document.body.contains(g) || fin) return; const dt = Math.min(.05, (t-last)/1000); last = t; const max = cont.clientWidth - g.offsetWidth;
@@ -347,14 +346,14 @@ async function startJuego(code, avance){
     const msg = (tx, c) => { const m = document.getElementById("tr-msg"); m.textContent = tx; m.style.color = c; m.style.opacity = 1; setTimeout(() => { if (m) m.style.opacity = 0; }, 750); };
     const tirar = () => { if (busy || fin) return; busy = true; intentos++; jgCtx(); jgTick(900,.25,.05); const sh = document.getElementById("tr-shot"), H = cont.clientHeight;
       const top = y + 66 + 28, F = 500; /* centro del regalo */
-      sh.getAnimations().forEach(a => a.cancel()); sh.animate([{bottom:"62px", opacity:1, transform:"translateX(-50%) rotate(0)"}, {bottom:(H-top-14)+"px", opacity:1, transform:"translateX(-50%) rotate(360deg)"}], {duration:F, easing:"linear", fill:"forwards"});
+      sh.getAnimations().forEach(a => a.cancel()); sh.animate([{bottom:(H*0.30)+"px", opacity:1, transform:"translateX(-50%) rotate(0)"}, {bottom:(H-top-14)+"px", opacity:1, transform:"translateX(-50%) rotate(360deg)"}], {duration:F, easing:"linear", fill:"forwards"});
       setTimeout(() => { const gc = x + g.offsetWidth/2, cx = cont.clientWidth/2; sh.getAnimations().forEach(an => an.cancel()); sh.style.opacity = 0;
         if (Math.abs(gc - cx) <= 32 && usarOtra()){ saved.otra = true; save(); msg("¡Lo esquivó! 🕊️💨", "#b3261e"); g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${y-40}px)`},{transform:`translate(${x}px,${y}px)`}], {duration:450});
           document.getElementById("tr-int").textContent = "¡Casi! El pajarito lo esquivó. Inténtalo otra vez."; setTimeout(() => busy = false, 450); return; }
         if (Math.abs(gc - cx) <= 32){ fin = true; msg("¡LE DISTE! 🎉", "#1f7a3a"); jgFanfare && jgFanfare(); const r = document.getElementById("tr-r"), cu = document.getElementById("tr-cu");
           const rr = r.getBoundingClientRect(), cr = cont.getBoundingClientRect(); const box2 = r.cloneNode(true); box2.style.cssText += `;position:absolute;left:${rr.left-cr.left}px;top:${rr.top-cr.top}px;margin:0;z-index:5`; cont.append(box2); r.style.visibility = "hidden"; cu.style.visibility = "hidden";
           g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x + dir*160}px,${y-160}px)`}], {duration:900, easing:"ease-in", fill:"forwards"});
-          box2.animate([{transform:"translate(0,0) rotate(0)"},{transform:`translate(${4+36-28-(rr.left-cr.left)}px,${H-84-(rr.top-cr.top)}px) rotate(540deg) scale(.75)`}], {duration:900, easing:"cubic-bezier(.5,0,.9,.6)", fill:"forwards"});
+          box2.animate([{transform:"translate(0,0) rotate(0)"},{transform:`translate(${cont.clientWidth/2-28-(rr.left-cr.left)}px,${H*0.70-(rr.top-cr.top)}px) rotate(540deg) scale(.8)`}], {duration:900, easing:"cubic-bezier(.5,0,.9,.6)", fill:"forwards"});
           saved.quiz = `Tiro: le dio ${intentos===1?"al primer intento":"en el intento "+intentos}`; save(); setTimeout(() => won(i), 1100); }
         else { msg(["¡Uy, casi!","¡Fallaste!","¡Otra vez!"][intentos%3], "#b3261e"); vel = Math.max(210, vel*0.93);
           document.getElementById("tr-int").textContent = `Intento ${intentos}. ¡Sigue intentando, tú puedes!`; setTimeout(() => busy = false, 350); } }, F); };
