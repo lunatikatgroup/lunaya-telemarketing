@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611101247"></script>
-<script src="anuncios.js?v=202611101247"></script>
-<script src="juego.js?v=202611101247"></script>
+<script src="demo.js?v=202611101249"></script>
+<script src="anuncios.js?v=202611101249"></script>
+<script src="juego.js?v=202611101249"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611101247";
+const APP_VER = "202611101249";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -941,6 +941,17 @@ function miAporteCard(){ const K = ownerUid(); if (S.uid!==K && !esAsist()) retu
     ${tm.length ? detDeuda(x) : `<p class="note">No hay ventas de telemarketing tuyas o de tu grupo aprobadas en este periodo.</p>`}
     ${gar ? detGar({titulo:"<b>Tu parte del garantizado</b>", m:gar, pct:miPct, gar:gs, rows:[]}) : ""}${pas.map(detDeuda).join("")}
     ${totEmp ? `<p class="note" style="margin-top:8px">La comisión de tus emprendedores (${money(totEmp)}) no está aquí: va aparte, en <b>“Comisión emprendedores”</b> más abajo.</p>` : ""}</div>`; }
+/* Pago semanal a los emprendedores: ventas aprobadas de lunes a domingo, se pagan el día que escoja cada patrocinador (por defecto martes) */
+const DIAS_SEM = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+function empSemanaCard(payer){ const pe = (S.members[payer]||{}).planEmp || {}; const dia = pe.pagoDia ?? 2; const t = today(); const mo0 = mondayOf(t);
+  const ops = [0,1,2,3,4,5].map(k => { const a = addDays(mo0, -7*k), b = addDays(a,6); return {p:`w:${a}:${b}`, a, b, paga: addDays(b, dia===0 ? 7 : dia), curso: b >= t}; }).reverse();
+  const cur = ops.find(o => o.p===S.f.esp) || ops.filter(o => !o.curso).at(-1); const d = deudasSemana(range(cur.p))[payer];
+  const it = d ? Object.values(d.a).filter(x => x.tipo==="emp") : []; it.forEach(x => x.titulo = `<b>${esc(memberName(x.to))}</b>`); const tot = it.reduce((s,x)=>s+x.m,0);
+  return `<div class="card"><h2>💜 Pago a tus emprendedores <div class="chips">${ops.map(o => `<button class="chip ${o.p===cur.p?"on":""}" data-esp="${o.p}">${fCorta(o.a)} – ${fCorta(o.b)}${o.curso?" ⏳":""}</button>`).join("")}</div></h2>
+    <p class="note" style="margin-top:-6px">Ventas <b>aprobadas</b> del ${fCorta(cur.a)} al ${fCorta(cur.b)} (lunes a domingo). ${cur.curso ? "Semana en curso. " : ""}Se pagan el <b>${DIAS_SEM[dia]} ${fCorta(cur.paga)}</b>. Es aparte de los pagos del programa de telemarketing.</p>
+    <div class="row" style="gap:6px;align-items:center;margin-bottom:8px"><span class="note">Tu día de pago a emprendedores:</span><select class="i" id="emp-dia" style="width:auto;padding:4px 8px">${DIAS_SEM.map((n,i) => `<option value="${i}" ${i===dia?"selected":""}>${n}</option>`).join("")}</select></div>
+    <div class="tiles"><div class="tile acc"><b>${money(tot)}</b><span>Total a pagar a emprendedores</span><small>${it.length} emprendedor(es)</small></div></div>
+    ${it.length ? it.map(detDeuda).join("") : `<p class="note">No hay ventas aprobadas de tus emprendedores en esa semana.</p>`}</div>`; }
 /* Pestaña de la asistente de pagos: lo que le deben a Katerine, cuadre y nómina de las telemarketers */
 function viewCobros(){ if (!esAsist() && role()!=="admin") return `<div class="card empty">Esta pantalla es solo para la asistente de pagos.</div>`;
   const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes";
@@ -1794,7 +1805,7 @@ function viewPagos(){
   h += aporteResumen(p) + aporteDetalle(p) + pasesCard(p);
   h = (S.uid!==ownerUid() ? reporteSemanaCard() : miAporteCard()) + deudasKatCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
-  h += empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
+  h += empSemanaCard(S.uid) + empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
 }
 function comCard(p, up=""){
@@ -2036,7 +2047,7 @@ function viewPagosDist(){
   if (!isDist()){ const sp = pagadorDe(S.uid); return `<div class="card"><h2>Mis pagos</h2><div class="banner good">Como emprendedor tú no pagas comisiones. Las comisiones de telemarketing y de citas pasadas de tus ventas las paga ${sp && sp!==S.uid ? "tu patrocinador, <b>"+esc(memberName(sp))+"</b>" : "tu patrocinador"}.</div></div>` + gananciasCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes"); }
   h = reporteSemanaCard() + h;
   h += aporteCard(S.uid, p) + pasesCard(p, S.uid);
-  h += empPagosCard(S.uid, p);
+  h += empSemanaCard(S.uid) + empPagosCard(S.uid, p);
   if (grupoDe(S.uid).some(m => m.role==="tele")) h += comCard(p, S.uid);
   return h;
 }
@@ -2344,6 +2355,8 @@ function bindCommon(){
   all("[data-hrp]", b => b.onclick = () => { S.f.hrp = b.dataset.hrp; render(); });
   all("[data-rrp]", b => b.onclick = () => { S.f.rrp = b.dataset.rrp; render(); });
   all("[data-cdp]", b => b.onclick = () => { S.f.cdp = b.dataset.cdp; render(); });
+  all("[data-esp]", b => b.onclick = () => { S.f.esp = b.dataset.esp; render(); });
+  { const ed = document.getElementById("emp-dia"); if (ed) ed.onchange = async () => { const cur = {...(S.me?.planEmp || planDe(S.uid) || DEF_EMP), pagoDia: +ed.value}; try { await S.db.doc("members/"+S.uid).update({planEmp:cur}); toast("Día de pago guardado: "+DIAS_SEM[+ed.value]); } catch(e){ writeErr(e); } }; }
   all("[data-mp]", b => b.onclick = () => { S.f.mp = b.dataset.mp; render(); });
   all("[data-kdp]", b => b.onclick = () => { S.f.kdp = b.dataset.kdp; render(); });
   all("[data-dper]", b => b.onclick = () => { S.f.dper = b.dataset.dper; render(); });
