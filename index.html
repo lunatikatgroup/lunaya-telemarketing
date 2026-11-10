@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091640"></script>
-<script src="anuncios.js?v=202611091640"></script>
-<script src="juego.js?v=202611091640"></script>
+<script src="demo.js?v=202611091724"></script>
+<script src="anuncios.js?v=202611091724"></script>
+<script src="juego.js?v=202611091724"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091640";
+const APP_VER = "202611091724";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -780,8 +780,16 @@ function teleNominaCard(){ const p = ["quin","quinant","mes","mesant"].includes(
     ${Object.entries(g).map(([k,l]) => { const vol = l.reduce((t,a)=>t+(+a.amount||0),0); return `<details style="margin-top:8px"><summary style="cursor:pointer"><b>${esc(memberName(k))}</b> · ${l.length} venta(s) · ${money(vol)} · tu comisión <b>${money(vol*pct/100)}</b></summary>
       <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th class="n">Venta</th><th class="n">Tu comisión</th></tr></thead><tbody>${l.map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nom(a))}</b></td><td>${esc(memberName(a.socioId))}</td><td class="n">${money(+a.amount||0)}</td><td class="n">${money((+a.amount||0)*pct/100)}</td></tr>`).join("")}</tbody></table></div></details>`; }).join("")}` : `<div class="empty">No tienes ventas aprobadas en este periodo.</div>`}</div>`;
   /* La líder ve además lo que cada distribuidor tiene que pagar, con el detalle de cada venta */
-  if (S.me?.lider && !S.me?.upline) h += aporteDetalle(p);
+  if (S.me?.lider && !S.me?.upline) h += liderNominaCard(rg, p) + aporteDetalle(p);
   return h; }
+/* La líder: su % sobre las ventas aprobadas de las demás telemarketers del programa (las mismas que cuenta la nómina) */
+function liderNominaCard(rg, p){ const lp = +(planTeleDe("").liderPct||0); const ids = new Set(commissions(rg, "").map(x => x.t.id).filter(id => id !== S.uid));
+  const base = Object.values(S.appts).filter(a => ids.has(a.teleId) && a.tipoVisita!=="servicio" && a.sale && a.status==="hecha" && inR(a.when||0, rg) && a.when <= Date.now());
+  const v = base.filter(a => a.saleStatus==="aprobada").sort((a,b) => a.when - b.when); const pend = base.filter(a => (a.saleStatus||"pendiente")==="pendiente");
+  const vol = v.reduce((t,a)=>t+(+a.amount||0),0);
+  return `<div class="card"><h2>👑 Tu ${lp}% como líder <span class="note">${PLABEL[p]||rangoTxt(p)}</span></h2><p class="note" style="margin-top:-6px">Ganas el ${lp}% de cada venta aprobada de las citas de tu equipo (no cuenta sobre tus propias ventas: esas ya están arriba con tu %). Cuenta en el mes de la demostración.${pend.length?` Hay ${pend.length} venta(s) del equipo en verificación: suman cuando las aprueben (${pend.map(a => esc(nomCli(a))+" de "+esc(firstName2(memberName(a.teleId)))).join(", ")}).`:""}</p>
+    ${v.length ? `<div class="tiles"><div class="tile"><b>${v.length}</b><span>Ventas del equipo</span></div><div class="tile"><b>${money(vol)}</b><span>Volumen</span></div><div class="tile acc"><b>${money(vol*lp/100)}</b><span>Tu ${lp}% de líder</span></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Telemarketer</th><th>Vendió</th><th class="n">Venta</th><th class="n">Tu ${lp}%</th></tr></thead><tbody>${v.map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(a))}</b></td><td>${esc(memberName(a.teleId))}</td><td>${esc(memberName(a.socioId))}</td><td class="n">${money(+a.amount||0)}</td><td class="n">${money((+a.amount||0)*lp/100)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Todavía no hay ventas aprobadas del equipo en este periodo.</div>`}</div>`; }
 /* ===== Comisión por pasar una cita (5%): quien dio la cita cobra; paga la compañía por donde pasó la venta ===== */
 const PASE_PCT = () => +(S.config.pasePct ?? 5);
 const pasoQuien = a => { const b = S.members[a.transferredBy]; return a.transferredBy && b && (b.role==="socio" || b.role==="admin") ? a.transferredBy : a.transferredFrom; };
