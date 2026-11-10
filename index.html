@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092023"></script>
-<script src="anuncios.js?v=202611092023"></script>
-<script src="juego.js?v=202611092023"></script>
+<script src="demo.js?v=202611092024"></script>
+<script src="anuncios.js?v=202611092024"></script>
+<script src="juego.js?v=202611092024"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092023";
+const APP_VER = "202611092024";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -851,31 +851,31 @@ function garSemana(rg){ const c = com(); const hoy = today(); let d0 = laDate(rg
       g.dias += dias; g.monto += monto; g.citas += citas; g.req += req; g.sem++; if (ok) g.semOk++; if (ok || !cerrado) g.cobra += monto; if (!cerrado) g.cerrado = false; if (!ok && cerrado) g.cumple = false; }
     return g.dias ? g : null; }).filter(Boolean); }
 const TIPO_DEU = {tm:"Programa de telemarketing", pase:"Citas que te pasó", emp:"Comisión de tu emprendedor", gar:"Tu parte del garantizado de las telemarketers"};
-/* Semanas de pago dentro del mes: terminan el domingo y no pasan de un mes a otro.
-   Si el mes empieza con 1 o 2 días sueltos (ej. domingo 1), se juntan con la semana siguiente (1 al 8). Igual al final del mes. */
+/* Semanas de pago dentro del mes: van de martes a lunes (lo aprobado el lunes entra en el pago del martes) y no pasan de un mes a otro.
+   Si el mes empieza con 1 o 2 días sueltos (ej. domingo 1 y lunes 2), se juntan con la semana siguiente (1 al 9). Igual al final del mes. */
 const dowD = d => { const [y,m,da] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1,da,12)).getUTCDay(); };
 const nDias = ([a,b]) => Math.round((laToMs(b,"12:00") - laToMs(a,"12:00"))/864e5) + 1;
 function periodosMes(first){ const last = addDays(addMonths(first,1),-1); const L = []; let a = first;
-  for (let d = first; d <= last; d = addDays(d,1)) if (dowD(d)===0 || d===last){ L.push([a,d]); a = addDays(d,1); }
+  for (let d = first; d <= last; d = addDays(d,1)) if (dowD(d)===1 || d===last){ L.push([a,d]); a = addDays(d,1); }
   if (L.length > 1 && nDias(L[0]) < 3){ L[1][0] = L[0][0]; L.shift(); } if (L.length > 1 && nDias(L.at(-1)) < 3){ L.at(-2)[1] = L.at(-1)[1]; L.pop(); } return L; }
 /* Fecha límite de pago: el martes después de cerrar la semana */
-const diaPago = b => dowD(b)===0 ? addDays(b,2) : addDays(mondayOf(b),8);
+const diaPago = b => dowD(b)===1 ? addDays(b,1) : addDays(mondayOf(b),8);
 const fCorta = d => fmt(laToMs(d,"12:00"),{day:"numeric",month:"short"});
 /* Semanas para escoger: las del mes pasado y las de este mes que ya empezaron */
 function semOpts(){ const t = today(), m0 = t.slice(0,8)+"01"; const L = [];
   [addMonths(m0,-1), m0].forEach(f => periodosMes(f).forEach((x,i) => { if (x[0] <= t) L.push({p:`w:${x[0]}:${x[1]}`, a:x[0], b:x[1], n:i+1, mes:fmt(laToMs(f,"12:00"),{month:"long"}), paga:diaPago(x[1]), curso: x[1] >= t}); })); return L; }
 /* Aviso al distribuidor: lo que debe de la última semana cerrada y no está marcado como pagado */
-function pagoBanner(){ const r = role(); if (!(isDist() || (r==="admin" && !S.isOwner))) return ""; const K = ownerUid(); const x = semOpts().filter(o => !o.curso).at(-1); if (!x) return "";
+function pagoBanner(){ const r = role(); if (!(isDist() || (r==="admin" && !S.isOwner))) return ""; const K = ownerUid(); const t0 = today(); const x = semOpts().find(o => o.b===t0) || semOpts().filter(o => !o.curso).at(-1); if (!x) return "";
   const d = deudasSemana(range(x.p))[S.uid]; const tot = d ? Object.values(d.a).filter(i => i.to===K).reduce((t,i)=>t+i.m,0) : 0; if (tot < 0.01) return "";
   const pd = (S.pagosDist||{})[pagoKey(S.uid, x.p)]; if (pd && pd.ok) return ""; const t = today(); const vencido = t > x.paga, hoyEs = t === x.paga;
   const msg = vencido ? `⛔ Venció tu pago del ${fCorta(x.a)} al ${fCorta(x.b)}: <b>${money(tot)}</b> a ${esc(firstName2(memberName(K)))}. La fecha límite era el martes ${fCorta(x.paga)}. Deposita hoy para que no se cierre tu acceso al programa de telemarketing.`
-    : `💵 ${hoyEs ? "<b>Hoy martes es el último día</b>" : `Tienes hasta el <b>martes ${fCorta(x.paga)}</b>`} para depositar <b>${money(tot)}</b> a ${esc(firstName2(memberName(K)))} (semana del ${fCorta(x.a)} al ${fCorta(x.b)}). Si no se recibe el pago, se cierra tu acceso al programa de telemarketing.`;
+    : `💵 ${hoyEs ? "<b>Hoy martes es el último día</b>" : `Tienes hasta el <b>martes ${fCorta(x.paga)}</b>`}${x.b===t ? " (la semana cierra hoy lunes: lo que se apruebe hoy también se suma)" : ""} para depositar <b>${money(tot)}</b> a ${esc(firstName2(memberName(K)))} (semana del ${fCorta(x.a)} al ${fCorta(x.b)}). Si no se recibe el pago, se cierra tu acceso al programa de telemarketing.`;
   try { const k = "ly-pagoav-"+x.p+"-"+t; if (!localStorage.getItem(k)){ localStorage.setItem(k, "1"); avisar(vencido ? "⛔ Pago vencido" : "💵 Pago de la semana", `${money(tot)} a ${firstName2(memberName(K))} · fecha límite martes ${fCorta(x.paga)}`); } } catch {}
   return `<div class="banner ${vencido||hoyEs?"bad":"warn"}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>${msg}</span><button class="btn small" data-go="pagos">Ver y pagar</button></div>`; }
 /* La semana por defecto: la última que ya terminó (la que toca pagar) */
-function semDef(cur){ const o = semOpts(); if (o.some(x => x.p===cur)) return cur; const fin = o.filter(x => !x.curso); return (fin.at(-1) || o.at(-1)).p; }
+function semDef(cur){ const o = semOpts(); if (o.some(x => x.p===cur)) return cur; const hoyC = o.find(x => x.b===today()); if (hoyC) return hoyC.p; const fin = o.filter(x => !x.curso); return (fin.at(-1) || o.at(-1)).p; }
 const semInfo = p => semOpts().find(x => x.p===p);
-function semTxt2(p){ const x = semInfo(p); if (!x) return rangoTxt(p); return `Semana ${x.n} de ${x.mes}: del ${fCorta(x.a)} al ${fCorta(x.b)} · ${x.curso ? "en curso" : "fecha límite de pago: martes " + fCorta(x.paga)}`; }
+function semTxt2(p){ const x = semInfo(p); if (!x) return rangoTxt(p); return `Semana ${x.n} de ${x.mes}: del ${fCorta(x.a)} al ${fCorta(x.b)} · ${x.curso ? (x.b===today() ? "cierra hoy · " : "en curso · ") : ""}fecha límite de pago: martes ${fCorta(x.paga)}`; }
 function semChips2(cur, attr){ const o = semOpts(); return `<div class="chips">${o.slice(-6).map(x => `<button class="chip ${cur===x.p?"on":""}" data-${attr}="${x.p}">${fCorta(x.a)} – ${fCorta(x.b)}${x.curso?" ⏳":""}</button>`).join("")}</div>`; }
 function semChips(cur){ return `<div class="chips">${["semana","semant"].map(v => `<button class="chip ${cur===v?"on":""}" data-semp="${v}">${PLABEL[v]}</button>`).join("")}</div>`; }
 function detDeuda(x){ if (x.tipo==="gar") return detGar(x); return `<details style="margin-top:6px" open><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.rows.length} venta(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Aprobada</th><th>Cliente</th><th>Vendió</th><th class="n">Venta</th><th class="n">%</th><th class="n">Monto</th></tr></thead><tbody>${x.rows.sort((a,b)=>aprobAt(a.a)-aprobAt(b.a)).map(r => `<tr data-appt="${r.id}" style="cursor:pointer"><td class="note">${fmt(aprobAt(r.a),{weekday:"short",day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${r.pct}%</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`; }
