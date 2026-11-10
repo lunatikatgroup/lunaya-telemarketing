@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611101259"></script>
-<script src="anuncios.js?v=202611101259"></script>
-<script src="juego.js?v=202611101259"></script>
+<script src="demo.js?v=202611101327"></script>
+<script src="anuncios.js?v=202611101327"></script>
+<script src="juego.js?v=202611101327"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611101259";
+const APP_VER = "202611101327";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1268,7 +1268,7 @@ function miAgendaCard(){ const d0 = S.f.mag || today(); const r = [laToMs(d0,"00
     ${items.length ? `<div class="list">${items.map(x => `<${x.appt?"button":"div"} class="item" ${x.appt?`data-appt="${x.appt}"`:""} style="${x.appt?"":"cursor:default;"}border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div>${x.rec?`<button class="btn small ghost" data-rec-ok="${x.rec}">✅</button>`:""}</${x.appt?"button":"div"}>`).join("")}</div>` : `<div class="empty">No tienes nada en la agenda este día.</div>`}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">➕ Agregar algo a mi agenda</summary><form id="act-form" class="grid2" style="margin-top:8px"><label class="f" style="grid-column:1/-1">¿Qué vas a hacer?<input class="i" id="act-t" placeholder="Ej.: entregar regalo a María, reunión de equipo" maxlength="80"></label><label class="f">Día<input class="i" type="date" id="act-d" value="${d0}"></label><label class="f">Hora${timeSel("act-h","10:00")}</label><label class="f" style="grid-column:1/-1">Nota (opcional)<input class="i" id="act-x" maxlength="200"></label><div><button class="btn" type="submit">Guardar en mi agenda</button></div></form></details></div>`; }
 function viewHoy(r){
-  const rg = range(S.f.period); const top = (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = pendLlamarCard() + recCard();
+  const rg = range(S.f.period); const top = (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? pendLlamarCard() : "") + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
@@ -1325,7 +1325,7 @@ function viewHoy(r){
     const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   }
-  return top + h;
+  return top + h + (r!=="tele" ? pendLlamarCard() : ""); /* "llamar para reagendar": primero para las telemarketers, al final para los demás */
 }
 /* Citas que yo le pasé a otros socios: qué pasó con cada una (demostración, venta) */
 function pasadasCard(rg){ const yoDi = a => (a.transferredFrom && a.transferredFrom!==a.socioId) ? pasoQuien(a)===S.uid || a.transferredFrom===S.uid : dadorDe(a)===S.uid;
@@ -1613,9 +1613,10 @@ function viewCitas(r){
     <div class="week">${week}</div></div>
     ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
     <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
-  h = pendLlamarCard() + h;
+  if (r==="tele") h = pendLlamarCard() + h;
   h += citasDiaCard(true);
   if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
+  if (r!=="tele") h += pendLlamarCard();
   return h;
 }
 function gcalUrl(a, calId){
