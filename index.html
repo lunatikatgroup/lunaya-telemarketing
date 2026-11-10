@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611101327"></script>
-<script src="anuncios.js?v=202611101327"></script>
-<script src="juego.js?v=202611101327"></script>
+<script src="demo.js?v=202611101520"></script>
+<script src="anuncios.js?v=202611101520"></script>
+<script src="juego.js?v=202611101520"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611101327";
+const APP_VER = "202611101520";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2022,7 +2022,47 @@ function reunionCard(){ const P = {semana:"Esta semana", semant:"Semana pasada",
     <div class="eyebrow" style="margin-top:10px">Efectividad del equipo</div>
     <div class="tiles"><div class="tile"><b>${pc(T.contacts||0,T.calls||0)}</b><span>Llamada → contacto</span></div><div class="tile"><b>${pc(T.citas||0,T.contacts||0)}</b><span>Contacto → cita</span></div><div class="tile"><b>${pc(T.demos||0,T.pasadas||0)}</b><span>Cita → demostración</span></div><div class="tile"><b>${pc(T.ventas||0,T.demos||0)}</b><span>Demo → venta</span></div><div class="tile"><b>${pc(T.aprob||0,(T.ventas||0)+(T.cancel||0))}</b><span>Ventas aprobadas</span></div></div>
     <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">Aprobadas</th><th class="n">Canceladas</th><th class="n">Aprobado $</th><th class="n">Contacto→cita</th><th class="n">Cita→demo</th><th class="n">Demo→venta</th><th class="n">% aprobadas</th></tr></thead><tbody>${rows.map(x => fila(x.t.name||"", x.e)).join("")}${fila("Total", {calls:0,contacts:0,citas:0,demos:0,ventas:0,aprob:0,cancel:0,montoAprob:0,pasadas:0,...T}, true)}</tbody></table></div>
-    <div class="row" style="margin-top:8px"><button class="btn small" data-copy="${esc(txt)}">📋 Copiar resumen para WhatsApp</button></div></div>`; }
+    <div class="row" style="margin-top:8px"><button class="btn small" data-copy="${esc(txt)}">📋 Copiar resumen para WhatsApp</button><button class="btn small ghost" data-act="rep-img">🖼️ Descargar reporte (imagen)</button><button class="btn small ghost" data-act="rep-pdf">📄 Imprimir / PDF</button></div></div>`; }
+/* Datos del reporte del equipo (para la imagen y el PDF) */
+function datosReporte(){ const P = {semana:"Esta semana", semant:"Semana pasada", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.rrp] ? S.f.rrp : "semant"; const rg = range(p);
+  const rows = telesLunaya().map(t => ({t, e:teleEval(t.id, rg), h:horasTele(t.id, rg)})); const T = rows.reduce((o,x) => { for (const k in x.e) o[k] = (o[k]||0) + x.e[k]; return o; }, {});
+  const pc = (a, b) => b ? Math.round(a*100/b)+"%" : "—"; return {titulo:`${P[p]} · ${rangoTxt(p)}`, rows, T, pc}; }
+/* Imagen del reporte (se comparte por WhatsApp o se guarda en Fotos) */
+async function reporteImagen(){ const {titulo, rows, T, pc} = datosReporte(); const W = 1200, rh = 44, H = 560 + rows.length*rh + 60 + rows.length*30 + 120;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const c = cv.getContext("2d");
+  const vino = "#7a2840", oro = "#c9971f", gris = "#6b6b6b";
+  c.fillStyle = "#fbf7f2"; c.fillRect(0,0,W,H); c.fillStyle = vino; c.fillRect(0,0,W,120);
+  c.fillStyle = "#fff"; c.font = "bold 40px Georgia, serif"; c.fillText("Reporte del equipo de telemarketing", 40, 62); c.font = "24px sans-serif"; c.fillStyle = "#f3d9a4"; c.fillText(titulo + " · Lunatikat Group", 40, 100);
+  const tiles = [["Llamadas", T.calls||0], ["Citas", T.citas||0], ["Demostraciones", T.demos||0], ["Ventas", T.ventas||0], ["Aprobadas", T.aprob||0], ["Volumen aprobado", money(T.montoAprob||0)]];
+  tiles.forEach(([l,v], i) => { const x = 40 + (i%3)*380, y = 150 + Math.floor(i/3)*120; c.fillStyle = "#fff"; c.strokeStyle = "#e8d6dc"; c.lineWidth = 2; c.beginPath(); c.roundRect ? c.roundRect(x, y, 360, 100, 16) : c.rect(x, y, 360, 100); c.fill(); c.stroke();
+    c.fillStyle = vino; c.font = "bold 40px sans-serif"; c.fillText(String(v), x+20, y+52); c.fillStyle = gris; c.font = "22px sans-serif"; c.fillText(l, x+20, y+84); });
+  let y = 420; c.fillStyle = vino; c.font = "bold 26px sans-serif"; c.fillText("Efectividad del equipo", 40, y); y += 40;
+  const ef = [["Contacto → cita", pc(T.citas||0, T.contacts||0)], ["Cita → demo", pc(T.demos||0, T.pasadas||0)], ["Demo → venta", pc(T.ventas||0, T.demos||0)], ["Ventas aprobadas", pc(T.aprob||0, (T.ventas||0)+(T.cancel||0))]];
+  ef.forEach(([l,v], i) => { const x = 40 + i*285; c.fillStyle = oro; c.font = "bold 34px sans-serif"; c.fillText(v, x, y+10); c.fillStyle = gris; c.font = "20px sans-serif"; c.fillText(l, x, y+40); }); y += 90;
+  const cols = [["Telemarketer",40,"l"],["Llamadas",420],["Citas",540],["Demos",650],["Ventas",760],["Aprob.",870],["Aprobado $",1010],["Horas",1150]];
+  c.fillStyle = vino; c.fillRect(30, y-30, W-60, 42); c.fillStyle = "#fff"; c.font = "bold 20px sans-serif"; cols.forEach(([l,x,al]) => { c.textAlign = al==="l" ? "left" : "right"; c.fillText(l, al==="l"?x:x, y-2); });
+  y += 14; c.font = "22px sans-serif";
+  rows.sort((a,b) => b.e.citas - a.e.citas).forEach((r, i) => { y += rh; if (i%2===0){ c.fillStyle = "#f4e9ec"; c.fillRect(30, y-30, W-60, rh); } c.fillStyle = "#222";
+    const v = [r.t.name||"", r.e.calls, r.e.citas, r.e.demos, r.e.ventas, r.e.aprob, money(r.e.montoAprob), hTxt(r.h.act)]; cols.forEach(([,x,al], k) => { c.textAlign = al==="l" ? "left" : "right"; c.fillText(String(v[k]).slice(0,26), x, y); }); });
+  y += rh; c.fillStyle = "#e8d6dc"; c.fillRect(30, y-30, W-60, rh); c.fillStyle = vino; c.font = "bold 22px sans-serif";
+  ["Total", T.calls||0, T.citas||0, T.demos||0, T.ventas||0, T.aprob||0, money(T.montoAprob||0), hTxt(rows.reduce((t,r)=>t+r.h.act,0))].forEach((v,k) => { const [,x,al] = cols[k]; c.textAlign = al==="l" ? "left" : "right"; c.fillText(String(v), x, y); });
+  y += 50; c.textAlign = "left"; c.fillStyle = vino; c.font = "bold 22px sans-serif"; c.fillText("Citas por telemarketer", 40, y); y += 16; const mx = Math.max(1, ...rows.map(r => r.e.citas));
+  rows.forEach(r => { y += 30; c.fillStyle = gris; c.font = "18px sans-serif"; c.fillText((r.t.name||"").slice(0,20), 40, y); c.fillStyle = oro; c.fillRect(260, y-16, Math.max(2, (W-360) * r.e.citas / mx), 20); c.fillStyle = "#222"; c.fillText(String(r.e.citas), 270 + (W-360) * r.e.citas / mx, y); });
+  c.fillStyle = gris; c.font = "16px sans-serif"; c.fillText("Generado con Lunaya · " + fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"}), 40, H-24);
+  const blob = await new Promise(ok => cv.toBlob(ok, "image/png")); const f = new File([blob], `Reporte-telemarketing-${today()}.png`, {type:"image/png"});
+  try { if (navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f], title:"Reporte del equipo"}); return; } } catch(e){ if (e && e.name==="AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); toast("Reporte descargado"); }
+/* PDF: abre una página limpia del reporte y la manda a imprimir (ahí se elige “Guardar como PDF” o compartir) */
+function reportePdf(){ const {titulo, rows, T, pc} = datosReporte(); const td = v => `<td style="text-align:right">${v}</td>`;
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Reporte del equipo · ${esc(titulo)}</title><style>body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#222;margin:24px}h1{color:#7a2840;font-family:Georgia,serif;margin:0}p.s{color:#a07a1a;margin:4px 0 18px}.t{display:flex;flex-wrap:wrap;gap:10px}.t div{border:1px solid #e8d6dc;border-radius:10px;padding:10px 14px;min-width:150px}.t b{display:block;font-size:24px;color:#7a2840}table{border-collapse:collapse;width:100%;margin-top:14px;font-size:13px}th{background:#7a2840;color:#fff;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}td{padding:6px;border-bottom:1px solid #eee}tr.tot td{font-weight:bold;background:#f4e9ec}.btn{margin:16px 0;padding:10px 16px;background:#7a2840;color:#fff;border:0;border-radius:8px;font-size:16px}@media print{.btn{display:none}}</style></head><body>
+    <button class="btn" onclick="print()">🖨️ Imprimir / Guardar PDF</button><h1>Reporte del equipo de telemarketing</h1><p class="s">${esc(titulo)} · Lunatikat Group</p>
+    <div class="t"><div><b>${T.calls||0}</b>Llamadas</div><div><b>${T.citas||0}</b>Citas</div><div><b>${T.demos||0}</b>Demostraciones</div><div><b>${T.ventas||0}</b>Ventas</div><div><b>${T.aprob||0}</b>Aprobadas (${T.cancel||0} canceladas)</div><div><b>${money(T.montoAprob||0)}</b>Volumen aprobado</div></div>
+    <div class="t" style="margin-top:10px"><div><b>${pc(T.citas||0,T.contacts||0)}</b>Contacto → cita</div><div><b>${pc(T.demos||0,T.pasadas||0)}</b>Cita → demostración</div><div><b>${pc(T.ventas||0,T.demos||0)}</b>Demo → venta</div><div><b>${pc(T.aprob||0,(T.ventas||0)+(T.cancel||0))}</b>Ventas aprobadas</div></div>
+    <table><tr><th>Telemarketer</th><th>Llamadas</th><th>Contactos</th><th>Citas</th><th>Demos</th><th>Ventas</th><th>Aprobadas</th><th>Canceladas</th><th>Aprobado $</th><th>Cita→demo</th><th>Demo→venta</th><th>Horas</th></tr>
+    ${rows.map(r => `<tr><td>${esc(r.t.name||"")}</td>${td(r.e.calls)}${td(r.e.contacts)}${td(r.e.citas)}${td(r.e.demos)}${td(r.e.ventas)}${td(r.e.aprob)}${td(r.e.cancel)}${td(money(r.e.montoAprob))}${td(pc(r.e.demos,r.e.pasadas))}${td(pc(r.e.ventas,r.e.demos))}${td(hTxt(r.h.act))}</tr>`).join("")}
+    <tr class="tot"><td>Total</td>${td(T.calls||0)}${td(T.contacts||0)}${td(T.citas||0)}${td(T.demos||0)}${td(T.ventas||0)}${td(T.aprob||0)}${td(T.cancel||0)}${td(money(T.montoAprob||0))}${td(pc(T.demos||0,T.pasadas||0))}${td(pc(T.ventas||0,T.demos||0))}${td(hTxt(rows.reduce((t,r)=>t+r.h.act,0)))}</tr></table>
+    <p style="color:#888;font-size:12px;margin-top:18px">Generado con Lunaya · ${fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"})}</p></body></html>`;
+  const w = window.open(URL.createObjectURL(new Blob([html], {type:"text/html"})), "_blank"); if (!w) toast("Permite abrir ventanas para ver el reporte"); }
 /* La líder puede sacar del equipo a una telemarketer (y devolverla). No se borra nada: sus llamadas, citas y comisiones quedan guardadas. */
 function quitarTeleCard(){ const act = telesLunaya().filter(t => t.id!==S.uid && !t.lider); const fuera = byRole("baja").filter(t => t.prevRole==="tele" && !t.upline && (t.leftAt||0) > Date.now() - 60*864e5);
   return `<div class="card"><h2>Personas del equipo</h2><p class="note" style="margin-top:-6px">Si alguien ya no trabaja, quítala del equipo: deja de entrar a la app. Todo lo que hizo (llamadas, citas, comisiones) queda guardado.</p>
@@ -2298,6 +2338,8 @@ function bindCommon(){
     if (a==="world") setWorld("");
     if (a==="backup-all") return doBackupAll();
     if (a==="codigos") return openCodigos();
+    if (a==="rep-img") return reporteImagen().catch(e => { console.log(e); toast("No se pudo crear la imagen"); });
+    if (a==="rep-pdf") return reportePdf();
     if (a==="drset") openDriveSocio(S.world);
     else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem2:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
     else if (a==="pago"){ try { await S.db.doc("config/main").set({...S.config, pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
