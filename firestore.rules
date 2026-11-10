@@ -20,6 +20,8 @@ service cloud.firestore {
     // Distribuidor: maneja su propio grupo (emprendedores y telemarketers que él invita)
     // Telemarketer del programa Lunaya (no externa de un distribuidor)
     function isProgramTele() { return myRole() == 'tele' && meData().get('upline', '') == ''; }
+    // Asistente de pagos de Katerine: una telemarketer marcada por Dirección
+    function isAsist() { return myRole() == 'tele' && meData().get('asistente', false) == true; }
     function isDist() { return myRole() == 'socio' && meData().get('tipo', '') == 'Socio distribuidor'; }
     // Las telemarketers del programa entran solas al mundo de cada distribuidor, menos las que él (o Dirección) quitó (teleNo)
     function distOk(d) { return d is string && d != '' && get(memberPath(d)).data.get('tipo', '') == 'Socio distribuidor'
@@ -320,12 +322,13 @@ service cloud.firestore {
 
     // Pagos de los distribuidores a Lunaya: el distribuidor marca que pagó, Dirección lo confirma
     match /pagosdist/{id} {
-      allow read: if isAdmin() || (isMember() && resource.data.payer == request.auth.uid);
+      allow read: if isAdmin() || isAsist() || (isMember() && resource.data.payer == request.auth.uid);
       allow create: if isMember() && request.resource.data.payer == request.auth.uid && id.matches('^' + request.auth.uid + '_.*')
          && request.resource.data.ok == false;
       // Katerine registra el pago (el distribuidor solo lo ve)
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow create: if isAdmin() || isAsist();
+      allow update: if isAdmin() || isAsist();
+      allow delete: if isAdmin();
     }
 
     // Recordatorios de llamada: cada quien ve y maneja solo los suyos
