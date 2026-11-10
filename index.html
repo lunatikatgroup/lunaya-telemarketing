@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092015"></script>
-<script src="anuncios.js?v=202611092015"></script>
-<script src="juego.js?v=202611092015"></script>
+<script src="demo.js?v=202611092016"></script>
+<script src="anuncios.js?v=202611092016"></script>
+<script src="juego.js?v=202611092016"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092015";
+const APP_VER = "202611092016";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1587,7 +1587,9 @@ function openAppt(id){
       S.db.doc("apptp/"+id).update({chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:t}), ["seen."+S.uid]: now}).catch(e => { inp.value = t; writeErr(e); }); };
     $("#chat-send") && ($("#chat-send").onclick = send);
     $("#chat-in") && ($("#chat-in").onkeydown = e => { if (e.key==="Enter"){ e.preventDefault(); send(); } });
-    const save = async upd => { try { await chain("appt:"+id, () => S.db.doc("appts/"+id).update(upd)); closeModal(); toast("Guardado"); } catch(e){ writeErr(e); } };
+    const save = async upd => { /* en cada venta queda visible el nombre del cliente (solo el nombre) para la nómina de Dirección */
+      if ((upd.sale || a.sale) && a._priv && a.client && a.nomVenta !== String(a.client).trim().slice(0,80)) upd = {...upd, nomVenta:String(a.client).trim().slice(0,80)};
+      try { await chain("appt:"+id, () => S.db.doc("appts/"+id).update(upd)); closeModal(); toast("Guardado"); } catch(e){ writeErr(e); } };
     const needAc = esEmp(S.members[a.socioId]);
     const acb = () => needAc ? `<div class="f" style="grid-column:1/-1"><span>¿Cómo fue a la cita? <b style="color:var(--bad,#c0392b)">*</b></span><div class="opts" style="margin-top:4px"><button type="button" class="opt ${a.acomp===false?"on":""}" data-ac="solo">🙋 Fue solo</button><button type="button" class="opt ${a.acomp===true?"on":""}" data-ac="acomp">🤝 Con entrenador</button></div><select class="i" id="ac-who" style="margin-top:6px;${a.acomp===true?"":"display:none"}"><option value="">¿Quién fue el entrenador?</option>${socios().filter(m=>m.id!==a.socioId).map(m=>`<option value="${m.id}" ${a.entrenador===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select></div>` : "";
     const bindAc = () => { document.querySelectorAll("[data-ac]").forEach(b => b.onclick = () => { document.querySelectorAll("[data-ac]").forEach(x => x.classList.toggle("on", x===b)); $("#ac-who").style.display = b.dataset.ac==="acomp" ? "" : "none"; }); };
