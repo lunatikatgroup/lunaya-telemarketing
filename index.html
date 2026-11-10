@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092018"></script>
-<script src="anuncios.js?v=202611092018"></script>
-<script src="juego.js?v=202611092018"></script>
+<script src="demo.js?v=202611092022"></script>
+<script src="anuncios.js?v=202611092022"></script>
+<script src="juego.js?v=202611092022"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092018";
+const APP_VER = "202611092022";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -236,6 +236,7 @@ function mondayOf(d){ const [y,m,da] = d.split("-").map(Number); const dow = (ne
 function range(p){
   const t = today();
   if (p==="hoy") return [laToMs(t,"00:00"), laToMs(addDays(t,1),"00:00")];
+  if (typeof p==="string" && p.startsWith("w:")){ const [,a,b] = p.split(":"); return [laToMs(a,"00:00"), laToMs(addDays(b,1),"00:00")]; }
   if (p==="todo") return [laToMs("2026-01-01","00:00"), laToMs(addDays(t,1),"00:00")];
   if (p==="semana"){ const mo = mondayOf(t); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
   if (p==="semant"){ const mo = addDays(mondayOf(t),-7); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
@@ -850,29 +851,46 @@ function garSemana(rg){ const c = com(); const hoy = today(); let d0 = laDate(rg
       g.dias += dias; g.monto += monto; g.citas += citas; g.req += req; g.sem++; if (ok) g.semOk++; if (ok || !cerrado) g.cobra += monto; if (!cerrado) g.cerrado = false; if (!ok && cerrado) g.cumple = false; }
     return g.dias ? g : null; }).filter(Boolean); }
 const TIPO_DEU = {tm:"Programa de telemarketing", pase:"Citas que te pasó", emp:"Comisión de tu emprendedor", gar:"Tu parte del garantizado de las telemarketers"};
+/* Semanas de pago dentro del mes: terminan el domingo y no pasan de un mes a otro.
+   Si el mes empieza con 1 o 2 días sueltos (ej. domingo 1), se juntan con la semana siguiente (1 al 8). Igual al final del mes. */
+const dowD = d => { const [y,m,da] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1,da,12)).getUTCDay(); };
+const nDias = ([a,b]) => Math.round((laToMs(b,"12:00") - laToMs(a,"12:00"))/864e5) + 1;
+function periodosMes(first){ const last = addDays(addMonths(first,1),-1); const L = []; let a = first;
+  for (let d = first; d <= last; d = addDays(d,1)) if (dowD(d)===0 || d===last){ L.push([a,d]); a = addDays(d,1); }
+  if (L.length > 1 && nDias(L[0]) < 3){ L[1][0] = L[0][0]; L.shift(); } if (L.length > 1 && nDias(L.at(-1)) < 3){ L.at(-2)[1] = L.at(-1)[1]; L.pop(); } return L; }
+const diaPago = b => dowD(b)===0 ? addDays(b,1) : addDays(mondayOf(b),7);
+const fCorta = d => fmt(laToMs(d,"12:00"),{day:"numeric",month:"short"});
+/* Semanas para escoger: las del mes pasado y las de este mes que ya empezaron */
+function semOpts(){ const t = today(), m0 = t.slice(0,8)+"01"; const L = [];
+  [addMonths(m0,-1), m0].forEach(f => periodosMes(f).forEach((x,i) => { if (x[0] <= t) L.push({p:`w:${x[0]}:${x[1]}`, a:x[0], b:x[1], n:i+1, mes:fmt(laToMs(f,"12:00"),{month:"long"}), paga:diaPago(x[1]), curso: x[1] >= t}); })); return L; }
+/* La semana por defecto: la última que ya terminó (la que toca pagar) */
+function semDef(cur){ const o = semOpts(); if (o.some(x => x.p===cur)) return cur; const fin = o.filter(x => !x.curso); return (fin.at(-1) || o.at(-1)).p; }
+const semInfo = p => semOpts().find(x => x.p===p);
+function semTxt2(p){ const x = semInfo(p); if (!x) return rangoTxt(p); return `Semana ${x.n} de ${x.mes}: del ${fCorta(x.a)} al ${fCorta(x.b)} · ${x.curso ? "en curso" : "se paga el lunes " + fCorta(x.paga)}`; }
+function semChips2(cur, attr){ const o = semOpts(); return `<div class="chips">${o.slice(-6).map(x => `<button class="chip ${cur===x.p?"on":""}" data-${attr}="${x.p}">${fCorta(x.a)} – ${fCorta(x.b)}${x.curso?" ⏳":""}</button>`).join("")}</div>`; }
 function semChips(cur){ return `<div class="chips">${["semana","semant"].map(v => `<button class="chip ${cur===v?"on":""}" data-semp="${v}">${PLABEL[v]}</button>`).join("")}</div>`; }
 function detDeuda(x){ if (x.tipo==="gar") return detGar(x); return `<details style="margin-top:6px" open><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.rows.length} venta(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Aprobada</th><th>Cliente</th><th>Vendió</th><th class="n">Venta</th><th class="n">%</th><th class="n">Monto</th></tr></thead><tbody>${x.rows.sort((a,b)=>aprobAt(a.a)-aprobAt(b.a)).map(r => `<tr data-appt="${r.id}" style="cursor:pointer"><td class="note">${fmt(aprobAt(r.a),{weekday:"short",day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${r.pct}%</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`; }
 function detGar(x){ return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.pct}% del garantizado de ${x.gar.length} telemarketer(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Sueldo al mes</th><th class="n">Días</th><th class="n">Citas / semanas cumplidas</th><th class="n">Garantizado</th><th class="n">${x.pct}%</th></tr></thead><tbody>${x.gar.map(g => `<tr><td><b>${esc(g.t.name||"")}</b></td><td class="n">${money(g.base)}</td><td class="n">${g.dias}</td><td class="n">${g.sem>1 ? `${g.semOk}/${g.sem} sem.` : `${g.citas>=g.req ? "✅" : g.cerrado ? "❌" : "⏳"} ${g.citas}/${g.req}`}</td><td class="n">${g.cobra ? money(g.cobra) : `<span class="note">no cumplió</span>`}</td><td class="n">${money(g.cobra*x.pct/100)}</td></tr>`).join("")}</tbody></table></div><p class="note">El sueldo de cada telemarketer se reparte por día laboral (lunes a sábado). Una semana se cobra si la telemarketer hizo sus ${metaSem()} citas; si la semana cerró sin cumplir, no se cobra. ⏳ = semana en curso.</p></details>`; }
 /* Distribuidor: su reporte de la semana, separado por persona */
-function reporteSemanaCard(){ const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const rg = range(p); const d = deudasSemana(rg)[S.uid]; const K = ownerUid();
+function reporteSemanaCard(){ const p = semDef(S.f.semp); const rg = range(p); const d = deudasSemana(rg)[S.uid]; const K = ownerUid();
   const items = d ? Object.values(d.a) : []; const aK = items.filter(x => x.to===K), otros = items.filter(x => x.to!==K && x.tipo!=="emp"), emps = items.filter(x => x.tipo==="emp");
   const totK = aK.reduce((t,x)=>t+x.m,0); const k = pagoKey(S.uid, p), pd = (S.pagosDist||{})[k];
   aK.forEach(x => x.titulo = `<b>${esc(memberName(K))}</b> · ${TIPO_DEU[x.tipo]}`); otros.forEach(x => x.titulo = `<b>${esc(memberName(x.to))}</b> · ${TIPO_DEU[x.tipo]}`); emps.forEach(x => x.titulo = `<b>${esc(memberName(x.to))}</b> · tu emprendedor`);
   const pg = {...(S.config.pago || {}), ...(S.config.pagoFix===1 ? {} : PAGO_KAT)}; const tel = String(pg.zelle||"").replace(/\D/g,"").slice(-10);
-  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Reporte de pagos de la semana ${semChips(p)}</h2><p class="note" style="margin-top:-6px">${rangoTxt(p)} (lunes a domingo). Cuentan las ventas <b>aprobadas</b> en esa semana.</p>
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Reporte de pagos de la semana ${semChips2(p, "semp")}</h2><p class="note" style="margin-top:-6px"><b>${semTxt2(p)}</b>. Cuentan las ventas <b>aprobadas</b> en esa semana.</p>
     <div class="tiles"><div class="tile acc"><b>${money(totK)}</b><span>Total a enviar a ${esc(firstName2(memberName(K)))}</span><small>telemarketing${aK.some(x=>x.tipo==="gar")?" + garantizado":""} + citas que te pasó</small></div></div>
     ${totK ? (pd && pd.ok ? `<div class="banner good">✅ ${esc(firstName2(memberName(K)))} registró tu pago de ${money(pd.monto)}.</div>` : `<div class="banner warn">⏳ Pendiente de pago${tel ? ` · Zelle <b>${telFmt2(tel)}</b>${pg.nombre?" · "+esc(pg.nombre):""} <button class="btn small" data-copy="${tel}">📋 Copiar número</button> <button class="btn small ghost" data-copy="${Math.round(totK*100)/100}">📋 Copiar monto</button>` : ""}</div>`) : ""}
     ${aK.length ? aK.map(detDeuda).join("") : `<p class="note">No le debes nada a ${esc(firstName2(memberName(K)))} esta semana.</p>`}
     ${otros.length ? `<div class="eyebrow" style="margin-top:12px">A otros distribuidores (se lo pagas directo)</div>${otros.map(detDeuda).join("")}` : ""}
     ${emps.length ? `<div class="eyebrow" style="margin-top:12px">A tus emprendedores</div>${emps.map(detDeuda).join("")}` : ""}</div>`; }
 /* Dirección: lo que le debe cada distribuidor esta semana (solo lo que es para ella) */
-const KPER = {semana:"Esta semana", semant:"Semana pasada", quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior", todo:"Acumulado"};
-function deudasKatCard(){ const p = KPER[S.f.kdp] ? S.f.kdp : "semana"; const sem = p==="semana" || p==="semant"; const rg = range(p); const all = deudasSemana(rg); const K = S.uid; const d0 = laDate(rg[0]), d1 = laDate(rg[1]-1);
+const KPER = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior", todo:"Acumulado"};
+function deudasKatCard(){ const p = KPER[S.f.kdp] ? S.f.kdp : semDef(S.f.kdp); const sem = p.startsWith("w:"); const rg = range(p); const all = deudasSemana(rg); const K = S.uid; const d0 = laDate(rg[0]), d1 = laDate(rg[1]-1);
   const pagado = payer => Object.values(S.pagosDist||{}).filter(x => x.payer===payer && x.ok && (x.desde||"") >= d0 && (x.desde||"") <= d1).reduce((t,x)=>t+(+x.monto||0),0);
   const rows = Object.values(all).map(d => { const it = Object.values(d.a).filter(x => x.to===K); return {payer:d.payer, tm:it.filter(x=>x.tipo==="tm").reduce((t,x)=>t+x.m,0), pase:it.filter(x=>x.tipo==="pase").reduce((t,x)=>t+x.m,0), gar:it.filter(x=>x.tipo==="gar").reduce((t,x)=>t+x.m,0), it}; }).filter(x => x.it.length && x.payer!==K).sort((a,b) => (b.tm+b.pase+b.gar)-(a.tm+a.pase+a.gar));
   const tot = rows.reduce((t,x)=>t+x.tm+x.pase+x.gar,0); const totP = rows.reduce((t,x)=>t+pagado(x.payer),0);
-  const chips = `<div class="chips">${Object.entries(KPER).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-kdp="${v}">${l}</button>`).join("")}</div>`;
-  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Lo que te deben ${chips}</h2><p class="note" style="margin-top:-6px">${p==="todo" ? "Desde el inicio" : rangoTxt(p)}, por ventas aprobadas en ese periodo. Solo lo que es para ti: programa de telemarketing, citas que tú pasaste y la parte del garantizado. Lo que se pagan entre ellos no sale aquí.${sem ? "" : " Los pagos se marcan por semana (en “Esta semana” o “Semana pasada”); aquí ves cuánto te han pagado y cuánto falta en todo el periodo."}</p>
+  const chips = semChips2(p, "kdp") + `<div class="chips">${Object.entries(KPER).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-kdp="${v}">${l}</button>`).join("")}</div>`;
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Lo que te deben ${chips}</h2><p class="note" style="margin-top:-6px">${p==="todo" ? "Desde el inicio" : sem ? "<b>"+semTxt2(p)+"</b>" : rangoTxt(p)}. Por ventas aprobadas en ese periodo. Solo lo que es para ti: programa de telemarketing, citas que tú pasaste y la parte del garantizado. Lo que se pagan entre ellos no sale aquí.${sem ? "" : " Los pagos se marcan por semana (toca una de las fechas de arriba); aquí ves cuánto te han pagado y cuánto falta en todo el periodo."}</p>
     <div class="tiles"><div class="tile"><b>${money(tot)}</b><span>Total generado</span></div><div class="tile"><b>${money(totP)}</b><span>Ya te pagaron</span></div><div class="tile acc"><b>${money(Math.max(0, tot-totP))}</b><span>Falta por pagar</span></div></div>
     ${rows.length ? rows.map(x => { const k = pagoKey(x.payer, p), pd = (S.pagosDist||{})[k], m = Math.round((x.tm+x.pase+x.gar)*100)/100;
       x.it.forEach(i => i.titulo = i.tipo==="pase" ? "Citas que tú le pasaste" : i.tipo==="gar" ? "Su parte del garantizado" : TIPO_DEU[i.tipo]);
@@ -890,9 +908,9 @@ function cuadreCard(){ if (S.uid!==ownerUid()) return ""; const P = {quin:"Esta 
     <details style="margin-top:6px"><summary style="cursor:pointer">Detalle: nómina de las telemarketers</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Garantizado</th><th class="n">Comisión</th><th class="n">Total</th></tr></thead><tbody>${nom.filter(x => x.total).map(x => `<tr><td><b>${esc(x.t.name||"")}</b>${x.t.lider?' <span class="note">líder</span>':""}</td><td class="n">${money(x.sueldo)}</td><td class="n">${money(x.comision)}</td><td class="n"><b>${money(x.total)}</b></td></tr>`).join("") || `<tr><td colspan="4" class="note">Nada en este periodo.</td></tr>`}</tbody></table></div></details>
     <p class="note">Lo de los distribuidores cuenta por la fecha en que se aprobó la venta; la comisión de las telemarketers, por el mes de la demostración. Por eso, en una quincena puede no cuadrar al centavo; en el mes sale más parejo. El garantizado que no se ganó (sin sus citas) no se cuenta.</p></div>`; }
 /* Dirección: lo que ella le debe a otros esta semana por citas que le pasaron (ej. Andrés le pasa una cita a Katerine) */
-function yoDeboCard(){ if (S.uid!==ownerUid()) return ""; const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const d = deudasSemana(range(p))[S.uid]; const it = d ? Object.values(d.a).filter(x => x.tipo==="pase") : []; if (!it.length) return "";
+function yoDeboCard(){ if (S.uid!==ownerUid()) return ""; const p = S.f.kdp && String(S.f.kdp).startsWith("w:") ? S.f.kdp : semDef(""); const d = deudasSemana(range(p))[S.uid]; const it = d ? Object.values(d.a).filter(x => x.tipo==="pase") : []; if (!it.length) return "";
   const me = deudasSemana(range(p)); it.forEach(x => { x.titulo = `<b>${esc(memberName(x.to))}</b> · citas que te pasó`; });
-  return `<div class="card"><h2>💸 Lo que tú debes esta semana <span class="note">${rangoTxt(p)}</span></h2><p class="note" style="margin-top:-6px">Citas que otros te pasaron y vendiste (${PASE_PCT()}% de la venta aprobada).</p>
+  return `<div class="card"><h2>💸 Lo que tú debes <span class="note">${semTxt2(p)}</span></h2><p class="note" style="margin-top:-6px">Citas que otros te pasaron y vendiste (${PASE_PCT()}% de la venta aprobada).</p>
     ${it.map(x => { const ellos = Object.values((me[x.to]||{a:{}}).a).filter(y => y.to===S.uid).reduce((t,y)=>t+y.m,0); return detDeuda(x) + (ellos ? `<p class="note" style="margin:2px 0 8px">${esc(firstName2(memberName(x.to)))} te debe ${money(ellos)} esta semana → neto: ${ellos >= x.m ? `te debe <b>${money(ellos - x.m)}</b>` : `le debes <b>${money(x.m - ellos)}</b>`}.</p>` : ""); }).join("")}</div>`; }
 /* Ventas aprobadas por distribución: lo del distribuidor + lo de sus emprendedores (o la distribución por donde pasó la venta) */
 const distNombre = id => (S.members[id] || {}).distNombre || (id===ownerUid() ? "Lunatikat Group" : "Distribución de " + firstName2(memberName(id)));
