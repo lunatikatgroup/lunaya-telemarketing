@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091806"></script>
-<script src="anuncios.js?v=202611091806"></script>
-<script src="juego.js?v=202611091806"></script>
+<script src="demo.js?v=202611091819"></script>
+<script src="anuncios.js?v=202611091819"></script>
+<script src="juego.js?v=202611091819"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091806";
+const APP_VER = "202611091819";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -941,7 +941,7 @@ function render(){
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
-  html += (S.view==="hoy" ? backupBanner() : "") + transfBanner();
+  html += motivaCard() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
@@ -1072,7 +1072,7 @@ const MOTIVA = [
   ["Bienaventurado el hombre que confía en el Señor.","Jeremías 17:7"],["Haz hoy lo que otros no quieren, y mañana tendrás lo que otros no tienen.",""],["Sonríe al marcar: se escucha en tu voz.",""],
   ["El gozo del Señor es nuestra fuerza.","Nehemías 8:10"],["Tu próxima cita puede ser tu mejor venta del mes.",""],["Gracias a Dios por un día más para trabajar y crecer.",""]];
 function motivaCard(){ const t = today(); const n = Math.floor(laToMs(t,"12:00") / 864e5); const [txt, cita] = MOTIVA[n % MOTIVA.length];
-  return `<div class="card" style="text-align:center;background:linear-gradient(135deg,rgba(201,151,31,.10),transparent)"><div class="eyebrow">✨ Mensaje del día</div><p style="font-family:var(--serif);font-size:19px;margin:6px 0">“${esc(txt)}”</p>${cita?`<div class="note">${esc(cita)}</div>`:""}</div>`; }
+  return `<div class="card" style="text-align:center;padding:10px 14px;margin-bottom:12px;background:linear-gradient(135deg,rgba(201,151,31,.10),transparent)"><div class="eyebrow">✨ Mensaje del día</div><p style="font-family:var(--serif);font-size:17px;margin:4px 0">“${esc(txt)}”</p>${cita?`<div class="note">${esc(cita)}</div>`:""}</div>`; }
 /* ===== Ventas que esperan "Aprobada" o "Cancelada" (para que el distribuidor no se olvide) ===== */
 function ventasPorAprobar(){ const r = role(); const grupo = isDist() ? new Set(grupoDe(S.uid).map(m => m.id)) : new Set();
   return Object.entries(S.appts).filter(([,a]) => a.sale && (a.saleStatus||"pendiente")==="pendiente" && a.status==="hecha" && (a.socioId===S.uid || grupo.has(a.socioId) || a.pasoPor===S.uid || (r==="admin" && pagadorDe(a.socioId)===S.uid))).sort((a,b) => a[1].when - b[1].when); }
@@ -1104,7 +1104,7 @@ function miAgendaCard(){ const d0 = S.f.mag || today(); const r = [laToMs(d0,"00
     ${items.length ? `<div class="list">${items.map(x => `<${x.appt?"button":"div"} class="item" ${x.appt?`data-appt="${x.appt}"`:""} style="${x.appt?"":"cursor:default;"}border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div>${x.rec?`<button class="btn small ghost" data-rec-ok="${x.rec}">✅</button>`:""}</${x.appt?"button":"div"}>`).join("")}</div>` : `<div class="empty">No tienes nada en la agenda este día.</div>`}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">➕ Agregar algo a mi agenda</summary><form id="act-form" class="grid2" style="margin-top:8px"><label class="f" style="grid-column:1/-1">¿Qué vas a hacer?<input class="i" id="act-t" placeholder="Ej.: entregar regalo a María, reunión de equipo" maxlength="80"></label><label class="f">Día<input class="i" type="date" id="act-d" value="${d0}"></label><label class="f">Hora${timeSel("act-h","10:00")}</label><label class="f" style="grid-column:1/-1">Nota (opcional)<input class="i" id="act-x" maxlength="200"></label><div><button class="btn" type="submit">Guardar en mi agenda</button></div></form></details></div>`; }
 function viewHoy(r){
-  const rg = range(S.f.period); const top = motivaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = pendLlamarCard() + recCard();
+  const rg = range(S.f.period); const top = (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = pendLlamarCard() + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
@@ -1431,7 +1431,7 @@ function terrResumen(){
 function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
   const grp = isDist() ? [S.uid, ...grupoDe(S.uid).filter(m=>m.role==="socio").map(m=>m.id)] : [S.uid];
-  const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (S.f.cview!=="terr" ? a.socioId===S.uid : ((!S.f.aSocio || a.socioId===S.f.aSocio) && (!S.f.aTele || a.teleId===S.f.aTele)));
+  const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (S.f.cview==="di" ? (a.socioId!==S.uid && (quienDio(a)===S.uid || a.agendo===S.uid || a.dador===S.uid || a.transferredBy===S.uid)) : S.f.cview!=="terr" ? a.socioId===S.uid : ((!S.f.aSocio || a.socioId===S.f.aSocio) && (!S.f.aTele || a.teleId===S.f.aTele)));
   const all = Object.entries(S.appts).filter(vis);
   const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
   const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds || (a.segWhen && !a.sale && laDate(a.segWhen)===ds)).length;
@@ -1439,7 +1439,7 @@ function viewCitas(r){
   const list = [...all.filter(([,a])=>laDate(a.when)===day).map(([id,a])=>[id,a,false]), ...all.filter(([,a])=>a.segWhen && !a.sale && laDate(a.segWhen)===day).map(([id,a])=>[id,a,true])].sort((x,y)=>(x[2]?x[1].segWhen:x[1].when)-(y[2]?y[1].segWhen:y[1].when));
   const pend = all.filter(([,a])=>a.status==="agendada" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
   let h = r==="tele" ? worldBar() : "";
-  if (r==="admin") h += `<div class="chips" style="margin-bottom:12px"><button class="chip ${S.f.cview!=="terr"?"on":""}" data-cview="mias">📅 Mis citas</button><button class="chip ${S.f.cview==="terr"?"on":""}" data-cview="terr">🗺️ Territorio</button></div>`;
+  if (r==="admin") h += `<div class="chips" style="margin-bottom:12px"><button class="chip ${S.f.cview!=="terr"&&S.f.cview!=="di"?"on":""}" data-cview="mias">📅 Mis citas</button><button class="chip ${S.f.cview==="di"?"on":""}" data-cview="di">🤝 Citas que di</button><button class="chip ${S.f.cview==="terr"?"on":""}" data-cview="terr">🗺️ Territorio</button></div>`;
   if (r==="admin" && S.f.cview==="terr") h += terrResumen();
   h += `<div class="card"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row"><button class="btn small ghost" data-wk="-7" aria-label="Semana anterior">←</button><button class="btn small ghost" data-wk="0">Hoy</button><button class="btn small ghost" data-wk="7" aria-label="Semana siguiente">→</button></div>
     <b style="font-family:var(--serif);font-size:19px">${fmt(laToMs(mon,"12:00"),{day:"numeric",month:"short"})} – ${fmt(laToMs(addDays(mon,6),"12:00"),{day:"numeric",month:"short"})}</b></div>
@@ -1812,7 +1812,7 @@ function viewLider(){
   h += `<div class="card"><h2>Día de inicio de cada telemarketer</h2><p class="note" style="margin-top:-6px">El sueldo se cuenta desde el día que realmente empezó a trabajar, aunque la hayas agregado a la app después. Cámbialo si no es el correcto.</p><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th>Empezó a trabajar</th></tr></thead><tbody>${telesLunaya().map(t => `<tr><td><b>${esc(t.name)}</b></td><td><input class="i" type="date" data-start="${t.id}" value="${startOf(t)==="2000-01-01"?"":startOf(t)}" max="${today()}" style="padding:4px 6px"></td></tr>`).join("")}</tbody></table></div></div>`;
   h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
   h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
-  h += inviteCard() + quitarTeleCard();
+  h += respaldoLiderCard() + inviteCard() + quitarTeleCard();
   return h;
 }
 /* La líder puede sacar del equipo a una telemarketer (y devolverla). No se borra nada: sus llamadas, citas y comisiones quedan guardadas. */
@@ -1879,7 +1879,7 @@ function viewEquipo(){
     <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
     <div class="eyebrow">Respaldo completo</div><p class="note">Todas las citas con datos del cliente y resultado, y el registro diario de llamadas y referidos de cada telemarketer, desde el primer día. Hazlo una vez por semana.</p>
     <div class="row"><button class="btn" data-act="backup-all">📦 Respaldo completo (Excel)</button><button class="btn dark" data-act="backup">Solo citas</button><button class="btn dark" data-act="backup-calls">Solo llamadas</button></div>
-    <div id="g-status" class="note" style="margin-top:10px">${S.config.lastBackup?`Último respaldo: ${fmtWhen(S.config.lastBackup)}`:""}</div></div>`;
+    <div id="g-status" class="note" style="margin-top:10px">${lastBk()?`Último respaldo: ${fmtWhen(lastBk())}${quienBk()?` · lo hizo ${esc(firstName2(quienBk().name))}`:""}`:""}</div></div>`;
   return h;
 }
 
@@ -1948,12 +1948,23 @@ async function doBackupAll(){
     add("Llamadas", BK_CALLS_HEAD, calls); add("Personas", ["Nombre","Correo","Teléfono","Rol","Tipo","Sponsor / líder","Líder","Acceso","ID"], gente);
     add("Prospectos (juegos)", ["Fecha","Nombre","Teléfono","Regalo","Resultado del juego","Amiga de","Socio","Estado","ID"], pros); add("Pagos registrados", ["Distribuidor","Desde","Hasta","Monto","Estado","Fecha","ID"], pagos);
     XLSX.writeFile(wb, `Lunaya-respaldo-${today()}.xlsx`);
-    await S.db.doc("config/main").set({...S.config, lastBackup:Date.now()});
+    if (role()==="admin") await S.db.doc("config/main").set({...S.config, lastBackup:Date.now()});
+    else { try { localStorage.setItem("ly-bk-"+S.uid, String(Date.now())); } catch {} try { await S.db.doc("members/"+S.uid).update({lastBackup:Date.now()}); } catch(e){ console.log(e); } }
     gStatus(`Listo: ${citas.length} citas, ${calls.length} filas de llamadas, ${gente.length} personas, ${pros.length} prospectos. Guárdalo en tu Drive.`, "good"); toast("Respaldo descargado");
   } catch(e){ console.log(e); gStatus("No se pudo preparar el respaldo. Revisa tu internet e intenta de nuevo.", "bad"); toast("No se pudo preparar el respaldo"); }
 }
 /* Recordatorio semanal para Dirección: si pasaron 7 días sin respaldo */
-function backupBanner(){ if (role()!=="admin") return ""; const lb = S.config.lastBackup || 0; if (Date.now() - lb < 7*864e5) return "";
+const esLiderProg = () => role()==="tele" && !!S.me?.lider && !S.me?.upline;
+/* Último respaldo: el de Dirección o el que hizo la líder (Carly). Si lo hace la líder, a Dirección no le sale el aviso. */
+function lastBk(){ let ls = 0; try { ls = +localStorage.getItem("ly-bk-"+S.uid) || 0; } catch {} const lid = byRole("tele").filter(t => t.lider && !t.upline).map(t => +t.lastBackup||0);
+  return Math.max(+S.config.lastBackup||0, ls, ...lid, 0); }
+function quienBk(){ const l = byRole("tele").filter(t => t.lider && !t.upline && t.lastBackup).sort((a,b) => b.lastBackup - a.lastBackup)[0]; return l && l.lastBackup >= (+S.config.lastBackup||0) ? l : null; }
+function respaldoLiderCard(){ if (!esLiderProg()) return ""; const lb = lastBk();
+  return `<div class="card"><h2>📦 Respaldo de la base de datos</h2><p class="note" style="margin-top:-6px">Tú haces el respaldo del programa una vez por semana. Se descarga un Excel con las citas (con los datos del cliente de las citas del programa), las llamadas diarias de cada telemarketer, las personas y los prospectos de los juegos.</p>
+    <div class="row"><button class="btn" data-act="backup-all">📦 Descargar respaldo</button></div>
+    <p class="note">En el iPhone o iPad: cuando se abra el archivo toca <b>Compartir</b> (□↑) → <b>Guardar en Archivos</b> → <b>Google Drive</b> → tu carpeta de respaldos. Cada semana queda un archivo nuevo con su fecha.</p>
+    <div id="g-status" class="note" style="margin-top:6px">${lb ? `Último respaldo: ${fmtWhen(lb)}` : "Todavía no se ha hecho un respaldo."}</div></div>`; }
+function backupBanner(){ if (role()!=="admin" && !esLiderProg()) return ""; const lb = lastBk(); if (Date.now() - lb < 7*864e5) return "";
   return `<div class="banner warn" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>📦 ${lb ? `Tu último respaldo fue el ${fmt(lb,{day:"numeric",month:"short"})}.` : "Todavía no has hecho un respaldo."} Descarga el respaldo de la semana y guárdalo en tu Drive.</span><button class="btn small" data-act="backup-all">Descargar respaldo</button></div><div id="g-status" class="note"></div>`; }
 
 /* ===== Mi perfil: foto ===== */
