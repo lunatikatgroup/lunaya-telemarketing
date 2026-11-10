@@ -59,6 +59,12 @@ service cloud.firestore {
          // El distribuidor ajusta el plan de pago de SUS telemarketers
          || (isDist() && resource.data.get('upline', '') == request.auth.uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate', 'ruta']))
+         // La líder saca del equipo a una telemarketer del programa (queda como baja, no se borra nada) o la devuelve
+         || (isLeader() && resource.data.get('upline', '') == '' && request.auth.uid != uid
+             && ((resource.data.role == 'tele' && resource.data.get('lider', false) == false && request.resource.data.role == 'baja'
+                  && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'prevRole', 'lider', 'leftAt', 'leftBy']))
+              || (resource.data.role == 'baja' && resource.data.get('prevRole', '') == 'tele' && request.resource.data.role == 'tele'
+                  && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'leftAt']))))
          // La líder corrige el día en que empezó cada telemarketer del programa (para el sueldo)
          || (isLeader() && resource.data.role == 'tele' && resource.data.get('upline', '') == ''
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['startDate']))

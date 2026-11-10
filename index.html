@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091616"></script>
-<script src="anuncios.js?v=202611091616"></script>
-<script src="juego.js?v=202611091616"></script>
+<script src="demo.js?v=202611091640"></script>
+<script src="anuncios.js?v=202611091640"></script>
+<script src="juego.js?v=202611091640"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091616";
+const APP_VER = "202611091640";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1777,9 +1777,14 @@ function viewLider(){
   h += `<div class="card"><h2>Día de inicio de cada telemarketer</h2><p class="note" style="margin-top:-6px">El sueldo se cuenta desde el día que realmente empezó a trabajar, aunque la hayas agregado a la app después. Cámbialo si no es el correcto.</p><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th>Empezó a trabajar</th></tr></thead><tbody>${telesLunaya().map(t => `<tr><td><b>${esc(t.name)}</b></td><td><input class="i" type="date" data-start="${t.id}" value="${startOf(t)==="2000-01-01"?"":startOf(t)}" max="${today()}" style="padding:4px 6px"></td></tr>`).join("")}</tbody></table></div></div>`;
   h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
   h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
-  h += inviteCard();
+  h += inviteCard() + quitarTeleCard();
   return h;
 }
+/* La líder puede sacar del equipo a una telemarketer (y devolverla). No se borra nada: sus llamadas, citas y comisiones quedan guardadas. */
+function quitarTeleCard(){ const act = telesLunaya().filter(t => t.id!==S.uid && !t.lider); const fuera = byRole("baja").filter(t => t.prevRole==="tele" && !t.upline && (t.leftAt||0) > Date.now() - 60*864e5);
+  return `<div class="card"><h2>Personas del equipo</h2><p class="note" style="margin-top:-6px">Si alguien ya no trabaja, quítala del equipo: deja de entrar a la app. Todo lo que hizo (llamadas, citas, comisiones) queda guardado.</p>
+    ${act.length ? `<div class="list">${act.map(t => `<div class="item" style="cursor:default"><div class="nm-av">${av(t.id,30)}<b>${esc(t.name)}</b></div><button class="btn small danger" data-tquitar="${t.id}">Quitar del equipo</button></div>`).join("")}</div>` : `<div class="empty">No hay telemarketers.</div>`}
+    ${fuera.length ? `<div class="eyebrow" style="margin-top:12px">Quitadas en los últimos 60 días</div><div class="list">${fuera.map(t => `<div class="item" style="cursor:default"><div><b>${esc(t.name)}</b><div class="m">salió el ${fmt(t.leftAt,{day:"numeric",month:"short"})}</div></div><button class="btn small ghost" data-tvolver="${t.id}">Devolver al equipo</button></div>`).join("")}</div>` : ""}</div>`; }
 
 /* ===== MI GRUPO (distribuidor) ===== */
 function viewGrupo(){
@@ -2061,6 +2066,9 @@ function bindCommon(){
   all("[data-tper]", b => b.onclick = () => { S.f.tper = b.dataset.tper; render(); });
   all("[data-origen]", b => b.onclick = () => openOrigen(b.dataset.origen));
   all("[data-perfil]", b => b.onclick = () => openPerfil(b.dataset.perfil));
+  all("[data-tquitar]", b => b.onclick = function(){ const id = b.dataset.tquitar; if (!b.dataset.sure){ b.dataset.sure = "1"; b.textContent = "Toca otra vez para quitar a "+firstName2(memberName(id)); return; }
+    S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now(), leftBy:S.uid}).then(() => toast(memberName(id)+" salió del equipo"), writeErr); });
+  all("[data-tvolver]", b => b.onclick = () => S.db.doc("members/"+b.dataset.tvolver).update({role:"tele", leftAt:firebase.firestore.FieldValue.delete()}).then(() => toast("Volvió al equipo"), writeErr));
   all("[data-agd]", b => b.onclick = () => { S.f.agd = b.dataset.agd; render(); });
   all("[data-mag]", b => b.onclick = () => { S.f.mag = b.dataset.mag; render(); });
   { const af = m.querySelector("#act-form"); if (af) af.onsubmit = async e => { e.preventDefault(); const t = $("#act-t").value.trim(), d = $("#act-d").value, h = timeVal("act-h"); if (!t){ toast("Escribe qué vas a hacer"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
