@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611100835"></script>
-<script src="anuncios.js?v=202611100835"></script>
-<script src="juego.js?v=202611100835"></script>
+<script src="demo.js?v=202611100944"></script>
+<script src="anuncios.js?v=202611100944"></script>
+<script src="juego.js?v=202611100944"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611100835";
+const APP_VER = "202611100944";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1020,7 +1020,7 @@ function render(){
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
-  html += relojBar() + motivaCard() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
+  html += relojBar() + motivaCard() + codigosBtn() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
@@ -2200,6 +2200,26 @@ function openProfile(){
 }
 
 /* ===== Modal ===== */
+/* ===== Códigos de productos (sin precios): para llenar las órdenes ===== */
+const puedeCodigos = () => role()==="admin" || role()==="socio";
+function codigosBtn(){ return puedeCodigos() ? `<div class="row" style="justify-content:flex-end;margin:-4px 0 10px"><button class="btn small ghost" data-act="codigos">📦 Códigos de productos</button></div>` : ""; }
+function cargarCodigos(){ return window.CODIGOS ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "codigos.js?v="+APP_VER; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); }); }
+async function openCodigos(){ try { await cargarCodigos(); } catch { toast("No se pudo cargar la lista. Revisa tu internet."); return; }
+  let area = "", q = "";
+  openModal(`<h3>📦 Códigos de productos</h3><input class="i" id="cd-q" placeholder="Busca por nombre o código (ej. novel 10, filtro, CO9883)" style="width:100%" autocomplete="off">
+    <div class="chips" id="cd-areas" style="margin:8px 0">${["", ...window.CODIGOS_AREAS].map(a => `<button class="chip ${a===""?"on":""}" data-cda="${esc(a)}">${a ? esc(a) : "Todas"}</button>`).join("")}</div>
+    <div id="cd-list" style="max-height:55vh;overflow:auto"></div><p class="note" style="margin:6px 0 0">Toca un producto para copiar su código. Lista Hy Cite 2026.</p>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const norm = t => String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    const pinta = () => { const ws = norm(q).split(/\s+/).filter(Boolean);
+      const l = window.CODIGOS.filter(([a,c,n]) => (!area || a===area) && ws.every(w => norm(c+" "+n+" "+a).includes(w)));
+      let h = "", last = ""; l.slice(0, 400).forEach(([a,c,n]) => { if (a!==last){ h += `<div class="eyebrow" style="margin:10px 0 4px">${esc(a)}</div>`; last = a; }
+        h += `<button class="item" data-cdc="${esc(c)}" style="width:100%;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span>${esc(n)}</span><b style="white-space:nowrap">${esc(c)} 📋</b></button>`; });
+      $("#cd-list").innerHTML = h || `<div class="empty">No hay productos con esa búsqueda.</div>`;
+      document.querySelectorAll("[data-cdc]").forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.cdc); toast("Código copiado: "+b.dataset.cdc); } catch { toast(b.dataset.cdc); } }); };
+    $("#cd-q").oninput = e => { q = e.target.value; pinta(); };
+    document.querySelectorAll("[data-cda]").forEach(b => b.onclick = () => { area = b.dataset.cda; document.querySelectorAll("[data-cda]").forEach(x => x.classList.toggle("on", x===b)); pinta(); });
+    pinta(); }); }
 function openModal(html, bind){ $("#modal").innerHTML = `<div class="modal-bg" id="mbg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`; $("#mbg").onclick = e => { if (e.target.id==="mbg") closeModal(); }; $("#modal").querySelectorAll("[data-close]").forEach(b=>b.onclick=closeModal); bind && bind(); }
 function closeModal(){ $("#modal").innerHTML = ""; S.openAppt = null; }
 
@@ -2248,6 +2268,7 @@ function bindCommon(){
   all("[data-act]", b => b.onclick = async () => { const a = b.dataset.act;
     if (a==="world") setWorld("");
     if (a==="backup-all") return doBackupAll();
+    if (a==="codigos") return openCodigos();
     if (a==="drset") openDriveSocio(S.world);
     else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem2:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
     else if (a==="pago"){ try { await S.db.doc("config/main").set({...S.config, pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
