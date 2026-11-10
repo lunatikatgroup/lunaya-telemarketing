@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091832"></script>
-<script src="anuncios.js?v=202611091832"></script>
-<script src="juego.js?v=202611091832"></script>
+<script src="demo.js?v=202611091838"></script>
+<script src="anuncios.js?v=202611091838"></script>
+<script src="juego.js?v=202611091838"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091832";
+const APP_VER = "202611091838";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -605,7 +605,7 @@ function openRuta(uid){ const m = S.members[uid] || {}; const r = m.ruta || {};
     $("#rt-ok").onclick = async () => { const d = $("#rt-d").value || today();
       try { await S.db.doc("members/"+uid).update({ruta:{solo:Math.max(0,+$("#rt-s").value||0), acomp:Math.max(0,+$("#rt-a").value||0), desde:laToMs(d,"00:00"), by:S.uid, at:Date.now()}}); closeModal(); toast("Ruta actualizada"); } catch(e){ writeErr(e); } }; }); }
 /* ===== Meta semanal de citas de la telemarketer (lunes a sábado): asegura su garantizado del mes ===== */
-const metaSem = () => +S.config.metaCitasSem || 10;
+const metaSem = () => +S.config.metaCitasSem2 || 20; /* citas por semana para ganarse el garantizado (80 al mes) */
 function semRango(k){ const mo = addDays(mondayOf(today()), -7*k); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
 function semTxt(k){ const mo = addDays(mondayOf(today()), -7*k); return fmt(laToMs(mo,"12:00"),{day:"numeric",month:"short"}); }
 function citasSem(tid, k){ return teleEval(tid, semRango(k)).citas; }
@@ -617,7 +617,7 @@ function metaSemCard(tid){ const M = metaSem(), v = citasSem(tid, 0); const hoy 
     <p class="note" style="margin:6px 0 10px">${v>=M ? "¡Bien! Todo lo que saques de más suma para tu comisión." : quedan ? `Te quedan ${quedan} día(s) de trabajo esta semana: necesitas ${Math.ceil(falta/quedan)} cita(s) por día.` : "La semana ya cerró."} Las 10 citas semanales son las que aseguran tu garantizado del mes.</p>
     <div class="row" style="gap:6px">${hist.map(h => `<span class="tag ${h.v>=M?"tg-good":"tg-bad"}">Sem. ${semTxt(h.k)}: ${h.v}${h.v>=M?" ✓":" ✗"}</span>`).join("")}</div></div>`; }
 function metaSemEquipoCard(){ const M = metaSem(); const tl = telesLunaya(); if (!tl.length) return "";
-  return `<div class="card"><h2>Meta semanal de citas<span class="note">${M} por telemarketer</span></h2><p class="note" style="margin-top:-6px">Citas agendadas de lunes a sábado. Las 10 semanales aseguran el garantizado del mes.</p>
+  return `<div class="card"><h2>Meta semanal de citas<span class="note">${M} por telemarketer</span></h2><p class="note" style="margin-top:-6px">Citas agendadas de lunes a sábado. Las ${M} semanales aseguran el garantizado del mes.</p>
     <div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Esta semana</th>${[1,2,3,4].map(k => `<th class="n">${semTxt(k)}</th>`).join("")}<th class="n">Cumplió</th></tr></thead><tbody>${tl.map(t => { const h = [0,1,2,3,4].map(k => citasSem(t.id, k)); const ok = h.slice(1).filter(v => v>=M).length;
       return `<tr><td><b>${esc(t.name)}</b></td>${h.map((v,i) => `<td class="n"><span class="${v>=M?"pct-good":i===0?"pct-mid":"pct-low"}">${v}</span></td>`).join("")}<td class="n"><b class="${ok>=3?"pct-good":ok>=2?"pct-mid":"pct-low"}">${ok} de 4</b></td></tr>`; }).join("")}</tbody></table></div>
     <p class="note" style="margin-bottom:0">Verde = cumplió ${M}. "Cumplió" cuenta las últimas 4 semanas completas.</p></div>`; }
@@ -837,7 +837,7 @@ function deudasSemana(rg){ const out = {}; const D = p => (out[p] ||= {payer:p, 
 /* % del garantizado de las telemarketers que le toca a cada uno. Andrés (el otro director) por defecto la mitad. */
 const garPctDe = uid => { const m = S.members[uid] || {}; if (m.role!=="admin" && m.tipo!==DIST) return 0; if ((m.garPct ?? "") !== "") return +m.garPct; return m.role==="admin" && uid!==ownerUid() ? 50 : 0; };
 /* Garantizado de cada telemarketer del programa en la semana: su sueldo del mes repartido por día laboral (lunes a sábado).
-   Se cobra si hizo sus 10 citas en la semana (o la semana todavía está en curso). */
+   Se cobra si hizo sus citas de la semana (metaSem) (o la semana todavía está en curso). */
 const GAR_DESDE = "2026-11-09"; /* desde esta semana se le cobra a Andrés su parte del garantizado */
 function garSemana(rg){ const c = com(); const hoy = today(); let d0 = laDate(rg[0]); const d1 = laDate(rg[1]-1); if (d0 < GAR_DESDE) d0 = GAR_DESDE; if (d0 > d1) return [];
   const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= rg[0])].filter(t => !t.upline);
@@ -846,13 +846,13 @@ function garSemana(rg){ const c = com(); const hoy = today(); let d0 = laDate(rg
     const g = {t, base, dias:0, monto:0, cobra:0, citas:0, req:0, sem:0, semOk:0, cumple:true, cerrado:true};
     for (let mo = mondayOf(d0); mo <= d1; mo = addDays(mo,7)){ const wr = [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; const cerrado = wr[1] <= Date.now();
       let dias = 0, monto = 0; for (let d = mo; d < addDays(mo,7); d = addDays(d,1)) if (d >= d0 && d <= d1 && d >= st && d <= fin && d <= hoy && workDays(d,d)){ dias++; monto += base / wdMes(d); }
-      if (!dias) continue; const a = st > mo ? st : mo; const posibles = workDays(a, addDays(mo,6)); const req = Math.min(10, Math.round(10 * posibles / 6)); const citas = teleEval(t.id, wr).citas; const ok = citas >= req;
+      if (!dias) continue; const a = st > mo ? st : mo; const posibles = workDays(a, addDays(mo,6)); const MS = metaSem(); const req = Math.min(MS, Math.round(MS * posibles / 6)); const citas = teleEval(t.id, wr).citas; const ok = citas >= req;
       g.dias += dias; g.monto += monto; g.citas += citas; g.req += req; g.sem++; if (ok) g.semOk++; if (ok || !cerrado) g.cobra += monto; if (!cerrado) g.cerrado = false; if (!ok && cerrado) g.cumple = false; }
     return g.dias ? g : null; }).filter(Boolean); }
 const TIPO_DEU = {tm:"Programa de telemarketing", pase:"Citas que te pasó", emp:"Comisión de tu emprendedor", gar:"Tu parte del garantizado de las telemarketers"};
 function semChips(cur){ return `<div class="chips">${["semana","semant"].map(v => `<button class="chip ${cur===v?"on":""}" data-semp="${v}">${PLABEL[v]}</button>`).join("")}</div>`; }
 function detDeuda(x){ if (x.tipo==='gar') return detGar(x); return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.rows.length} venta(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Aprobada</th><th>Cliente</th><th>Vendió</th><th class="n">Venta</th><th class="n">%</th><th class="n">Monto</th></tr></thead><tbody>${x.rows.sort((a,b)=>aprobAt(a.a)-aprobAt(b.a)).map(r => `<tr data-appt="${r.id}" style="cursor:pointer"><td class="note">${fmt(aprobAt(r.a),{weekday:"short",day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${r.pct}%</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`; }
-function detGar(x){ return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.pct}% del garantizado de ${x.gar.length} telemarketer(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Sueldo al mes</th><th class="n">Días</th><th class="n">Citas / semanas cumplidas</th><th class="n">Garantizado</th><th class="n">${x.pct}%</th></tr></thead><tbody>${x.gar.map(g => `<tr><td><b>${esc(g.t.name||"")}</b></td><td class="n">${money(g.base)}</td><td class="n">${g.dias}</td><td class="n">${g.sem>1 ? `${g.semOk}/${g.sem} sem.` : `${g.citas>=g.req ? "✅" : g.cerrado ? "❌" : "⏳"} ${g.citas}/${g.req}`}</td><td class="n">${g.cobra ? money(g.cobra) : `<span class="note">no cumplió</span>`}</td><td class="n">${money(g.cobra*x.pct/100)}</td></tr>`).join("")}</tbody></table></div><p class="note">El sueldo de cada telemarketer se reparte por día laboral (lunes a sábado). Una semana se cobra si la telemarketer hizo sus 10 citas; si la semana cerró sin cumplir, no se cobra. ⏳ = semana en curso.</p></details>`; }
+function detGar(x){ return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.pct}% del garantizado de ${x.gar.length} telemarketer(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Sueldo al mes</th><th class="n">Días</th><th class="n">Citas / semanas cumplidas</th><th class="n">Garantizado</th><th class="n">${x.pct}%</th></tr></thead><tbody>${x.gar.map(g => `<tr><td><b>${esc(g.t.name||"")}</b></td><td class="n">${money(g.base)}</td><td class="n">${g.dias}</td><td class="n">${g.sem>1 ? `${g.semOk}/${g.sem} sem.` : `${g.citas>=g.req ? "✅" : g.cerrado ? "❌" : "⏳"} ${g.citas}/${g.req}`}</td><td class="n">${g.cobra ? money(g.cobra) : `<span class="note">no cumplió</span>`}</td><td class="n">${money(g.cobra*x.pct/100)}</td></tr>`).join("")}</tbody></table></div><p class="note">El sueldo de cada telemarketer se reparte por día laboral (lunes a sábado). Una semana se cobra si la telemarketer hizo sus ${metaSem()} citas; si la semana cerró sin cumplir, no se cobra. ⏳ = semana en curso.</p></details>`; }
 /* Distribuidor: su reporte de la semana, separado por persona */
 function reporteSemanaCard(){ const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const rg = range(p); const d = deudasSemana(rg)[S.uid]; const K = ownerUid();
   const items = d ? Object.values(d.a) : []; const aK = items.filter(x => x.to===K), otros = items.filter(x => x.to!==K && x.tipo!=="emp"), emps = items.filter(x => x.tipo==="emp");
@@ -921,8 +921,8 @@ function commissions(r, up=""){
   return rows.map(x => { const pct = (x.t.pct ?? "") === "" ? c.pct : +x.t.pct; const base = (x.t.sueldo ?? "") === "" ? c.sueldo : +x.t.sueldo;
     const own = x.monto * pct/100; const lead = x.t.lider ? (teamMonto - x.monto) * c.liderPct/100 : 0; /* la líder no cobra el 1% sobre sus propias ventas */
     const sd = sueldoDe(x.t, r, base);
-    /* Requisito del sueldo base: 40 citas al mes (10 por semana), proporcional a los días que trabajó */
-    const req = Math.round(40 * (sd.total ? sd.dias / sd.total : 0)), citas = teleEval(x.t.id, r).citas, cumple = !base || !!up || citas >= req, cerrado = r[1] <= Date.now();
+    /* Requisito del sueldo base: la meta semanal x 4 al mes (20 por semana = 80), proporcional a los días que trabajó */
+    const req = Math.round(metaSem() * 4 * (sd.total ? sd.dias / sd.total : 0)), citas = teleEval(x.t.id, r).citas, cumple = !base || !!up || citas >= req, cerrado = r[1] <= Date.now();
     const sueldoEf = base && cerrado && !cumple ? 0 : sd.sueldo;
     return {...x, pct, base, sueldo:sueldoEf, sueldoAcum:sd.sueldo, req, citasReq:citas, cumple, cerrado, dias:sd.dias, diasMes:sd.total, own, lead, comision:own+lead, total:sueldoEf+own+lead}; });
 }
@@ -1140,8 +1140,8 @@ function viewHoy(r){
       <div class="tile"><b>${money(mine.own)}</b><span>${mine.pct}% de tus ventas aprobadas</span><small>${money(mine.monto)} aprobado${mine.pend?` · ${mine.pend} pendiente(s)`:""}</small></div>
       ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.comision)}</b><span>Total comisión</span></div></div>
       <p class="note">La comisión sale solo de ventas aprobadas. Las pendientes suman cuando quedan aprobadas.</p>
-      ${mine.base ? (() => { const sw = teleEval(S.uid, range("semana")).citas; return `<div class="banner ${sw>=10?"good":"warn"}" style="margin-top:8px">📅 Esta semana llevas <b>${sw} de 10 citas</b>. El requisito para cobrar el sueldo base es 10 citas por semana (40 al mes).</div>`; })() : ""}
-      ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado este mes</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile ${mine.cumple?"":"warn"}"><b>${mine.citasReq} / ${mine.req}</b><span>Citas para cobrar el sueldo</span><small>${mine.cumple ? "✅ ya cumpliste" : `te faltan ${mine.req - mine.citasReq}`} · meta 10 por semana</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
+      ${mine.base ? (() => { const sw = teleEval(S.uid, range("semana")).citas; return `<div class="banner ${sw>=metaSem()?"good":"warn"}" style="margin-top:8px">📅 Esta semana llevas <b>${sw} de ${metaSem()} citas</b>. El requisito para cobrar el sueldo base es ${metaSem()} citas por semana (${metaSem()*4} al mes).</div>`; })() : ""}
+      ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado este mes</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile ${mine.cumple?"":"warn"}"><b>${mine.citasReq} / ${mine.req}</b><span>Citas para cobrar el sueldo</span><small>${mine.cumple ? "✅ ya cumpliste" : `te faltan ${mine.req - mine.citasReq}`} · meta ${metaSem()} por semana</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
     h += teleNominaCard() + citasDiaCard();
   } else if (r==="socio"){
     const pend = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.tipoVisita!=="servicio" && a.when < Date.now()-3600e3);
@@ -1828,7 +1828,7 @@ function viewLider(){
   if (!S.me?.lider && !S.isOwner) return `<div class="card empty">Esta pantalla es solo para la líder del equipo.</div>`;
   const rg = range(S.f.period);
   const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
-  let h = `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
+  let h = reunionCard() + `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
   const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
   h += refsPendCard() + citasDiaCard() + metaSemEquipoCard() + citasEquipoCard() + refByCard(socios().map(x => x.id));
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
@@ -1838,6 +1838,19 @@ function viewLider(){
   h += respaldoLiderCard() + inviteCard() + quitarTeleCard();
   return h;
 }
+/* Reporte semanal / mensual para las reuniones de la líder con su equipo */
+function reunionCard(){ const P = {semana:"Esta semana", semant:"Semana pasada", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.rrp] ? S.f.rrp : "semant"; const rg = range(p);
+  const rows = telesLunaya().map(t => ({t, e:teleEval(t.id, rg)})); const T = rows.reduce((o,x) => { for (const k in x.e) o[k] = (o[k]||0) + x.e[k]; return o; }, {});
+  const uno = (a, b) => a && b ? `1 de cada ${(Math.round(a/b*10)/10).toLocaleString("es")}` : "—"; const pc = (a, b) => b ? Math.round(a*100/b)+"%" : "—";
+  const fila = (n, e, tot) => `<tr class="${tot?"total":""}"><td>${tot ? n : `<b>${esc(n)}</b>`}</td><td class="n">${e.calls}</td><td class="n">${e.contacts}</td><td class="n">${e.citas}</td><td class="n">${e.demos}</td><td class="n">${e.ventas}</td><td class="n">${e.aprob}</td><td class="n">${e.cancel}</td><td class="n">${money(e.montoAprob)}</td><td class="n">${pc(e.citas,e.contacts)}</td><td class="n">${pc(e.demos,e.pasadas)}</td><td class="n">${pc(e.ventas,e.demos)}</td><td class="n">${pc(e.aprob,e.ventas+e.cancel)}</td></tr>`;
+  const txt = `📋 Reporte del equipo · ${P[p]} (${rangoTxt(p)})\n📞 Llamadas: ${T.calls||0} · Contactos: ${T.contacts||0}\n📅 Citas: ${T.citas||0} (${uno(T.contacts||0,T.citas||0)} contactos)\n🍳 Demostraciones: ${T.demos||0} (${pc(T.demos||0,T.pasadas||0)} de las citas que tocaban)\n💰 Ventas: ${T.ventas||0} · Aprobadas: ${T.aprob||0} · Canceladas: ${T.cancel||0} · ${money(T.montoAprob||0)} aprobado\n\n` + rows.map(x => `${x.t.name}: ${x.e.calls} llamadas, ${x.e.citas} citas, ${x.e.demos} demos, ${x.e.ventas} ventas (${x.e.aprob} aprobadas)`).join("\n");
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>📋 Reporte para la reunión <div class="chips">${Object.entries(P).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-rrp="${v}">${l}</button>`).join("")}</div></h2>
+    <p class="note" style="margin-top:-6px">${rangoTxt(p)}. Citas = las que se sacaron en el periodo; demostraciones y ventas = de las citas que tocaban en el periodo.</p>
+    <div class="tiles"><div class="tile"><b>${T.calls||0}</b><span>Llamadas</span><small>${T.contacts||0} contactos</small></div><div class="tile"><b>${T.citas||0}</b><span>Citas</span><small>${uno(T.contacts||0,T.citas||0)} contactos</small></div><div class="tile"><b>${T.demos||0}</b><span>Demostraciones</span><small>${uno(T.pasadas||0,T.demos||0)} citas</small></div><div class="tile"><b>${T.ventas||0}</b><span>Ventas</span><small>${uno(T.demos||0,T.ventas||0)} demos</small></div><div class="tile acc"><b>${T.aprob||0}</b><span>Aprobadas</span><small>${T.cancel||0} canceladas · ${money(T.montoAprob||0)}</small></div></div>
+    <div class="eyebrow" style="margin-top:10px">Efectividad del equipo</div>
+    <div class="tiles"><div class="tile"><b>${pc(T.contacts||0,T.calls||0)}</b><span>Llamada → contacto</span></div><div class="tile"><b>${pc(T.citas||0,T.contacts||0)}</b><span>Contacto → cita</span></div><div class="tile"><b>${pc(T.demos||0,T.pasadas||0)}</b><span>Cita → demostración</span></div><div class="tile"><b>${pc(T.ventas||0,T.demos||0)}</b><span>Demo → venta</span></div><div class="tile"><b>${pc(T.aprob||0,(T.ventas||0)+(T.cancel||0))}</b><span>Ventas aprobadas</span></div></div>
+    <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">Aprobadas</th><th class="n">Canceladas</th><th class="n">Aprobado $</th><th class="n">Contacto→cita</th><th class="n">Cita→demo</th><th class="n">Demo→venta</th><th class="n">% aprobadas</th></tr></thead><tbody>${rows.map(x => fila(x.t.name||"", x.e)).join("")}${fila("Total", {calls:0,contacts:0,citas:0,demos:0,ventas:0,aprob:0,cancel:0,montoAprob:0,pasadas:0,...T}, true)}</tbody></table></div>
+    <div class="row" style="margin-top:8px"><button class="btn small" data-copy="${esc(txt)}">📋 Copiar resumen para WhatsApp</button></div></div>`; }
 /* La líder puede sacar del equipo a una telemarketer (y devolverla). No se borra nada: sus llamadas, citas y comisiones quedan guardadas. */
 function quitarTeleCard(){ const act = telesLunaya().filter(t => t.id!==S.uid && !t.lider); const fuera = byRole("baja").filter(t => t.prevRole==="tele" && !t.upline && (t.leftAt||0) > Date.now() - 60*864e5);
   return `<div class="card"><h2>Personas del equipo</h2><p class="note" style="margin-top:-6px">Si alguien ya no trabaja, quítala del equipo: deja de entrar a la app. Todo lo que hizo (llamadas, citas, comisiones) queda guardado.</p>
@@ -2089,7 +2102,7 @@ function bindCommon(){
     if (a==="world") setWorld("");
     if (a==="backup-all") return doBackupAll();
     if (a==="drset") openDriveSocio(S.world);
-    else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
+    else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem2:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
     else if (a==="pago"){ try { await S.db.doc("config/main").set({...S.config, pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
     else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0, distPct:+$("#k-dist").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
     else if (a==="embudo"){ const e = {}; document.querySelectorAll("[data-emb]").forEach(x => e[x.dataset.emb] = Math.max(0, +x.value||0)); try { await S.db.doc("config/main").set({...S.config, embudo:e}); toast("Meta del embudo guardada"); } catch(err){ writeErr(err); } }
@@ -2144,6 +2157,7 @@ function bindCommon(){
   { const af = m.querySelector("#act-form"); if (af) af.onsubmit = async e => { e.preventDefault(); const t = $("#act-t").value.trim(), d = $("#act-d").value, h = timeVal("act-h"); if (!t){ toast("Escribe qué vas a hacer"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
       try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"actividad", nombre:t.slice(0,80), tel:"", when:laToMs(d,h), nota:$("#act-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); S.f.mag = d; toast("Agregado a tu agenda"); } catch(err){ writeErr(err); } }; }
   all("[data-semp]", b => b.onclick = () => { S.f.semp = b.dataset.semp; render(); });
+  all("[data-rrp]", b => b.onclick = () => { S.f.rrp = b.dataset.rrp; render(); });
   all("[data-cdp]", b => b.onclick = () => { S.f.cdp = b.dataset.cdp; render(); });
   all("[data-kdp]", b => b.onclick = () => { S.f.kdp = b.dataset.kdp; render(); });
   all("[data-dper]", b => b.onclick = () => { S.f.dper = b.dataset.dper; render(); });
