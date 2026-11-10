@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091838"></script>
-<script src="anuncios.js?v=202611091838"></script>
-<script src="juego.js?v=202611091838"></script>
+<script src="demo.js?v=202611091941"></script>
+<script src="anuncios.js?v=202611091941"></script>
+<script src="juego.js?v=202611091941"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091838";
+const APP_VER = "202611091941";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1713,7 +1713,7 @@ function viewRanking(){
   const since = Date.now() - 30*864e5;
   const feed = Object.values(S.appts).filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada" && (a.resultAt||a.when) >= since).sort((a,b)=>(b.resultAt||b.when)-(a.resultAt||a.when)).slice(0,15);
   let h = `<div class="card"><h2>Periodo ${periodChips(["semana","mes","mesant"])}</h2><p class="note" style="margin:-6px 0 0">Se ordena por volumen de ventas. Las comisiones de cada persona son privadas y no salen aquí.</p></div>`;
-  h += `<div class="card"><h2>Últimas ventas</h2>${feed.length?`<div class="list">${feed.map(a=>`<div class="item" style="cursor:default"><div><div class="t nm-av">${av(a.socioId,34)}<span>🔥 ${esc(memberName(a.socioId))} vendió ${money(a.amount)}</span></div><div class="m">Cita de ${esc(memberName(a.teleId))}${a.city?" · "+esc(a.city):""}</div></div><span class="note">${fmt(a.resultAt||a.when,{day:"numeric",month:"short"})}</span></div>`).join("")}</div>`:`<div class="empty">Todavía no hay ventas este mes. ¡La primera puede ser la tuya!</div>`}</div>`;
+  h += `<div class="card"><h2>Últimas ventas</h2>${feed.length?`<div class="list">${feed.map(a=>`<div class="item" style="cursor:default"><div><div class="t nm-av">${av(a.socioId,34)}<span>🔥 ${esc(memberName(a.socioId))} vendió ${money(a.amount)}</span></div><div class="m">${deQuienCita(a)}${a.city?" · "+esc(a.city):""} · ${a.saleStatus==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : '<span style="color:#7e22ce;font-weight:700">en verificación</span>'}</div></div><span class="note">${fmt(a.resultAt||a.when,{day:"numeric",month:"short"})}</span></div>`).join("")}</div>`:`<div class="empty">Todavía no hay ventas este mes. ¡La primera puede ser la tuya!</div>`}</div>`;
   h += board("Telemarketers", teles, [["citas","citas"],["demos","demostraciones"],["ventas","ventas"]], "monto");
   h += board("Distribuidores y emprendedores", soc, [["referidos","referidos"],["citas","citas"],["demos","demostraciones"],["ventas","ventas"]], "monto");
   /* Ventas aprobadas: lo que ya se aprobó (lo que cuenta para comisiones) */
@@ -1838,6 +1838,11 @@ function viewLider(){
   h += respaldoLiderCard() + inviteCard() + quitarTeleCard();
   return h;
 }
+/* De dónde salió la cita de una venta: telemarketer, cita propia o se la pasó alguien */
+function deQuienCita(a){ const t = S.members[a.teleId]; const da = quienDio(a);
+  if (origenDe(a)==="tm" && a.teleId !== a.socioId) return `📞 Telemarketing: <b>${esc(memberName(a.teleId))}</b>${da && da!==a.teleId ? ` · 🤝 se la pasó ${esc(firstName2(memberName(da)))}` : ""}`;
+  if (da) return `🤝 Cita que le pasó <b>${esc(memberName(da))}</b>`;
+  return a.teleId===a.socioId || a.agendo===a.socioId ? "🙋 Cita propia" : `Cita de <b>${esc(memberName(a.teleId))}</b>`; }
 /* Reporte semanal / mensual para las reuniones de la líder con su equipo */
 function reunionCard(){ const P = {semana:"Esta semana", semant:"Semana pasada", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.rrp] ? S.f.rrp : "semant"; const rg = range(p);
   const rows = telesLunaya().map(t => ({t, e:teleEval(t.id, rg)})); const T = rows.reduce((o,x) => { for (const k in x.e) o[k] = (o[k]||0) + x.e[k]; return o; }, {});
