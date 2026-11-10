@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091828"></script>
-<script src="anuncios.js?v=202611091828"></script>
-<script src="juego.js?v=202611091828"></script>
+<script src="demo.js?v=202611091832"></script>
+<script src="anuncios.js?v=202611091832"></script>
+<script src="juego.js?v=202611091832"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091828";
+const APP_VER = "202611091832";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -236,6 +236,7 @@ function mondayOf(d){ const [y,m,da] = d.split("-").map(Number); const dow = (ne
 function range(p){
   const t = today();
   if (p==="hoy") return [laToMs(t,"00:00"), laToMs(addDays(t,1),"00:00")];
+  if (p==="todo") return [laToMs("2026-01-01","00:00"), laToMs(addDays(t,1),"00:00")];
   if (p==="semana"){ const mo = mondayOf(t); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
   if (p==="semant"){ const mo = addDays(mondayOf(t),-7); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
   if (p==="quin" || p==="quinant"){ const m1 = t.slice(0,8)+"01", m16 = t.slice(0,8)+"16", prim = t < m16;
@@ -837,18 +838,21 @@ function deudasSemana(rg){ const out = {}; const D = p => (out[p] ||= {payer:p, 
 const garPctDe = uid => { const m = S.members[uid] || {}; if (m.role!=="admin" && m.tipo!==DIST) return 0; if ((m.garPct ?? "") !== "") return +m.garPct; return m.role==="admin" && uid!==ownerUid() ? 50 : 0; };
 /* Garantizado de cada telemarketer del programa en la semana: su sueldo del mes repartido por día laboral (lunes a sábado).
    Se cobra si hizo sus 10 citas en la semana (o la semana todavía está en curso). */
-function garSemana(rg){ const c = com(); const d0 = laDate(rg[0]), d1 = laDate(rg[1]-1), hoy = today(); const cerrado = rg[1] <= Date.now();
+const GAR_DESDE = "2026-11-09"; /* desde esta semana se le cobra a Andrés su parte del garantizado */
+function garSemana(rg){ const c = com(); const hoy = today(); let d0 = laDate(rg[0]); const d1 = laDate(rg[1]-1); if (d0 < GAR_DESDE) d0 = GAR_DESDE; if (d0 > d1) return [];
   const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= rg[0])].filter(t => !t.upline);
   const mesDias = {}; const wdMes = d => { const [y,m] = d.split("-").map(Number); const k = y+"-"+m; if (!(k in mesDias)){ const last = new Date(Date.UTC(y, m, 0)).getUTCDate(); mesDias[k] = workDays(`${y}-${String(m).padStart(2,"0")}-01`, `${y}-${String(m).padStart(2,"0")}-${last}`); } return mesDias[k]; };
-  return teles.map(t => { const base = (t.sueldo ?? "") === "" ? +c.sueldo : +t.sueldo; if (!base) return null;
-    let a = d0 > startOf(t) ? d0 : startOf(t), b = d1 < hoy ? d1 : hoy; if (t.leftAt){ const l = laDate(t.leftAt); if (l < b) b = l; }
-    let monto = 0, dias = 0; for (let d = a; d <= b; d = addDays(d,1)) if (workDays(d,d)){ dias++; monto += base / wdMes(d); }
-    if (!dias) return null; const posibles = workDays(d0 > startOf(t) ? d0 : startOf(t), d1); const req = Math.min(10, Math.round(10 * posibles / 6)); const citas = teleEval(t.id, rg).citas; const cumple = citas >= req;
-    return {t, base, dias, monto, citas, req, cumple, cerrado, cobra: (cumple || !cerrado) ? monto : 0}; }).filter(Boolean); }
+  return teles.map(t => { const base = (t.sueldo ?? "") === "" ? +c.sueldo : +t.sueldo; if (!base) return null; const st = startOf(t), fin = t.leftAt ? laDate(t.leftAt) : "9999";
+    const g = {t, base, dias:0, monto:0, cobra:0, citas:0, req:0, sem:0, semOk:0, cumple:true, cerrado:true};
+    for (let mo = mondayOf(d0); mo <= d1; mo = addDays(mo,7)){ const wr = [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; const cerrado = wr[1] <= Date.now();
+      let dias = 0, monto = 0; for (let d = mo; d < addDays(mo,7); d = addDays(d,1)) if (d >= d0 && d <= d1 && d >= st && d <= fin && d <= hoy && workDays(d,d)){ dias++; monto += base / wdMes(d); }
+      if (!dias) continue; const a = st > mo ? st : mo; const posibles = workDays(a, addDays(mo,6)); const req = Math.min(10, Math.round(10 * posibles / 6)); const citas = teleEval(t.id, wr).citas; const ok = citas >= req;
+      g.dias += dias; g.monto += monto; g.citas += citas; g.req += req; g.sem++; if (ok) g.semOk++; if (ok || !cerrado) g.cobra += monto; if (!cerrado) g.cerrado = false; if (!ok && cerrado) g.cumple = false; }
+    return g.dias ? g : null; }).filter(Boolean); }
 const TIPO_DEU = {tm:"Programa de telemarketing", pase:"Citas que te pasó", emp:"Comisión de tu emprendedor", gar:"Tu parte del garantizado de las telemarketers"};
 function semChips(cur){ return `<div class="chips">${["semana","semant"].map(v => `<button class="chip ${cur===v?"on":""}" data-semp="${v}">${PLABEL[v]}</button>`).join("")}</div>`; }
 function detDeuda(x){ if (x.tipo==='gar') return detGar(x); return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.rows.length} venta(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Aprobada</th><th>Cliente</th><th>Vendió</th><th class="n">Venta</th><th class="n">%</th><th class="n">Monto</th></tr></thead><tbody>${x.rows.sort((a,b)=>aprobAt(a.a)-aprobAt(b.a)).map(r => `<tr data-appt="${r.id}" style="cursor:pointer"><td class="note">${fmt(aprobAt(r.a),{weekday:"short",day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${r.pct}%</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`; }
-function detGar(x){ return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.pct}% del garantizado de ${x.gar.length} telemarketer(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Sueldo al mes</th><th class="n">Días</th><th class="n">Citas</th><th class="n">Garantizado semana</th><th class="n">${x.pct}%</th></tr></thead><tbody>${x.gar.map(g => `<tr><td><b>${esc(g.t.name||"")}</b></td><td class="n">${money(g.base)}</td><td class="n">${g.dias}</td><td class="n">${g.cumple ? "✅" : g.cerrado ? "❌" : "⏳"} ${g.citas}/${g.req}</td><td class="n">${g.cobra ? money(g.monto) : `<span class="note">no cumplió</span>`}</td><td class="n">${money(g.cobra*x.pct/100)}</td></tr>`).join("")}</tbody></table></div><p class="note">El sueldo de cada telemarketer se reparte por día laboral (lunes a sábado). Una semana se cobra si la telemarketer hizo sus 10 citas; si la semana cerró sin cumplir, no se cobra. ⏳ = semana en curso.</p></details>`; }
+function detGar(x){ return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.pct}% del garantizado de ${x.gar.length} telemarketer(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Sueldo al mes</th><th class="n">Días</th><th class="n">Citas / semanas cumplidas</th><th class="n">Garantizado</th><th class="n">${x.pct}%</th></tr></thead><tbody>${x.gar.map(g => `<tr><td><b>${esc(g.t.name||"")}</b></td><td class="n">${money(g.base)}</td><td class="n">${g.dias}</td><td class="n">${g.sem>1 ? `${g.semOk}/${g.sem} sem.` : `${g.citas>=g.req ? "✅" : g.cerrado ? "❌" : "⏳"} ${g.citas}/${g.req}`}</td><td class="n">${g.cobra ? money(g.cobra) : `<span class="note">no cumplió</span>`}</td><td class="n">${money(g.cobra*x.pct/100)}</td></tr>`).join("")}</tbody></table></div><p class="note">El sueldo de cada telemarketer se reparte por día laboral (lunes a sábado). Una semana se cobra si la telemarketer hizo sus 10 citas; si la semana cerró sin cumplir, no se cobra. ⏳ = semana en curso.</p></details>`; }
 /* Distribuidor: su reporte de la semana, separado por persona */
 function reporteSemanaCard(){ const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const rg = range(p); const d = deudasSemana(rg)[S.uid]; const K = ownerUid();
   const items = d ? Object.values(d.a) : []; const aK = items.filter(x => x.to===K), otros = items.filter(x => x.to!==K && x.tipo!=="emp"), emps = items.filter(x => x.tipo==="emp");
@@ -862,15 +866,29 @@ function reporteSemanaCard(){ const p = ["semana","semant"].includes(S.f.semp) ?
     ${otros.length ? `<div class="eyebrow" style="margin-top:12px">A otros distribuidores (se lo pagas directo)</div>${otros.map(detDeuda).join("")}` : ""}
     ${emps.length ? `<div class="eyebrow" style="margin-top:12px">A tus emprendedores</div>${emps.map(detDeuda).join("")}` : ""}</div>`; }
 /* Dirección: lo que le debe cada distribuidor esta semana (solo lo que es para ella) */
-function deudasKatCard(){ const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const rg = range(p); const all = deudasSemana(rg); const K = S.uid;
+const KPER = {semana:"Esta semana", semant:"Semana pasada", quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior", todo:"Acumulado"};
+function deudasKatCard(){ const p = KPER[S.f.kdp] ? S.f.kdp : "semana"; const sem = p==="semana" || p==="semant"; const rg = range(p); const all = deudasSemana(rg); const K = S.uid; const d0 = laDate(rg[0]), d1 = laDate(rg[1]-1);
+  const pagado = payer => Object.values(S.pagosDist||{}).filter(x => x.payer===payer && x.ok && (x.desde||"") >= d0 && (x.desde||"") <= d1).reduce((t,x)=>t+(+x.monto||0),0);
   const rows = Object.values(all).map(d => { const it = Object.values(d.a).filter(x => x.to===K); return {payer:d.payer, tm:it.filter(x=>x.tipo==="tm").reduce((t,x)=>t+x.m,0), pase:it.filter(x=>x.tipo==="pase").reduce((t,x)=>t+x.m,0), gar:it.filter(x=>x.tipo==="gar").reduce((t,x)=>t+x.m,0), it}; }).filter(x => x.it.length && x.payer!==K).sort((a,b) => (b.tm+b.pase+b.gar)-(a.tm+a.pase+a.gar));
-  const tot = rows.reduce((t,x)=>t+x.tm+x.pase+x.gar,0);
-  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Lo que te deben esta semana ${semChips(p)}</h2><p class="note" style="margin-top:-6px">${rangoTxt(p)} (lunes a domingo), por ventas aprobadas en esa semana. Solo lo que es para ti: programa de telemarketing y citas que tú pasaste. Lo que se pagan entre ellos no sale aquí.</p>
-    <div class="tiles"><div class="tile acc"><b>${money(tot)}</b><span>Total que te deben</span></div></div>
+  const tot = rows.reduce((t,x)=>t+x.tm+x.pase+x.gar,0); const totP = rows.reduce((t,x)=>t+pagado(x.payer),0);
+  const chips = `<div class="chips">${Object.entries(KPER).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-kdp="${v}">${l}</button>`).join("")}</div>`;
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Lo que te deben ${chips}</h2><p class="note" style="margin-top:-6px">${p==="todo" ? "Desde el inicio" : rangoTxt(p)}, por ventas aprobadas en ese periodo. Solo lo que es para ti: programa de telemarketing, citas que tú pasaste y la parte del garantizado. Lo que se pagan entre ellos no sale aquí.${sem ? "" : " Los pagos se marcan por semana (en “Esta semana” o “Semana pasada”); aquí ves cuánto te han pagado y cuánto falta en todo el periodo."}</p>
+    <div class="tiles"><div class="tile"><b>${money(tot)}</b><span>Total generado</span></div><div class="tile"><b>${money(totP)}</b><span>Ya te pagaron</span></div><div class="tile acc"><b>${money(Math.max(0, tot-totP))}</b><span>Falta por pagar</span></div></div>
     ${rows.length ? rows.map(x => { const k = pagoKey(x.payer, p), pd = (S.pagosDist||{})[k], m = Math.round((x.tm+x.pase+x.gar)*100)/100;
       x.it.forEach(i => i.titulo = i.tipo==="pase" ? "Citas que tú le pasaste" : i.tipo==="gar" ? "Su parte del garantizado" : TIPO_DEU[i.tipo]);
       return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px"><div class="row" style="justify-content:space-between"><b>${esc(memberName(x.payer))}</b><b>${money(m)}</b></div><div class="note">Telemarketing ${money(x.tm)} · citas que le pasaste ${money(x.pase)}${x.gar?` · garantizado ${money(x.gar)}`:""}</div>
-        ${pd && pd.ok ? `<span class="tag tg-good">✅ pagado ${money(pd.monto)}</span>` : `<button class="btn small" data-pagomark="${k}" data-pm-payer="${x.payer}" data-pm-monto="${m}" data-pm-p="${p}">✅ Marcar pagado</button>`}${x.it.map(detDeuda).join("")}</div>`; }).join("") : `<div class="empty">Nadie te debe nada esta semana todavía.</div>`}</div>`; }
+        ${sem ? (pd && pd.ok ? `<span class="tag tg-good">✅ pagado ${money(pd.monto)}</span>` : `<button class="btn small" data-pagomark="${k}" data-pm-payer="${x.payer}" data-pm-monto="${m}" data-pm-p="${p}">✅ Marcar pagado</button>`) : (() => { const pg = pagado(x.payer), f = Math.max(0, m - pg); return `<div class="row" style="gap:6px"><span class="tag tg-good">pagado ${money(pg)}</span>${f > 0.005 ? `<span class="tag tg-bad">falta ${money(f)}</span>` : `<span class="tag tg-good">✅ al día</span>`}</div>`; })()}${x.it.map(detDeuda).join("")}</div>`; }).join("") : `<div class="empty">Nadie te debe nada en este periodo.</div>`}</div>`; }
+/* Cuadre del programa de telemarketing: lo que pagan los distribuidores por telemarketing (+ la parte del garantizado de Andrés) contra la nómina de las telemarketers */
+function cuadreCard(){ if (S.uid!==ownerUid()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = S.uid;
+  const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
+  const ingRows = Object.entries(ing).sort((a,b) => (b[1].tm+b[1].gar)-(a[1].tm+a[1].gar)); const totTm = ingRows.reduce((t,[,o])=>t+o.tm,0), totGar = ingRows.reduce((t,[,o])=>t+o.gar,0), totIng = totTm + totGar;
+  const nom = commissions(rg, ""); const sueldos = nom.reduce((t,x)=>t+x.sueldo,0), coms = nom.reduce((t,x)=>t+x.comision,0), totEg = sueldos + coms; const res = totIng - totEg;
+  return `<div class="card"><h2>⚖️ Cuadre del telemarketing <div class="chips">${Object.entries(P).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-cdp="${v}">${l}</button>`).join("")}</div></h2>
+    <p class="note" style="margin-top:-6px">${rangoTxt(p)}. Lo que te pagan los distribuidores por el programa de telemarketing (su % de las ventas + la parte del garantizado), contra lo que tú pagas a las telemarketers (garantizado + comisiones). No incluye el 5% de las citas que tú pasas.</p>
+    <div class="tiles"><div class="tile"><b>${money(totIng)}</b><span>Te pagan los distribuidores</span><small>${money(totTm)} comisión · ${money(totGar)} garantizado</small></div><div class="tile"><b>${money(totEg)}</b><span>Pagas a las telemarketers</span><small>${money(sueldos)} garantizado · ${money(coms)} comisiones</small></div><div class="tile ${res>=0?"acc":"warn"}"><b>${res<0?"−":""}${money(Math.abs(res))}</b><span>${res>=0 ? "Te queda" : "Pones tú"}</span></div></div>
+    <details style="margin-top:8px"><summary style="cursor:pointer">Detalle: quién paga</summary><div class="tbl-wrap"><table><thead><tr><th>Distribuidor</th><th class="n">Comisión telemarketing</th><th class="n">Garantizado</th><th class="n">Total</th></tr></thead><tbody>${ingRows.map(([id,o]) => `<tr><td><b>${esc(memberName(id))}</b></td><td class="n">${money(o.tm)}</td><td class="n">${money(o.gar)}</td><td class="n"><b>${money(o.tm+o.gar)}</b></td></tr>`).join("") || `<tr><td colspan="4" class="note">Nada en este periodo.</td></tr>`}</tbody></table></div></details>
+    <details style="margin-top:6px"><summary style="cursor:pointer">Detalle: nómina de las telemarketers</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Garantizado</th><th class="n">Comisión</th><th class="n">Total</th></tr></thead><tbody>${nom.filter(x => x.total).map(x => `<tr><td><b>${esc(x.t.name||"")}</b>${x.t.lider?' <span class="note">líder</span>':""}</td><td class="n">${money(x.sueldo)}</td><td class="n">${money(x.comision)}</td><td class="n"><b>${money(x.total)}</b></td></tr>`).join("") || `<tr><td colspan="4" class="note">Nada en este periodo.</td></tr>`}</tbody></table></div></details>
+    <p class="note">Lo de los distribuidores cuenta por la fecha en que se aprobó la venta; la comisión de las telemarketers, por el mes de la demostración. Por eso, en una quincena puede no cuadrar al centavo; en el mes sale más parejo. El garantizado que no se ganó (sin sus citas) no se cuenta.</p></div>`; }
 /* Dirección: lo que ella le debe a otros esta semana por citas que le pasaron (ej. Andrés le pasa una cita a Katerine) */
 function yoDeboCard(){ if (S.uid!==ownerUid()) return ""; const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const d = deudasSemana(range(p))[S.uid]; const it = d ? Object.values(d.a).filter(x => x.tipo==="pase") : []; if (!it.length) return "";
   const me = deudasSemana(range(p)); it.forEach(x => { x.titulo = `<b>${esc(memberName(x.to))}</b> · citas que te pasó`; });
@@ -1637,7 +1655,7 @@ function viewPagos(){
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
   h += aporteResumen(p) + aporteDetalle(p) + pasesCard(p);
-  h = (S.uid!==ownerUid() ? reporteSemanaCard() : "") + deudasKatCard() + yoDeboCard() + porDistribucionCard() + h;
+  h = (S.uid!==ownerUid() ? reporteSemanaCard() : "") + deudasKatCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
   h += empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
@@ -2126,6 +2144,8 @@ function bindCommon(){
   { const af = m.querySelector("#act-form"); if (af) af.onsubmit = async e => { e.preventDefault(); const t = $("#act-t").value.trim(), d = $("#act-d").value, h = timeVal("act-h"); if (!t){ toast("Escribe qué vas a hacer"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
       try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"actividad", nombre:t.slice(0,80), tel:"", when:laToMs(d,h), nota:$("#act-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); S.f.mag = d; toast("Agregado a tu agenda"); } catch(err){ writeErr(err); } }; }
   all("[data-semp]", b => b.onclick = () => { S.f.semp = b.dataset.semp; render(); });
+  all("[data-cdp]", b => b.onclick = () => { S.f.cdp = b.dataset.cdp; render(); });
+  all("[data-kdp]", b => b.onclick = () => { S.f.kdp = b.dataset.kdp; render(); });
   all("[data-dper]", b => b.onclick = () => { S.f.dper = b.dataset.dper; render(); });
   { const rf = m.querySelector("#rec-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = $("#rec-n").value.trim(), t = telOkX($("#rec-t").value), d = $("#rec-d").value, h = timeVal("rec-h");
       if (!n && !t){ toast("Escribe el nombre o el teléfono"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
