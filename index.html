@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611101521"></script>
-<script src="anuncios.js?v=202611101521"></script>
-<script src="juego.js?v=202611101521"></script>
+<script src="demo.js?v=202611101525"></script>
+<script src="anuncios.js?v=202611101525"></script>
+<script src="juego.js?v=202611101525"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611101521";
+const APP_VER = "202611101525";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1320,7 +1320,7 @@ function viewHoy(r){
     const misUp = Object.entries(S.appts).filter(([,x]) => x.socioId===S.uid && x.status==="agendada" && x.when >= Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when).slice(0,8);
     const misPend = Object.entries(S.appts).filter(([,x]) => x.socioId===S.uid && x.status==="agendada" && x.when < Date.now()-3600e3);
     const misCitas = `<div class="card"><h2>Mis citas<button class="btn small ghost" data-go2="citas">Ver todas</button></h2>${misPend.length?`<div class="banner warn">${misPend.length} cita(s) tuyas ya pasaron y no tienen resultado. Tócalas para marcarlo.</div><div class="list">${misPend.map(([id,x])=>apptItem(id,x)).join("")}</div>`:""}${misUp.length?`<div class="list">${misUp.map(([id,x])=>apptItem(id,x)).join("")}</div>`:`<div class="empty">No tienes citas próximas.</div>`}</div>`;
-    h = misCitas + terr + pasadasCard(rg) + metasCard(S.uid) + citasDiaCard() + metaSemEquipoCard() + reunionCard() + estadisticasCard() + horasCard() + embudoEquipoCard() + refsPendCard() + refByCard(socios().map(x => x.id)) + h;
+    h = misCitas + terr + pasadasCard(rg) + metasCard(S.uid) + citasDiaCard() + metaSemEquipoCard() + reunionCard() + repDistCard() + estadisticasCard() + horasCard() + embudoEquipoCard() + refsPendCard() + refByCard(socios().map(x => x.id)) + h;
     h += socioEvalCard(rg);
     const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
@@ -2023,6 +2023,34 @@ function reunionCard(){ const P = {semana:"Esta semana", semant:"Semana pasada",
     <div class="tiles"><div class="tile"><b>${pc(T.contacts||0,T.calls||0)}</b><span>Llamada → contacto</span></div><div class="tile"><b>${pc(T.citas||0,T.contacts||0)}</b><span>Contacto → cita</span></div><div class="tile"><b>${pc(T.demos||0,T.pasadas||0)}</b><span>Cita → demostración</span></div><div class="tile"><b>${pc(T.ventas||0,T.demos||0)}</b><span>Demo → venta</span></div><div class="tile"><b>${pc(T.aprob||0,(T.ventas||0)+(T.cancel||0))}</b><span>Ventas aprobadas</span></div></div>
     <div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">Aprobadas</th><th class="n">Canceladas</th><th class="n">Aprobado $</th><th class="n">Contacto→cita</th><th class="n">Cita→demo</th><th class="n">Demo→venta</th><th class="n">% aprobadas</th></tr></thead><tbody>${rows.map(x => fila(x.t.name||"", x.e)).join("")}${fila("Total", {calls:0,contacts:0,citas:0,demos:0,ventas:0,aprob:0,cancel:0,montoAprob:0,pasadas:0,...T}, true)}</tbody></table></div>
     <div class="row" style="margin-top:8px"><button class="btn small" data-copy="${esc(txt)}">📋 Copiar resumen para WhatsApp</button><button class="btn small ghost" data-act="rep-img">🖼️ Descargar reporte (imagen)</button><button class="btn small ghost" data-act="rep-pdf">📄 Imprimir / PDF</button></div></div>`; }
+/* ===== Reporte de distribuidores / socios (semana, quincena, mes) con PDF ===== */
+const RD_P = {semana:"Esta semana", semant:"Semana pasada", quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"};
+function rdDatos(ids, rg){ const e = embudoDe(ids, rg); const set = new Set(ids); const sv = Object.values(S.appts).filter(a => set.has(a.socioId) && a.tipoVisita!=="servicio" && a.sale && inR(a.when||0, rg));
+  const ap = sv.filter(a => a.saleStatus==="aprobada"), ca = sv.filter(a => a.saleStatus==="cancelada"); const sum = l => l.reduce((t,a)=>t+(+a.amount||0),0);
+  return {refs:e.leads, citas:e.citas, demos:e.demos, ventas:e.ventas, vol:e.monto, aprob:ap.length, volAp:sum(ap), cancel:ca.length, volCa:sum(ca)}; }
+function rdFilas(){ const p = RD_P[S.f.rdp] ? S.f.rdp : "semant"; const rg = range(p); const por = S.f.rdm==="socio" ? "socio" : "dist";
+  const L = por==="dist" ? Object.entries(S.members).filter(([,m]) => m.role==="admin" || m.tipo===DIST).map(([id]) => ({id, nom:distNombre(id), sub:memberName(id), d:rdDatos(metaGrupo(id), rg)}))
+    : socios().filter(x => x.role!=="baja").map(x => ({id:x.id, nom:memberName(x.id), sub:x.tipo||"", d:rdDatos([x.id], rg)}));
+  const rows = L.sort((a,b) => b.d.volAp - a.d.volAp || b.d.vol - a.d.vol || b.d.citas - a.d.citas); const T = rows.reduce((o,r) => { for (const k in r.d) o[k] = (o[k]||0) + r.d[k]; return o; }, {});
+  return {p, rg, por, rows, T, titulo:`${RD_P[p]} · ${rangoTxt(p)}`}; }
+const pcT = (a, b) => b ? Math.round(a*100/b)+"%" : "—";
+function repDistCard(){ if (role()!=="admin" && !esAsist()) return ""; const {p, por, rows, T} = rdFilas();
+  const fila = (n, sub, d, tot) => `<tr class="${tot?"total":""}"><td>${tot ? n : `<b>${esc(n)}</b>${sub?`<div class="note">${esc(sub)}</div>`:""}`}</td><td class="n">${d.refs||0}</td><td class="n">${d.citas||0}</td><td class="n">${d.demos||0}</td><td class="n">${d.ventas||0}</td><td class="n">${money(d.vol||0)}</td><td class="n">${d.aprob||0}<div class="note">${money(d.volAp||0)}</div></td><td class="n">${d.cancel||0}</td><td class="n">${pcT(d.demos||0, d.citas||0)}</td><td class="n">${pcT(d.ventas||0, d.demos||0)}</td><td class="n">${pcT(d.aprob||0, (d.aprob||0)+(d.cancel||0))}</td></tr>`;
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>📋 Reporte de distribuidores <div class="chips">${Object.entries(RD_P).map(([k,l]) => `<button class="chip ${p===k?"on":""}" data-rdp="${k}">${l}</button>`).join("")}</div></h2>
+    <div class="chips" style="margin-top:-4px"><button class="chip ${por==="dist"?"on":""}" data-rdm="dist">Por distribución</button><button class="chip ${por==="socio"?"on":""}" data-rdm="socio">Por socio</button></div>
+    <p class="note">${rangoTxt(p)}. ${por==="dist" ? "Cada distribución suma al distribuidor y a sus emprendedores." : "Cada socio por separado."} Las ventas cuentan en el día de la cita.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>${por==="dist"?"Distribución":"Socio"}</th><th class="n">Referencias</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">Volumen</th><th class="n">Aprobadas</th><th class="n">Canceladas</th><th class="n">Cita→demo</th><th class="n">Demo→venta</th><th class="n">% aprobadas</th></tr></thead><tbody>${rows.map(r => fila(r.nom, r.sub, r.d)).join("")}${fila("Total", "", T, true)}</tbody></table></div>
+    <div class="row" style="margin-top:8px"><button class="btn small" data-act="rd-pdf">📄 Imprimir / PDF</button></div></div>`; }
+function repDistPdf(){ const {por, rows, T, titulo} = rdFilas(); const td = v => `<td style="text-align:right">${v}</td>`;
+  const fila = (n, sub, d, tot) => `<tr${tot?' class="tot"':""}><td>${esc(n)}${sub?`<div style="color:#888;font-size:11px">${esc(sub)}</div>`:""}</td>${td(d.refs||0)}${td(d.citas||0)}${td(d.demos||0)}${td(d.ventas||0)}${td(money(d.vol||0))}${td((d.aprob||0)+" · "+money(d.volAp||0))}${td((d.cancel||0)+(d.volCa?" · "+money(d.volCa):""))}${td(pcT(d.demos||0,d.citas||0))}${td(pcT(d.ventas||0,d.demos||0))}${td(pcT(d.aprob||0,(d.aprob||0)+(d.cancel||0)))}</tr>`;
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Reporte de distribuidores · ${esc(titulo)}</title><style>body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#222;margin:24px}h1{color:#7a2840;font-family:Georgia,serif;margin:0}p.s{color:#a07a1a;margin:4px 0 18px}.t{display:flex;flex-wrap:wrap;gap:10px}.t div{border:1px solid #e8d6dc;border-radius:10px;padding:10px 14px;min-width:140px}.t b{display:block;font-size:22px;color:#7a2840}table{border-collapse:collapse;width:100%;margin-top:14px;font-size:12px}th{background:#7a2840;color:#fff;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}td{padding:6px;border-bottom:1px solid #eee}tr.tot td{font-weight:bold;background:#f4e9ec}.btn{margin:16px 0;padding:10px 16px;background:#7a2840;color:#fff;border:0;border-radius:8px;font-size:16px}@media print{.btn{display:none}}</style></head><body>
+    <button class="btn" onclick="print()">🖨️ Imprimir / Guardar PDF</button><h1>Reporte de ${por==="dist"?"distribuidores":"socios"}</h1><p class="s">${esc(titulo)} · Lunatikat Group</p>
+    <div class="t"><div><b>${T.refs||0}</b>Referencias</div><div><b>${T.citas||0}</b>Citas</div><div><b>${T.demos||0}</b>Demostraciones</div><div><b>${T.ventas||0}</b>Ventas</div><div><b>${money(T.vol||0)}</b>Volumen vendido</div><div><b>${T.aprob||0} · ${money(T.volAp||0)}</b>Aprobadas</div><div><b>${T.cancel||0}</b>Canceladas</div></div>
+    <div class="t" style="margin-top:10px"><div><b>${pcT(T.citas||0,T.refs||0)}</b>Referencia → cita</div><div><b>${pcT(T.demos||0,T.citas||0)}</b>Cita → demostración</div><div><b>${pcT(T.ventas||0,T.demos||0)}</b>Demo → venta</div><div><b>${pcT(T.aprob||0,(T.aprob||0)+(T.cancel||0))}</b>Ventas aprobadas</div></div>
+    <table><tr><th>${por==="dist"?"Distribución":"Socio"}</th><th>Referencias</th><th>Citas</th><th>Demos</th><th>Ventas</th><th>Volumen</th><th>Aprobadas</th><th>Canceladas</th><th>Cita→demo</th><th>Demo→venta</th><th>% aprobadas</th></tr>
+    ${rows.map(r => fila(r.nom, r.sub, r.d)).join("")}${fila("Total", "", T, true)}</table>
+    <p style="color:#888;font-size:12px;margin-top:18px">${por==="dist" ? "Cada distribución incluye al distribuidor y a sus emprendedores. " : ""}Las ventas cuentan en el día de la cita. Generado con Lunaya · ${fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"})}</p></body></html>`;
+  const w = window.open(URL.createObjectURL(new Blob([html], {type:"text/html"})), "_blank"); if (!w) toast("Permite abrir ventanas para ver el reporte"); }
 /* ===== Estadísticas tipo embudo: por distribución, por socio o por telemarketer ===== */
 const EST_P = {semana:"Esta semana", semant:"Semana pasada", mes:"Este mes", mesant:"Mes anterior"};
 function estDatos(modo, id, rg){
@@ -2381,6 +2409,7 @@ function bindCommon(){
     if (a==="codigos") return openCodigos();
     if (a==="rep-img") return reporteImagen().catch(e => { console.log(e); toast("No se pudo crear la imagen"); });
     if (a==="rep-pdf") return reportePdf();
+    if (a==="rd-pdf") return repDistPdf();
     if (a==="est-img") return estImagen().catch(e => { console.log(e); toast("No se pudo crear la imagen"); });
     if (a==="drset") openDriveSocio(S.world);
     else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem2:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
@@ -2442,6 +2471,8 @@ function bindCommon(){
   all("[data-hrp]", b => b.onclick = () => { S.f.hrp = b.dataset.hrp; render(); });
   all("[data-rrp]", b => b.onclick = () => { S.f.rrp = b.dataset.rrp; render(); });
   all("[data-cdp]", b => b.onclick = () => { S.f.cdp = b.dataset.cdp; render(); });
+  all("[data-rdp]", b => b.onclick = () => { S.f.rdp = b.dataset.rdp; render(); });
+  all("[data-rdm]", b => b.onclick = () => { S.f.rdm = b.dataset.rdm; render(); });
   all("[data-estm]", b => b.onclick = () => { S.f.estm = b.dataset.estm; S.f.esti = ""; render(); });
   all("[data-estp]", b => b.onclick = () => { S.f.estp = b.dataset.estp; render(); });
   { const es = document.getElementById("est-sel"); if (es) es.onchange = () => { S.f.esti = es.value; render(); }; }
