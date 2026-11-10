@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611100811"></script>
-<script src="anuncios.js?v=202611100811"></script>
-<script src="juego.js?v=202611100811"></script>
+<script src="demo.js?v=202611100833"></script>
+<script src="anuncios.js?v=202611100833"></script>
+<script src="juego.js?v=202611100833"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611100811";
+const APP_VER = "202611100833";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1147,36 +1147,36 @@ const recAvisados = new Set();
 setInterval(() => { Object.entries(S.recs||{}).forEach(([id,x]) => { if (!x.hecho && x.when <= Date.now() && x.when > Date.now() - 30*60e3 && !recAvisados.has(id)){ recAvisados.add(id); const act = x.tipo==="actividad"; avisar(act ? "📌 Es hora de: "+(x.nombre||"tu actividad") : "⏰ Hora de llamar", act ? (x.nota||"") : `${x.nombre||"Cliente"}${x.tel?" · "+telFmtX(x.tel):""}${x.nota?" · "+x.nota:""}`); toast(act ? `📌 Es hora de: ${x.nombre||"tu actividad"}` : `⏰ Hora de llamar a ${x.nombre||"tu cliente"}`); render(); } }); }, 30e3);
 /* ===== Mensaje del día (cambia solo cada día) ===== */
 const MOTIVA = [
-  ["Cada “no” te acerca a tu próximo “sí”. Sigue marcando.",""],
-  ["El vendedor que llama una vez más es el que cierra el mes.",""],
-  ["Hoy no vendes ollas: le cambias la salud y la mesa a una familia.",""],
-  ["La disciplina de hoy es la comisión de mañana.",""],
-  ["Tu meta no se cumple pensando en ella; se cumple marcando el siguiente número.",""],
-  ["Los campeones no esperan ganas: se levantan y hacen la llamada.",""],
-  ["Una cita bien hecha vale más que cien llamadas apuradas.",""],
-  ["El cliente siente tu seguridad antes de escuchar tu precio.",""],
-  ["Hoy alguien está esperando justo lo que tú ofreces. Encuéntralo.",""],
-  ["No te pagan por intentar; te pagan por no rendirte.",""],
-  ["Sonríe al marcar: la energía se escucha.",""],
-  ["Lo que haces todos los días pesa más que lo que haces de vez en cuando.",""],
-  ["El rechazo no es personal; es parte del camino al éxito.",""],
-  ["Tu actitud es la primera venta del día.",""],
-  ["Cada demostración es una semilla: siembra con fe y con ganas.",""],
-  ["Las excusas no pagan cuentas. Las ventas sí.",""],
-  ["Sé tan constante que tus resultados no se puedan ignorar.",""],
-  ["El éxito en ventas es simple: más citas, mejores demostraciones, seguimiento siempre.",""],
-  ["La fortuna está en el seguimiento. Llama otra vez.",""],
-  ["Los grandes meses se construyen con buenos días. Haz que hoy cuente.",""],
-  ["Si fuera fácil, cualquiera lo haría. Por eso lo haces tú.",""],
-  ["Tu familia es tu “por qué”. Haz la llamada por ellos.",""],
-  ["No cuentes los días: haz que los días cuenten.",""],
-  ["La venta empieza cuando el cliente dice “no estoy seguro”.",""],
-  ["Un vendedor preparado no necesita suerte.",""],
-  ["Hoy es un gran día para romper tu propio récord.",""],
-  ["Cree en tu producto, cree en ti y el cliente creerá en los dos.",""],
-  ["El que más escucha es el que más vende.",""],
-  ["Termina el día sabiendo que diste todo. Ese es el verdadero éxito.",""],
-  ["Lo que siembras en el teléfono hoy, lo cosechas en ventas esta semana.",""]];
+  ["Por más fuerte que sea la tormenta, siempre llega la calma y vuelve a salir el sol.",""],
+  ["No te rindas: lo que hoy parece un muro, mañana será un escalón.",""],
+  ["Las raíces más fuertes crecen en los suelos más difíciles.",""],
+  ["Cada amanecer es una nueva oportunidad para empezar de nuevo.",""],
+  ["Tú eres más fuerte de lo que crees y más capaz de lo que imaginas.",""],
+  ["Los sueños no tienen fecha de vencimiento. Sigue adelante.",""],
+  ["Aunque el camino sea lento, cada paso te acerca a donde quieres llegar.",""],
+  ["Después de la noche más oscura, siempre llega la luz.",""],
+  ["No mires cuánto falta; mira todo lo que ya avanzaste.",""],
+  ["La fe no hace que las cosas sean fáciles, las hace posibles.",""],
+  ["Lo que hoy siembras con esfuerzo, mañana lo recogerás con alegría.",""],
+  ["Cuando sientas que no puedes más, recuerda por qué empezaste.",""],
+  ["Las caídas no te definen; lo que haces al levantarte, sí.",""],
+  ["Hasta la estrella más brillante necesitó la oscuridad para brillar.",""],
+  ["Tu historia todavía se está escribiendo. Hoy puedes escribir una gran página.",""],
+  ["Las montañas más altas tienen las vistas más bonitas.",""],
+  ["El valor no es no tener miedo, es seguir adelante a pesar de él.",""],
+  ["Un día a la vez, un paso a la vez, pero nunca dejar de caminar.",""],
+  ["La paciencia y la constancia convierten lo imposible en realidad.",""],
+  ["Que tu fe sea más grande que tus miedos.",""],
+  ["Eres la prueba de que se puede empezar de cero y salir adelante.",""],
+  ["No esperes el momento perfecto; toma el momento y hazlo perfecto.",""],
+  ["Las flores no compiten con las de al lado: simplemente florecen.",""],
+  ["Lo mejor está por venir. Ten fe.",""],
+  ["Brilla donde estés: tu luz puede ser la guía de alguien más.",""],
+  ["El sol vuelve a salir cada mañana, y tú también puedes volver a empezar.",""],
+  ["Una actitud positiva convierte los problemas en oportunidades.",""],
+  ["Cree en ti incluso cuando nadie más lo haga.",""],
+  ["Las bendiciones llegan a quien no deja de intentarlo.",""],
+  ["Agradece lo que tienes mientras trabajas por lo que quieres.",""]];
 function motivaCard(){ const t = today(); const n = Math.floor(laToMs(t,"12:00") / 864e5); const [txt, cita] = MOTIVA[n % MOTIVA.length];
   return `<div class="card" style="text-align:center;padding:10px 14px;margin-bottom:12px;background:linear-gradient(135deg,rgba(201,151,31,.10),transparent)"><div class="eyebrow">✨ Mensaje del día</div><p style="font-family:var(--serif);font-size:17px;margin:4px 0">“${esc(txt)}”</p>${cita?`<div class="note">${esc(cita)}</div>`:""}</div>`; }
 /* ===== Ventas que esperan "Aprobada" o "Cancelada" (para que el distribuidor no se olvide) ===== */
