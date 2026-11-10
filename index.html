@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091609"></script>
-<script src="anuncios.js?v=202611091609"></script>
-<script src="juego.js?v=202611091609"></script>
+<script src="demo.js?v=202611091610"></script>
+<script src="anuncios.js?v=202611091610"></script>
+<script src="juego.js?v=202611091610"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091609";
+const APP_VER = "202611091610";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -237,13 +237,14 @@ function range(p){
   const t = today();
   if (p==="hoy") return [laToMs(t,"00:00"), laToMs(addDays(t,1),"00:00")];
   if (p==="semana"){ const mo = mondayOf(t); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
+  if (p==="semant"){ const mo = addDays(mondayOf(t),-7); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
   if (p==="quin" || p==="quinant"){ const m1 = t.slice(0,8)+"01", m16 = t.slice(0,8)+"16", prim = t < m16;
     const cur = prim ? [m1, m16] : [m16, addMonths(m1,1)]; const ant = prim ? [addMonths(m1,-1).slice(0,8)+"16", m1] : [m1, m16];
     const [a,b] = p==="quin" ? cur : ant; return [laToMs(a,"00:00"), laToMs(b,"00:00")]; }
   if (p==="mesant"){ const f = addMonths(t.slice(0,8)+"01",-1); return [laToMs(f,"00:00"), laToMs(t.slice(0,8)+"01","00:00")]; }
   const f = t.slice(0,8)+"01"; return [laToMs(f,"00:00"), laToMs(addMonths(f,1),"00:00")];
 }
-const PLABEL = {hoy:"Hoy", semana:"Esta semana", quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"};
+const PLABEL = {hoy:"Hoy", semana:"Esta semana", semant:"Semana pasada", quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"};
 const rangoTxt = p => { const [a,b] = range(p); return `${fmt(a,{day:"numeric",month:"short"})} al ${fmt(b-1,{day:"numeric",month:"short"})}`; };
 const money = n => "$" + (Math.round((n||0)*100)/100).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2});
 const pctN = (a,b) => b ? Math.round(a*100/b) : null;
@@ -799,6 +800,57 @@ function pasesCard(p, quien){ const l = pases(range(p)).filter(x => !quien || x.
   return `<div class="card"><h2>${titulo}<span class="note">${PLABEL[p]||rangoTxt(p)}</span></h2><p class="note" style="margin-top:-6px">Quien pasa una cita gana el ${PASE_PCT()}% de la venta. Lo paga la compañía por donde pasó la venta (el distribuidor que vendió, o el patrocinador del emprendedor). Es aparte de la comisión de telemarketing. Solo ventas aprobadas.</p>
     ${gs.length ? gs.map(x => `<details style="margin-top:8px"><summary style="cursor:pointer">${linea(x)} <b>${money(x.m)}</b> · ${x.n} venta(s) · ${money(x.vol)}</summary>
       <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Vendió</th><th class="n">Venta</th><th class="n">Comisión</th></tr></thead><tbody>${x.rows.sort((a,b)=>a.a.when-b.a.when).map(r => `<tr data-appt="${r.id}" style="cursor:pointer"><td class="note">${fmt(r.a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${money(r.m)} <span class="note">(${r.pct}%)</span></td></tr>`).join("")}</tbody></table></div></details>`).join("") : `<div class="empty">No hay ventas aprobadas de citas pasadas en este periodo.</div>`}</div>`; }
+/* ===== Reporte de pagos de la semana (lunes a domingo). Cuenta la venta en la semana en que se APROBÓ. =====
+   Quien paga: el distribuidor que vendió, o el sponsor del emprendedor. Le debe:
+   - a Katerine: el % del programa de telemarketing (si la sacó una telemarketer del programa)
+   - a quien le pasó la cita: el % de cita pasada (5%, o el de su plan especial)
+   - a sus emprendedores: su comisión según su plan */
+const aprobAt = a => a.saleStatusAt || a.resultAt || a.when || 0;
+function deudasSemana(rg){ const out = {}; const D = p => (out[p] ||= {payer:p, a:{}}); const add = (p, to, tipo, a, id, pct, m) => { const k = to+"|"+tipo; const x = (D(p).a[k] ||= {to, tipo, m:0, rows:[]}); x.m += m; x.rows.push({a, id, pct, m}); };
+  Object.entries(S.appts).forEach(([id,a]) => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(aprobAt(a), rg)) return; const amt = +a.amount||0; const sm = S.members[a.socioId] || {};
+    const paga = a.pasoPor || (esEmp(sm) ? pagadorDe(a.socioId) : a.socioId); if (!paga) return; const pm = S.members[paga] || {}; 
+    const da = quienDio(a);
+    /* programa de telemarketing (solo distribuidores; Dirección paga directo a sus telemarketers) */
+    const t = S.members[a.teleId]; const esTM = origenDe(a)==="tm" && !(t && t.upline);
+    if (esTM && paga!==ownerUid() && !(planPase(paga) && da && da!==paga && da!==a.socioId)){ const pct = pm.role==="admin" ? costoTMd(a).total : aporteDe(paga); add(paga, ownerUid(), "tm", a, id, pct, amt*pct/100); }
+    /* cita pasada */
+    if (da && da!==a.socioId && da!==paga){ const pp = planPase(paga), dm = S.members[da] || {}; const pct = pp ? (dm.role==="admin" ? +pp.dir : +pp.dist) : PASE_PCT(); add(paga, da, "pase", a, id, pct, amt*pct/100); }
+    /* comisión del emprendedor */
+    if (esEmp(sm) && paga!==a.socioId){ const pl = planDe(paga) || (sm.upline ? planDe(sm.upline) : null) || DEF_EMP; const pct = +pl[catEmp(a)]||0; if (pct) add(paga, a.socioId, "emp", a, id, pct, amt*pct/100); } });
+  return out; }
+const TIPO_DEU = {tm:"Programa de telemarketing", pase:"Citas que te pasó", emp:"Comisión de tu emprendedor"};
+function semChips(cur){ return `<div class="chips">${["semana","semant"].map(v => `<button class="chip ${cur===v?"on":""}" data-semp="${v}">${PLABEL[v]}</button>`).join("")}</div>`; }
+function detDeuda(x){ return `<details style="margin-top:6px"><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.rows.length} venta(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Aprobada</th><th>Cliente</th><th>Vendió</th><th class="n">Venta</th><th class="n">%</th><th class="n">Monto</th></tr></thead><tbody>${x.rows.sort((a,b)=>aprobAt(a.a)-aprobAt(b.a)).map(r => `<tr data-appt="${r.id}" style="cursor:pointer"><td class="note">${fmt(aprobAt(r.a),{weekday:"short",day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${r.pct}%</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`; }
+/* Distribuidor: su reporte de la semana, separado por persona */
+function reporteSemanaCard(){ const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const rg = range(p); const d = deudasSemana(rg)[S.uid]; const K = ownerUid();
+  const items = d ? Object.values(d.a) : []; const aK = items.filter(x => x.to===K), otros = items.filter(x => x.to!==K && x.tipo!=="emp"), emps = items.filter(x => x.tipo==="emp");
+  const totK = aK.reduce((t,x)=>t+x.m,0); const k = pagoKey(S.uid, p), pd = (S.pagosDist||{})[k];
+  aK.forEach(x => x.titulo = `<b>${esc(memberName(K))}</b> · ${TIPO_DEU[x.tipo]}`); otros.forEach(x => x.titulo = `<b>${esc(memberName(x.to))}</b> · ${TIPO_DEU[x.tipo]}`); emps.forEach(x => x.titulo = `<b>${esc(memberName(x.to))}</b> · tu emprendedor`);
+  const pg = {...(S.config.pago || {}), ...(S.config.pagoFix===1 ? {} : PAGO_KAT)}; const tel = String(pg.zelle||"").replace(/\D/g,"").slice(-10);
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Reporte de pagos de la semana ${semChips(p)}</h2><p class="note" style="margin-top:-6px">${rangoTxt(p)} (lunes a domingo). Cuentan las ventas <b>aprobadas</b> en esa semana.</p>
+    <div class="tiles"><div class="tile acc"><b>${money(totK)}</b><span>Total a enviar a ${esc(firstName2(memberName(K)))}</span><small>telemarketing + citas que te pasó</small></div></div>
+    ${totK ? (pd && pd.ok ? `<div class="banner good">✅ ${esc(firstName2(memberName(K)))} registró tu pago de ${money(pd.monto)}.</div>` : `<div class="banner warn">⏳ Pendiente de pago${tel ? ` · Zelle <b>${telFmt2(tel)}</b>${pg.nombre?" · "+esc(pg.nombre):""} <button class="btn small" data-copy="${tel}">📋 Copiar número</button> <button class="btn small ghost" data-copy="${Math.round(totK*100)/100}">📋 Copiar monto</button>` : ""}</div>`) : ""}
+    ${aK.length ? aK.map(detDeuda).join("") : `<p class="note">No le debes nada a ${esc(firstName2(memberName(K)))} esta semana.</p>`}
+    ${otros.length ? `<div class="eyebrow" style="margin-top:12px">A otros distribuidores (se lo pagas directo)</div>${otros.map(detDeuda).join("")}` : ""}
+    ${emps.length ? `<div class="eyebrow" style="margin-top:12px">A tus emprendedores</div>${emps.map(detDeuda).join("")}` : ""}</div>`; }
+/* Dirección: lo que le debe cada distribuidor esta semana (solo lo que es para ella) */
+function deudasKatCard(){ const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const rg = range(p); const all = deudasSemana(rg); const K = S.uid;
+  const rows = Object.values(all).map(d => { const it = Object.values(d.a).filter(x => x.to===K); return {payer:d.payer, tm:it.filter(x=>x.tipo==="tm").reduce((t,x)=>t+x.m,0), pase:it.filter(x=>x.tipo==="pase").reduce((t,x)=>t+x.m,0), it}; }).filter(x => x.it.length && x.payer!==K).sort((a,b) => (b.tm+b.pase)-(a.tm+a.pase));
+  const tot = rows.reduce((t,x)=>t+x.tm+x.pase,0);
+  return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>🧾 Lo que te deben esta semana ${semChips(p)}</h2><p class="note" style="margin-top:-6px">${rangoTxt(p)} (lunes a domingo), por ventas aprobadas en esa semana. Solo lo que es para ti: programa de telemarketing y citas que tú pasaste. Lo que se pagan entre ellos no sale aquí.</p>
+    <div class="tiles"><div class="tile acc"><b>${money(tot)}</b><span>Total que te deben</span></div></div>
+    ${rows.length ? rows.map(x => { const k = pagoKey(x.payer, p), pd = (S.pagosDist||{})[k], m = Math.round((x.tm+x.pase)*100)/100;
+      x.it.forEach(i => i.titulo = TIPO_DEU[i.tipo]==="Citas que te pasó" ? "Citas que tú le pasaste" : TIPO_DEU[i.tipo]);
+      return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px"><div class="row" style="justify-content:space-between"><b>${esc(memberName(x.payer))}</b><b>${money(m)}</b></div><div class="note">Telemarketing ${money(x.tm)} · citas que le pasaste ${money(x.pase)}</div>
+        ${pd && pd.ok ? `<span class="tag tg-good">✅ pagado ${money(pd.monto)}</span>` : `<button class="btn small" data-pagomark="${k}" data-pm-payer="${x.payer}" data-pm-monto="${m}" data-pm-p="${p}">✅ Marcar pagado</button>`}${x.it.map(detDeuda).join("")}</div>`; }).join("") : `<div class="empty">Nadie te debe nada esta semana todavía.</div>`}</div>`; }
+/* Ventas aprobadas por distribución: lo del distribuidor + lo de sus emprendedores (o la distribución por donde pasó la venta) */
+const distNombre = id => (S.members[id] || {}).distNombre || (id===ownerUid() ? "Lunatic Cat Group" : "Distribución de " + firstName2(memberName(id)));
+function porDistribucionCard(){ const p = ["semana","semant","mes","mesant"].includes(S.f.dper) ? S.f.dper : "mes"; const rg = range(p); const g = {};
+  Object.values(S.appts).forEach(a => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(aprobAt(a), rg)) return; const sm = S.members[a.socioId] || {}; const dist = a.pasoPor || (esEmp(sm) ? pagadorDe(a.socioId) : a.socioId); if (!dist) return;
+    const x = (g[dist] ||= {n:0, vol:0, propias:0, emp:0}); x.n++; x.vol += +a.amount||0; if (a.socioId===dist) x.propias += +a.amount||0; else x.emp += +a.amount||0; });
+  const rows = Object.entries(g).sort((a,b) => b[1].vol - a[1].vol); const tot = rows.reduce((t,[,x])=>t+x.vol,0);
+  return `<div class="card"><h2>🏢 Ventas aprobadas por distribución <div class="chips">${["semana","mes","mesant"].map(v => `<button class="chip ${p===v?"on":""}" data-dper="${v}">${PLABEL[v]}</button>`).join("")}</div></h2><p class="note" style="margin-top:-6px">Lo que vende cada distribuidor más lo de sus emprendedores (o la distribución por donde pasó la venta). Cuentan en la fecha en que se aprobó la orden.</p>
+    ${rows.length ? `<div class="tbl-wrap"><table><thead><tr><th>Distribución</th><th class="n">Ventas</th><th class="n">Volumen aprobado</th><th class="n">Del distribuidor</th><th class="n">De sus emprendedores</th></tr></thead><tbody>${rows.map(([id,x]) => `<tr><td><b>${esc(distNombre(id))}</b><div class="note">${esc(memberName(id))}</div></td><td class="n">${x.n}</td><td class="n"><b>${money(x.vol)}</b></td><td class="n">${money(x.propias)}</td><td class="n">${money(x.emp)}</td></tr>`).join("")}<tr class="total"><td>Total</td><td class="n">${rows.reduce((t,[,x])=>t+x.n,0)}</td><td class="n">${money(tot)}</td><td></td><td></td></tr></tbody></table></div>` : `<div class="empty">No hay ventas aprobadas en este periodo.</div>`}</div>`; }
 function aporteCsv(p){ const ap = aportes(range(p)); const L = [["Distribuidor","Fecha","Cliente","Emprendedor","Telemarketer","Venta","Porcentaje","Comisión"]];
   Object.values(ap).filter(x => S.members[x.payer]?.role!=="admin").forEach(x => x.rows.forEach(r => L.push([memberName(x.payer), laDate(r.a.when), r.a._priv && r.a.client ? r.a.client : (r.a.nomVenta||""), memberName(r.a.socioId), memberName(r.a.teleId), +r.a.amount||0, r.pct+"%", Math.round(r.m*100)/100])));
   const cell = v => { const t = String(v ?? ""); return /[",\n]/.test(t) ? `"${t.replace(/"/g,'""')}"` : t; };
@@ -1536,6 +1588,7 @@ function viewPagos(){
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
   h += aporteResumen(p) + aporteDetalle(p) + pasesCard(p);
+  h = deudasKatCard() + porDistribucionCard() + h;
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
   h += empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
@@ -1563,10 +1616,12 @@ function openPerfil(id){ const m = S.members[id] || {}; const per = ["semana","m
     ${sinRes ? `<div class="banner warn" style="margin-top:8px">⚠️ ${sinRes} cita(s) ya pasaron y nadie puso el resultado. Si vendió, toca la cita y marca <b>Venta</b> con el monto: así se refleja en el ranking y en sus números.</div>` : ""}
     <div class="eyebrow" style="margin-top:10px">${tele ? "Citas que sacó" : "Sus citas (también las que le pasaron)"}</div>
     ${l.length ? `<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>${tele?"Para":"De dónde salió"}</th><th>Resultado</th></tr></thead><tbody>${l.map(([aid,a]) => `<tr data-appt="${aid}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(cName(a))}</td><td class="note">${tele ? esc(memberName(a.socioId)) : esc(origenTxt(a))}${!tele && a.transferredFrom && a.transferredFrom!==id ? `<div>🔀 se la pasó ${esc(memberName(a.transferredBy||a.transferredFrom))}</div>` : ""}</td><td>${est(a)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No tiene citas en este periodo.</div>`}
+    ${role()==="admin" && (m.tipo===DIST || m.role==="admin") ? `<label class="f" style="margin-top:10px">Nombre de su distribución<div class="row" style="flex-wrap:nowrap"><input class="i" id="pf-dn" value="${esc(m.distNombre||"")}" placeholder="${esc(distNombre(id))}" style="flex:1"><button class="btn small" id="pf-dn-ok">Guardar</button></div></label>` : ""}
     ${role()==="admin" && m.tipo===DIST ? (() => { const pp = planPase(id) || {}; return `<div class="eyebrow" style="margin-top:12px">Plan especial de comisiones</div><div class="grid2"><label class="f">Sus propias citas de telemarketing (%)<input class="i" type="number" min="0" step="0.5" id="pp-pro" value="${pp.propio ?? ""}" placeholder="${aporteDe(id)}"></label><label class="f">Citas que tú le das (%)<input class="i" type="number" min="0" step="0.5" id="pp-dir" value="${pp.dir ?? ""}" placeholder="${PASE_PCT()}"></label><label class="f">Citas que le pasa otro distribuidor (%)<input class="i" type="number" min="0" step="0.5" id="pp-dist" value="${pp.dist ?? ""}" placeholder="${PASE_PCT()}"></label></div><p class="note" style="margin:4px 0 0">Vacío = reglas normales. Con plan especial, la cita que le dan paga solo ese % (no se le suma el de telemarketing).</p><div class="row"><button class="btn small" id="pp-save">Guardar plan</button>${m.planPase?`<button class="btn small ghost" id="pp-del">Quitar plan especial</button>`:""}</div>`; })() : ""}
     ${role()==="admin" && id!==S.uid && m.role!=="admin" ? (m.bloqueado ? `<div class="banner bad" style="margin-top:10px">🔒 Acceso suspendido desde el ${fmt(m.bloqueado.at,{day:"numeric",month:"short"})}${m.bloqueado.motivo?` · ${esc(m.bloqueado.motivo)}`:""}</div><button class="btn small" id="pf-unbl" style="margin-top:6px">✅ Devolverle el acceso</button>` : `<div class="eyebrow" style="margin-top:12px">Acceso</div><div class="row"><input class="i" id="pf-mot" placeholder="Motivo (ej.: pago pendiente)" maxlength="120" style="flex:1;min-width:180px"><button class="btn small danger" id="pf-bl">🚫 Suspender acceso</button></div><p class="note" style="margin:4px 0 0">No podrá entrar a la app hasta que le devuelvas el acceso. Sus citas y datos no se borran.</p>`) : ""}
     <div class="row" style="margin-top:10px"><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     const bl = document.getElementById("pf-bl"); if (bl) bl.onclick = function(){ if (!this.dataset.sure){ this.dataset.sure = "1"; this.textContent = "Toca otra vez para suspender"; return; } S.db.doc("members/"+id).update({bloqueado:{at:Date.now(), by:S.uid, motivo:(document.getElementById("pf-mot").value||"").trim().slice(0,120)}}).then(() => { toast("Acceso suspendido: "+memberName(id)); openPerfil(id); }, writeErr); };
+    const dn = document.getElementById("pf-dn-ok"); if (dn) dn.onclick = () => S.db.doc("members/"+id).update({distNombre:document.getElementById("pf-dn").value.trim().slice(0,60)}).then(() => toast("Nombre guardado"), writeErr);
     const ps = document.getElementById("pp-save"); if (ps) ps.onclick = () => { const v = k => { const x = document.getElementById(k).value.trim(); return x === "" ? "" : +x; }; const plan = {propio:v("pp-pro"), dir:v("pp-dir"), dist:v("pp-dist")};
       if (plan.dir === "" ) plan.dir = PASE_PCT(); if (plan.dist === "") plan.dist = PASE_PCT(); S.db.doc("members/"+id).update({planPase:plan}).then(() => { toast("Plan guardado"); openPerfil(id); }, writeErr); };
     const pdl = document.getElementById("pp-del"); if (pdl) pdl.onclick = () => S.db.doc("members/"+id).update({planPase:firebase.firestore.FieldValue.delete()}).then(() => { toast("Plan quitado"); openPerfil(id); }, writeErr);
@@ -1733,7 +1788,7 @@ function viewGrupo(){
 function viewPagosDist(){
   const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "quinant";
   let h = `<div class="card"><h2>Mis pagos ${periodChips(["quin","quinant","mes","mesant"])}</h2><p class="note" style="margin-top:-6px">Lo que te toca pagar en el periodo, calculado solo sobre ventas aprobadas.</p></div>`;
-  h += pagarCard(S.uid, p);
+  if (isDist()) h = reporteSemanaCard() + h; else h += pagarCard(S.uid, p);
   h += aporteCard(S.uid, p) + pasesCard(p, S.uid);
   h += empPagosCard(S.uid, p);
   if (grupoDe(S.uid).some(m => m.role==="tele")) h += comCard(p, S.uid);
@@ -1996,6 +2051,8 @@ function bindCommon(){
   all("[data-origen]", b => b.onclick = () => openOrigen(b.dataset.origen));
   all("[data-perfil]", b => b.onclick = () => openPerfil(b.dataset.perfil));
   all("[data-agd]", b => b.onclick = () => { S.f.agd = b.dataset.agd; render(); });
+  all("[data-semp]", b => b.onclick = () => { S.f.semp = b.dataset.semp; render(); });
+  all("[data-dper]", b => b.onclick = () => { S.f.dper = b.dataset.dper; render(); });
   { const rf = m.querySelector("#rec-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = $("#rec-n").value.trim(), t = telOkX($("#rec-t").value), d = $("#rec-d").value, h = timeVal("rec-h");
       if (!n && !t){ toast("Escribe el nombre o el teléfono"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
       try { await S.db.collection("recordatorios").add({owner:S.uid, nombre:n.slice(0,60), tel:t||"", when:laToMs(d,h), nota:$("#rec-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); toast("Recordatorio guardado"); } catch(err){ writeErr(err); } }; }
