@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611100833"></script>
-<script src="anuncios.js?v=202611100833"></script>
-<script src="juego.js?v=202611100833"></script>
+<script src="demo.js?v=202611100835"></script>
+<script src="anuncios.js?v=202611100835"></script>
+<script src="juego.js?v=202611100835"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611100833";
+const APP_VER = "202611100835";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1147,36 +1147,66 @@ const recAvisados = new Set();
 setInterval(() => { Object.entries(S.recs||{}).forEach(([id,x]) => { if (!x.hecho && x.when <= Date.now() && x.when > Date.now() - 30*60e3 && !recAvisados.has(id)){ recAvisados.add(id); const act = x.tipo==="actividad"; avisar(act ? "📌 Es hora de: "+(x.nombre||"tu actividad") : "⏰ Hora de llamar", act ? (x.nota||"") : `${x.nombre||"Cliente"}${x.tel?" · "+telFmtX(x.tel):""}${x.nota?" · "+x.nota:""}`); toast(act ? `📌 Es hora de: ${x.nombre||"tu actividad"}` : `⏰ Hora de llamar a ${x.nombre||"tu cliente"}`); render(); } }); }, 30e3);
 /* ===== Mensaje del día (cambia solo cada día) ===== */
 const MOTIVA = [
-  ["Por más fuerte que sea la tormenta, siempre llega la calma y vuelve a salir el sol.",""],
-  ["No te rindas: lo que hoy parece un muro, mañana será un escalón.",""],
-  ["Las raíces más fuertes crecen en los suelos más difíciles.",""],
-  ["Cada amanecer es una nueva oportunidad para empezar de nuevo.",""],
-  ["Tú eres más fuerte de lo que crees y más capaz de lo que imaginas.",""],
-  ["Los sueños no tienen fecha de vencimiento. Sigue adelante.",""],
-  ["Aunque el camino sea lento, cada paso te acerca a donde quieres llegar.",""],
-  ["Después de la noche más oscura, siempre llega la luz.",""],
-  ["No mires cuánto falta; mira todo lo que ya avanzaste.",""],
-  ["La fe no hace que las cosas sean fáciles, las hace posibles.",""],
-  ["Lo que hoy siembras con esfuerzo, mañana lo recogerás con alegría.",""],
-  ["Cuando sientas que no puedes más, recuerda por qué empezaste.",""],
-  ["Las caídas no te definen; lo que haces al levantarte, sí.",""],
-  ["Hasta la estrella más brillante necesitó la oscuridad para brillar.",""],
-  ["Tu historia todavía se está escribiendo. Hoy puedes escribir una gran página.",""],
-  ["Las montañas más altas tienen las vistas más bonitas.",""],
-  ["El valor no es no tener miedo, es seguir adelante a pesar de él.",""],
-  ["Un día a la vez, un paso a la vez, pero nunca dejar de caminar.",""],
-  ["La paciencia y la constancia convierten lo imposible en realidad.",""],
-  ["Que tu fe sea más grande que tus miedos.",""],
-  ["Eres la prueba de que se puede empezar de cero y salir adelante.",""],
-  ["No esperes el momento perfecto; toma el momento y hazlo perfecto.",""],
-  ["Las flores no compiten con las de al lado: simplemente florecen.",""],
-  ["Lo mejor está por venir. Ten fe.",""],
-  ["Brilla donde estés: tu luz puede ser la guía de alguien más.",""],
-  ["El sol vuelve a salir cada mañana, y tú también puedes volver a empezar.",""],
-  ["Una actitud positiva convierte los problemas en oportunidades.",""],
-  ["Cree en ti incluso cuando nadie más lo haga.",""],
-  ["Las bendiciones llegan a quien no deja de intentarlo.",""],
-  ["Agradece lo que tienes mientras trabajas por lo que quieres.",""]];
+  ["Todo lo puedo en Cristo que me fortalece.", "Filipenses 4:13"],
+  ["Tu actitud, no tu aptitud, determina tu altitud.", ""],
+  ["Hoy elige ser agradecido: siempre hay algo por qué dar gracias.", ""],
+  ["Esfuérzate y sé valiente; no temas ni desmayes, porque Dios estará contigo dondequiera que vayas.", "Josué 1:9"],
+  ["La disciplina es elegir entre lo que quieres ahora y lo que más quieres.", ""],
+  ["Sé amable: cada persona que conoces está librando una batalla que no ves.", ""],
+  ["Porque yo sé los planes que tengo para ustedes: planes de bien y no de mal, para darles un futuro y una esperanza.", "Jeremías 29:11"],
+  ["Pequeños pasos todos los días producen grandes resultados.", ""],
+  ["Cuida tu cuerpo y tu mente: son el único lugar donde vas a vivir toda la vida.", ""],
+  ["El Señor es mi pastor; nada me faltará.", "Salmo 23:1"],
+  ["No te compares con nadie: tu única competencia es quien fuiste ayer.", ""],
+  ["Un equipo unido logra lo que una persona sola no puede.", ""],
+  ["Encomienda al Señor tu camino; confía en Él, y Él hará.", "Salmo 37:5"],
+  ["La gratitud convierte lo que tenemos en suficiente.", ""],
+  ["Habla bien de ti mismo: tus palabras crean tu realidad.", ""],
+  ["Echa sobre Él toda tu ansiedad, porque Él tiene cuidado de ti.", "1 Pedro 5:7"],
+  ["No importa lo lento que vayas, siempre y cuando no te detengas.", ""],
+  ["Tu familia necesita tu mejor versión, no tu versión cansada y quejosa. Hoy da lo mejor.", ""],
+  ["Mira que te mando que te esfuerces y seas valiente.", "Josué 1:9"],
+  ["Rodéate de personas que te sumen, no que te resten.", ""],
+  ["Un error no es un fracaso; es una lección con otro nombre.", ""],
+  ["Los que esperan en el Señor tendrán nuevas fuerzas; levantarán alas como las águilas.", "Isaías 40:31"],
+  ["La felicidad no es una meta, es una forma de caminar.", ""],
+  ["Haz hoy lo que otros no quieren, y mañana vivirás como otros no pueden.", ""],
+  ["Y sabemos que a los que aman a Dios, todas las cosas les ayudan a bien.", "Romanos 8:28"],
+  ["Escucha más, juzga menos y ama siempre.", ""],
+  ["El cansancio pasa; el orgullo de haberlo logrado se queda.", ""],
+  ["Este es el día que hizo el Señor; nos gozaremos y alegraremos en él.", "Salmo 118:24"],
+  ["Sonríe: es gratis y le cambia el día a alguien.", ""],
+  ["Tu pasado no define tu futuro; tus decisiones de hoy, sí.", ""],
+  ["Fíate del Señor de todo tu corazón, y no te apoyes en tu propia prudencia.", "Proverbios 3:5"],
+  ["Celebra los pequeños logros: también cuentan.", ""],
+  ["La paz no es la ausencia de problemas, es la presencia de Dios en medio de ellos.", ""],
+  ["El gozo del Señor es nuestra fortaleza.", "Nehemías 8:10"],
+  ["Ser puntual, cumplir tu palabra y dar las gracias abre más puertas que el talento.", ""],
+  ["Las personas olvidan lo que dijiste, pero nunca cómo las hiciste sentir.", ""],
+  ["Pedid, y se os dará; buscad, y hallaréis; llamad, y se os abrirá.", "Mateo 7:7"],
+  ["Duerme bien, toma agua y respira: cuidarte también es ser responsable.", ""],
+  ["El que no vive para servir, no sirve para vivir.", ""],
+  ["No temas, porque yo estoy contigo; no desmayes, porque yo soy tu Dios que te esfuerzo.", "Isaías 41:10"],
+  ["Tu mente es un jardín: lo que siembras en pensamientos, cosechas en actitudes.", ""],
+  ["Perdonar no cambia el pasado, pero sí agranda el futuro.", ""],
+  ["Lámpara es a mis pies tu palabra, y lumbrera a mi camino.", "Salmo 119:105"],
+  ["Aprende algo nuevo hoy: crecer nunca pasa de moda.", ""],
+  ["La humildad abre puertas que el orgullo cierra.", ""],
+  ["El amor es sufrido, es benigno; el amor no tiene envidia.", "1 Corintios 13:4"],
+  ["Organiza tu día o tu día te organizará a ti.", ""],
+  ["Las metas claras dan días con propósito.", ""],
+  ["Venid a mí todos los que estáis trabajados y cargados, y yo os haré descansar.", "Mateo 11:28"],
+  ["Tu sonrisa puede ser la respuesta a la oración de alguien.", ""],
+  ["Lo que no te mata te hace más sabio.", ""],
+  ["Mejor es el fin del negocio que su principio; mejor es el sufrido de espíritu que el altivo.", "Eclesiastés 7:8"],
+  ["Da lo mejor de ti aunque nadie te esté mirando.", ""],
+  ["La paciencia es amarga, pero su fruto es dulce.", ""],
+  ["Mas buscad primeramente el reino de Dios y su justicia, y todas estas cosas os serán añadidas.", "Mateo 6:33"],
+  ["Ríete más: la vida es muy corta para vivirla tan en serio.", ""],
+  ["Ayudar a otro a crecer es la mejor forma de crecer tú.", ""],
+  ["Instruye al niño en su camino, y aun cuando fuere viejo no se apartará de él.", "Proverbios 22:6"],
+  ["Termina lo que empiezas: la constancia vale más que el talento.", ""],
+  ["Cada día es un regalo; por eso se llama presente.", ""]];
 function motivaCard(){ const t = today(); const n = Math.floor(laToMs(t,"12:00") / 864e5); const [txt, cita] = MOTIVA[n % MOTIVA.length];
   return `<div class="card" style="text-align:center;padding:10px 14px;margin-bottom:12px;background:linear-gradient(135deg,rgba(201,151,31,.10),transparent)"><div class="eyebrow">✨ Mensaje del día</div><p style="font-family:var(--serif);font-size:17px;margin:4px 0">“${esc(txt)}”</p>${cita?`<div class="note">${esc(cita)}</div>`:""}</div>`; }
 /* ===== Ventas que esperan "Aprobada" o "Cancelada" (para que el distribuidor no se olvide) ===== */
