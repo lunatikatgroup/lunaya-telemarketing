@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092028"></script>
-<script src="anuncios.js?v=202611092028"></script>
-<script src="juego.js?v=202611092028"></script>
+<script src="demo.js?v=202611092033"></script>
+<script src="anuncios.js?v=202611092033"></script>
+<script src="juego.js?v=202611092033"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092028";
+const APP_VER = "202611092033";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -851,22 +851,22 @@ function garSemana(rg){ const c = com(); const hoy = today(); let d0 = laDate(rg
       g.dias += dias; g.monto += monto; g.citas += citas; g.req += req; g.sem++; if (ok) g.semOk++; if (ok || !cerrado) g.cobra += monto; if (!cerrado) g.cerrado = false; if (!ok && cerrado) g.cumple = false; }
     return g.dias ? g : null; }).filter(Boolean); }
 const TIPO_DEU = {tm:"Programa de telemarketing", pase:"Citas que te pasó", emp:"Comisión de tu emprendedor", gar:"Tu parte del garantizado de las telemarketers"};
-/* Semanas de pago dentro del mes: van de martes a lunes (lo aprobado el lunes entra en el pago del martes) y no pasan de un mes a otro.
-   Si el mes empieza con 1 o 2 días sueltos (ej. domingo 1 y lunes 2), se juntan con la semana siguiente (1 al 9). Igual al final del mes. */
+/* Semanas de pago dentro del mes: lo aprobado de lunes a domingo se paga el lunes siguiente; no pasan de un mes a otro.
+   Si el tramo empieza o termina con 1 o 2 días sueltos (ej. domingo 1), se juntan con la semana de al lado (1 al 8). */
 const dowD = d => { const [y,m,da] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1,da,12)).getUTCDay(); };
 const nDias = ([a,b]) => Math.round((laToMs(b,"12:00") - laToMs(a,"12:00"))/864e5) + 1;
 /* Además, el 15 y el 30 siempre cierran la quincena (caiga el día que caiga): se paga completa ese día, como la comisión de las telemarketers. */
 function periodosTramo(first, last){ const L = []; let a = first;
-  for (let d = first; d <= last; d = addDays(d,1)) if (dowD(d)===1 || d===last){ L.push([a,d]); a = addDays(d,1); }
+  for (let d = first; d <= last; d = addDays(d,1)) if (dowD(d)===0 || d===last){ L.push([a,d]); a = addDays(d,1); }
   if (L.length > 1 && nDias(L[0]) < 3){ L[1][0] = L[0][0]; L.shift(); } if (L.length > 1 && nDias(L.at(-1)) < 3){ L.at(-2)[1] = L.at(-1)[1]; L.pop(); } return L; }
 /* Cierres de quincena: el 15 y el 30 (en febrero, el último día). Si el mes tiene 31, ese día queda como un pago aparte. */
 const finQuin = first => { const last = addDays(addMonths(first,1),-1); return last.slice(8) > "30" ? first.slice(0,8)+"30" : last; };
 const esCierreQuin = d => d.slice(8)==="15" || d === finQuin(d.slice(0,8)+"01");
 function periodosMes(first){ const last = addDays(addMonths(first,1),-1), q = first.slice(0,8)+"15", q2 = finQuin(first);
   return [...periodosTramo(first, q), ...periodosTramo(addDays(q,1), q2), ...(q2 < last ? [[addDays(q2,1), last]] : [])]; }
-/* Fecha límite de pago: el martes después de cerrar la semana */
-const diaPago = b => esCierreQuin(b) ? b : dowD(b)===1 ? addDays(b,1) : addDays(mondayOf(b),8);
-const diaPagoTxt = d => esCierreQuin(d) ? `${fmt(laToMs(d,"12:00"),{weekday:"long"})} ${fCorta(d)} (cierre de quincena)` : `martes ${fCorta(d)}`;
+/* Fecha límite de pago: el lunes después de cerrar la semana; el 15 y el 30, ese mismo día */
+const diaPago = b => esCierreQuin(b) ? b : dowD(b)===0 ? addDays(b,1) : addDays(mondayOf(b),7);
+const diaPagoTxt = d => esCierreQuin(d) ? `${fmt(laToMs(d,"12:00"),{weekday:"long"})} ${fCorta(d)} (cierre de quincena)` : `lunes ${fCorta(d)}`;
 const fCorta = d => fmt(laToMs(d,"12:00"),{day:"numeric",month:"short"});
 /* Semanas para escoger: las del mes pasado y las de este mes que ya empezaron */
 function semOpts(){ const t = today(), m0 = t.slice(0,8)+"01"; const L = [];
