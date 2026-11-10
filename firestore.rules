@@ -69,7 +69,7 @@ service cloud.firestore {
          || (isLeader() && resource.data.role == 'tele' && resource.data.get('upline', '') == ''
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['startDate']))
          || (signedIn() && request.auth.uid == uid
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp', 'planTele', 'teleNo', 'metas', 'lastBackup']))
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'photo', 'gcalId', 'planEmp', 'planTele', 'teleNo', 'metas', 'lastBackup', 'distNombre']))
          || (signedIn() && request.auth.uid == uid && resource.data.role == 'pendiente'
              && (request.resource.data.role == 'pendiente' || validInvite(request.resource.data)));
       allow delete: if isAdmin();

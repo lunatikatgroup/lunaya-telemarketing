@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091952"></script>
-<script src="anuncios.js?v=202611091952"></script>
-<script src="juego.js?v=202611091952"></script>
+<script src="demo.js?v=202611092014"></script>
+<script src="anuncios.js?v=202611092014"></script>
+<script src="juego.js?v=202611092014"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091952";
+const APP_VER = "202611092014";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -895,7 +895,7 @@ function yoDeboCard(){ if (S.uid!==ownerUid()) return ""; const p = ["semana","s
   return `<div class="card"><h2>💸 Lo que tú debes esta semana <span class="note">${rangoTxt(p)}</span></h2><p class="note" style="margin-top:-6px">Citas que otros te pasaron y vendiste (${PASE_PCT()}% de la venta aprobada).</p>
     ${it.map(x => { const ellos = Object.values((me[x.to]||{a:{}}).a).filter(y => y.to===S.uid).reduce((t,y)=>t+y.m,0); return detDeuda(x) + (ellos ? `<p class="note" style="margin:2px 0 8px">${esc(firstName2(memberName(x.to)))} te debe ${money(ellos)} esta semana → neto: ${ellos >= x.m ? `te debe <b>${money(ellos - x.m)}</b>` : `le debes <b>${money(x.m - ellos)}</b>`}.</p>` : ""); }).join("")}</div>`; }
 /* Ventas aprobadas por distribución: lo del distribuidor + lo de sus emprendedores (o la distribución por donde pasó la venta) */
-const distNombre = id => (S.members[id] || {}).distNombre || (id===ownerUid() ? "Lunatic Cat Group" : "Distribución de " + firstName2(memberName(id)));
+const distNombre = id => (S.members[id] || {}).distNombre || (id===ownerUid() ? "Lunatikat Group" : "Distribución de " + firstName2(memberName(id)));
 function porDistribucionCard(){ const p = ["semana","semant","mes","mesant"].includes(S.f.dper) ? S.f.dper : "mes"; const rg = range(p); const g = {};
   Object.values(S.appts).forEach(a => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(aprobAt(a), rg)) return; const sm = S.members[a.socioId] || {}; const dist = pagaVenta(a); if (!dist) return;
     const x = (g[dist] ||= {n:0, vol:0, propias:0, emp:0}); x.n++; x.vol += +a.amount||0; if (a.socioId===dist) x.propias += +a.amount||0; else x.emp += +a.amount||0; });
@@ -951,6 +951,13 @@ function render(){
   if (!S.loaded.me){ $("#nav").hidden = true; main.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
   if (r==="nuevo" || r==="pendiente"){ $("#nav").hidden = true; main.innerHTML = viewJoin(); bindJoin(); return; }
   if (S.me?.bloqueado && r!=="admin" && !S.isOwner){ $("#nav").hidden = true; main.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:54px">🔒</div><h2 style="justify-content:center">Acceso suspendido temporalmente</h2><p>Tu acceso a Lunaya está inhabilitado por el momento.</p>${S.me.bloqueado.motivo?`<p class="note"><b>Motivo:</b> ${esc(S.me.bloqueado.motivo)}</p>`:""}<p class="note">Comunícate con Katerine para reactivarlo.</p><button class="btn ghost" id="bq-out">Salir</button></div>`; const bo = $("#bq-out"); if (bo) bo.onclick = () => firebase.auth().signOut(); return; }
+  /* Requisito para entrar: cada distribuidor (y el otro director) escribe el nombre de su distribución */
+  if (((r==="socio" && S.me?.tipo===DIST) || (r==="admin" && !S.isOwner)) && !String(S.me?.distNombre||"").trim() && !S.dnSkip){ $("#nav").hidden = true;
+    main.innerHTML = `<div class="card" style="max-width:520px;margin:20px auto"><div style="font-size:44px;text-align:center">🏢</div><h2 style="justify-content:center;text-align:center">¿Cómo se llama tu distribución?</h2><p class="note" style="text-align:center">Escribe el nombre de tu distribución tal como quieres que salga en los reportes de ventas. Es necesario para entrar a la app.</p>
+      <form id="dn-form"><input class="i" id="dn-v" maxlength="60" required placeholder="Ej.: Lunatikat Group" style="width:100%;font-size:18px;margin:8px 0"><button class="btn" type="submit" style="width:100%">Guardar y entrar</button></form></div>`;
+    $("#dn-form").onsubmit = async e => { e.preventDefault(); const v = $("#dn-v").value.trim().slice(0,60); if (v.length < 2){ toast("Escribe el nombre de tu distribución"); return; }
+      try { await S.db.doc("members/"+S.uid).update({distNombre:v}); S.me = {...S.me, distNombre:v}; if (S.members[S.uid]) S.members[S.uid].distNombre = v; toast("¡Listo!"); render(); } catch(err){ console.log(err); S.dnSkip = true; toast("No se pudo guardar todavía; avísale a Katerine"); render(); } };
+    return; }
   if (!S.loaded.members || !S.loaded.appts){ main.innerHTML = S.timedOut ? `<div class="card"><div class="banner warn">La app está tardando en responder. Revisa tu conexión; se actualiza sola cuando conecte.</div></div>` : `<div class="card empty">Cargando…</div>`; return; }
   const tabs = tabsFor(r); if (!tabs.some(t => t[0]===S.view)) S.view = "hoy";
   $("#nav").hidden = false;
