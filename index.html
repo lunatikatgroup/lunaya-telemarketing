@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091743"></script>
-<script src="anuncios.js?v=202611091743"></script>
-<script src="juego.js?v=202611091743"></script>
+<script src="demo.js?v=202611091806"></script>
+<script src="anuncios.js?v=202611091806"></script>
+<script src="juego.js?v=202611091806"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091743";
+const APP_VER = "202611091806";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -871,6 +871,11 @@ function deudasKatCard(){ const p = ["semana","semant"].includes(S.f.semp) ? S.f
       x.it.forEach(i => i.titulo = i.tipo==="pase" ? "Citas que tú le pasaste" : i.tipo==="gar" ? "Su parte del garantizado" : TIPO_DEU[i.tipo]);
       return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px"><div class="row" style="justify-content:space-between"><b>${esc(memberName(x.payer))}</b><b>${money(m)}</b></div><div class="note">Telemarketing ${money(x.tm)} · citas que le pasaste ${money(x.pase)}${x.gar?` · garantizado ${money(x.gar)}`:""}</div>
         ${pd && pd.ok ? `<span class="tag tg-good">✅ pagado ${money(pd.monto)}</span>` : `<button class="btn small" data-pagomark="${k}" data-pm-payer="${x.payer}" data-pm-monto="${m}" data-pm-p="${p}">✅ Marcar pagado</button>`}${x.it.map(detDeuda).join("")}</div>`; }).join("") : `<div class="empty">Nadie te debe nada esta semana todavía.</div>`}</div>`; }
+/* Dirección: lo que ella le debe a otros esta semana por citas que le pasaron (ej. Andrés le pasa una cita a Katerine) */
+function yoDeboCard(){ if (S.uid!==ownerUid()) return ""; const p = ["semana","semant"].includes(S.f.semp) ? S.f.semp : "semana"; const d = deudasSemana(range(p))[S.uid]; const it = d ? Object.values(d.a).filter(x => x.tipo==="pase") : []; if (!it.length) return "";
+  const me = deudasSemana(range(p)); it.forEach(x => { x.titulo = `<b>${esc(memberName(x.to))}</b> · citas que te pasó`; });
+  return `<div class="card"><h2>💸 Lo que tú debes esta semana <span class="note">${rangoTxt(p)}</span></h2><p class="note" style="margin-top:-6px">Citas que otros te pasaron y vendiste (${PASE_PCT()}% de la venta aprobada).</p>
+    ${it.map(x => { const ellos = Object.values((me[x.to]||{a:{}}).a).filter(y => y.to===S.uid).reduce((t,y)=>t+y.m,0); return detDeuda(x) + (ellos ? `<p class="note" style="margin:2px 0 8px">${esc(firstName2(memberName(x.to)))} te debe ${money(ellos)} esta semana → neto: ${ellos >= x.m ? `te debe <b>${money(ellos - x.m)}</b>` : `le debes <b>${money(x.m - ellos)}</b>`}.</p>` : ""); }).join("")}</div>`; }
 /* Ventas aprobadas por distribución: lo del distribuidor + lo de sus emprendedores (o la distribución por donde pasó la venta) */
 const distNombre = id => (S.members[id] || {}).distNombre || (id===ownerUid() ? "Lunatic Cat Group" : "Distribución de " + firstName2(memberName(id)));
 function porDistribucionCard(){ const p = ["semana","semant","mes","mesant"].includes(S.f.dper) ? S.f.dper : "mes"; const rg = range(p); const g = {};
@@ -1627,7 +1632,7 @@ function viewPagos(){
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
   h += aporteResumen(p) + aporteDetalle(p) + pasesCard(p);
-  h = (S.uid!==ownerUid() ? reporteSemanaCard() : "") + deudasKatCard() + porDistribucionCard() + h;
+  h = (S.uid!==ownerUid() ? reporteSemanaCard() : "") + deudasKatCard() + yoDeboCard() + porDistribucionCard() + h;
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
   h += empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
