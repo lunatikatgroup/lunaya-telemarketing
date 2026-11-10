@@ -186,23 +186,23 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611061345"></script>
-<script src="anuncios.js?v=202611061345"></script>
-<script src="juego.js?v=202611061345"></script>
+<script src="demo.js?v=202611091609"></script>
+<script src="anuncios.js?v=202611091609"></script>
+<script src="juego.js?v=202611091609"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611061345";
+const APP_VER = "202611091609";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
 const DEFAULT_SOURCES = ["Referencias","4/14","Abordajes","Clientes del sistema","Clientes antiguos (fuera del sistema)","Redes sociales","Otro"];
 const RESULTS = [
   ["no_contesto","No contestó"],["buzon","Buzón / apagado"],["volver","Llamar después"],
-  ["no_interesa","No le interesa"],["no_califica","No califica"],["equivocado","Número equivocado"],["ingles","Habla inglés"],["cita","Cita"]
+  ["no_interesa","No le interesa"],["no_califica","No califica"],["equivocado","Número equivocado"],["ingles","Habla inglés"],["colgo","Trancó / colgó"],["cita","Cita"]
 ];
 const RLABEL = Object.fromEntries(RESULTS);
-const CONTACT = new Set(["volver","no_interesa","no_califica","ingles","cita"]);
+const CONTACT = new Set(["volver","no_interesa","no_califica","ingles","colgo","cita"]);
 const APPT_ST = {agendada:"Agendada", hecha:"Demostración hecha", no_se_hizo:"No se hizo", cancelada:"Cancelada"};
 const ROLE = {admin:"Dirección", tele:"Telemarketer", socio:"Socio", pendiente:"Pendiente"};
 const DEF_COM = {sueldo:200, pct:2, liderPct:1, distPct:5};
@@ -818,7 +818,10 @@ function commissions(r, up=""){
   return rows.map(x => { const pct = (x.t.pct ?? "") === "" ? c.pct : +x.t.pct; const base = (x.t.sueldo ?? "") === "" ? c.sueldo : +x.t.sueldo;
     const own = x.monto * pct/100; const lead = x.t.lider ? (teamMonto - x.monto) * c.liderPct/100 : 0; /* la líder no cobra el 1% sobre sus propias ventas */
     const sd = sueldoDe(x.t, r, base);
-    return {...x, pct, base, sueldo:sd.sueldo, dias:sd.dias, diasMes:sd.total, own, lead, comision:own+lead, total:sd.sueldo+own+lead}; });
+    /* Requisito del sueldo base: 40 citas al mes (10 por semana), proporcional a los días que trabajó */
+    const req = Math.round(40 * (sd.total ? sd.dias / sd.total : 0)), citas = teleEval(x.t.id, r).citas, cumple = !base || !!up || citas >= req, cerrado = r[1] <= Date.now();
+    const sueldoEf = base && cerrado && !cumple ? 0 : sd.sueldo;
+    return {...x, pct, base, sueldo:sueldoEf, sueldoAcum:sd.sueldo, req, citasReq:citas, cumple, cerrado, dias:sd.dias, diasMes:sd.total, own, lead, comision:own+lead, total:sueldoEf+own+lead}; });
 }
 
 /* ===== Render ===== */
@@ -853,7 +856,7 @@ function render(){
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
-  html += transfBanner();
+  html += (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
@@ -971,8 +974,41 @@ function recCard(){ const l = Object.entries(S.recs||{}).filter(([,x]) => !x.hec
 /* Aviso en el teléfono cuando llega la hora (con la app abierta) */
 const recAvisados = new Set();
 setInterval(() => { Object.entries(S.recs||{}).forEach(([id,x]) => { if (!x.hecho && x.when <= Date.now() && x.when > Date.now() - 30*60e3 && !recAvisados.has(id)){ recAvisados.add(id); avisar("⏰ Hora de llamar", `${x.nombre||"Cliente"}${x.tel?" · "+telFmtX(x.tel):""}${x.nota?" · "+x.nota:""}`); toast(`⏰ Hora de llamar a ${x.nombre||"tu cliente"}`); render(); } }); }, 30e3);
+/* ===== Mensaje del día (cambia solo cada día) ===== */
+const MOTIVA = [
+  ["Todo lo puedo en Cristo que me fortalece.","Filipenses 4:13"],["Encomienda al Señor tu camino, confía en él, y él hará.","Salmo 37:5"],["Mira que te mando que te esfuerces y seas valiente.","Josué 1:9"],
+  ["El éxito es la suma de pequeños esfuerzos repetidos día tras día.",""],["Cada llamada te acerca a un sí. Hoy marca uno más que ayer.",""],["Porque yo sé los planes que tengo para ustedes: planes de bienestar y de esperanza.","Jeremías 29:11"],
+  ["No te canses de hacer el bien, que a su tiempo cosecharás.","Gálatas 6:9"],["La disciplina te lleva a donde la motivación no llega.",""],["Un cliente feliz trae a tres más. Sirve con amor.",""],
+  ["Fíate del Señor de todo tu corazón y él enderezará tus veredas.","Proverbios 3:5-6"],["Hoy es un buen día para cerrar una venta y cambiar una cocina.",""],["El que es fiel en lo poco, también en lo mucho es fiel.","Lucas 16:10"],
+  ["Tu actitud define tu altitud. ¡Arriba ese ánimo!",""],["Esfuérzate y sé valiente; no temas ni desmayes.","1 Crónicas 22:13"],["Las metas se cumplen una cita a la vez.",""],
+  ["Lo que siembras con constancia, lo cosechas con alegría.",""],["Pon en manos del Señor todas tus obras, y tus proyectos se cumplirán.","Proverbios 16:3"],["El 'no' de hoy es el entrenamiento para el 'sí' de mañana.",""],
+  ["Cada demostración es una oportunidad de cambiar la salud de una familia.",""],["Dios no nos ha dado espíritu de cobardía, sino de poder, de amor y de dominio propio.","2 Timoteo 1:7"],["El equipo que se apoya, crece junto.",""],
+  ["Sé tú la energía que quieres atraer.",""],["Clama a mí, y yo te responderé.","Jeremías 33:3"],["Lo imposible solo tarda un poco más.",""],["Celebra cada pequeño avance: suma.",""],
+  ["Bienaventurado el hombre que confía en el Señor.","Jeremías 17:7"],["Haz hoy lo que otros no quieren, y mañana tendrás lo que otros no tienen.",""],["Sonríe al marcar: se escucha en tu voz.",""],
+  ["El gozo del Señor es nuestra fuerza.","Nehemías 8:10"],["Tu próxima cita puede ser tu mejor venta del mes.",""],["Gracias a Dios por un día más para trabajar y crecer.",""]];
+function motivaCard(){ const t = today(); const n = Math.floor(laToMs(t,"12:00") / 864e5); const [txt, cita] = MOTIVA[n % MOTIVA.length];
+  return `<div class="card" style="text-align:center;background:linear-gradient(135deg,rgba(201,151,31,.10),transparent)"><div class="eyebrow">✨ Mensaje del día</div><p style="font-family:var(--serif);font-size:19px;margin:6px 0">“${esc(txt)}”</p>${cita?`<div class="note">${esc(cita)}</div>`:""}</div>`; }
+/* ===== Ventas que esperan "Aprobada" o "Cancelada" (para que el distribuidor no se olvide) ===== */
+function ventasPorAprobar(){ const r = role(); const grupo = isDist() ? new Set(grupoDe(S.uid).map(m => m.id)) : new Set();
+  return Object.entries(S.appts).filter(([,a]) => a.sale && (a.saleStatus||"pendiente")==="pendiente" && a.status==="hecha" && (a.socioId===S.uid || grupo.has(a.socioId) || a.pasoPor===S.uid || (r==="admin" && pagadorDe(a.socioId)===S.uid))).sort((a,b) => a[1].when - b[1].when); }
+function porAprobarCard(){ const l = ventasPorAprobar(); if (!l.length) return "";
+  return `<div class="card" style="border:2px solid var(--warn,#a3651a)"><h2>💰 Ventas por reportar <span class="tag tg-warn">${l.length}</span></h2><p class="note" style="margin-top:-6px">Estas ventas siguen "pendientes". Cuando sepas si la orden se aprobó o se canceló, toca la venta y márcala. Así cuentan en los pagos y en el ranking.</p>
+    <div class="list">${l.map(([id,a]) => `<button class="item" data-appt="${id}"><div><div class="t">${esc(cName(a))} · <b>${money(+a.amount||0)}</b></div><div class="m">${fmt(a.when,{day:"numeric",month:"short"})} · ${esc(memberName(a.socioId))}${Date.now()-a.when > 7*864e5 ? " · ⚠️ hace más de una semana" : ""}</div></div><span class="pill acc">Reportar</span></button>`).join("")}</div></div>`; }
+/* ===== Mis ventas (las citas que se vendieron) ===== */
+function misVentasCard(){ const rg = range("mes"), sw = range("semana"); const l = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.sale && (a.saleStatus||"pendiente")!=="cancelada" && inR(a.when||0, rg)).sort((a,b) => b[1].when - a[1].when);
+  const sum = f => l.filter(([,a]) => f(a)).reduce((t,[,a]) => t + (+a.amount||0), 0);
+  return `<div class="card"><h2>💰 Mis ventas<span class="note">este mes</span></h2>${l.length ? `<div class="tiles"><div class="tile"><b>${l.filter(([,a]) => inR(a.when, sw)).length}</b><span>Esta semana</span><small>${money(sum(a => inR(a.when, sw)))}</small></div><div class="tile"><b>${l.length}</b><span>Este mes</span><small>${money(sum(() => true))}</small></div><div class="tile acc"><b>${money(sum(a => a.saleStatus==="aprobada"))}</b><span>Aprobado</span></div></div>
+    <div class="list" style="margin-top:8px">${l.map(([id,a]) => `<button class="item" data-appt="${id}"><div><div class="t">${esc(cName(a))} · <b>${money(+a.amount||0)}</b></div><div class="m">${fmt(a.when,{weekday:"short",day:"numeric",month:"short"})}</div></div><span class="tag ${a.saleStatus==="aprobada"?"tg-good":"tg-warn"}">${a.saleStatus==="aprobada"?"Aprobada":"Pendiente"}</span></button>`).join("")}</div>` : `<div class="empty">Todavía no tienes ventas este mes. ¡La próxima es tuya!</div>`}</div>`; }
+/* ===== Avisos: cita que te pasaron, cita tuya que pasaron a otro, cita que te regresaron ===== */
+function avisosTransfer(){ let seen; try { seen = new Set(JSON.parse(localStorage.getItem("ly-trv-"+S.uid) || "[]")); } catch { seen = new Set(); } const first = !localStorage.getItem("ly-trv-"+S.uid); let cambio = false;
+  Object.entries(S.appts||{}).forEach(([id,a]) => { const ev = []; const reciente = x => x && Date.now() - x < 3*864e5;
+    if (a.socioId===S.uid && reciente(a.transferredAt) && a.transferredBy !== S.uid) ev.push(["in"+a.transferredAt, "🔀 Te pasaron una cita", `${cName(a)} · ${fmtWhen(a.when)} · de ${memberName(a.transferredBy||a.transferredFrom)}`]);
+    if (a.socioId===S.uid && reciente(a.devuelta?.at) && a.devuelta.de !== S.uid) ev.push(["dv"+a.devuelta.at, "↩️ Te regresaron una cita", `${cName(a)} · ${memberName(a.devuelta.de)} no la pudo hacer`]);
+    if (role()==="tele" && a.teleId===S.uid && a.socioId!==S.uid && reciente(a.transferredAt) && a.transferredBy !== S.uid) ev.push(["tl"+a.transferredAt, "🔀 Pasaron una cita que agendaste", `${cName(a)} ahora es de ${memberName(a.socioId)}`]);
+    ev.forEach(([k,t,b]) => { const key = id+"|"+k; if (seen.has(key)) return; seen.add(key); cambio = true; if (!first){ avisar(t, b); toast(t+": "+b); } }); });
+  if (cambio || first) try { localStorage.setItem("ly-trv-"+S.uid, JSON.stringify([...seen].slice(-400))); } catch {} }
 function viewHoy(r){
-  const rg = range(S.f.period); let h = pendLlamarCard() + recCard();
+  const rg = range(S.f.period); const top = motivaCard() + porAprobarCard(); let h = pendLlamarCard() + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
@@ -990,7 +1026,8 @@ function viewHoy(r){
       <div class="tile"><b>${money(mine.own)}</b><span>${mine.pct}% de tus ventas aprobadas</span><small>${money(mine.monto)} aprobado${mine.pend?` · ${mine.pend} pendiente(s)`:""}</small></div>
       ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.comision)}</b><span>Total comisión</span></div></div>
       <p class="note">La comisión sale solo de ventas aprobadas. Las pendientes suman cuando quedan aprobadas.</p>
-      ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado este mes</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
+      ${mine.base ? (() => { const sw = teleEval(S.uid, range("semana")).citas; return `<div class="banner ${sw>=10?"good":"warn"}" style="margin-top:8px">📅 Esta semana llevas <b>${sw} de 10 citas</b>. El requisito para cobrar el sueldo base es 10 citas por semana (40 al mes).</div>`; })() : ""}
+      ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado este mes</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile ${mine.cumple?"":"warn"}"><b>${mine.citasReq} / ${mine.req}</b><span>Citas para cobrar el sueldo</span><small>${mine.cumple ? "✅ ya cumpliste" : `te faltan ${mine.req - mine.citasReq}`} · meta 10 por semana</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
     h += teleNominaCard() + citasDiaCard();
   } else if (r==="socio"){
     const pend = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.when < Date.now()-3600e3);
@@ -1009,7 +1046,7 @@ function viewHoy(r){
       <div class="tile"><b>${pctN(e.ventas,e.demos)??"—"}${e.demos?"%":""}</b><span>% efectividad demo → venta</span></div>
       <div class="tile"><b>${e.refsDemo||0}</b><span>Referidos sacados en demos</span><small>${e.demos?(Math.round((e.refsDemo||0)/e.demos*10)/10)+" por casa":""}</small></div></div></div>`;
     h = h.replace('<div class="card"><h2>Próximas citas', embudoCard(S.uid) + metasCard(S.uid) + '<div class="card"><h2>Próximas citas');
-    h += pasadasCard(rg) + gananciasCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes") + rutaCard(S.uid) + socioRefCard() + driveCard();
+    h += misVentasCard() + pasadasCard(rg) + gananciasCard(S.uid, S.f.period==="mesant" ? "mesant" : "mes") + rutaCard(S.uid) + socioRefCard() + driveCard();
   } else {
     const e = teleEval(null, rg); const sinRes = Object.values(S.appts).filter(a => a.status==="agendada" && a.when < Date.now()-3600e3).length;
     const terr = `<div class="card"><h2>Territorio ${periodChips()}</h2>${evalTiles(e)}${sinRes?`<div class="banner warn" style="margin-top:12px">${sinRes} cita(s) pasadas sin resultado. Los socios deben marcarlas.</div>`:""}</div>`;
@@ -1028,7 +1065,7 @@ function viewHoy(r){
     const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
     if (hoyT) h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   }
-  return h;
+  return top + h;
 }
 /* Citas que yo le pasé a otros socios: qué pasó con cada una (demostración, venta) */
 function pasadasCard(rg){ const yoDi = a => (a.transferredFrom && a.transferredFrom!==a.socioId) ? pasoQuien(a)===S.uid || a.transferredFrom===S.uid : dadorDe(a)===S.uid;
@@ -1101,6 +1138,12 @@ function rankSocio(){
 }
 
 /* ===== REGISTRAR ===== */
+/* Agenda del socio: horas que ya tiene ocupadas, para saber a qué hora se le puede sacar o pasar una cita (una cita ≈ 2 horas) */
+function agendaSocioCard(sid){ if (!sid) return ""; const d0 = S.f.agd || today(); const r = [laToMs(d0,"00:00"), laToMs(addDays(d0,1),"00:00")];
+  const l = Object.values(S.appts).filter(a => a.socioId===sid && a.status==="agendada" && inR(a.when||0, r)).sort((a,b) => a.when - b.when);
+  const ch = (v,t) => `<button class="chip ${d0===v?"on":""}" data-agd="${v}">${t}</button>`;
+  return `<div class="card"><h2>📅 Agenda de ${esc(firstName2(memberName(sid)))}<span class="note">${l.length} cita(s)</span></h2><div class="chips" style="margin-bottom:8px">${ch(today(),"Hoy")}${ch(addDays(today(),1),"Mañana")}${ch(addDays(today(),2),fmt(laToMs(addDays(today(),2),"12:00"),{weekday:"long"}))}${ch(addDays(today(),3),fmt(laToMs(addDays(today(),3),"12:00"),{weekday:"long"}))}</div>
+    ${l.length ? `<div class="list">${l.map(a => `<div class="item" style="cursor:default"><div><div class="t">🕒 ${horaTxt(a.when)} – ${horaTxt(a.when + 2*3600e3)}</div><div class="m">Ocupado${a.city?" · "+esc(a.city):""}${a.tipoVisita==="servicio"?" · servicio":""}</div></div></div>`).join("")}</div><p class="note" style="margin-bottom:0">Cada cita se cuenta como 2 horas. Saca la nueva cita fuera de esos horarios.</p>` : `<div class="empty">Libre todo el día.</div>`}</div>`; }
 function viewRegistrar(){
   const t0 = range("hoy");
   const mine = allCalls().filter(c => c.teleId===S.uid && c.socioId===S.world && inR(c.at, t0));
@@ -1114,7 +1157,7 @@ function viewRegistrar(){
     <p class="note" style="margin-top:-6px">Cuando ${esc(memberName(S.world))} te mande referidos para trabajar, anota cuántos son y de qué tipo. Solo las referencias nuevas (de citas o demos recientes) cuentan en el embudo del socio.</p>
     <form id="ref-form" class="row"><input class="i" type="number" min="1" step="1" id="ref-n" placeholder="Cantidad" style="max-width:130px" aria-label="Cantidad de referidos"><input class="i" type="date" id="ref-d" value="${today()}" max="${today()}" min="${addMonths(today().slice(0,8)+"01",-1)}" style="max-width:170px" aria-label="Día en que los recibiste">${refTipoSel("ref-t")}<button class="btn" type="submit">Agregar referidos</button></form>
     ${myRefs.length?`<div class="hist" style="margin-top:10px">${myRefs.map(x=>`<div class="row" style="justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0"><span><b>${x.n}</b> ${tipoSelX(x)} · ${esc(x.source||"")} · ${laDate(x.at)===today()?fmt(x.at,{hour:"numeric",minute:"2-digit"}):fmt(x.at,{weekday:"short",day:"numeric",month:"short"})}</span><button class="btn small ghost" data-unref="${x.at}">Quitar</button></div>`).join("")}</div>`:""}</div>`;
-  return refsPendCard() + worldBar() + refCard + `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Fuente de la base que estás llamando</div><div class="chips">${sources().map(s=>`<button class="chip ${s===src?"on":""}" data-src="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>
+  return refsPendCard() + worldBar() + agendaSocioCard(S.world) + refCard + `<div class="card"><div class="eyebrow" style="margin-bottom:8px">Fuente de la base que estás llamando</div><div class="chips">${sources().map(s=>`<button class="chip ${s===src?"on":""}" data-src="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>
   <div class="card"><h2>¿Qué pasó en la llamada?<span class="note">${mine.length} hoy para este socio</span></h2>
     <div class="tally">${RESULTS.map(([k,l]) => `<button class="tb ${k==="cita"?"cita":""} ${S.flash===k?"flash":""}" data-res="${k}"><span class="l">${l}</span><span class="c">${cnt(k)}</span><span class="h">${k==="cita"?"Abre la ficha de la cita":"Se guarda al tocar"}</span></button>`).join("")}</div>
     ${last?`<div class="row" style="margin-top:12px;justify-content:space-between"><span class="note">Último: ${RLABEL[last.result]} · ${fmt(last.at,{hour:"numeric",minute:"2-digit"})}</span>${last.result!=="cita"?`<button class="btn small ghost" data-undo="${last.at}">Deshacer último</button>`:""}</div>`:""}
@@ -1262,8 +1305,8 @@ function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
   if (role()==="tele" && a.teleId!==S.uid && a.agendo!==S.uid && !a._priv) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de ${esc(memberName(a.agendo||a.teleId))} con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag ${st==="aprobada"?"tg-good":st==="cancelada"?"tg-mute":"tg-warn"}">Venta ${money(a.amount)} · ${st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
-  const est = estadoDe(a), serv = a.tipoVisita==="servicio";
-  return `<button class="appt ${a.status}" data-appt="${id}" ${serv?`style="border-left-color:#0f766e;background:linear-gradient(90deg,rgba(15,118,110,.13),transparent 65%)"`:est?`style="border-left-color:#1d4ed8;background:linear-gradient(90deg,rgba(29,78,216,.10),transparent 60%)"`:""}><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))} ${serv?`<span class="tag" style="background:#0f766e;color:#fff">🛠️ Servicio</span>`:""}${estTag(a)}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
+  const est = estadoDe(a), serv = a.tipoVisita==="servicio", vend = a.sale && (a.saleStatus||"pendiente")!=="cancelada";
+  return `<button class="appt ${a.status}" data-appt="${id}" ${vend && !serv?`style="border-left-color:#c9971f;background:linear-gradient(90deg,rgba(201,151,31,.18),transparent 70%)"`:serv?`style="border-left-color:#0f766e;background:linear-gradient(90deg,rgba(15,118,110,.13),transparent 65%)"`:est?`style="border-left-color:#1d4ed8;background:linear-gradient(90deg,rgba(29,78,216,.10),transparent 60%)"`:""}><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esc(cName(a))} ${serv?`<span class="tag" style="background:#0f766e;color:#fff">🛠️ Servicio</span>`:""}${estTag(a)}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
 }
 /* Territorio: resumen por socio o por telemarketer (hoy, semana, mes) */
 function terrResumen(){
@@ -1375,7 +1418,7 @@ function openAppt(id){
   const teleAcc = r==="tele" && !S.me?.upline && a._priv;
   /* La líder (Carly) maneja completas las citas que sacó cualquier telemarketer del programa */
   const liderAcc = r==="tele" && S.me?.lider && !S.me?.upline && esTeleProg(a.agendo);
-  const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc || liderAcc; const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid || teleAcc || liderAcc;
+  const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc || liderAcc || (isDist() && S.members[a.socioId]?.upline===S.uid); const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid || teleAcc || liderAcc;
   const canClient = a._priv && (r==="admin" || a.agendo===S.uid || a.socioId===S.uid || liderAcc);
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b>${a.source?` · ${esc(a.source)}`:""}${a.refBy?` · referida por <b>${esc(a.refBy)}</b>`:""}</div>
@@ -1396,6 +1439,7 @@ function openAppt(id){
       <button class="opt ${a.status==="no_se_hizo"&&!(a.pendCall&&!a.pendCall.hecho)?"on":""}" data-ar="no_se_hizo">No se hizo</button>
       <button class="opt ${a.pendCall&&!a.pendCall.hecho?"on":""}" data-ar="llamar">📞 No pudo, llamar para reagendar</button>
       <button class="opt ${a.status==="cancelada"?"on":""}" data-ar="cancelada">Cancelada</button></div><div id="ar-extra"></div>
+      ${a.sale && (a.saleLog||[]).length ? `<div class="note" style="margin:4px 0">🧾 Cambios de la venta: ${(a.saleLog||[]).slice(-4).map(x => `${fmt(x.at,{day:"numeric",month:"short"})} · ${esc(memberName(x.by))} · ${esc(x.t)}`).join(" · ")}</div>` : ""}
       ${a.sale && (r!=="tele" || S.me?.lider)?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canClient?`<button class="btn small ghost" id="ap-cli">✏️ Editar datos del cliente</button>`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha">${timeSel("ap-time",laTime(a.when))}<button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
@@ -1445,10 +1489,10 @@ function openAppt(id){
         $("#ar-save").onclick = () => { const amt = +$("#ar-amt").value; if (!(amt>0)){ toast("Escribe el monto de la venta"); return; }
           const ps = $("#ar-paso"); if (ps && !ps.value){ toast("Escoge por cuál distribuidor pasó la venta"); ps.focus(); return; }
           /* Si se corrige una venta que ya estaba puesta, se queda en el día en que se hizo (no pasa al día de la corrección) */
-          saveR({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt: a.sale && a.resultAt ? a.resultAt : Date.now(), resultBy: a.sale && a.resultBy ? a.resultBy : S.uid, ...(ps ? {pasoPor:ps.value} : {})}); }; return; }
+          saveR({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt: a.sale && a.resultAt ? a.resultAt : Date.now(), ...(a.sale && +a.amount !== amt ? {saleLog:firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, t:`Monto: ${money(+a.amount||0)} → ${money(amt)}`})} : {}), resultBy: a.sale && a.resultBy ? a.resultBy : S.uid, ...(ps ? {pasoPor:ps.value} : {})}); }; return; }
       $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${k==="hecha"?acb()+rb():""}${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; bindAc(); $("#ar-note") && $("#ar-note").focus();
       $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
-    document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now()}));
+    document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now(), saleStatusBy:S.uid, saleLog:firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, t:"Estado: "+(SALE_ST[b.dataset.ss]||b.dataset.ss)})}));
     $("#fix-priv") && ($("#fix-priv").onclick = () => { const sm = S.members[a.socioId]||{};
       openModal(`<h3>Datos del cliente</h3><div class="grid2"><label class="f">Nombre del cliente<input class="i" id="fx-name"></label><label class="f">Teléfono<input class="i" id="fx-phone" inputmode="tel"></label><label class="f">Ciudad<input class="i" id="fx-city"></label><label class="f">Dirección<input class="i" id="fx-addr"></label><label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="fx-notes"></textarea></label></div><div class="row"><button class="btn" id="fx-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
         $("#fx-save").onclick = async () => { const n = $("#fx-name").value.trim(); if (!n){ toast("Escribe el nombre del cliente"); return; }
@@ -1502,7 +1546,7 @@ function comCard(p, up=""){
   const rows = commissions(range(p), up); const tot = rows.reduce((s,x)=>s+x.total,0);
   const ed = up && up===S.uid ? `<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="note">Tu plan para tus telemarketers:</span><label class="note">Sueldo $<input class="i" type="number" min="0" data-ptele="sueldo" value="${c.sueldo}" style="width:80px;padding:4px 6px"></label><label class="note">% de sus ventas <input class="i" type="number" min="0" step="0.5" data-ptele="pct" value="${c.pct}" style="width:64px;padding:4px 6px"></label><label class="note">% extra líder <input class="i" type="number" min="0" step="0.5" data-ptele="liderPct" value="${c.liderPct}" style="width:64px;padding:4px 6px"></label></div>
     <div class="tbl-wrap" style="margin-bottom:8px"><table><thead><tr><th>Telemarketer</th><th>Plan propio (opcional)</th></tr></thead><tbody>${grupoDe(S.uid).filter(m=>m.role==="tele").map(t=>`<tr><td><b>${esc(t.name)}</b></td><td><div class="row" style="gap:4px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" data-plan="${t.id}|sueldo" value="${t.sueldo??""}" placeholder="${c.sueldo}" style="width:72px;padding:4px 6px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" data-plan="${t.id}|pct" value="${t.pct??""}" placeholder="${c.pct}" style="width:56px;padding:4px 6px"></label><label class="note">Inicio<input class="i" type="date" data-start="${t.id}" value="${startOf(t)}" style="padding:4px 6px"></label></div></td></tr>`).join("")}</tbody></table></div>` : "";
-  return `<div class="card"><h2>Comisiones de ${up && up===S.uid ? "mis telemarketers" : "telemarketing"}<span class="note">${PLABEL[p]}</span></h2>${ed}${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Ventas aprobadas</th><th class="n">Volumen aprobado</th><th class="n">Pendientes</th><th class="n">Canceladas</th><th class="n">Comisión propia</th><th class="n">${c.liderPct}% líder (de las demás)</th><th class="n">Total comisión</th><th class="n">Sueldo garantizado (aparte)</th><th class="n">Total a pagar</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.t.name)}</b>${x.t.lider?' <span class="tag tg-warn">líder</span>':""}</td><td class="n">${x.ventas}</td><td class="n">${money(x.monto)}</td><td class="n">${x.pend}</td><td class="n">${x.cancel}</td><td class="n">${money(x.own)}<div class="note">${x.pct}% de sus ventas</div></td><td class="n">${x.t.lider?money(x.lead):"—"}</td><td class="n"><b>${money(x.comision)}</b></td><td class="n">${x.base?`${money(x.sueldo)}<div class="note">${x.dias}/${x.diasMes} días</div>`:`—<div class="note">sin sueldo</div>`}</td><td class="n"><b>${money(x.total)}</b></td></tr>`).join("")}<tr class="total"><td colspan="7">Totales</td><td class="n">${money(rows.reduce((s,x)=>s+x.comision,0))}</td><td class="n">${money(rows.reduce((s,x)=>s+x.sueldo,0))}</td><td class="n">${money(tot)}</td></tr></tbody></table></div>
+  return `<div class="card"><h2>Comisiones de ${up && up===S.uid ? "mis telemarketers" : "telemarketing"}<span class="note">${PLABEL[p]}</span></h2>${ed}${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Ventas aprobadas</th><th class="n">Volumen aprobado</th><th class="n">Pendientes</th><th class="n">Canceladas</th><th class="n">Comisión propia</th><th class="n">${c.liderPct}% líder (de las demás)</th><th class="n">Total comisión</th><th class="n">Sueldo garantizado (aparte)</th><th class="n">Total a pagar</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(x.t.name)}</b>${x.t.lider?' <span class="tag tg-warn">líder</span>':""}</td><td class="n">${x.ventas}</td><td class="n">${money(x.monto)}</td><td class="n">${x.pend}</td><td class="n">${x.cancel}</td><td class="n">${money(x.own)}<div class="note">${x.pct}% de sus ventas</div></td><td class="n">${x.t.lider?money(x.lead):"—"}</td><td class="n"><b>${money(x.comision)}</b></td><td class="n">${x.base?`${money(x.sueldo)}<div class="note">${x.dias}/${x.diasMes} días</div><div class="note" style="color:${x.cumple?"var(--good)":"var(--bad,#b3261e)"}">${x.cumple?"✅":"⚠️"} ${x.citasReq}/${x.req} citas${!x.cumple && x.cerrado ? " · no cumplió: sin sueldo" : !x.cumple ? " · aún no cumple" : ""}</div>`:`—<div class="note">sin sueldo</div>`}</td><td class="n"><b>${money(x.total)}</b></td></tr>`).join("")}<tr class="total"><td colspan="7">Totales</td><td class="n">${money(rows.reduce((s,x)=>s+x.comision,0))}</td><td class="n">${money(rows.reduce((s,x)=>s+x.sueldo,0))}</td><td class="n">${money(tot)}</td></tr></tbody></table></div>
     <p class="note">Plan general: sueldo de ${money(c.sueldo)} al mes, que se va acumulando por cada día laboral (lunes a sábado) desde su fecha de inicio; el mes completo da ${money(c.sueldo)}. Más ${c.pct}% de las ventas aprobadas que salieron de sus citas. La líder suma ${c.liderPct}% de las ventas aprobadas de las demás telemarketers (de las suyas solo cobra su %). La venta cuenta en el mes de la demostración. Quien tiene un plan propio se calcula con su sueldo y su %.</p>`:`<div class="empty">Aún no hay telemarketers aprobadas.</div>`}</div>`;
 }
 /* ===== RANKING (todos) ===== */
@@ -1626,7 +1670,7 @@ function citasDiaCard(enCitas){ const d = enCitas ? (S.f.day || today()) : (S.f.
   const modo = S.f.cdmode==="socio" ? "socio" : S.f.cdmode==="di" && !enCitas ? "di" : "tele"; const base = S.f.cdbase || (enCitas ? "cita" : "sacada");
   /* Una cita que se le pasó a otro socio cuenta como "sacada" el día que se pasó, y para quien la dio */
   const sacadaAt = a => a.transferredFrom && a.transferredAt ? a.transferredAt : a.createdAt;
-  const ap = Object.values(S.appts).filter(a => inR((base==="cita" ? a.when : sacadaAt(a))||0, r) && a.status!=="cancelada");
+  const ap = Object.values(S.appts).filter(a => a.tipoVisita!=="servicio" && inR((base==="cita" ? a.when : sacadaAt(a))||0, r) && a.status!=="cancelada");
   const quien = a => origenDe(a)==="tm" ? a.teleId : origenDe(a)==="asig" ? "_asig:"+dadorDe(a) : "_propia";
   const qName = k => k==="_propia" ? "🙋 Propia" : k.startsWith("_asig:") ? "🤝 "+memberName(k.slice(6)) : memberName(k);
   const dio = a => a.transferredFrom && a.transferredFrom!==a.socioId ? pasoQuien(a) : origenDe(a)==="tm" ? a.teleId : origenDe(a)==="propia" ? "" : dadorDe(a);
@@ -1727,7 +1771,7 @@ function viewEquipo(){
     <div class="row"><button class="btn" data-act="export">Este mes</button><button class="btn ghost" data-act="export-prev">Mes anterior</button></div>
     <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
     <div class="eyebrow">Respaldo completo</div><p class="note">Todas las citas con datos del cliente y resultado, y el registro diario de llamadas y referidos de cada telemarketer, desde el primer día. Hazlo una vez por semana.</p>
-    <div class="row"><button class="btn dark" data-act="backup">Descargar citas</button><button class="btn dark" data-act="backup-calls">Descargar llamadas</button></div>
+    <div class="row"><button class="btn" data-act="backup-all">📦 Respaldo completo (Excel)</button><button class="btn dark" data-act="backup">Solo citas</button><button class="btn dark" data-act="backup-calls">Solo llamadas</button></div>
     <div id="g-status" class="note" style="margin-top:10px">${S.config.lastBackup?`Último respaldo: ${fmtWhen(S.config.lastBackup)}`:""}</div></div>`;
   return h;
 }
@@ -1776,6 +1820,34 @@ async function doBackup(kind){
     await S.db.doc("config/main").set({...S.config, lastBackup:Date.now()});
   } catch(e){ console.log(e); gStatus("No se pudo preparar el respaldo. Intenta de nuevo.", "bad"); }
 }
+
+/* Respaldo completo en UN archivo de Excel (varias pestañas): citas, ventas, llamadas, personas, prospectos y pagos.
+   Los datos viven en la base de datos de la app; este archivo es una copia aparte para guardar en tu teléfono o en Drive. */
+function cargarXlsx(){ return window.XLSX ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); }); }
+async function doBackupAll(){
+  const d = ms => ms ? fmt(ms,{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+  try { gStatus("Preparando el respaldo completo…"); await cargarXlsx();
+    const citas = Object.entries(S.appts).sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0)).map(([id,a]) => [d(a.createdAt), d(a.when), a.client||"", a.phone||"", a.city||"", a.address||"", memberName(a.socioId), memberName(a.teleId), a.source||"", a.tipoVisita==="servicio"?"Servicio":"Demostración", APPT_ST[a.status]||"", a.sale?"Sí":"No", a.sale?SALE_ST[a.saleStatus||"pendiente"]:"", +a.amount||0, a.saleStatusAt?d(a.saleStatusAt):"", a.transferredFrom?memberName(a.transferredFrom):"", a.pasoPor?memberName(a.pasoPor):"", a.refBy||"", a.notes||"", a.resNote||"", id]);
+    const logs = (await S.db.collection("calllog").get()).docs.map(x => x.data()); const agg = {};
+    const slot = (L, x) => { const k = [L.date, L.teleId, x.socioId||"", x.source||""].join("|"); return (agg[k] ||= {date:L.date, tele:L.teleId, socio:x.socioId, src:x.source||"", n:{}, refs:0}); };
+    for (const L of logs){ for (const c of (L.calls||[])){ const g = slot(L, c); g.n[c.result] = (g.n[c.result]||0)+1; } for (const r of (L.refs||[])) slot(L, r).refs += (+r.n||0); }
+    const calls = Object.values(agg).sort((a,b)=>a.date.localeCompare(b.date)).map(x => [x.date, memberName(x.tele), memberName(x.socio), x.src, Object.values(x.n).reduce((t,v)=>t+v,0), ...RESULTS.map(([k])=>x.n[k]||0), x.refs]);
+    const gente = Object.entries(S.members).map(([id,m]) => [m.name||"", m.email||"", m.phone||"", m.role||"", m.tipo||"", m.upline?memberName(m.upline):"", m.lider?"Sí":"", m.bloqueado?"Suspendido":"", id]);
+    let leads = []; try { leads = (await S.db.collection("leads").get()).docs.map(x => [x.id, x.data()]); } catch {}
+    const pros = leads.filter(([,l]) => l.kind!=="ref").map(([id,l]) => [d(l.at), l.name||"", l.tel||"", l.prize||"", l.quiz||"", l.ref||"", memberName(l.socioId), l.status||"", id]);
+    const pagos = Object.entries(S.pagosDist||{}).map(([id,x]) => [memberName(x.payer), x.desde||"", x.hasta||"", +x.monto||0, x.ok?"Pagado":"Pendiente", d(x.okAt||x.at), id]);
+    const wb = XLSX.utils.book_new(); const add = (nom, head, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([head, ...rows]), nom);
+    add("Citas y ventas", ["Creada","Fecha cita","Cliente","Teléfono","Ciudad","Dirección","Socio","Agendó","Fuente","Tipo","Estado cita","Venta","Estado venta","Monto","Fecha aprobación/cancelación","Se la pasó","Pasó por (distribución)","Referida por","Notas","Comentario del resultado","ID"], citas);
+    add("Llamadas", BK_CALLS_HEAD, calls); add("Personas", ["Nombre","Correo","Teléfono","Rol","Tipo","Sponsor / líder","Líder","Acceso","ID"], gente);
+    add("Prospectos (juegos)", ["Fecha","Nombre","Teléfono","Regalo","Resultado del juego","Amiga de","Socio","Estado","ID"], pros); add("Pagos registrados", ["Distribuidor","Desde","Hasta","Monto","Estado","Fecha","ID"], pagos);
+    XLSX.writeFile(wb, `Lunaya-respaldo-${today()}.xlsx`);
+    await S.db.doc("config/main").set({...S.config, lastBackup:Date.now()});
+    gStatus(`Listo: ${citas.length} citas, ${calls.length} filas de llamadas, ${gente.length} personas, ${pros.length} prospectos. Guárdalo en tu Drive.`, "good"); toast("Respaldo descargado");
+  } catch(e){ console.log(e); gStatus("No se pudo preparar el respaldo. Revisa tu internet e intenta de nuevo.", "bad"); toast("No se pudo preparar el respaldo"); }
+}
+/* Recordatorio semanal para Dirección: si pasaron 7 días sin respaldo */
+function backupBanner(){ if (role()!=="admin") return ""; const lb = S.config.lastBackup || 0; if (Date.now() - lb < 7*864e5) return "";
+  return `<div class="banner warn" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>📦 ${lb ? `Tu último respaldo fue el ${fmt(lb,{day:"numeric",month:"short"})}.` : "Todavía no has hecho un respaldo."} Descarga el respaldo de la semana y guárdalo en tu Drive.</span><button class="btn small" data-act="backup-all">Descargar respaldo</button></div><div id="g-status" class="note"></div>`; }
 
 /* ===== Mi perfil: foto ===== */
 function loadImg(src){ return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src; }); }
@@ -1852,7 +1924,7 @@ function bindCommon(){
   document.querySelectorAll("[data-tok]").forEach(b => b.onclick = () => { const id = b.dataset.tok, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, ok:true, okAt:Date.now()}}).then(() => toast("Aprobado. La cita pasa a "+memberName(t.to)), writeErr); });
   document.querySelectorAll("[data-trej]").forEach(b => b.onclick = () => { const id = b.dataset.trej, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, rej:true, rejAt:Date.now()}}).then(() => toast("No aprobado"), writeErr); });
   document.querySelectorAll("[data-tclr]").forEach(b => b.onclick = () => { S.db.doc("appts/"+b.dataset.tclr).update({transferReq:firebase.firestore.FieldValue.delete()}).then(() => { closeModal(); render(); }, writeErr); });
-  procesarTransfers(); procesarDevoluciones(); arreglarZelle();
+  procesarTransfers(); procesarDevoluciones(); arreglarZelle(); try { avisosTransfer(); } catch(e){ console.log(e); }
   document.querySelectorAll("[data-wk2]").forEach(b => b.onclick = () => { S.f.wk2 = b.dataset.wk2; render(); });
   document.querySelectorAll("[data-ruta]").forEach(b => b.onclick = () => openRuta(b.dataset.ruta));
   all("[data-lt]", b => b.onclick = () => { S.f.lt = b.dataset.lt; render(); });
@@ -1874,6 +1946,7 @@ function bindCommon(){
   const af = m.querySelector("#a-filter"); if (af) af.onchange = e => { S.f.aSocio = e.target.value; render(); };
   all("[data-act]", b => b.onclick = async () => { const a = b.dataset.act;
     if (a==="world") setWorld("");
+    if (a==="backup-all") return doBackupAll();
     if (a==="drset") openDriveSocio(S.world);
     else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
     else if (a==="pago"){ try { await S.db.doc("config/main").set({...S.config, pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
@@ -1922,6 +1995,7 @@ function bindCommon(){
   all("[data-tper]", b => b.onclick = () => { S.f.tper = b.dataset.tper; render(); });
   all("[data-origen]", b => b.onclick = () => openOrigen(b.dataset.origen));
   all("[data-perfil]", b => b.onclick = () => openPerfil(b.dataset.perfil));
+  all("[data-agd]", b => b.onclick = () => { S.f.agd = b.dataset.agd; render(); });
   { const rf = m.querySelector("#rec-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = $("#rec-n").value.trim(), t = telOkX($("#rec-t").value), d = $("#rec-d").value, h = timeVal("rec-h");
       if (!n && !t){ toast("Escribe el nombre o el teléfono"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
       try { await S.db.collection("recordatorios").add({owner:S.uid, nombre:n.slice(0,60), tel:t||"", when:laToMs(d,h), nota:$("#rec-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); toast("Recordatorio guardado"); } catch(err){ writeErr(err); } }; }

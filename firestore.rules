@@ -106,7 +106,7 @@ service cloud.firestore {
          // de los socios a los que tienen acceso (territorio de Dirección o distribuidor que no las quitó). No aprueban ventas.
          || (isProgramTele() && teleApptOk(resource.data.socioId)
              && request.resource.data.socioId == resource.data.socioId && request.resource.data.teleId == resource.data.teleId
-             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'sale', 'amount', 'saleStatus', 'resultAt', 'resultBy', 'segWhen', 'refsDemo', 'acomp', 'entrenador', 'when', 'pasoPor', 'nomVenta', 'pendCall'])
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'sale', 'amount', 'saleStatus', 'resultAt', 'resultBy', 'segWhen', 'refsDemo', 'acomp', 'entrenador', 'when', 'pasoPor', 'nomVenta', 'pendCall', 'saleLog', 'saleStatusAt', 'saleStatusBy'])
              && request.resource.data.get('saleStatus', 'pendiente') in [resource.data.get('saleStatus', 'pendiente'), 'pendiente'])
          // La líder maneja completas las citas que sacaron las telemarketers del programa
          || (liderDe(resource.data) && request.resource.data.socioId == resource.data.socioId && request.resource.data.teleId == resource.data.teleId && noClientData())
@@ -117,7 +117,7 @@ service cloud.firestore {
              && request.resource.data.transferReq.to == resource.data.transferReq.to
              && request.resource.data.transferReq.by == resource.data.transferReq.by)
          // La líder de telemarketing puede aprobar o cancelar ventas (solo el estado de la venta)
-         || (isLeader() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saleStatus', 'saleStatusAt', 'saleStatusBy'])));
+         || (isLeader() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saleStatus', 'saleStatusAt', 'saleStatusBy', 'saleLog'])));
       allow delete: if isAdmin() || (isMember() && resource.data.teleId == request.auth.uid) || liderDe(resource.data);
     }
 
