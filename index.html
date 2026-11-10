@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611101525"></script>
-<script src="anuncios.js?v=202611101525"></script>
-<script src="juego.js?v=202611101525"></script>
+<script src="demo.js?v=202611101530"></script>
+<script src="anuncios.js?v=202611101530"></script>
+<script src="juego.js?v=202611101530"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611101525";
+const APP_VER = "202611101530";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1981,7 +1981,7 @@ function viewLider(){
   if (!S.me?.lider && !S.isOwner) return `<div class="card empty">Esta pantalla es solo para la líder del equipo.</div>`;
   const rg = range(S.f.period);
   const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
-  let h = reunionCard() + estadisticasCard() + horasCard() + `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
+  let h = reunionCard() + repDistCard() + estadisticasCard() + horasCard() + `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
   const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
   h += refsPendCard() + citasDiaCard() + metaSemEquipoCard() + citasEquipoCard() + refByCard(socios().map(x => x.id));
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
@@ -2034,7 +2034,7 @@ function rdFilas(){ const p = RD_P[S.f.rdp] ? S.f.rdp : "semant"; const rg = ran
   const rows = L.sort((a,b) => b.d.volAp - a.d.volAp || b.d.vol - a.d.vol || b.d.citas - a.d.citas); const T = rows.reduce((o,r) => { for (const k in r.d) o[k] = (o[k]||0) + r.d[k]; return o; }, {});
   return {p, rg, por, rows, T, titulo:`${RD_P[p]} · ${rangoTxt(p)}`}; }
 const pcT = (a, b) => b ? Math.round(a*100/b)+"%" : "—";
-function repDistCard(){ if (role()!=="admin" && !esAsist()) return ""; const {p, por, rows, T} = rdFilas();
+function repDistCard(){ if (role()!=="admin" && !esAsist() && !(role()==="tele" && S.me?.lider && !S.me?.upline)) return ""; const {p, por, rows, T} = rdFilas();
   const fila = (n, sub, d, tot) => `<tr class="${tot?"total":""}"><td>${tot ? n : `<b>${esc(n)}</b>${sub?`<div class="note">${esc(sub)}</div>`:""}`}</td><td class="n">${d.refs||0}</td><td class="n">${d.citas||0}</td><td class="n">${d.demos||0}</td><td class="n">${d.ventas||0}</td><td class="n">${money(d.vol||0)}</td><td class="n">${d.aprob||0}<div class="note">${money(d.volAp||0)}</div></td><td class="n">${d.cancel||0}</td><td class="n">${pcT(d.demos||0, d.citas||0)}</td><td class="n">${pcT(d.ventas||0, d.demos||0)}</td><td class="n">${pcT(d.aprob||0, (d.aprob||0)+(d.cancel||0))}</td></tr>`;
   return `<div class="card" style="border:2px solid var(--accent,#c8664a)"><h2>📋 Reporte de distribuidores <div class="chips">${Object.entries(RD_P).map(([k,l]) => `<button class="chip ${p===k?"on":""}" data-rdp="${k}">${l}</button>`).join("")}</div></h2>
     <div class="chips" style="margin-top:-4px"><button class="chip ${por==="dist"?"on":""}" data-rdm="dist">Por distribución</button><button class="chip ${por==="socio"?"on":""}" data-rdm="socio">Por socio</button></div>
