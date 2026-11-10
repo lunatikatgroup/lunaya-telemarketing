@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611091819"></script>
-<script src="anuncios.js?v=202611091819"></script>
-<script src="juego.js?v=202611091819"></script>
+<script src="demo.js?v=202611091828"></script>
+<script src="anuncios.js?v=202611091828"></script>
+<script src="juego.js?v=202611091828"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611091819";
+const APP_VER = "202611091828";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1126,7 +1126,7 @@ function viewHoy(r){
       ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado este mes</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile ${mine.cumple?"":"warn"}"><b>${mine.citasReq} / ${mine.req}</b><span>Citas para cobrar el sueldo</span><small>${mine.cumple ? "✅ ya cumpliste" : `te faltan ${mine.req - mine.citasReq}`} · meta 10 por semana</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
     h += teleNominaCard() + citasDiaCard();
   } else if (r==="socio"){
-    const pend = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.when < Date.now()-3600e3);
+    const pend = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.tipoVisita!=="servicio" && a.when < Date.now()-3600e3);
     const up = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.when >= Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when).slice(0,5);
     h += `<div class="card"><h2>Próximas citas</h2>${up.length?`<div class="list">${up.map(([id,a])=>apptItem(id,a)).join("")}</div>`:`<div class="empty">No tienes citas próximas.</div>`}</div>`;
     const e = socioEval(S.uid, rg);
@@ -1358,7 +1358,7 @@ function openCitaForm(src, own, pre){
 /* Citas que ya pasaron (más de 2 horas) y nadie reportó: las del socio, o las que agendó la telemarketer */
 const PEND_MS = 2*3600e3;
 function sinReporte(){ const r = role(); const now = Date.now();
-  return Object.entries(S.appts||{}).filter(([,a]) => a.status==="agendada" && a.when < now-PEND_MS &&
+  return Object.entries(S.appts||{}).filter(([,a]) => a.status==="agendada" && a.tipoVisita!=="servicio" && a.when < now-PEND_MS &&
     (a.socioId===S.uid || (r==="tele" && a.teleId===S.uid))).sort((x,y)=>x[1].when-y[1].when); }
 function pendBanner(){ const l = sinReporte(); if (!l.length) return ""; const r = role(); const a = l[0][1];
   return `<div class="banner bad" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div>⏰ <b>${l.length===1?"Tienes 1 cita sin reportar":`Tienes ${l.length} citas sin reportar`}</b><div class="note" style="color:inherit">${r==="tele"?`Si el socio ya te contó qué pasó, repórtalo tú. La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`:`¿Qué pasó? La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`}</div></div>${r==="tele" && a.agendo!==S.uid?"":`<button class="btn small" data-pend="${l[0][0]}">Reportar ahora</button>`}</div>`; }
@@ -1437,7 +1437,7 @@ function viewCitas(r){
   const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds || (a.segWhen && !a.sale && laDate(a.segWhen)===ds)).length;
     return `<button class="day ${ds===day?"on":""}" data-day="${ds}"><span>${names[i]}</span><b>${+ds.slice(8)}</b><small>${n||"·"}</small></button>`; }).join("");
   const list = [...all.filter(([,a])=>laDate(a.when)===day).map(([id,a])=>[id,a,false]), ...all.filter(([,a])=>a.segWhen && !a.sale && laDate(a.segWhen)===day).map(([id,a])=>[id,a,true])].sort((x,y)=>(x[2]?x[1].segWhen:x[1].when)-(y[2]?y[1].segWhen:y[1].when));
-  const pend = all.filter(([,a])=>a.status==="agendada" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
+  const pend = all.filter(([,a])=>a.status==="agendada" && a.tipoVisita!=="servicio" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
   let h = r==="tele" ? worldBar() : "";
   if (r==="admin") h += `<div class="chips" style="margin-bottom:12px"><button class="chip ${S.f.cview!=="terr"&&S.f.cview!=="di"?"on":""}" data-cview="mias">📅 Mis citas</button><button class="chip ${S.f.cview==="di"?"on":""}" data-cview="di">🤝 Citas que di</button><button class="chip ${S.f.cview==="terr"?"on":""}" data-cview="terr">🗺️ Territorio</button></div>`;
   if (r==="admin" && S.f.cview==="terr") h += terrResumen();
@@ -1528,7 +1528,9 @@ function openAppt(id){
     <div id="ap-hist"></div>
     <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
     ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
-    ${canResult?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
+    ${canResult && a.tipoVisita==="servicio" ? `<div class="eyebrow">🛠️ Servicio</div><div class="opts"><button class="opt ${a.status==="hecha"?"on":""}" data-sv="hecha">✅ Hecho</button><button class="opt ${a.status==="no_se_hizo"?"on":""}" data-sv="no_se_hizo">❌ No hecho</button></div>
+      ${a._priv ? `<label class="f" style="margin-top:6px">Nota del servicio<textarea class="i" id="sv-note" maxlength="1000" placeholder="Ej: se cambió la válvula; vuelve en 6 meses…">${esc(a.resNote||"")}</textarea></label><button class="btn small ghost" id="sv-nsave">Guardar nota</button>` : ""}` : ""}
+    ${canResult && a.tipoVisita!=="servicio"?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
       <button class="opt ${a.status==="hecha"&&!a.sale&&!a.segWhen?"on":""}" data-ar="hecha">Demo hecha, sin venta</button>
       <button class="opt ${a.status==="hecha"&&!a.sale&&a.segWhen?"on":""}" data-ar="seguimiento">🔁 Demo hecha, dar seguimiento</button>
       <button class="opt ${a.sale?"on":""}" data-ar="venta">Demo con venta</button>
@@ -1574,6 +1576,9 @@ function openAppt(id){
       { const cur = S.appts[id] || a; if (cur._priv && cur.phone) histAdd(cur.socioId, cur.phone, cur.client, histEntry({...cur, ...upd, id}, {note: n ? n.value.trim() : (cur.resNote||"")}), [cur.agendo, cur.dador]); }
       save(upd); };
     const LBL = {hecha:"Guardar: demo sin venta", no_se_hizo:"Guardar: no se hizo", cancelada:"Guardar: cancelada"};
+    const svNote = async () => { const n = $("#sv-note"); if (!n || !a._priv) return true; try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); return true; } catch(e){ writeErr(e); return false; } };
+    document.querySelectorAll("[data-sv]").forEach(b => b.onclick = async () => { if (!(await svNote())) return; save({status:b.dataset.sv, resultAt:Date.now(), resultBy:S.uid}); });
+    $("#sv-nsave") && ($("#sv-nsave").onclick = async () => { if (await svNote()){ toast("Nota guardada"); } });
     document.querySelectorAll("[data-ar]").forEach(b => b.onclick = () => { const k = b.dataset.ar;
       document.querySelectorAll("[data-ar]").forEach(x => x.classList.toggle("on", x===b));
       if (k==="seguimiento"){ const w = a.segWhen || (Date.now()+2*864e5); $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px"><label class="f">Día del seguimiento<input class="i" type="date" id="sg-d" value="${laDate(w)}"></label><label class="f">Hora${timeSel("sg-t",a.segWhen?laTime(w):"18:00")}</label>${acb()}${rb()}${nb()}<div style="align-self:end"><button class="btn" id="sg-save">Guardar seguimiento</button></div></div>`; bindAc();
