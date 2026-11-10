@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092251"></script>
-<script src="anuncios.js?v=202611092251"></script>
-<script src="juego.js?v=202611092251"></script>
+<script src="demo.js?v=202611100801"></script>
+<script src="anuncios.js?v=202611100801"></script>
+<script src="juego.js?v=202611100801"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092251";
+const APP_VER = "202611100801";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -267,7 +267,7 @@ const DIST = "Socio distribuidor";
 const telesLunaya = () => byRole("tele").filter(t => !t.upline);
 const telesExternas = () => byRole("tele").filter(t => t.upline);
 /* Asistente de pagos de Katerine (ej. Arisbel): ve y cobra lo que le deben los distribuidores */
-const esAsist = () => role()==="tele" && !!S.me?.asistente;
+const esAsist = () => (role()==="tele" || role()==="socio") && !!S.me?.asistente;
 const isDist = () => role()==="socio" && S.me?.tipo===DIST;
 const grupoDe = uid => Object.entries(S.members).filter(([,m]) => m.upline===uid && m.role!=="baja").map(([id,m]) => ({id,...m}));
 /* Telemarketers del programa: entran solas al mundo de cada distribuidor; él o Dirección pueden quitar a alguna */
@@ -396,7 +396,7 @@ function subscribeAll(){
   privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; (S.privLoaded = S.privLoaded||{})[f] = true; mergeAppts(); render(); }, e => console.log(e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
-  { const q = (S.isOwner || S.me?.role==="admin" || (S.me?.role==="tele" && S.me?.asistente)) ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
+  { const q = (S.isOwner || S.me?.role==="admin" || (["tele","socio"].includes(S.me?.role) && S.me?.asistente)) ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
     S.unsub.push(q.onSnapshot(s => { S.pagosDist = {}; s.docs.forEach(d => S.pagosDist[d.id] = d.data()); render(); }, e => console.log("pagosdist", e))); }
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
   if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
@@ -504,7 +504,8 @@ const ICONS = {
 };
 function tabsFor(r){
   if (r==="admin") return [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"]];
-  if (r==="tele" && S.me?.asistente) return [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["cobros","Cobros"],["ranking","Ranking"], ...(S.me?.lider ? [["lider","Mi equipo"]] : [])];
+  if (r==="tele" && S.me?.asistente) return [["hoy","Hoy"],["cobros","Cobros"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"], ...(S.me?.lider ? [["lider","Mi equipo"]] : [])];
+  if (r==="socio" && S.me?.asistente && !isDist()) return [["hoy","Hoy"],["cobros","Cobros"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
   if (r==="tele") return S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"]];
   if (r==="socio") return isDist() ? [["hoy","Hoy"],["citas","Citas"],["juego","Ruleta"],["grupo","Mi grupo"],["pagos","Pagos"],["ranking","Ranking"]] : [["hoy","Hoy"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
   return [];
@@ -1019,7 +1020,7 @@ function render(){
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
-  html += motivaCard() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
+  html += relojBar() + motivaCard() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
@@ -1110,7 +1111,14 @@ function worldPicker(){
     return `<button class="item" data-world="${s.id}"><div><div class="t nm-av">${av(s.id,32)}${esc(s.name)}${s.role==="admin"?" · dirección":""}</div><div class="m">Hoy: ${e.calls} llamadas · ${e.citas} citas · ${next} citas próximas</div>${enBaseTxt(s.id)}</div><span class="pill acc">Entrar</span></button>`; }).join("");
   return `<div class="card"><h2>¿Para qué socio vas a llamar?</h2><p class="note" style="margin-top:-6px">Cada socio es independiente: lo que registres aquí solo cuenta para esa persona. Cambia de socio cuando termines con su base.</p>${cards?`<div class="list">${cards}</div>`:`<div class="empty">Aún no hay socios aprobados.</div>`}</div>`;
 }
-function worldBar(){ return `<div class="card world"><div class="row" style="justify-content:space-between"><div><div class="eyebrow" style="color:var(--accent)">Llamando para</div><div class="nm nm-av">${av(S.world,34)}${esc(memberName(S.world))}</div></div><div class="row">${S.drives[S.world]?.url ? `<a class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" href="${esc(S.drives[S.world].url)}" target="_blank" rel="noopener">📂 Base en Drive</a>` : (role()==="tele" ? `<span class="note" style="color:var(--line)">Sin Drive todavía</span>` : "")}${role()==="tele" ? `<button class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" data-act="drset">${S.drives[S.world]?.url ? "✏️ Cambiar Drive" : "＋ Agregar Drive"}</button>` : ""}<button class="btn small" data-act="world">Cambiar socio</button></div></div>${enBase(S.world).length ? `<p class="note" style="color:var(--line);margin:8px 0 0">🟢 También en esta base ahora: <b>${enBase(S.world).map(u => esc(memberName(u))).join(", ")}</b></p>` : ""}${S.drives[S.world]?.url ? `<p class="note" style="color:var(--line);margin:8px 0 0">Para subir contactos nuevos: abre el Drive y toca <b>+</b> → <b>Subir</b>.</p>` : ""}</div>`; }
+/* Hora actual en California y Nueva York (para que las telemarketers sepan a qué hora llaman) */
+const horaTZ = tz => new Intl.DateTimeFormat("es-US",{hour:"numeric",minute:"2-digit",timeZone:tz}).format(new Date());
+const TZ_CA = "America/Los_Angeles", TZ_NY = "America/New_York";
+function relojBar(){ if (role()!=="tele" && !esAsist()) return ""; const ny = S.world && S.world===NYC_DIST();
+  const c = (tz, lbl, on) => `<span style="padding:4px 10px;border-radius:999px;${on?"background:var(--accent);color:var(--bg);font-weight:700":"background:var(--accent-soft)"}">${lbl} <b data-reloj="${tz}">${horaTZ(tz)}</b></span>`;
+  return `<div class="row" style="gap:8px;justify-content:center;margin:0 0 10px;font-size:14px;flex-wrap:wrap">${c(TZ_CA,"🌴 California", !ny)}${c(TZ_NY,"🗽 Nueva York (Jhojanna)", ny)}</div>`; }
+setInterval(() => document.querySelectorAll("[data-reloj]").forEach(e => { e.textContent = horaTZ(e.dataset.reloj); }), 30000);
+function worldBar(){ return `<div class="card world"><div class="row" style="justify-content:space-between"><div><div class="eyebrow" style="color:var(--accent)">Llamando para</div><div class="nm nm-av">${av(S.world,34)}${esc(memberName(S.world))}</div><div class="m" style="opacity:.85">🕒 Hora de sus clientes: <b data-reloj="${S.world===NYC_DIST() ? TZ_NY : TZ_CA}">${horaTZ(S.world===NYC_DIST() ? TZ_NY : TZ_CA)}</b> (${S.world===NYC_DIST() ? "Nueva York" : "California"})</div></div><div class="row">${S.drives[S.world]?.url ? `<a class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" href="${esc(S.drives[S.world].url)}" target="_blank" rel="noopener">📂 Base en Drive</a>` : (role()==="tele" ? `<span class="note" style="color:var(--line)">Sin Drive todavía</span>` : "")}${role()==="tele" ? `<button class="btn small ghost" style="color:var(--bg);border-color:var(--bg)" data-act="drset">${S.drives[S.world]?.url ? "✏️ Cambiar Drive" : "＋ Agregar Drive"}</button>` : ""}<button class="btn small" data-act="world">Cambiar socio</button></div></div>${enBase(S.world).length ? `<p class="note" style="color:var(--line);margin:8px 0 0">🟢 También en esta base ahora: <b>${enBase(S.world).map(u => esc(memberName(u))).join(", ")}</b></p>` : ""}${S.drives[S.world]?.url ? `<p class="note" style="color:var(--line);margin:8px 0 0">Para subir contactos nuevos: abre el Drive y toca <b>+</b> → <b>Subir</b>.</p>` : ""}</div>`; }
 
 /* ===== HOY ===== */
 function evalTiles(e, showCalls=true){
@@ -1749,7 +1757,7 @@ function openPerfil(id){ const m = S.members[id] || {}; const per = ["semana","m
     ${l.length ? `<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>${tele?"Para":"De dónde salió"}</th><th>Resultado</th></tr></thead><tbody>${l.map(([aid,a]) => `<tr data-appt="${aid}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(cName(a))}</td><td class="note">${tele ? esc(memberName(a.socioId)) : esc(origenTxt(a))}${!tele && a.transferredFrom && a.transferredFrom!==id ? `<div>🔀 se la pasó ${esc(memberName(a.transferredBy||a.transferredFrom))}</div>` : ""}</td><td>${est(a)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No tiene citas en este periodo.</div>`}
     ${role()==="admin" && (m.tipo===DIST || m.role==="admin") ? `<label class="f" style="margin-top:10px">Nombre de su distribución<div class="row" style="flex-wrap:nowrap"><input class="i" id="pf-dn" value="${esc(m.distNombre||"")}" placeholder="${esc(distNombre(id))}" style="flex:1"><button class="btn small" id="pf-dn-ok">Guardar</button></div></label>` : ""}
     ${role()==="admin" && m.tipo===DIST ? (() => { const pp = planPase(id) || {}; return `<div class="eyebrow" style="margin-top:12px">Plan especial de comisiones</div><div class="grid2"><label class="f">Sus propias citas de telemarketing (%)<input class="i" type="number" min="0" step="0.5" id="pp-pro" value="${pp.propio ?? ""}" placeholder="${aporteDe(id)}"></label><label class="f">Citas que tú le das (%)<input class="i" type="number" min="0" step="0.5" id="pp-dir" value="${pp.dir ?? ""}" placeholder="${PASE_PCT()}"></label><label class="f">Citas que le pasa otro distribuidor (%)<input class="i" type="number" min="0" step="0.5" id="pp-dist" value="${pp.dist ?? ""}" placeholder="${PASE_PCT()}"></label></div><p class="note" style="margin:4px 0 0">Vacío = reglas normales. Con plan especial, la cita que le dan paga solo ese % (no se le suma el de telemarketing).</p><div class="row"><button class="btn small" id="pp-save">Guardar plan</button>${m.planPase?`<button class="btn small ghost" id="pp-del">Quitar plan especial</button>`:""}</div>`; })() : ""}
-    ${S.uid===ownerUid() && (m.role==="tele" || (m.role==="baja" && m.prevRole==="tele")) ? `<div class="eyebrow" style="margin-top:12px">Asistente de pagos</div><label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="as-chk" ${m.asistente?"checked":""}> <span>Puede ver y cobrar los pagos de los distribuidores (pestaña <b>Cobros</b>) y marcarlos como pagados</span></label>` : ""}
+    ${S.uid===ownerUid() && id!==S.uid && m.role!=="admin" ? `<div class="eyebrow" style="margin-top:12px">Asistente de pagos</div><label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="as-chk" ${m.asistente?"checked":""}> <span>Puede ver y cobrar los pagos de los distribuidores (pestaña <b>Cobros</b>) y marcarlos como pagados</span></label>` : ""}
     ${S.uid===ownerUid() && id!==S.uid && (m.role==="admin" || m.tipo===DIST) ? `<div class="eyebrow" style="margin-top:12px">Garantizado de las telemarketers</div><div class="row"><label class="f" style="flex:1">Parte que paga (%)<input class="i" type="number" min="0" max="100" step="5" id="gp-v" value="${m.garPct ?? ""}" placeholder="${garPctDe(id)}"></label><button class="btn small" id="gp-save">Guardar</button></div><p class="note" style="margin:4px 0 0">Ahora: <b>${garPctDe(id)}%</b> del sueldo garantizado de cada telemarketer del programa. Se le cobra cada semana en su reporte, aparte del % de sus ventas.</p>` : ""}
     ${role()==="admin" && id!==S.uid && m.role!=="admin" ? (m.bloqueado ? `<div class="banner bad" style="margin-top:10px">🔒 Acceso suspendido desde el ${fmt(m.bloqueado.at,{day:"numeric",month:"short"})}${m.bloqueado.motivo?` · ${esc(m.bloqueado.motivo)}`:""}</div><button class="btn small" id="pf-unbl" style="margin-top:6px">✅ Devolverle el acceso</button>` : `<div class="eyebrow" style="margin-top:12px">Acceso</div><div class="row"><input class="i" id="pf-mot" placeholder="Motivo (ej.: pago pendiente)" maxlength="120" style="flex:1;min-width:180px"><button class="btn small danger" id="pf-bl">🚫 Suspender acceso</button></div><p class="note" style="margin:4px 0 0">No podrá entrar a la app hasta que le devuelvas el acceso. Sus citas y datos no se borran.</p>`) : ""}
     <div class="row" style="margin-top:10px"><button class="btn ghost" data-close>Cerrar</button></div>`, () => {

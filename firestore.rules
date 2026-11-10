@@ -21,7 +21,7 @@ service cloud.firestore {
     // Telemarketer del programa Lunaya (no externa de un distribuidor)
     function isProgramTele() { return myRole() == 'tele' && meData().get('upline', '') == ''; }
     // Asistente de pagos de Katerine: una telemarketer marcada por Dirección
-    function isAsist() { return myRole() == 'tele' && meData().get('asistente', false) == true; }
+    function isAsist() { return myRole() in ['tele', 'socio'] && meData().get('asistente', false) == true; }
     function isDist() { return myRole() == 'socio' && meData().get('tipo', '') == 'Socio distribuidor'; }
     // Las telemarketers del programa entran solas al mundo de cada distribuidor, menos las que él (o Dirección) quitó (teleNo)
     function distOk(d) { return d is string && d != '' && get(memberPath(d)).data.get('tipo', '') == 'Socio distribuidor'
