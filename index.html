@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092043"></script>
-<script src="anuncios.js?v=202611092043"></script>
-<script src="juego.js?v=202611092043"></script>
+<script src="demo.js?v=202611092044"></script>
+<script src="anuncios.js?v=202611092044"></script>
+<script src="juego.js?v=202611092044"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092043";
+const APP_VER = "202611092044";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -560,7 +560,7 @@ const DEF_EMP = {acomp:10, solo:20, asig:13};
 function planDe(uid){ const m = S.members[uid]; if (!m) return null; if (m.planEmp) return {...DEF_EMP, ...m.planEmp}; return (S.owners||[]).includes(String(m.email||"").toLowerCase()) ? {...DEF_EMP} : null; }
 const esEmp = m => m && m.role==="socio" && m.tipo==="Emprendedor";
 /* Cita asignada (13%): se la dio otra persona, aunque la cita la haya sacado una telemarketer (ej. Byron le pasa a Sebastián una cita de telemarketing) */
-function catEmp(a){ if (a.acomp===true) return "acomp"; const da = quienDio(a); if (da && da!==a.socioId) return "asig"; return origenDe(a)==="asig" ? "asig" : "solo"; }
+function catEmp(a){ if (CAT_TXT[a.catEmp]) return a.catEmp; /* lo corrigió el patrocinador o Dirección */ if (a.acomp===true) return "acomp"; const da = quienDio(a); if (da && da!==a.socioId) return "asig"; return origenDe(a)==="asig" ? "asig" : "solo"; }
 const CAT_TXT = {acomp:"Acompañado de entrenador", solo:"Solo (cita propia o de telemarketing)", asig:"Solo, cita asignada"};
 /* Comisiones del emprendedor: cada venta se paga con el plan del distribuidor por el que pasó la venta (o su patrocinador si no se indicó).
    Con payer: solo las ventas que paga ese distribuidor. */
@@ -1617,6 +1617,7 @@ function openAppt(id){
       ${a.sale && (r!=="tele" || S.me?.lider)?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canClient?`<button class="btn small ghost" id="ap-cli">✏️ Editar datos del cliente</button>`:""}
     ${canEdit?`<div class="eyebrow">Reprogramar</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha">${timeSel("ap-time",laTime(a.when))}<button class="btn small ghost" id="ap-move">Cambiar fecha</button></div>`:""}
+    ${a.sale && esEmp(S.members[a.socioId]) && (r==="admin" || S.members[a.socioId]?.upline===S.uid) ? `<div class="eyebrow">💼 Comisión del emprendedor</div><div class="grid2"><select class="i" id="ce-sel"><option value="">Automático (${esc(CAT_TXT[(() => { const x = {...a}; delete x.catEmp; return catEmp(x); })()])})</option>${Object.entries(CAT_TXT).map(([k,l]) => `<option value="${k}" ${a.catEmp===k?"selected":""}>${esc(l)} · ${(planDe(pagaVenta(a)) || DEF_EMP)[k]}%</option>`).join("")}</select><div style="align-self:end"><button class="btn small ghost" id="ce-save">Guardar</button></div></div><p class="note" style="margin:2px 0 8px">Ahora cuenta como <b>${esc(CAT_TXT[catEmp(a)])}</b>. Si la cita se la diste tú, escoge “Solo, cita asignada”.</p>` : ""}
     ${r==="admin" && esEmp(S.members[a.socioId]) && a.status==="hecha" ? `<div class="eyebrow">🤝 Acompañamiento (Dirección)</div><div id="ac-edit"></div><button class="btn small ghost" id="ac-save" style="margin-top:6px">Guardar acompañamiento</button>` : ""}
     ${liderAcc ? `<div class="eyebrow">📞 Telemarketer de esta cita</div><div class="grid2"><select class="i" id="lc-sel">${telesLunaya().map(t=>`<option value="${t.id}" ${a.teleId===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select><div style="align-self:end"><button class="btn small ghost" id="lc-save">Cambiar telemarketer</button></div></div>` : ""}
     ${canResult && !(S.members[a.agendo]?.role==="tele") ? `<div class="eyebrow">📞 Telemarketing</div><div class="grid2">${creditSel(a.socioId, a.teleCredit||"").replace('id="c-cred"','id="cr-sel"')}<div style="align-self:end"><button class="btn small ghost" id="cr-save">Guardar</button></div></div>` : ""}
@@ -1676,6 +1677,7 @@ function openAppt(id){
       openModal(`<h3>Datos del cliente</h3><div class="grid2"><label class="f">Nombre del cliente<input class="i" id="fx-name"></label><label class="f">Teléfono<input class="i" id="fx-phone" inputmode="tel"></label><label class="f">Ciudad<input class="i" id="fx-city"></label><label class="f">Dirección<input class="i" id="fx-addr"></label><label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="fx-notes"></textarea></label></div><div class="row"><button class="btn" id="fx-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
         $("#fx-save").onclick = async () => { const n = $("#fx-name").value.trim(); if (!n){ toast("Escribe el nombre del cliente"); return; }
           try { await S.db.doc("apptp/"+id).set({client:n, phone:$("#fx-phone").value.trim(), city:$("#fx-city").value.trim(), address:$("#fx-addr").value.trim(), notes:$("#fx-notes").value.trim(), socioId:a.socioId, teleId:a.agendo, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", createdAt:a.createdAt||Date.now()}); closeModal(); toast("Datos guardados"); setTimeout(()=>openAppt(id), 500); } catch(e){ writeErr(e); } }; }); });
+    $("#ce-save") && ($("#ce-save").onclick = () => { const v = $("#ce-sel").value; save({catEmp: v || firebase.firestore.FieldValue.delete()}); });
     $("#lc-save") && ($("#lc-save").onclick = () => { const v = $("#lc-sel").value; save({teleCredit: v===a.agendo ? null : v, origen:"tm"}); });
     $("#ap-cli") && ($("#ap-cli").onclick = () => openModal(`<h3>Datos del cliente</h3><div class="grid2"><label class="f">Nombre del cliente<input class="i" id="ec-name" value="${esc(a.client||"")}"></label><label class="f">Teléfono<input class="i" id="ec-phone" inputmode="tel" value="${esc(a.phone||"")}"></label><label class="f">Ciudad<input class="i" id="ec-city" value="${esc(a.city||"")}"></label><label class="f">Dirección<input class="i" id="ec-addr" value="${esc(a.address||"")}"></label><label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="ec-notes">${esc(a.notes||"")}</textarea></label></div><div class="row"><button class="btn" id="ec-save">Guardar</button><button class="btn ghost" id="ec-back">Cancelar</button></div>`, () => {
       $("#ec-back").onclick = () => openAppt(id);
