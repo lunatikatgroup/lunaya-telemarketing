@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092022"></script>
-<script src="anuncios.js?v=202611092022"></script>
-<script src="juego.js?v=202611092022"></script>
+<script src="demo.js?v=202611092023"></script>
+<script src="anuncios.js?v=202611092023"></script>
+<script src="juego.js?v=202611092023"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092022";
+const APP_VER = "202611092023";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -858,15 +858,24 @@ const nDias = ([a,b]) => Math.round((laToMs(b,"12:00") - laToMs(a,"12:00"))/864e
 function periodosMes(first){ const last = addDays(addMonths(first,1),-1); const L = []; let a = first;
   for (let d = first; d <= last; d = addDays(d,1)) if (dowD(d)===0 || d===last){ L.push([a,d]); a = addDays(d,1); }
   if (L.length > 1 && nDias(L[0]) < 3){ L[1][0] = L[0][0]; L.shift(); } if (L.length > 1 && nDias(L.at(-1)) < 3){ L.at(-2)[1] = L.at(-1)[1]; L.pop(); } return L; }
-const diaPago = b => dowD(b)===0 ? addDays(b,1) : addDays(mondayOf(b),7);
+/* Fecha límite de pago: el martes después de cerrar la semana */
+const diaPago = b => dowD(b)===0 ? addDays(b,2) : addDays(mondayOf(b),8);
 const fCorta = d => fmt(laToMs(d,"12:00"),{day:"numeric",month:"short"});
 /* Semanas para escoger: las del mes pasado y las de este mes que ya empezaron */
 function semOpts(){ const t = today(), m0 = t.slice(0,8)+"01"; const L = [];
   [addMonths(m0,-1), m0].forEach(f => periodosMes(f).forEach((x,i) => { if (x[0] <= t) L.push({p:`w:${x[0]}:${x[1]}`, a:x[0], b:x[1], n:i+1, mes:fmt(laToMs(f,"12:00"),{month:"long"}), paga:diaPago(x[1]), curso: x[1] >= t}); })); return L; }
+/* Aviso al distribuidor: lo que debe de la última semana cerrada y no está marcado como pagado */
+function pagoBanner(){ const r = role(); if (!(isDist() || (r==="admin" && !S.isOwner))) return ""; const K = ownerUid(); const x = semOpts().filter(o => !o.curso).at(-1); if (!x) return "";
+  const d = deudasSemana(range(x.p))[S.uid]; const tot = d ? Object.values(d.a).filter(i => i.to===K).reduce((t,i)=>t+i.m,0) : 0; if (tot < 0.01) return "";
+  const pd = (S.pagosDist||{})[pagoKey(S.uid, x.p)]; if (pd && pd.ok) return ""; const t = today(); const vencido = t > x.paga, hoyEs = t === x.paga;
+  const msg = vencido ? `⛔ Venció tu pago del ${fCorta(x.a)} al ${fCorta(x.b)}: <b>${money(tot)}</b> a ${esc(firstName2(memberName(K)))}. La fecha límite era el martes ${fCorta(x.paga)}. Deposita hoy para que no se cierre tu acceso al programa de telemarketing.`
+    : `💵 ${hoyEs ? "<b>Hoy martes es el último día</b>" : `Tienes hasta el <b>martes ${fCorta(x.paga)}</b>`} para depositar <b>${money(tot)}</b> a ${esc(firstName2(memberName(K)))} (semana del ${fCorta(x.a)} al ${fCorta(x.b)}). Si no se recibe el pago, se cierra tu acceso al programa de telemarketing.`;
+  try { const k = "ly-pagoav-"+x.p+"-"+t; if (!localStorage.getItem(k)){ localStorage.setItem(k, "1"); avisar(vencido ? "⛔ Pago vencido" : "💵 Pago de la semana", `${money(tot)} a ${firstName2(memberName(K))} · fecha límite martes ${fCorta(x.paga)}`); } } catch {}
+  return `<div class="banner ${vencido||hoyEs?"bad":"warn"}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>${msg}</span><button class="btn small" data-go="pagos">Ver y pagar</button></div>`; }
 /* La semana por defecto: la última que ya terminó (la que toca pagar) */
 function semDef(cur){ const o = semOpts(); if (o.some(x => x.p===cur)) return cur; const fin = o.filter(x => !x.curso); return (fin.at(-1) || o.at(-1)).p; }
 const semInfo = p => semOpts().find(x => x.p===p);
-function semTxt2(p){ const x = semInfo(p); if (!x) return rangoTxt(p); return `Semana ${x.n} de ${x.mes}: del ${fCorta(x.a)} al ${fCorta(x.b)} · ${x.curso ? "en curso" : "se paga el lunes " + fCorta(x.paga)}`; }
+function semTxt2(p){ const x = semInfo(p); if (!x) return rangoTxt(p); return `Semana ${x.n} de ${x.mes}: del ${fCorta(x.a)} al ${fCorta(x.b)} · ${x.curso ? "en curso" : "fecha límite de pago: martes " + fCorta(x.paga)}`; }
 function semChips2(cur, attr){ const o = semOpts(); return `<div class="chips">${o.slice(-6).map(x => `<button class="chip ${cur===x.p?"on":""}" data-${attr}="${x.p}">${fCorta(x.a)} – ${fCorta(x.b)}${x.curso?" ⏳":""}</button>`).join("")}</div>`; }
 function semChips(cur){ return `<div class="chips">${["semana","semant"].map(v => `<button class="chip ${cur===v?"on":""}" data-semp="${v}">${PLABEL[v]}</button>`).join("")}</div>`; }
 function detDeuda(x){ if (x.tipo==="gar") return detGar(x); return `<details style="margin-top:6px" open><summary style="cursor:pointer">${x.titulo} <b>${money(x.m)}</b> · ${x.rows.length} venta(s)</summary><div class="tbl-wrap"><table><thead><tr><th>Aprobada</th><th>Cliente</th><th>Vendió</th><th class="n">Venta</th><th class="n">%</th><th class="n">Monto</th></tr></thead><tbody>${x.rows.sort((a,b)=>aprobAt(a.a)-aprobAt(b.a)).map(r => `<tr data-appt="${r.id}" style="cursor:pointer"><td class="note">${fmt(aprobAt(r.a),{weekday:"short",day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${r.pct}%</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`; }
@@ -895,7 +904,7 @@ function deudasKatCard(){ const p = KPER[S.f.kdp] ? S.f.kdp : semDef(S.f.kdp); c
     ${rows.length ? rows.map(x => { const k = pagoKey(x.payer, p), pd = (S.pagosDist||{})[k], m = Math.round((x.tm+x.pase+x.gar)*100)/100;
       x.it.forEach(i => i.titulo = i.tipo==="pase" ? "Citas que tú le pasaste" : i.tipo==="gar" ? "Su parte del garantizado" : TIPO_DEU[i.tipo]);
       return `<div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:8px"><div class="row" style="justify-content:space-between"><b>${esc(memberName(x.payer))}</b><b>${money(m)}</b></div><div class="note">Telemarketing ${money(x.tm)} · citas que le pasaste ${money(x.pase)}${x.gar?` · garantizado ${money(x.gar)}`:""}</div>
-        ${sem ? (pd && pd.ok ? `<span class="tag tg-good">✅ pagado ${money(pd.monto)}</span>` : `<button class="btn small" data-pagomark="${k}" data-pm-payer="${x.payer}" data-pm-monto="${m}" data-pm-p="${p}">✅ Marcar pagado</button>`) : (() => { const pg = pagado(x.payer), f = Math.max(0, m - pg); return `<div class="row" style="gap:6px"><span class="tag tg-good">pagado ${money(pg)}</span>${f > 0.005 ? `<span class="tag tg-bad">falta ${money(f)}</span>` : `<span class="tag tg-good">✅ al día</span>`}</div>`; })()}${x.it.map(detDeuda).join("")}</div>`; }).join("") : `<div class="empty">Nadie te debe nada en este periodo.</div>`}</div>`; }
+        ${sem ? (pd && pd.ok ? `<span class="tag tg-good">✅ pagado ${money(pd.monto)}</span>` : (semInfo(p) && !semInfo(p).curso && today() > semInfo(p).paga ? `<span class="tag tg-bad">⛔ vencido (límite martes ${fCorta(semInfo(p).paga)})</span> ` : "") + `<button class="btn small" data-pagomark="${k}" data-pm-payer="${x.payer}" data-pm-monto="${m}" data-pm-p="${p}">✅ Marcar pagado</button>`) : (() => { const pg = pagado(x.payer), f = Math.max(0, m - pg); return `<div class="row" style="gap:6px"><span class="tag tg-good">pagado ${money(pg)}</span>${f > 0.005 ? `<span class="tag tg-bad">falta ${money(f)}</span>` : `<span class="tag tg-good">✅ al día</span>`}</div>`; })()}${x.it.map(detDeuda).join("")}</div>`; }).join("") : `<div class="empty">Nadie te debe nada en este periodo.</div>`}</div>`; }
 /* Cuadre del programa de telemarketing: lo que pagan los distribuidores por telemarketing (+ la parte del garantizado de Andrés) contra la nómina de las telemarketers */
 function cuadreCard(){ if (S.uid!==ownerUid()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = S.uid;
   const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
@@ -986,7 +995,7 @@ function render(){
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
-  html += motivaCard() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
+  html += motivaCard() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
@@ -2209,6 +2218,7 @@ function bindCommon(){
   { const af = m.querySelector("#act-form"); if (af) af.onsubmit = async e => { e.preventDefault(); const t = $("#act-t").value.trim(), d = $("#act-d").value, h = timeVal("act-h"); if (!t){ toast("Escribe qué vas a hacer"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
       try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"actividad", nombre:t.slice(0,80), tel:"", when:laToMs(d,h), nota:$("#act-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); S.f.mag = d; toast("Agregado a tu agenda"); } catch(err){ writeErr(err); } }; }
   all("[data-semp]", b => b.onclick = () => { S.f.semp = b.dataset.semp; render(); });
+  all("[data-go]", b => b.onclick = () => go(b.dataset.go));
   all("[data-hrp]", b => b.onclick = () => { S.f.hrp = b.dataset.hrp; render(); });
   all("[data-rrp]", b => b.onclick = () => { S.f.rrp = b.dataset.rrp; render(); });
   all("[data-cdp]", b => b.onclick = () => { S.f.cdp = b.dataset.cdp; render(); });
