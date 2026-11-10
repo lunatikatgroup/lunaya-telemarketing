@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611092016"></script>
-<script src="anuncios.js?v=202611092016"></script>
-<script src="juego.js?v=202611092016"></script>
+<script src="demo.js?v=202611092018"></script>
+<script src="anuncios.js?v=202611092018"></script>
+<script src="juego.js?v=202611092018"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611092016";
+const APP_VER = "202611092018";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2075,10 +2075,14 @@ function openProfile(){
     st.onpointerdown = e => { if (!crop) return; drag = {x:e.clientX, y:e.clientY, ox:crop.ox, oy:crop.oy}; st.setPointerCapture(e.pointerId); st.style.cursor = "grabbing"; };
     st.onpointermove = e => { if (!drag) return; crop.ox = drag.ox + (e.clientX-drag.x)*k; crop.oy = drag.oy + (e.clientY-drag.y)*k; draw(); };
     st.onpointerup = st.onpointercancel = () => { drag = null; st.style.cursor = "grab"; };
-    $("#pf-rm") && ($("#pf-rm").onclick = () => { photo = ""; crop = null; $("#pf-tools").hidden = true; draw(); });
+    let quitar = false; $("#pf-rm") && ($("#pf-rm").onclick = () => { quitar = true; photo = ""; crop = null; $("#pf-tools").hidden = true; draw(); });
     $("#pf-save").onclick = async () => { const name = $("#pf-name").value.trim(); if (!name){ toast("Escribe tu nombre"); return; }
       let out = photo; if (crop){ const c2 = document.createElement("canvas"); c2.width = c2.height = 240; c2.getContext("2d").drawImage(cv, 0, 0, 240, 240); out = c2.toDataURL("image/jpeg", 0.85); }
-      try { $("#pf-save").disabled = true; await S.db.doc("members/"+S.uid).update({name, phone:$("#pf-phone").value.trim(), email:$("#pf-email").value.trim(), photo:out, gcalId:($("#pf-gcal")?.value||"").trim()}); closeModal(); toast("Perfil guardado"); } catch(e){ $("#pf-save").disabled = false; writeErr(e); } };
+      const upd = {name, phone:$("#pf-phone").value.trim(), email:$("#pf-email").value.trim(), gcalId:($("#pf-gcal")?.value||"").trim()};
+      /* la foto solo se cambia si eligió una nueva o tocó "Quitar foto"; nunca se borra sin querer */
+      if (out && /^data:image\//.test(out) && out !== m.photo) upd.photo = out; else if (quitar) upd.photo = "";
+      try { $("#pf-save").disabled = true; await S.db.doc("members/"+S.uid).update(upd); closeModal(); toast("Perfil guardado");
+        if (upd.photo){ try { const sv = await S.db.doc("members/"+S.uid).get({source:"server"}); if (sv.exists && sv.data().photo !== upd.photo) toast("⚠️ La foto no quedó guardada en el servidor. Revisa tu internet e inténtalo otra vez."); } catch(e){ console.log(e); } } } catch(e){ $("#pf-save").disabled = false; writeErr(e); } };
   });
 }
 
