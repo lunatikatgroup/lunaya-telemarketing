@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611102319"></script>
-<script src="anuncios.js?v=202611102319"></script>
-<script src="juego.js?v=202611102319"></script>
+<script src="demo.js?v=202611102320"></script>
+<script src="anuncios.js?v=202611102320"></script>
+<script src="juego.js?v=202611102320"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611102319";
+const APP_VER = "202611102320";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2376,8 +2376,8 @@ async function openCalc(){ try { await cargarCodigos(); } catch {} const cfg = c
       if (!n){ $("#cp-res").innerHTML = `<p class="note">Escribe el precio de al menos un producto.</p>`; txt = ""; return; }
       const L = (a,b,bold) => `<div class="row" style="justify-content:space-between"><span>${a}</span>${bold?`<b>${b}</b>`:`<span>${b}</span>`}</div>`;
       $("#cp-res").innerHTML = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px">${L("Precio de lista", m2((sub)))}${L("Descuento"+($("#cp-dt").value==="%"?` (${dv}%)`:""), "−"+m2((desc)))}${L("Precio con descuento", m2((neto)), true)}${L(`Envío (${c.envio}%)`, m2((env)))}${L(`Taxes (${c.tax}%)`, m2((tax)))}<hr style="border:0;border-top:1px solid var(--line)">${L("TOTAL", m2((tot)), true)}
-        <div class="eyebrow" style="margin-top:8px">Cuota mínima</div>${cu.map(([k,v]) => L(`${k} pagos`, m2((v)), true)).join("")}</div>`;
-      txt = `${items.map(x => `• ${x.n || "Producto"}: ${money(x.p)}`).join("\n")}\nPrecio especial: ${m2((neto))}\nEnvío: ${m2((env))}\nTaxes: ${m2((tax))}\n*Total: ${m2((tot))}*\n\nPlanes de pago:\n${cu.map(([k,v]) => `• ${k} pagos de ${m2((v))}`).join("\n")}`; };
+        <div class="eyebrow" style="margin-top:8px">Cuota mínima mensual · semanal</div>${cu.map(([k,v]) => `<div class="row" style="justify-content:space-between"><span>${k} pagos</span><span><b>${m2(v)}</b> al mes · <b>${m2(v/4)}</b> a la semana</span></div>`).join("")}</div>`;
+      txt = `${items.map(x => `• ${x.n || "Producto"}: ${money(x.p)}`).join("\n")}\nPrecio especial: ${m2((neto))}\nEnvío: ${m2((env))}\nTaxes: ${m2((tax))}\n*Total: ${m2((tot))}*\n\nPlanes de pago:\n${cu.map(([k,v]) => `• ${k} pagos de ${m2(v)} al mes (${m2(v/4)} a la semana)`).join("\n")}`; };
     [0,1,2].forEach(i => { $("#cp-n"+i).onchange = () => { const pr = precioDe($("#cp-n"+i).value.trim()); if (pr !== "") $("#cp-p"+i).value = pr; calc(); }; $("#cp-p"+i).oninput = calc; });
     $("#cp-d").oninput = () => { manual = true; calc(); }; $("#cp-dt").onchange = () => { manual = true; calc(); };
     $("#cp-copy").onclick = async () => { if (!txt){ toast("Primero pon un precio"); return; } try { await navigator.clipboard.writeText(txt); toast("Copiado: pégalo en WhatsApp"); } catch { toast(txt); } };
