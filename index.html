@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611111318"></script>
-<script src="anuncios.js?v=202611111318"></script>
-<script src="juego.js?v=202611111318"></script>
+<script src="demo.js?v=202611111335"></script>
+<script src="anuncios.js?v=202611111335"></script>
+<script src="juego.js?v=202611111335"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611111318";
+const APP_VER = "202611111335";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2417,8 +2417,13 @@ function openModal(html, bind){ $("#modal").innerHTML = `<div class="modal-bg" i
 function closeModal(){ $("#modal").innerHTML = ""; S.openAppt = null; }
 
 /* ===== Eventos ===== */
-/* ===== Novedades: cuando hay algo nuevo en la app, a cada quien le sale una vez lo que le toca =====
-   para: todos · tele · lider · socio (distribuidores y emprendedores) · dist · admin · asist */
+/* ===== Novedades: cuando hay algo nuevo en la app, a cada quien le sale una vez SOLO lo que le toca =====
+   REGLA (pedida por Katerine): cada novedad va únicamente a quien le cambió algo. Nada de "por si acaso".
+   - Algo solo para la directora → para:["admin"] (al equipo no le sale).
+   - Algo solo para telemarketing → para:["tele"] (a distribuidores y emprendedores no les sale).
+   - "todos" solo si de verdad cambió para todo el mundo.
+   para: todos · admin (dirección) · tele · lider (líder de telemarketing) · socio (distribuidores y emprendedores)
+         · dist (solo distribuidores) · emp (solo emprendedores) · asist (asistentes) · "uid:<id>" (una persona) */
 const NOVEDADES = [
   {id:"2026-11-11-calc", para:["socio","admin"], t:"🧮 Calculadora de precios", d:"Arriba, en el botón “🧮 Calculadora”: escoge hasta 3 productos (el precio sale solo), el descuento de cada combo en $ o %, y te da envío, taxes, total y la cuota mínima mensual y semanal. “📋 Copiar para el cliente” lo deja listo para WhatsApp. En “⚙️ Mis valores” pones tus propios descuentos, envío, taxes y planes."},
   {id:"2026-11-11-codigos", para:["socio","admin"], t:"📦 Códigos de productos", d:"Botón “📦 Códigos de productos”: busca por nombre o código y toca el producto para copiar el código al llenar la orden."},
@@ -2431,9 +2436,11 @@ const NOVEDADES = [
   {id:"2026-11-11-lider", para:["lider"], t:"📋 Reportes para tus reuniones", d:"En “Mi equipo”: reporte de la semana o del mes (llamadas, citas, demos, ventas y efectividades), horas trabajadas, embudo de cada telemarketer y el reporte de distribuidores. Se pueden descargar en imagen o PDF. También haces el respaldo semanal desde ahí."},
   {id:"2026-11-11-ventas", para:["todos"], t:"🔥 Últimas ventas más claras", d:"En Ranking cada venta dice de dónde salió la cita (telemarketer, propia o pasada) y si está aprobada (verde) o en verificación (morado). La venta cuenta el día de la cita, aunque se reporte o se apruebe después."},
 ];
-function novedadesPara(){ const r = role(); const tags = new Set(["todos", r]); if (isDist()) tags.add("dist"); if (r==="tele" && S.me?.lider && !S.me?.upline) tags.add("lider"); if (esAsist()) tags.add("asist");
+function novedadesPara(){ const r = role(); if (!["admin","tele","socio"].includes(r)) return [];
+  const tags = new Set(["todos", r, "uid:"+S.uid]); if (isDist()) tags.add("dist"); if (r==="socio" && !isDist()) tags.add("emp"); if (r==="tele" && S.me?.lider && !S.me?.upline) tags.add("lider"); if (esAsist()) tags.add("asist");
   let seen = []; try { seen = JSON.parse(localStorage.getItem("ly-nov-"+S.uid) || "[]"); } catch {}
-  const desde = S.me?.joinedAt || 0; return NOVEDADES.filter(n => n.para.some(t => tags.has(t)) && !seen.includes(n.id)); }
+  const desde = S.me?.joinedAt || 0; const fechaNov = id => { const t = Date.parse(String(id).slice(0,10)+"T23:59:59"); return isNaN(t) ? Infinity : t; };
+  return NOVEDADES.filter(n => n.para.some(t => tags.has(t)) && !seen.includes(n.id) && fechaNov(n.id) >= desde); }
 function mostrarNovedades(){ if (S.novShown || !S.uid || !S.me || $("#modal").innerHTML) return; const L = novedadesPara(); if (!L.length) return; S.novShown = true;
   openModal(`<h3>🆕 Novedades en Lunaya</h3><p class="note" style="margin-top:-4px">Lo nuevo que ya puedes usar:</p><div class="list">${L.map(n => `<div class="item" style="cursor:default;display:block"><b>${esc(n.t)}</b><div class="m" style="margin-top:2px">${esc(n.d)}</div></div>`).join("")}</div>
     <div class="row" style="margin-top:10px"><button class="btn" id="nov-ok">¡Entendido!</button></div>`, () => { $("#nov-ok").onclick = () => { try { let seen = JSON.parse(localStorage.getItem("ly-nov-"+S.uid) || "[]"); seen = [...new Set([...seen, ...L.map(n => n.id)])]; localStorage.setItem("ly-nov-"+S.uid, JSON.stringify(seen)); } catch {} closeModal(); }; }); }
