@@ -146,7 +146,7 @@ window.CODIGOS = [
 ["Filtros de agua y aire", "WF0499", "FILTRO DE AGUA FRESCAPURE 3500 CT"],
 ["Filtros de agua y aire", "WF0495", "FRESCAPURE 5500 UC"],
 ["Filtros de agua y aire", "WF0061", "PRFLTR 10\" CON 3 CARTCHOS-D MOSTRAD"],
-["Filtros de agua y aire", "WF1200", "RP FRESCFLOW 100-240V & MINERALIZADOR", 4999.0],
+["Filtros de agua y aire", "WF1200", "RP FRESCAFLOW 100-240V & MINERALIZADOR", 4999.0],
 ["Filtros de agua y aire", "RP9003", "RP FRESCAFLOW KIT DE MUDANZA"],
 ["Filtros de agua y aire", "WF0080", "SEIS (6) CARTUCHOS- FILTRO P/ DUCHA", 499.0],
 ["Filtros de agua y aire", "RP0140", "CARTUCHO DE SEDIMENTO DE 10\""],

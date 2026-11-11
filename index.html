@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611111335"></script>
-<script src="anuncios.js?v=202611111335"></script>
-<script src="juego.js?v=202611111335"></script>
+<script src="demo.js?v=202611111345"></script>
+<script src="anuncios.js?v=202611111345"></script>
+<script src="juego.js?v=202611111345"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611111335";
+const APP_VER = "202611111345";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2362,14 +2362,19 @@ function openOtroAgenda(){ const t = today();
 /* ===== Códigos de productos (sin precios): para llenar las órdenes ===== */
 const puedeCodigos = () => role()==="admin" || role()==="socio";
 function codigosBtn(){ return puedeCodigos() ? `<div class="row" style="justify-content:flex-end;gap:6px;margin:-4px 0 10px"><button class="btn small ghost" data-act="calc">🧮 Calculadora</button><button class="btn small ghost" data-act="codigos">📦 Códigos de productos</button></div>` : ""; }
+/* Búsqueda de productos tolerante: sin acentos, con o sin espacios ("fresca flow" = "frescaflow") y perdona una letra al final de palabras largas */
+const normProd = t => String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+function prodCoincide(q, texto){ const T = normProd(texto), Tc = T.replace(/[^a-z0-9]/g,""); const ws = normProd(q).split(/\s+/).filter(Boolean); if (!ws.length) return true;
+  const qc = ws.join("").replace(/[^a-z0-9]/g,""); if (qc.length >= 4 && Tc.includes(qc)) return true;
+  return ws.every(w => { const wc = w.replace(/[^a-z0-9]/g,""); return T.includes(w) || (wc && Tc.includes(wc)) || (wc.length >= 5 && Tc.includes(wc.slice(0,-1))); }); }
 /* ===== Calculadora de precios y cuotas. Cada distribuidor pone sus propios valores (se guardan en su perfil). ===== */
 const CALC_DEF = {d1:400, d1t:"$", d2:20, d2t:"%", d3:30, d3t:"%", envio:5, tax:9, cuotas:[[26,5],[17,7],[11,10]]};
 const calcCfg = () => { const c = (S.me?.planEmp || {}).calc || {}; return {...CALC_DEF, ...c, cuotas: Array.isArray(c.cuotas) && c.cuotas.length ? c.cuotas : CALC_DEF.cuotas}; };
 const r2 = n => Math.round(n*100)/100;
 const m2 = n => "$" + (Math.round(n*100)/100).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2});
 async function openCalc(){ try { await cargarCodigos(); } catch {} const cfg = calcCfg(); const precioDe = n => { const cod = (n.split(" · ").pop()||"").trim(); const x = (window.CODIGOS||[]).find(r => r[1]===cod || r[2]===n || r[1]===n); return x && x[3] ? +x[3] : ""; };
-  openModal(`<h3>🧮 Calculadora de precios</h3><datalist id="calc-dl">${(window.CODIGOS||[]).filter(r => r[3]).map(r => `<option value="${esc(r[2])} · ${esc(r[1])}">`).join("")}</datalist>
-    ${[0,1,2].map(i => `<div style="display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:6px;margin-bottom:6px"><input class="i" id="cp-n${i}" list="calc-dl" placeholder="Producto ${i+1}${i?" (opcional)":""}" style="min-width:0;width:100%"><input class="i" id="cp-p${i}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Precio $" style="min-width:0;width:100%"></div>`).join("")}
+  openModal(`<h3>🧮 Calculadora de precios</h3>
+    ${[0,1,2].map(i => `<div style="display:grid;grid-template-columns:minmax(0,1fr) 96px;gap:6px;margin-bottom:6px"><input class="i" id="cp-n${i}" placeholder="Producto ${i+1}${i?" (opcional)":""}: escribe para buscar" autocomplete="off" style="min-width:0;width:100%"><input class="i" id="cp-p${i}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Precio $" style="min-width:0;width:100%"><div id="cp-s${i}" style="grid-column:1/-1;display:none;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px"></div></div>`).join("")}
     <div class="eyebrow" style="margin-top:6px">Descuento por combo <span id="cp-dl" class="note"></span></div>
     ${[1,2,3].map(k => `<div id="cd-row${k}" style="display:grid;grid-template-columns:86px minmax(0,1fr) 140px;gap:6px;align-items:center;margin-bottom:6px;padding:4px 6px;border-radius:10px"><span><b>${k}</b> producto${k>1?"s":""}</span><input class="i" id="cd-v${k}" type="number" inputmode="decimal" min="0" step="0.01" value="${cfg["d"+k]}" style="min-width:0;width:100%"><select class="i" id="cd-t${k}" style="min-width:0;width:100%"><option value="$" ${cfg["d"+k+"t"]!=="%"?"selected":""}>$ dólares</option><option value="%" ${cfg["d"+k+"t"]==="%"?"selected":""}>% por ciento</option></select></div>`).join("")}
     <div id="cp-res" style="margin-top:8px"></div>
@@ -2390,7 +2395,15 @@ async function openCalc(){ try { await cargarCodigos(); } catch {} const cfg = c
       $("#cp-res").innerHTML = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px">${L("Precio de lista", m2((sub)))}${L("Descuento"+(pct?` (${dv}%)`:""), "−"+m2((desc)))}${L("Precio con descuento", m2((neto)), true)}${L(`Envío (${c.envio}%)`, m2((env)))}${L(`Taxes (${c.tax}%)`, m2((tax)))}<hr style="border:0;border-top:1px solid var(--line)">${L("TOTAL", m2((tot)), true)}
         <div class="eyebrow" style="margin-top:8px">Cuota mínima mensual · semanal</div>${cu.map(([k,v]) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0"><span>${k} pagos</span><span style="text-align:right"><b>${m2(v)}</b> al mes<br><span class="note"><b>${m2(v/4)}</b> a la semana</span></span></div>`).join("")}</div>`;
       txt = `${items.map(x => `• ${x.n || "Producto"}: ${money(x.p)}`).join("\n")}\nPrecio especial: ${m2((neto))}\nEnvío: ${m2((env))}\nTaxes: ${m2((tax))}\n*Total: ${m2((tot))}*\n\nPlanes de pago:\n${cu.map(([k,v]) => `• ${k} pagos de ${m2(v)} al mes (${m2(v/4)} a la semana)`).join("\n")}`; };
-    [0,1,2].forEach(i => { $("#cp-n"+i).onchange = () => { const pr = precioDe($("#cp-n"+i).value.trim()); if (pr !== "") $("#cp-p"+i).value = pr; calc(); }; $("#cp-p"+i).oninput = calc; });
+    const conPrecio = (window.CODIGOS||[]).filter(r => r[3]);
+    [0,1,2].forEach(i => { const inp = $("#cp-n"+i), box = $("#cp-s"+i);
+      const elegir = r => { inp.value = r[2]+" · "+r[1]; $("#cp-p"+i).value = +r[3]; box.style.display = "none"; calc(); };
+      const sugiere = () => { const q = inp.value.trim(); if (!q){ box.style.display = "none"; return; }
+        const L = conPrecio.filter(r => prodCoincide(q, r[1]+" "+r[2])).slice(0, 12);
+        box.innerHTML = L.length ? L.map((r,k) => `<button type="button" class="item" data-cps="${k}" style="width:100%;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:8px;border-radius:0"><span>${esc(r[2])} <span class="note">${esc(r[1])}</span></span><b style="white-space:nowrap">${money(+r[3])}</b></button>`).join("") : `<div class="note" style="padding:8px">No encontré ese producto. Puedes escribir el precio a mano.</div>`;
+        box.style.display = "block"; box.querySelectorAll("[data-cps]").forEach(b => { b.onpointerdown = e => { e.preventDefault(); elegir(L[+b.dataset.cps]); }; b.onclick = () => elegir(L[+b.dataset.cps]); }); };
+      inp.oninput = sugiere; inp.onfocus = sugiere; inp.onblur = () => setTimeout(() => { box.style.display = "none"; }, 250);
+      inp.onchange = () => { const pr = precioDe(inp.value.trim()); if (pr !== "") $("#cp-p"+i).value = pr; calc(); }; $("#cp-p"+i).oninput = calc; });
     [1,2,3].forEach(j => { $("#cd-v"+j).oninput = calc; $("#cd-t"+j).onchange = calc; });
     $("#cp-copy").onclick = async () => { if (!txt){ toast("Primero pon un precio"); return; } try { await navigator.clipboard.writeText(txt); toast("Copiado: pégalo en WhatsApp"); } catch { toast(txt); } };
     $("#cf-save").onclick = async () => { const v = k => +$(k).value; const cfgN = {d1:v("#cd-v1")||0, d1t:$("#cd-t1").value, d2:v("#cd-v2")||0, d2t:$("#cd-t2").value, d3:v("#cd-v3")||0, d3t:$("#cd-t3").value, envio:v("#cf-env")||0, tax:v("#cf-tax")||0, cuotas:[0,1,2].map(k => [v("#cf-n"+k)||0, v("#cf-c"+k)||0]).filter(x => x[0] && x[1])};
@@ -2405,7 +2418,7 @@ async function openCodigos(){ try { await cargarCodigos(); } catch { toast("No s
     <div class="row" style="margin-top:8px"><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     const norm = t => String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
     const pinta = () => { const ws = norm(q).split(/\s+/).filter(Boolean);
-      const l = window.CODIGOS.filter(([a,c,n]) => (!area || a===area) && ws.every(w => norm(c+" "+n+" "+a).includes(w)));
+      const l = window.CODIGOS.filter(([a,c,n]) => (!area || a===area) && prodCoincide(q, c+" "+n+" "+a));
       let h = "", last = ""; l.slice(0, 400).forEach(([a,c,n]) => { if (a!==last){ h += `<div class="eyebrow" style="margin:10px 0 4px">${esc(a)}</div>`; last = a; }
         h += `<button class="item" data-cdc="${esc(c)}" style="width:100%;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span>${esc(n)}</span><b style="white-space:nowrap">${esc(c)} 📋</b></button>`; });
       $("#cd-list").innerHTML = h || `<div class="empty">No hay productos con esa búsqueda.</div>`;
