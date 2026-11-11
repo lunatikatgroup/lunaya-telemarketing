@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611101739"></script>
-<script src="anuncios.js?v=202611101739"></script>
-<script src="juego.js?v=202611101739"></script>
+<script src="demo.js?v=202611102319"></script>
+<script src="anuncios.js?v=202611102319"></script>
+<script src="juego.js?v=202611102319"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611101739";
+const APP_VER = "202611102319";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1473,7 +1473,7 @@ async function sumarAlPrograma(code, tel, name, apptId){ const j = S.juegos?.[co
     toast(`Le suma al 4 en 14 de ${firstName2(j.ref)} cuando la demo quede hecha`); } catch(e){ console.log("programa", e); toast("La cita se guardó, pero no se pudo sumar al programa del cliente"); } }
 function openCitaForm(src, own, pre){
   const tomorrow = addDays(today(),1); const socio = own ? S.uid : S.world;
-  openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3><label class="f">Tipo de visita<select class="i" id="c-tv"><option value="">🍳 Demostración (para vender)</option><option value="servicio">🛠️ Servicio a un cliente</option></select></label>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>${creditSel(S.uid,"")}` : `<p class="note" style="margin:0">Hora de San Diego.</p><label class="f">¿De dónde salió la cita?<select class="i" id="c-src">${[...new Set([src, ...sources()])].filter(Boolean).map(x=>`<option ${x===src?"selected":""}>${esc(x)}</option>`).join("")}</select></label>`}
+  openModal(`<h3>${own ? "Nueva cita propia" : "Nueva cita para "+esc(memberName(S.world))}</h3><label class="f">Tipo de visita<select class="i" id="c-tv"><option value="">🍳 Demostración (para vender)</option><option value="servicio">🛠️ Servicio a un cliente</option>${own ? `<option value="otro">📌 Otro (cita médica, personal…)</option>` : ""}</select></label>${own ? `<p class="note" style="margin:0">Cita que generaste tú, sin telemarketing. Hora de San Diego.</p><label class="f">Fuente<select class="i" id="c-src">${sources().map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>${creditSel(S.uid,"")}` : `<p class="note" style="margin:0">Hora de San Diego.</p><label class="f">¿De dónde salió la cita?<select class="i" id="c-src">${[...new Set([src, ...sources()])].filter(Boolean).map(x=>`<option ${x===src?"selected":""}>${esc(x)}</option>`).join("")}</select></label>`}
     <label class="f">¿Quién la refirió? (el cliente del 4 en 14, de la ruleta o del cuaderno)<input class="i" id="c-refby" list="c-refby-l" placeholder="Ej.: María López · opcional" autocomplete="off"><datalist id="c-refby-l">${refByNames(socio).map(n => `<option value="${esc(n)}">`).join("")}</datalist><span class="note">Así se va contando cuántas citas, demos y ventas salen de cada cliente.</span></label>
     ${progsCli(socio).length ? `<label class="f">¿Le suma al 4 en 14 de algún cliente?<select class="i" id="c-prog"><option value="">No / no es de un programa</option>${progsCli(socio).map(([c,j]) => `<option value="${c}">${esc(j.ref||"Cliente")} · ${avanceTxt(c)}</option>`).join("")}</select><span class="note">Aunque no haya jugado la ruleta: cuando la demo quede hecha, cuenta como visita para el regalo de ese cliente.</span></label>` : ""}
     <div class="grid2">
@@ -1488,6 +1488,7 @@ function openCitaForm(src, own, pre){
     </div>
     <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     /* Servicio: solo la agenda (sin fuente, sin referido, sin 4 en 14) */
+    $("#c-tv").addEventListener("change", e => { if (e.target.value==="otro") setTimeout(openOtroAgenda, 0); });
     const tvSync = () => { const serv = $("#c-tv").value==="servicio"; ["c-src","c-cred","c-refby","c-prog"].forEach(k => { const e = document.getElementById(k); const f = e && e.closest(".f"); if (f) f.style.display = serv ? "none" : ""; });
       document.querySelector("#modal h3").textContent = serv ? "Nueva visita de servicio" : (own ? "Nueva cita propia" : "Nueva cita para "+memberName(S.world)); $("#c-save").textContent = serv ? "Guardar servicio" : "Guardar cita"; };
     $("#c-tv").onchange = tvSync;
@@ -2338,6 +2339,15 @@ function openProfile(){
 }
 
 /* ===== Modal ===== */
+/* Algo personal en mi agenda (cita médica, trámite…): solo lo ve quien lo pone; no es una cita de cliente ni cuenta en reportes */
+function openOtroAgenda(){ const t = today();
+  openModal(`<h3>📌 Agregar a mi agenda</h3><p class="note" style="margin-top:-4px">Cita médica, trámite, reunión… Solo la ves tú y no cuenta como cita de cliente ni en los reportes.</p>
+    <label class="f">¿Qué es?<input class="i" id="ot-t" maxlength="80" placeholder="Ej.: Cita médica, banco, reunión del equipo"></label>
+    <div class="grid2"><label class="f">Día<input class="i" type="date" id="ot-d" value="${t}"></label><label class="f">Hora${timeSel("ot-h","10:00")}</label></div>
+    <label class="f">Nota (opcional)<input class="i" id="ot-x" maxlength="200" placeholder="Dirección, qué llevar…"></label>
+    <div class="row"><button class="btn" id="ot-ok">Guardar en mi agenda</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#ot-ok").onclick = async () => { const n = $("#ot-t").value.trim(), d = $("#ot-d").value, h = timeVal("ot-h"); if (!n){ toast("Escribe qué es"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
+      try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"actividad", nombre:n.slice(0,80), tel:"", when:laToMs(d,h), nota:$("#ot-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); S.f.mag = d; closeModal(); toast("Agregado a tu agenda"); render(); } catch(err){ writeErr(err); } }; }); }
 /* ===== Códigos de productos (sin precios): para llenar las órdenes ===== */
 const puedeCodigos = () => role()==="admin" || role()==="socio";
 function codigosBtn(){ return puedeCodigos() ? `<div class="row" style="justify-content:flex-end;gap:6px;margin:-4px 0 10px"><button class="btn small ghost" data-act="calc">🧮 Calculadora</button><button class="btn small ghost" data-act="codigos">📦 Códigos de productos</button></div>` : ""; }
