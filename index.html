@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611102321"></script>
-<script src="anuncios.js?v=202611102321"></script>
-<script src="juego.js?v=202611102321"></script>
+<script src="demo.js?v=202611102324"></script>
+<script src="anuncios.js?v=202611102324"></script>
+<script src="juego.js?v=202611102324"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611102321";
+const APP_VER = "202611102324";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1257,15 +1257,22 @@ function avisosTransfer(){ let seen; try { seen = new Set(JSON.parse(localStorag
     ev.forEach(([k,t,b]) => { const key = id+"|"+k; if (seen.has(key)) return; seen.add(key); cambio = true; if (!first){ avisar(t, b); toast(t+": "+b); } }); });
   if (cambio || first) try { localStorage.setItem("ly-trv-"+S.uid, JSON.stringify([...seen].slice(-400))); } catch {} }
 const AG_COL = {demo:["#9f1239","🍳 Demostración"], aprob:["#15803d","💰 Venta aprobada"], verif:["#7e22ce","💜 Venta en verificación"], serv:["#0f766e","🛠️ Servicio"], llamar:["#c2410c","📞 Llamar"], act:["#1d4ed8","📌 Actividad"]};
+/* Cosas de la agenda que se repiten (semanal, quincenal, mensual): ¿tocan en este día? Devuelve la hora o null */
+const REP_TXT = {semanal:"🔁 Cada semana", quincenal:"🔁 Cada 15 días", mensual:"🔁 Cada mes"};
+function recEn(x, r){ if (!x.rep){ return !x.hecho && inR(x.when||0, r) ? x.when : null; }
+  const d = laDate(r[0]), base = laDate(x.when||0); if (d < base || (x.hasta && d > x.hasta) || (x.hechos||[]).includes(d)) return null;
+  const diff = Math.round((laToMs(d,"12:00") - laToMs(base,"12:00")) / 864e5);
+  const ok = x.rep==="semanal" ? diff % 7 === 0 : x.rep==="quincenal" ? diff % 14 === 0 : (() => { const bd = +base.slice(8), last = +addDays(addMonths(d.slice(0,8)+"01",1),-1).slice(8); return +d.slice(8) === Math.min(bd, last); })();
+  return ok ? laToMs(d, laTime(x.when)) : null; }
 function miAgendaCard(){ const d0 = S.f.mag || today(); const r = [laToMs(d0,"00:00"), laToMs(addDays(d0,1),"00:00")]; const items = [];
   Object.entries(S.appts).forEach(([id,a]) => { if (a.socioId!==S.uid || !inR(a.when||0, r) || a.status==="cancelada") return; const k = a.tipoVisita==="servicio" ? "serv" : a.sale && a.saleStatus==="aprobada" ? "aprob" : a.sale && (a.saleStatus||"pendiente")==="pendiente" ? "verif" : "demo";
     items.push({at:a.when, k, t:cName(a), m:[a.city, a.status==="hecha" ? (a.sale ? "Venta "+money(a.amount) : "Demostración hecha") : a.status==="no_se_hizo" ? "No se hizo" : ""].filter(Boolean).join(" · "), appt:id}); });
-  Object.entries(S.recs||{}).forEach(([id,x]) => { if (x.hecho || !inR(x.when||0, r)) return; items.push({at:x.when, k: x.tipo==="actividad" ? "act" : "llamar", t:x.nombre||"", m:x.nota||"", rec:id}); });
+  Object.entries(S.recs||{}).forEach(([id,x]) => { const at = recEn(x, r); if (!at) return; items.push({at, k: x.tipo==="actividad" ? "act" : "llamar", t:x.nombre||"", m:(x.rep ? REP_TXT[x.rep]+(x.nota?" · ":"") : "")+(x.nota||""), rec:id, dia:laDate(at)}); });
   items.sort((a,b) => a.at - b.at);
   const ch = (v,t) => `<button class="chip ${d0===v?"on":""}" data-mag="${v}">${t}</button>`;
   return `<div class="card"><h2>📅 Mi agenda<span class="note">${items.length} cosa(s)</span></h2><div class="chips" style="margin-bottom:8px">${ch(addDays(today(),-1),"Ayer")}${ch(today(),"Hoy")}${ch(addDays(today(),1),"Mañana")}${ch(addDays(today(),2),fmt(laToMs(addDays(today(),2),"12:00"),{weekday:"long"}))}</div>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">${Object.values(AG_COL).map(([c,l]) => `<span class="note" style="display:inline-flex;align-items:center;gap:4px"><i style="width:10px;height:10px;border-radius:3px;background:${c};display:inline-block"></i>${l}</span>`).join("")}</div>
-    ${items.length ? `<div class="list">${items.map(x => `<${x.appt?"button":"div"} class="item" ${x.appt?`data-appt="${x.appt}"`:""} style="${x.appt?"":"cursor:default;"}border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div>${x.rec?`<button class="btn small ghost" data-rec-ok="${x.rec}">✅</button>`:""}</${x.appt?"button":"div"}>`).join("")}</div>` : `<div class="empty">No tienes nada en la agenda este día.</div>`}
+    ${items.length ? `<div class="list">${items.map(x => `<${x.appt?"button":"div"} class="item" ${x.appt?`data-appt="${x.appt}"`:""} style="${x.appt?"":"cursor:default;"}border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div>${x.rec?`<button class="btn small ghost" data-rec-ok="${x.rec}" data-rec-dia="${x.dia||""}">✅</button>${(S.recs||{})[x.rec]?.rep ? `<button class="btn small ghost" data-rec-del="${x.rec}" title="Ya no repetir">🗑</button>` : ""}`:""}</${x.appt?"button":"div"}>`).join("")}</div>` : `<div class="empty">No tienes nada en la agenda este día.</div>`}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">➕ Agregar algo a mi agenda</summary><form id="act-form" class="grid2" style="margin-top:8px"><label class="f" style="grid-column:1/-1">¿Qué vas a hacer?<input class="i" id="act-t" placeholder="Ej.: entregar regalo a María, reunión de equipo" maxlength="80"></label><label class="f">Día<input class="i" type="date" id="act-d" value="${d0}"></label><label class="f">Hora${timeSel("act-h","10:00")}</label><label class="f" style="grid-column:1/-1">Nota (opcional)<input class="i" id="act-x" maxlength="200"></label><div><button class="btn" type="submit">Guardar en mi agenda</button></div></form></details></div>`; }
 function viewHoy(r){
   const rg = range(S.f.period); const top = (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? pendLlamarCard() : "") + recCard();
@@ -2344,10 +2351,11 @@ function openOtroAgenda(){ const t = today();
   openModal(`<h3>📌 Otro</h3>
     <label class="f">¿Qué es?<input class="i" id="ot-t" maxlength="80"></label>
     <div class="grid2"><label class="f">Día<input class="i" type="date" id="ot-d" value="${t}"></label><label class="f">Hora${timeSel("ot-h","10:00")}</label></div>
+    <label class="f">Repetir<select class="i" id="ot-r"><option value="">Una sola vez</option><option value="semanal">Cada semana</option><option value="quincenal">Cada 15 días</option><option value="mensual">Cada mes</option></select></label>
     <label class="f">Nota (opcional)<input class="i" id="ot-x" maxlength="200"></label>
     <div class="row"><button class="btn" id="ot-ok">Guardar en mi agenda</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     $("#ot-ok").onclick = async () => { const n = $("#ot-t").value.trim(), d = $("#ot-d").value, h = timeVal("ot-h"); if (!n){ toast("Escribe qué es"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
-      try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"actividad", nombre:n.slice(0,80), tel:"", when:laToMs(d,h), nota:$("#ot-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); S.f.mag = d; closeModal(); toast("Agregado a tu agenda"); render(); } catch(err){ writeErr(err); } }; }); }
+      try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"actividad", nombre:n.slice(0,80), tel:"", when:laToMs(d,h), nota:$("#ot-x").value.trim().slice(0,200), hecho:false, at:Date.now(), ...($("#ot-r").value ? {rep:$("#ot-r").value} : {})}); S.f.mag = d; closeModal(); toast("Agregado a tu agenda"); render(); } catch(err){ writeErr(err); } }; }); }
 /* ===== Códigos de productos (sin precios): para llenar las órdenes ===== */
 const puedeCodigos = () => role()==="admin" || role()==="socio";
 function codigosBtn(){ return puedeCodigos() ? `<div class="row" style="justify-content:flex-end;gap:6px;margin:-4px 0 10px"><button class="btn small ghost" data-act="calc">🧮 Calculadora</button><button class="btn small ghost" data-act="codigos">📦 Códigos de productos</button></div>` : ""; }
@@ -2528,7 +2536,11 @@ function bindCommon(){
   { const rf = m.querySelector("#rec-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = $("#rec-n").value.trim(), t = telOkX($("#rec-t").value), d = $("#rec-d").value, h = timeVal("rec-h");
       if (!n && !t){ toast("Escribe el nombre o el teléfono"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
       try { await S.db.collection("recordatorios").add({owner:S.uid, nombre:n.slice(0,60), tel:t||"", when:laToMs(d,h), nota:$("#rec-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); toast("Recordatorio guardado"); } catch(err){ writeErr(err); } }; }
-  all("[data-rec-ok]", b => b.onclick = () => S.db.doc("recordatorios/"+b.dataset.recOk).update({hecho:true, hechoAt:Date.now()}).then(() => toast("Listo"), writeErr));
+  all("[data-rec-del]", b => b.onclick = () => { if (!b.dataset.sure){ b.dataset.sure = "1"; b.textContent = "¿Quitar todas las repeticiones? Toca otra vez"; return; } S.db.doc("recordatorios/"+b.dataset.recDel).delete().then(() => toast("Quitado de tu agenda"), writeErr); });
+  all("[data-rec-ok]", b => b.onclick = () => { const x = (S.recs||{})[b.dataset.recOk] || {};
+    /* si se repite, solo se marca hecho ese día; las próximas siguen saliendo */
+    const upd = x.rep && b.dataset.recDia ? {hechos: firebase.firestore.FieldValue.arrayUnion(b.dataset.recDia)} : {hecho:true, hechoAt:Date.now()};
+    S.db.doc("recordatorios/"+b.dataset.recOk).update(upd).then(() => toast("Listo"), writeErr); });
   all("[data-rec-del]", b => b.onclick = () => S.db.doc("recordatorios/"+b.dataset.recDel).delete().then(() => toast("Borrado"), writeErr));
   all("[data-embdet]", b => b.onclick = () => openEmbDet(b.dataset.embdet));
   all("[data-start]", s => s.onchange = async () => { if (!s.value) return; try { await S.db.doc("members/"+s.dataset.start).update({startDate:s.value}); toast("Fecha de inicio guardada"); } catch(e){ writeErr(e); } });
