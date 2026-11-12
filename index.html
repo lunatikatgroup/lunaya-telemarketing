@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611111729"></script>
-<script src="anuncios.js?v=202611111729"></script>
-<script src="juego.js?v=202611111729"></script>
+<script src="demo.js?v=202611111752"></script>
+<script src="anuncios.js?v=202611111752"></script>
+<script src="juego.js?v=202611111752"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611111729";
+const APP_VER = "202611111752";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -395,7 +395,7 @@ function subscribeAll(){
   const privQ = [["teleId", S.uid], ["socioId", S.uid], ["dador", S.uid]]; if (S.me?.role === "tele" && !S.me?.upline) privQ.push(["tv", true]); if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
   privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; (S.privLoaded = S.privLoaded||{})[f] = true; mergeAppts(); render(); }, e => console.log(e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
-  S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; render(); }, onErr));
+  S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; if (!(s.metadata && s.metadata.fromCache)) S.cfgLoaded = true; render(); }, onErr));
   { const q = (S.isOwner || S.me?.role==="admin" || (["tele","socio"].includes(S.me?.role) && S.me?.asistente)) ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
     S.unsub.push(q.onSnapshot(s => { S.pagosDist = {}; s.docs.forEach(d => S.pagosDist[d.id] = d.data()); render(); }, e => console.log("pagosdist", e))); }
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
@@ -749,8 +749,8 @@ const aporteDe = uid => { const m = S.members[uid] || {}; const pp = planPase(ui
 const pagoKey = (payer, p) => `${payer}_${laDate(range(p)[0])}_${laDate(range(p)[1]-1)}`;
 const PAGO_KAT = {zelle:"9176678667", nombre:"Katerine Luna"};
 let pagoFixDone = false;
-function arreglarZelle(){ if (pagoFixDone || role()!=="admin" || !S.config || S.config.pagoFix===1) return; pagoFixDone = true;
-  S.db.doc("config/main").set({...S.config, pago:{...(S.config.pago||{}), ...PAGO_KAT}, pagoFix:1}).catch(e => { pagoFixDone = false; console.log("zelle", e); }); }
+function arreglarZelle(){ if (pagoFixDone || role()!=="admin" || !S.cfgLoaded || !S.config || S.config.pagoFix===1) return; pagoFixDone = true;
+  S.db.doc("config/main").set({pago:{...(S.config.pago||{}), ...PAGO_KAT}, pagoFix:1}, {merge:true}).catch(e => { pagoFixDone = false; console.log("zelle", e); }); }
 function pagarCard(payer, p){ const o = aportes(range(p))[payer]; const monto = Math.round((o?.monto||0)*100)/100; const pg = {...(S.config.pago || {}), ...(S.config.pagoFix===1 ? {} : PAGO_KAT)}; const k = pagoKey(payer, p); const hecho = (S.pagosDist||{})[k];
   if (!monto) return `<div class="card"><h2>Pagar a Lunaya<span class="note">${rangoTxt(p)}</span></h2><div class="empty">No hay comisión por pagar en este periodo.</div></div>`;
   const nota = `Comisión telemarketing ${rangoTxt(p)} · ${memberName(payer)}`;
@@ -2271,7 +2271,7 @@ async function doBackup(kind){
       const calls = Object.values(agg).sort((a,b)=>a.date.localeCompare(b.date)).map(x => [x.date, memberName(x.tele), memberName(x.socio), x.src, Object.values(x.n).reduce((s,v)=>s+v,0), ...RESULTS.map(([k])=>x.n[k]||0), x.refs]);
       csvDownload(`Lunaya-llamadas-${today()}.csv`, [BK_CALLS_HEAD, ...calls]); gStatus(`${calls.length} filas de llamadas descargadas.`, "good");
     }
-    await S.db.doc("config/main").set({...S.config, lastBackup:Date.now()});
+    await S.db.doc("config/main").set({lastBackup:Date.now()}, {merge:true});
   } catch(e){ console.log(e); gStatus("No se pudo preparar el respaldo. Intenta de nuevo.", "bad"); }
 }
 
@@ -2295,7 +2295,7 @@ async function doBackupAll(){
     add("Llamadas", BK_CALLS_HEAD, calls); add("Personas", ["Nombre","Correo","Teléfono","Rol","Tipo","Sponsor / líder","Líder","Acceso","ID"], gente);
     add("Prospectos (juegos)", ["Fecha","Nombre","Teléfono","Regalo","Resultado del juego","Amiga de","Socio","Estado","ID"], pros); add("Pagos registrados", ["Distribuidor","Desde","Hasta","Monto","Estado","Fecha","ID"], pagos);
     XLSX.writeFile(wb, `Lunaya-respaldo-${today()}.xlsx`);
-    if (role()==="admin") await S.db.doc("config/main").set({...S.config, lastBackup:Date.now()});
+    if (role()==="admin") await S.db.doc("config/main").set({lastBackup:Date.now()}, {merge:true});
     else { try { localStorage.setItem("ly-bk-"+S.uid, String(Date.now())); } catch {} try { await S.db.doc("members/"+S.uid).update({lastBackup:Date.now()}); } catch(e){ console.log(e); } }
     gStatus(`Listo: ${citas.length} citas, ${calls.length} filas de llamadas, ${gente.length} personas, ${pros.length} prospectos. Guárdalo en tu Drive.`, "good"); toast("Respaldo descargado");
   } catch(e){ console.log(e); gStatus("No se pudo preparar el respaldo. Revisa tu internet e intenta de nuevo.", "bad"); toast("No se pudo preparar el respaldo"); }
@@ -2527,10 +2527,10 @@ function bindCommon(){
     if (a==="rd-pdf") return repDistPdf();
     if (a==="est-img") return estImagen().catch(e => { console.log(e); toast("No se pudo crear la imagen"); });
     if (a==="drset") openDriveSocio(S.world);
-    else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({...S.config, metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem2:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}); toast("Guardado"); } catch(e){ writeErr(e); } }
-    else if (a==="pago"){ try { await S.db.doc("config/main").set({...S.config, pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
-    else if (a==="comision"){ try { await S.db.doc("config/main").set({...S.config, comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0, distPct:+$("#k-dist").value||0}}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
-    else if (a==="embudo"){ const e = {}; document.querySelectorAll("[data-emb]").forEach(x => e[x.dataset.emb] = Math.max(0, +x.value||0)); try { await S.db.doc("config/main").set({...S.config, embudo:e}); toast("Meta del embudo guardada"); } catch(err){ writeErr(err); } }
+    else if (a==="metas"){ const list = $("#m-src").value.split(",").map(x=>x.trim()).filter(Boolean); try { await S.db.doc("config/main").set({metaLlamadas:+$("#m-l").value||80, metaCitas:+$("#m-c").value||4, metaCitasSem2:+$("#m-cs").value||10, sources:list.length?list:DEFAULT_SOURCES}, {merge:true}); toast("Guardado"); } catch(e){ writeErr(e); } }
+    else if (a==="pago"){ try { await S.db.doc("config/main").set({pago:{zelle:$("#pg-z").value.trim(), nombre:$("#pg-n").value.trim(), venmo:$("#pg-v").value.trim(), cashapp:$("#pg-c").value.trim()}}, {merge:true}); toast("Datos de pago guardados"); } catch(e){ writeErr(e); } }
+    else if (a==="comision"){ try { await S.db.doc("config/main").set({comision:{sueldo:+$("#k-sueldo").value||0, pct:+$("#k-pct").value||0, liderPct:+$("#k-lider").value||0, distPct:+$("#k-dist").value||0}}, {merge:true}); toast("Comisiones guardadas"); } catch(e){ writeErr(e); } }
+    else if (a==="embudo"){ const e = {}; document.querySelectorAll("[data-emb]").forEach(x => e[x.dataset.emb] = Math.max(0, +x.value||0)); try { await S.db.doc("config/main").set({embudo:e}, {merge:true}); toast("Meta del embudo guardada"); } catch(err){ writeErr(err); } }
     else if (a==="export") doExport("mes");
     else if (a==="export-prev") doExport("mesant");
     else if (a==="backup") doBackup("citas");

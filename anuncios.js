@@ -52,8 +52,8 @@ function anunciosCard(){
 const prospDe = code => Object.values(S.leads||{}).filter(l => (l.kind==="jugador"||l.kind==="hoja") && l.code && (l.code===code || raizDe(l.code)===code)).length;
 
 function bindAnuncios(m){ const q = x => m.querySelector(x);
-  if (q("#ad-appid-s")) q("#ad-appid-s").onclick = async () => { const v = q("#ad-appid").value.replace(/\D/g,""); if (v.length < 10){ toast("Ese ID no se ve bien: son solo números"); return; } try { await S.db.doc("config/main").set({...S.config, metaAppId:v}); toast("Guardado"); } catch(e){ writeErr(e); } };
-  if (q("#ad-cfgid-s")) q("#ad-cfgid-s").onclick = async () => { const v = q("#ad-cfgid").value.replace(/\D/g,""); if (v.length < 8){ toast("Ese ID no se ve bien: son solo números"); return; } try { await S.db.doc("config/main").set({...S.config, metaConfigId:v}); toast("Guardado"); } catch(e){ writeErr(e); } };
+  if (q("#ad-appid-s")) q("#ad-appid-s").onclick = async () => { const v = q("#ad-appid").value.replace(/\D/g,""); if (v.length < 10){ toast("Ese ID no se ve bien: son solo números"); return; } try { await S.db.doc("config/main").set({metaAppId:v}, {merge:true}); toast("Guardado"); } catch(e){ writeErr(e); } };
+  if (q("#ad-cfgid-s")) q("#ad-cfgid-s").onclick = async () => { const v = q("#ad-cfgid").value.replace(/\D/g,""); if (v.length < 8){ toast("Ese ID no se ve bien: son solo números"); return; } try { await S.db.doc("config/main").set({metaConfigId:v}, {merge:true}); toast("Guardado"); } catch(e){ writeErr(e); } };
   if (q("#ad-con")) q("#ad-con").onclick = async () => { const b = q("#ad-con"); b.disabled = true; b.textContent = "Conectando…";
     try { await fbConectar(); if (!AD.cuentas.length) toast("Tu Facebook no tiene cuentas de anuncios activas"); else if (!AD.paginas.length) toast("Tu Facebook no administra ninguna página"); render(); }
     catch(e){ console.log(e); toast(e.message || "No se pudo conectar"); b.disabled = false; b.textContent = "Conectar mi Facebook"; } };
