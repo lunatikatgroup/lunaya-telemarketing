@@ -99,9 +99,9 @@ async function crearAnuncio(o, msg){
   let code = o.link;
   if (code === "_nuevo"){ const pr = misProgramas(); if (!pr.length) throw new Error("Primero crea un programa de ruleta");
     code = newCode() + newCode().slice(0,2); const pid = (o.prog && pr.some(([x]) => x===o.prog)) ? o.prog : pr[0][0]; const base = juegoBase(S.uid, pid); const nombre = "Anuncio " + o.zona + " " + fmt(Date.now(),{day:"numeric",month:"short"});
-    const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), {...base, until:0, ref:nombre, alias:(o.alias||"Lunatikat Group"), kind:"cliente"});
+    const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), {...base, until:0, ref:nombre, alias:(o.alias||"Lunatikat Group"), anuncio:true, kind:"cliente"});
     bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid:base.pid, name:nombre, tel:"", kind:"ref", status:"ref", socioId:S.uid, up:base.up, tv:base.tv, by:S.uid, ref:nombre, at:Date.now()}); await bt.commit();
-    S.juegos[code] = {...base, until:0, ref:nombre, alias:(o.alias||"Lunatikat Group"), kind:"cliente"}; }
+    S.juegos[code] = {...base, until:0, ref:nombre, alias:(o.alias||"Lunatikat Group"), anuncio:true, kind:"cliente"}; }
   const j = S.juegos[code]; const link = jgLink(code) + "&utm_source=meta&utm_campaign=" + code;
   /* 2) la imagen */
   msg("Subiendo la imagen…");
