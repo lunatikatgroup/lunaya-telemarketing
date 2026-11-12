@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611111656"></script>
-<script src="anuncios.js?v=202611111656"></script>
-<script src="juego.js?v=202611111656"></script>
+<script src="demo.js?v=202611111729"></script>
+<script src="anuncios.js?v=202611111729"></script>
+<script src="juego.js?v=202611111729"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611111656";
+const APP_VER = "202611111729";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -959,7 +959,7 @@ function empSemanaCard(payer){ const pe = (S.members[payer]||{}).planEmp || {}; 
 /* Pestaña de la asistente de pagos: lo que le deben a Katerine, cuadre y nómina de las telemarketers */
 function viewCobros(){ if (!esAsist() && role()!=="admin") return `<div class="card empty">Esta pantalla es solo para la asistente de pagos.</div>`;
   const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes";
-  return `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + cuadreCard() + comCard(p); }
+  return `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + recibidosCard() + cuadreCard() + comCard(p); }
 /* Cuadre del programa de telemarketing: lo que pagan los distribuidores por telemarketing (+ la parte del garantizado de Andrés) contra la nómina de las telemarketers */
 function cuadreCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = ownerUid();
   const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
@@ -971,6 +971,16 @@ function cuadreCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const P 
     <details style="margin-top:8px"><summary style="cursor:pointer">Detalle: quién paga</summary><div class="tbl-wrap"><table><thead><tr><th>Distribuidor</th><th class="n">Comisión telemarketing</th><th class="n">Garantizado</th><th class="n">Total</th></tr></thead><tbody>${ingRows.map(([id,o]) => `<tr><td><b>${esc(memberName(id))}</b></td><td class="n">${money(o.tm)}</td><td class="n">${money(o.gar)}</td><td class="n"><b>${money(o.tm+o.gar)}</b></td></tr>`).join("") || `<tr><td colspan="4" class="note">Nada en este periodo.</td></tr>`}</tbody></table></div></details>
     <details style="margin-top:6px"><summary style="cursor:pointer">Detalle: nómina de las telemarketers</summary><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Garantizado</th><th class="n">Comisión</th><th class="n">Total</th></tr></thead><tbody>${nom.filter(x => x.total).map(x => `<tr><td><b>${esc(x.t.name||"")}</b>${x.t.lider?' <span class="note">líder</span>':""}</td><td class="n">${money(x.sueldo)}</td><td class="n">${money(x.comision)}</td><td class="n"><b>${money(x.total)}</b></td></tr>`).join("") || `<tr><td colspan="4" class="note">Nada en este periodo.</td></tr>`}</tbody></table></div></details>
     <p class="note">Lo de los distribuidores cuenta por la fecha en que se aprobó la venta; la comisión de las telemarketers, por el mes de la demostración. Por eso, en una quincena puede no cuadrar al centavo; en el mes sale más parejo. El garantizado que no se ganó (sin sus citas) no se cuenta.</p></div>`; }
+/* Pagos recibidos (marcados como pagados) y cuánto falta por sacar del banco */
+function recibidosCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const P = {mes:"Este mes", mesant:"Mes anterior", todo:"Todo"}; const p = P[S.f.recp] ? S.f.recp : "mes"; const rg = range(p);
+  const all = Object.entries(S.pagosDist||{}).filter(([,x]) => x.ok).map(([id,x]) => ({id, ...x, t:x.okAt||x.at||0})).sort((a,b) => b.t - a.t);
+  const L = all.filter(x => inR(x.t, rg)); const sum = l => l.reduce((t,x)=>t+(+x.monto||0),0);
+  const pend = all.filter(x => !x.retirado); const totP = sum(pend);
+  return `<div class="card"><h2>💰 Pagos recibidos <div class="chips">${Object.entries(P).map(([k,l]) => `<button class="chip ${p===k?"on":""}" data-recp="${k}">${l}</button>`).join("")}</div></h2>
+    <p class="note" style="margin-top:-6px">Los pagos que se marcaron como pagados. Cuando saques el dinero del banco, marca “Ya lo saqué” para llevar la cuenta.</p>
+    <div class="tiles"><div class="tile"><b>${money(sum(L))}</b><span>Recibido · ${P[p].toLowerCase()}</span><small>${L.length} pago(s)</small></div><div class="tile acc"><b>${money(totP)}</b><span>Falta por sacar</span><small>${pend.length} pago(s) en total</small></div></div>
+    ${L.length ? `<div class="tbl-wrap" style="margin-top:8px"><table><thead><tr><th>Fecha</th><th>Quién pagó</th><th>Semana</th><th class="n">Monto</th><th>Banco</th></tr></thead><tbody>${L.map(x => `<tr><td class="note">${fmt(x.t,{day:"numeric",month:"short"})}</td><td><b>${esc(memberName(x.payer))}</b></td><td class="note">${x.desde && x.hasta ? fCorta(x.desde)+" – "+fCorta(x.hasta) : ""}</td><td class="n">${money(+x.monto||0)}</td><td>${x.retirado ? `<span class="tag tg-good">✅ sacado ${x.retiradoAt?fmt(x.retiradoAt,{day:"numeric",month:"short"}):""}</span> <button data-retiro="${x.id}" data-v="0" style="background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer">deshacer</button>` : `<button class="btn small ghost" data-retiro="${x.id}" data-v="1">Ya lo saqué</button>`}</td></tr>`).join("")}</tbody></table></div>
+      ${pend.length ? `<button class="btn small" data-retiro-todo="1" style="margin-top:8px">✅ Ya saqué todo (${money(totP)})</button>` : ""}` : `<div class="empty">No hay pagos marcados en este periodo.</div>`}</div>`; }
 /* Dirección: lo que ella le debe a otros esta semana por citas que le pasaron (ej. Andrés le pasa una cita a Katerine) */
 function yoDeboCard(){ if (S.uid!==ownerUid()) return ""; const p = S.f.kdp && String(S.f.kdp).startsWith("w:") ? S.f.kdp : semDef(""); const d = deudasSemana(range(p))[S.uid]; const it = d ? Object.values(d.a).filter(x => x.tipo==="pase") : []; if (!it.length) return "";
   const me = deudasSemana(range(p)); it.forEach(x => { x.titulo = `<b>${esc(memberName(x.to))}</b> · citas que te pasó`; });
@@ -1826,7 +1836,7 @@ function viewPagos(){
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
   h += aporteResumen(p) + aporteDetalle(p) + pasesCard(p);
-  h = (S.uid!==ownerUid() ? reporteSemanaCard() : miAporteCard()) + deudasKatCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
+  h = (S.uid!==ownerUid() ? reporteSemanaCard() : miAporteCard()) + deudasKatCard() + recibidosCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
   h += empSemanaCard(S.uid) + empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
@@ -2583,6 +2593,9 @@ function bindCommon(){
   { const es = document.getElementById("est-sel"); if (es) es.onchange = () => { S.f.esti = es.value; render(); }; }
   all("[data-esp]", b => b.onclick = () => { S.f.esp = b.dataset.esp; render(); });
   { const ed = document.getElementById("emp-dia"); if (ed) ed.onchange = async () => { const cur = {...(S.me?.planEmp || planDe(S.uid) || DEF_EMP), pagoDia: +ed.value}; try { await S.db.doc("members/"+S.uid).update({planEmp:cur}); toast("Día de pago guardado: "+DIAS_SEM[+ed.value]); } catch(e){ writeErr(e); } }; }
+  all("[data-recp]", b => b.onclick = () => { S.f.recp = b.dataset.recp; render(); });
+  all("[data-retiro]", b => b.onclick = () => { const on = b.dataset.v==="1"; S.db.doc("pagosdist/"+b.dataset.retiro).update(on ? {retirado:true, retiradoAt:Date.now()} : {retirado:false}).then(() => toast(on ? "Marcado como sacado" : "Listo"), writeErr); });
+  all("[data-retiro-todo]", b => b.onclick = async () => { if (!b.dataset.sure){ b.dataset.sure = "1"; b.textContent = "Toca otra vez para confirmar"; return; } const ids = Object.entries(S.pagosDist||{}).filter(([,x]) => x.ok && !x.retirado).map(([id]) => id); try { const bt = S.db.batch(); ids.forEach(id => bt.update(S.db.doc("pagosdist/"+id), {retirado:true, retiradoAt:Date.now()})); await bt.commit(); toast("Todo marcado como sacado"); } catch(e){ writeErr(e); } });
   all("[data-mp]", b => b.onclick = () => { S.f.mp = b.dataset.mp; render(); });
   all("[data-kdp]", b => b.onclick = () => { S.f.kdp = b.dataset.kdp; render(); });
   all("[data-dper]", b => b.onclick = () => { S.f.dper = b.dataset.dper; render(); });
