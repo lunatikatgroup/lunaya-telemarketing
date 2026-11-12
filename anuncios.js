@@ -68,6 +68,7 @@ function openNuevoAnuncio(){
     <div class="grid2"><label class="f">Cuenta de anuncios<select class="i" id="na-ac">${AD.cuentas.map(a => `<option value="${a.id}">${esc(a.name)} (${esc(a.currency)})</option>`).join("")}</select></label>
       <label class="f">Página que publica<select class="i" id="na-pg">${AD.paginas.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></label></div>
     <label class="f">¿A dónde lleva el anuncio? (link de la ruleta)<select class="i" id="na-link"><option value="_nuevo">➕ Crear un link nuevo solo para este anuncio</option>${links.map(([c,j]) => `<option value="${c}">${esc(j.ref)}${j.alias?" · sale como "+esc(j.alias):""}</option>`).join("")}</select></label>
+    <label class="f" id="na-pw">¿Qué ruleta usa? (la misma de siempre, con sus regalos)<select class="i" id="na-p">${misProgramas().map(([pid,p]) => `<option value="${pid}">${esc(p.name||"Programa")}</option>`).join("") || `<option value="">— Primero crea un programa en Ruleta —</option>`}</select></label>
     <div class="grid2"><label class="f">Zona<select class="i" id="na-z">${ADS_ZONAS.map(([n]) => `<option>${n}</option>`).join("")}</select></label><label class="f">Millas a la redonda<input class="i" type="number" id="na-r" value="20" min="1" max="50"></label>
       <label class="f">Edad desde<input class="i" type="number" id="na-e1" value="25" min="18" max="65"></label><label class="f">Edad hasta<input class="i" type="number" id="na-e2" value="65" min="18" max="65"></label>
       <label class="f">Presupuesto por día (USD)<input class="i" type="number" id="na-b" value="5" min="1" step="1"></label><label class="f">Días<input class="i" type="number" id="na-d" value="3" min="1" max="30"></label></div>
@@ -78,10 +79,11 @@ function openNuevoAnuncio(){
     <p class="note">El anuncio se crea <b>en pausa</b>: lo revisas y luego tocas <b>Activar</b>. Meta lo revisa antes de mostrarlo. Se cobra a la tarjeta de tu cuenta de anuncios.</p>
     <div class="row"><button class="btn" id="na-ok">Crear anuncio</button><button class="btn ghost" data-close>Cancelar</button></div><div id="na-msg" class="note"></div>`, () => {
     const q = x => document.getElementById(x); let foto = null;
+    q("na-link").onchange = () => { q("na-pw").style.display = q("na-link").value==="_nuevo" ? "" : "none"; };
     q("na-z").onchange = () => { const t = q("na-t"); t.value = t.value.replace(/Solo para [^🌴]*🌴/, `Solo para ${q("na-z").value} 🌴`); };
     q("na-f").onchange = () => { const f = q("na-f").files[0]; if (f){ foto = URL.createObjectURL(f); q("na-fn").textContent = "✅ " + f.name; } };
     q("na-ok").onclick = async () => { const b = q("na-ok"); b.disabled = true; const msg = t => q("na-msg").textContent = t;
-      try { const r = await crearAnuncio({ac:q("na-ac").value, pg:q("na-pg").value, link:q("na-link").value, zona:q("na-z").value, radio:+q("na-r").value||20, e1:+q("na-e1").value||25, e2:+q("na-e2").value||65, diario:Math.max(1,+q("na-b").value||5), dias:Math.max(1,+q("na-d").value||3), ubic:q("na-u").value, texto:q("na-t").value.trim(), titulo:q("na-h").value.trim(), foto}, msg);
+      try { const r = await crearAnuncio({ac:q("na-ac").value, pg:q("na-pg").value, link:q("na-link").value, prog:q("na-p").value, zona:q("na-z").value, radio:+q("na-r").value||20, e1:+q("na-e1").value||25, e2:+q("na-e2").value||65, diario:Math.max(1,+q("na-b").value||5), dias:Math.max(1,+q("na-d").value||3), ubic:q("na-u").value, texto:q("na-t").value.trim(), titulo:q("na-h").value.trim(), foto}, msg);
         closeModal(); toast("Anuncio creado en pausa. Revísalo y toca Activar."); render(); }
       catch(e){ console.log(e); b.disabled = false; msg("❌ " + (e.message || "No se pudo crear") + (e.meta?.error_subcode ? ` (código ${e.meta.code}/${e.meta.error_subcode})` : "")); } };
   }); }
@@ -90,7 +92,7 @@ async function crearAnuncio(o, msg){
   /* 1) el link de la ruleta */
   let code = o.link;
   if (code === "_nuevo"){ const pr = misProgramas(); if (!pr.length) throw new Error("Primero crea un programa de ruleta");
-    code = newCode() + newCode().slice(0,2); const base = juegoBase(S.uid, pr[0][0]); const nombre = "Anuncio " + o.zona + " " + fmt(Date.now(),{day:"numeric",month:"short"});
+    code = newCode() + newCode().slice(0,2); const pid = (o.prog && pr.some(([x]) => x===o.prog)) ? o.prog : pr[0][0]; const base = juegoBase(S.uid, pid); const nombre = "Anuncio " + o.zona + " " + fmt(Date.now(),{day:"numeric",month:"short"});
     const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), {...base, until:0, ref:nombre, alias:"Royal Prestige", kind:"cliente"});
     bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid:base.pid, name:nombre, tel:"", kind:"ref", status:"ref", socioId:S.uid, up:base.up, tv:base.tv, by:S.uid, ref:nombre, at:Date.now()}); await bt.commit();
     S.juegos[code] = {...base, until:0, ref:nombre, alias:"Royal Prestige", kind:"cliente"}; }
