@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611111811"></script>
-<script src="anuncios.js?v=202611111811"></script>
-<script src="juego.js?v=202611111811"></script>
+<script src="demo.js?v=202611121252"></script>
+<script src="anuncios.js?v=202611121252"></script>
+<script src="juego.js?v=202611121252"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611111811";
+const APP_VER = "202611121252";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1408,7 +1408,7 @@ function evalTable(rows, calls){
 function rankTele(){
   const r = range("mes"); const list = telesLunaya().map(t => ({...t, e:teleEval(t.id, r)})).sort((a,b)=>b.e.ventas-a.e.ventas||b.e.demos-a.e.demos||b.e.citas-a.e.citas);
   if (!list.length) return "";
-  return `<div class="card"><h2>Ranking del mes</h2><div class="rank">${list.map((t,i)=>`<div class="${t.id===S.uid?"me":""}"><span class="pos">${i+1}</span><span style="flex:1"><b>${esc(t.name)}</b></span><span class="note">${t.e.citas} citas · ${t.e.demos} demos</span><b>${t.e.ventas} ventas</b></div>`).join("")}</div></div>`;
+  return `<div class="card"><h2>Ranking del mes</h2><div class="rank">${list.map((t,i)=>`<div class="${t.id===S.uid?"me":""}"><span class="pos">${i+1}</span><span style="flex:1"><b>${esc(t.name)}</b></span><span class="note">${role()==="admin" || t.id===S.uid ? t.e.citas+" citas · " : ""}${t.e.demos} demos</span><b>${t.e.ventas} ventas</b></div>`).join("")}</div></div>`;
 }
 function rankSocio(){
   const r = range("mes"); const list = byRole("socio").map(s => ({...s, e:socioEval(s.id, r)})).sort((a,b)=>b.e.monto-a.e.monto||b.e.demos-a.e.demos);
@@ -1887,7 +1887,7 @@ function board(title, list, metrics, sortKey){
   return `<div class="card"><h2>${title}</h2><div class="list">${list.map((x,i)=>`<div class="item" style="cursor:default;display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;gap:6px;${x.id===S.uid?"outline:2px solid var(--accent)":""}">
     <div class="row" style="justify-content:space-between"><div class="row"><span style="font-family:var(--serif);font-weight:700;font-size:20px;width:30px;text-align:center">${medal(i)}</span><span class="t nm-av" ${puedePerfil(x.id)?`data-perfil="${x.id}" style="cursor:pointer;text-decoration:underline dotted"`:""}>${av(x.id,34)}${esc(x.name)}${x.id===S.uid?' <span class="note">(tú)</span>':""}</span></div><b style="font-family:var(--serif);font-size:20px">${sortKey==="monto"?money(x.monto):x[sortKey]}</b></div>
     <div class="bar" style="margin-top:0"><i style="width:${Math.round(x[sortKey]*100/max)}%"></i></div>
-    <div class="row note" style="gap:14px">${metrics.map(([k,l])=>`<span><b style="color:var(--ink)">${k==="monto"?money(x[k]):x[k]}</b> ${l}</span>`).join("")}</div></div>`).join("")}</div></div>`;
+    <div class="row note" style="gap:14px">${metrics.filter(([k]) => k!=="citas" || role()==="admin" || x.id===S.uid).map(([k,l])=>`<span><b style="color:var(--ink)">${k==="monto"?money(x[k]):x[k]}</b> ${l}</span>`).join("")}</div></div>`).join("")}</div></div>`;
 }
 function viewRanking(){
   const p = ["semana","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
