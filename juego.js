@@ -595,7 +595,7 @@ function subJuegos(){ if (window.subAnuncios) setTimeout(subAnuncios, 0);
 function jgSub(f, v){ const k = f+"|"+v;
   const u1 = S.db.collection("juegos").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.jl[k] = m; S.juegos = Object.assign({}, ...Object.values(S.jl)); if (S.view==="juego") render(); }, e => console.log("juegos", k, e));
   const u2 = S.db.collection("leads").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.ll[k] = m; const prev = S.leads; S.leads = Object.assign({}, ...Object.values(S.ll));
-      if (S.leadsReady){ Object.entries(S.leads).forEach(([id,l]) => { if (!prev[id] && l.kind==="jugador") avisar("🎁 Nuevo prospecto de la ruleta", `${l.name} · ganó ${l.prize}${l.ref?" · amiga de "+l.ref:""}${otrasVeces(id).length?" · 🔁 ya estaba en otro programa":""}`); }); }
+      if (S.leadsReady){ Object.entries(S.leads).forEach(([id,l]) => { if (!prev[id] && l.kind==="jugador") avisar(S.juegos?.[l.code]?.anuncio ? "📣 Nuevo prospecto del anuncio" : "🎁 Nuevo prospecto de la ruleta", `${l.name} · ${ganoTxt(l)}${l.ref && !S.juegos?.[l.code]?.anuncio?" · amiga de "+l.ref:""}${otrasVeces(id).length?" · 🔁 ya estaba en otro programa":""}`); }); }
       render(); }, e => console.log("leads", k, e));
   return [u1, u2, () => { delete S.jl[k]; delete S.ll[k]; S.juegos = Object.assign({}, ...Object.values(S.jl)); S.leads = Object.assign({}, ...Object.values(S.ll)); }];
 }
@@ -1002,7 +1002,7 @@ async function promoImg(j, p, link){
 
 function openLead(id){
   const l = S.leads[id]; if (!l) return; const t = telOk(l.tel) || l.tel;
-  openModal(`<h3>${esc(l.name)}</h3><div class="note" style="margin-top:-6px">${l.kind==="hoja" ? "📋 Contacto de la hoja (todavía no juega la ruleta)" : `🎁 Ganó: <b>${esc(l.prize)}</b>${l.quiz?` · ${esc(l.quiz)}`:""}`} · Amiga de ${esc(l.ref||"—")} · ${esc(progName(l.pid))} · ${fmtWhen(l.at)}${l.socioId!==S.uid?` · para ${esc(memberName(l.socioId))}`:""}</div>
+  openModal(`<h3>${esc(l.name)}</h3><div class="note" style="margin-top:-6px">${l.kind==="hoja" ? "📋 Contacto de la hoja (todavía no juega la ruleta)" : (esSorteoLead(l) ? `📣 Del anuncio · <b>${esc(ganoTxt(l))}</b>. Ofrécele la demostración; no le digas que ganó.` : `🎁 Ganó: <b>${esc(l.prize)}</b>${l.quiz?` · ${esc(l.quiz)}`:""}`)} · ${S.juegos?.[l.code]?.anuncio?"Viene de":"Amiga de"} ${esc(l.ref||"—")} · ${esc(progName(l.pid))} · ${fmtWhen(l.at)}${l.socioId!==S.uid?` · para ${esc(memberName(l.socioId))}`:""}</div>
     <div class="row"><a class="btn" href="tel:+1${t}">📞 Llamar</a><a class="btn dark" target="_blank" rel="noopener" href="https://wa.me/1${t}?text=${encodeURIComponent(`¡Hola ${firstName(l.name)}! 🎉 Te escribo de Royal Prestige por el regalo que ganaste en ${TI(S.programs[l.pid]?.tipo).una}: ${l.prize}. ¿Cuándo te queda bien para coordinar la entrega?`)}">WhatsApp</a><a class="btn ghost" href="sms:+1${t}">Mensaje</a></div>
     ${l.kind==="hoja" && S.juegos[l.code] ? `<a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}?text=${encodeURIComponent(msgReferido(l.code, l.name))}">🎡 Mandarle la ruleta de ${esc(firstName(l.ref))}</a>` : ""}
     <div class="note">${telFmt(t)}</div>${repetidoHtml(id)}<div id="ld-h"></div>
@@ -1017,7 +1017,7 @@ function openLead(id){
       S.db.doc("leads/"+id).delete().then(() => { delete S.leads[id]; closeModal(); toast("Prospecto borrado"); render(); }, writeErr); };
     q("ld-save").onclick = async () => { if (await upd({status:q("ld-st").value, notes:q("ld-n").value.trim().slice(0,1000)})){ closeModal(); toast("Guardado"); } };
     q("ld-cita").onclick = () => { const own = l.socioId===S.uid; if (!own){ if (!S.members[l.socioId]){ toast("Ese socio ya no está en el equipo"); return; } S.world = l.socioId; }
-      const pre = {name:l.name, phone:telFmt(t), refBy:l.ref||"", code:l.code, notes:`${l.kind==="hoja" ? "Referido" : "Ganó "+l.prize+" en "+TI(S.programs[l.pid]?.tipo).una+(l.quiz?" · "+l.quiz:"")} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
+      const pre = {name:l.name, phone:telFmt(t), refBy:l.ref||"", code:l.code, notes:`${l.kind==="hoja" ? "Referido" : (esSorteoLead(l) ? "Anuncio Meta: "+ganoTxt(l) : "Ganó "+l.prize+" en "+TI(S.programs[l.pid]?.tipo).una)+(l.quiz?" · "+l.quiz:"")} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
       closeModal(); openCitaForm(own ? "" : "Ruleta", own, pre); };
   });
 }
@@ -1055,3 +1055,7 @@ function openCampana(code){
 }
 
 window.addEventListener("popstate", () => { if (document.getElementById("jg") && window.__demo){ try { musicStop(); } catch {} location.reload(); } });
+
+/* Prospecto de un anuncio con sorteo: no ganó todavía, solo participó */
+const esSorteoLead = l => !!(S.juegos?.[l.code]?.sorteo || String(l.prize||"").startsWith("Sorteo:"));
+const ganoTxt = l => esSorteoLead(l) ? "participó en el sorteo de " + String(l.prize||"").replace(/^Sorteo:\s*/,"") + " (todavía NO ha ganado)" : "ganó " + l.prize;
