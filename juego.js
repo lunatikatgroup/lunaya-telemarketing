@@ -504,15 +504,18 @@ async function startJuego(code, avance){
       <p><b>Tus datos:</b> los usamos para coordinar la entrega de tu regalo y para contactarte con información sobre productos y promociones de cocina, según la autorización que das. No los vendemos.</p></details>`;
     if (saved.done){ box.innerHTML = `<div class="jg-top">🎉 ¡Felicitaciones! 🎉</div><h1 class="jg-h">¡Ganaste${saved.name?", "+esc(firstName(saved.name)):""}!</h1>
       <p class="jg-p">Felicitaciones, uno de nuestros representantes te va a llamar para coordinar la entrega de tu regalo. ¡Es totalmente gratis! 🎁</p>${terms}`; return; }
-    box.innerHTML = `${so.img ? `<img src="${so.img}" alt="" style="width:100%;max-width:520px;border-radius:22px;display:block;margin:0 auto 12px;box-shadow:0 10px 30px rgba(0,0,0,.18)">` : ""}
-      <h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1>
-      <p class="jg-p"><b>${esc(premio)}</b><br>¡Totalmente gratis! 🎉</p>
-      <div class="jg-card"><h3>Déjanos tus datos para recibir tu regalo</h3>
-        <input type="text" id="jg-name" placeholder="Tu nombre y apellido" autocomplete="name">
-        <input type="tel" id="jg-tel" placeholder="Tu celular (10 dígitos)" inputmode="tel" autocomplete="tel">
-        <label class="ck"><input type="checkbox" id="jg-ok"><span>Confirmo que soy mayor de 18 años y que vivo en el condado de San Diego. Autorizo que me llamen o me escriban por mensaje o WhatsApp para coordinar la entrega de mi regalo y darme información sobre productos de cocina.</span></label>
+    const imgH = so.img ? `<img src="${so.img}" alt="" style="width:100%;max-width:520px;border-radius:22px;display:block;margin:0 auto 12px;box-shadow:0 10px 30px rgba(0,0,0,.18)">` : "";
+    if (!showRegalo.paso){ box.innerHTML = `${imgH}<h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1>
+      <p class="jg-p"><b>${esc(premio)}</b><br>¡Totalmente gratis! 🎉</p><button class="jg-btn go" id="jg-part">¡PARTICIPAR! <span style="font-size:22px">›</span></button>
+      <p class="jg-small">Totalmente gratis. Un regalo por persona.</p>${terms}`;
+      document.getElementById("jg-part").onclick = () => { showRegalo.paso = 1; showRegalo(so, patro, premio); window.scrollTo(0,0); }; return; }
+    box.innerHTML = `<h1 class="jg-h" style="margin-top:4px">¡Ya casi! 🎁</h1>
+      <div class="jg-card">
+        <input type="text" id="jg-name" placeholder="Nombre y apellido" autocomplete="name">
+        <input type="tel" id="jg-tel" placeholder="Celular (10 dígitos)" inputmode="tel" autocomplete="tel">
+        <label class="ck"><input type="checkbox" id="jg-ok"><span>Soy mayor de 18 años. Si salgo ganador(a), autorizo que uno de nuestros representantes me llame o me escriba para entregarme mi regalo.</span></label>
         <div class="jg-err" id="jg-err"></div>
-        <button class="jg-btn" id="jg-send">¡Quiero mi regalo!</button></div>
+        <button class="jg-btn" id="jg-send">¡Participar!</button></div>
       <p class="jg-small">Totalmente gratis. Un regalo por persona.</p>${terms}`;
     const tel = document.getElementById("jg-tel");
     tel.oninput = () => { const d = tel.value.replace(/\D/g,"").replace(/^1(?=\d{10})/,"").slice(0,10); tel.value = d.length>6 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d.length>3 ? `(${d.slice(0,3)}) ${d.slice(3)}` : d; };
@@ -528,8 +531,8 @@ async function startJuego(code, avance){
         const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
         saved.done = true; saved.name = name; saved.tel = t; save(); showRegalo(so, patro, premio); }
       catch(e){ console.log(e);
-        try { const js = await S.db.doc("juegos/"+code).get(); const n2 = js.data()?.n || 0; if (n2 !== (J.n||0)){ J.n = n2; b.disabled = false; b.textContent = "¡Quiero mi regalo!"; return document.getElementById("jg-send").click(); } } catch {}
-        b.disabled = false; b.textContent = "¡Quiero mi regalo!"; err.textContent = "Ese número ya está registrado en esta promoción."; } };
+        try { const js = await S.db.doc("juegos/"+code).get(); const n2 = js.data()?.n || 0; if (n2 !== (J.n||0)){ J.n = n2; b.disabled = false; b.textContent = "¡Participar!"; return document.getElementById("jg-send").click(); } } catch {}
+        b.disabled = false; b.textContent = "¡Participar!"; err.textContent = "Ese número ya está registrado en esta promoción."; } };
   }
   function showDone(){
     setTimeout(musicStop, 2500);
