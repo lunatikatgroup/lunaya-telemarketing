@@ -14,7 +14,7 @@ function pickPrize(prizes){ const ok = prizes.map((p,i) => ({i, w: Math.max(0, +
   const pool = tot > 0 ? ok.filter(x=>x.w>0) : ok.map(x=>({...x, w:1})); tot = pool.reduce((t,x)=>t+x.w,0);
   let r = Math.random()*tot; for (const x of pool){ if ((r -= x.w) < 0) return x.i; } return pool[pool.length-1].i; }
 /* Probar un juego en la misma pantalla, sin guardar nada */
-function probarJuego(prog, tipo, anuncio){ if (!prog) return; window.__demoAd = !!anuncio; window.__demo = {...JSON.parse(JSON.stringify(prog)), ...(tipo ? {tipo} : {})}; window.__demo = conJuego(window.__demo, {tipo: tipo || prog.tipo}); closeModal && closeModal(); window.scrollTo(0,0); startJuego("PRUEBA"); }
+function probarJuego(prog, tipo, anuncio){ if (!prog) return; try { sessionStorage.setItem("ly-back-y", String(window.scrollY||0)); history.pushState({demo:1}, "", location.href); } catch {} window.__demoAd = !!anuncio; window.__demo = {...JSON.parse(JSON.stringify(prog)), ...(tipo ? {tipo} : {})}; window.__demo = conJuego(window.__demo, {tipo: tipo || prog.tipo}); closeModal && closeModal(); window.scrollTo(0,0); startJuego("PRUEBA"); }
 /* ===== Tipos de juego: el distribuidor escoge el que quiera ===== */
 const TIPOS_JG = {
   ruleta:{e:"🎡", n:"Ruleta", una:"una ruleta", cta:"Gira", corto:"¡Gira y gana!", pill:"te regaló un giro 🎁", sub:"Gira la ruleta y gana un regalo para tu cocina.", btn:"¡GIRAR!", d:"La clásica: gira y gana."},
@@ -235,8 +235,8 @@ async function startJuego(code, avance){
   const demo = code === "PRUEBA" && window.__demo; let rr = demo ? {J:{pid:"prueba", ref:"Tu cliente", n:0, until:0, tipo:window.__demo.tipo, anuncio:!!window.__demoAd}, P:window.__demo} : await leer(code);
   if (demo){ const bar = document.createElement("div"); bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99;background:#14213d;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;font:600 14px Manrope,sans-serif";
     if (window.__demoAd) bar.style.cssText = "position:fixed;right:8px;bottom:8px;z-index:99;opacity:.3;display:flex;gap:6px;font:600 12px Manrope,sans-serif";
-    bar.innerHTML = window.__demoAd ? `<span style="display:flex;gap:6px"><button style="font:inherit;padding:6px 10px;border-radius:10px;border:0;background:#14213d;color:#fff" id="dm-re">↻</button><button style="font:inherit;padding:6px 10px;border-radius:10px;border:0;background:#14213d;color:#fff" id="dm-x">✕</button></span>` : `<span>👀 Modo prueba: no se guarda nada</span><span style="display:flex;gap:8px"><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#e2bb4f;color:#14213d" id="dm-re">Otra vez</button><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#fff;color:#14213d" id="dm-x">Salir</button></span>`;
-    document.body.append(bar); document.getElementById("dm-x").onclick = () => { musicStop(); location.reload(); }; document.getElementById("dm-re").onclick = () => { musicStop(); startJuego("PRUEBA"); }; } if (rr.no && padreQ && padreQ !== code){ const r2 = await leer(padreQ); if (r2.J){ rr = r2; code = padreQ; } }
+    bar.innerHTML = window.__demoAd ? `<span style="display:flex;gap:6px"><button style="font:inherit;padding:6px 10px;border-radius:10px;border:0;background:#14213d;color:#fff" id="dm-re">↻</button><button style="font:inherit;padding:6px 10px;border-radius:10px;border:0;background:#14213d;color:#fff" id="dm-x">←</button></span>` : `<span>👀 Modo prueba: no se guarda nada</span><span style="display:flex;gap:8px"><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#e2bb4f;color:#14213d" id="dm-re">Otra vez</button><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#fff;color:#14213d" id="dm-x">← Volver</button></span>`;
+    document.body.append(bar); document.getElementById("dm-x").onclick = () => { musicStop(); if (history.state && history.state.demo) history.back(); else location.reload(); }; document.getElementById("dm-re").onclick = () => { musicStop(); startJuego("PRUEBA"); }; } if (rr.no && padreQ && padreQ !== code){ const r2 = await leer(padreQ); if (r2.J){ rr = r2; code = padreQ; } }
   if (rr.red){ box.innerHTML = `<div class="jg-h">No se pudo cargar</div><p class="jg-p">Revisa tu conexión a internet y vuelve a intentar.</p><button class="jg-btn" onclick="location.reload()">Reintentar</button>`; return; }
   if (!rr.J){ box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
   J = rr.J; P = conJuego(rr.P, J); if (J.sorteo) P = {...P, musica:false};
@@ -341,18 +341,19 @@ async function startJuego(code, avance){
             </div>
       <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${esc(p.n)}: lánzale una estrella y si le das, cae en la canasta.</p>`; }
   function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"), bird = document.getElementById("tr-b"); if (!cont) return; const i = saved.pend;
-    let x = 46, y = 14, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0;
+    let x = 46, y = 14, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0, apunta = false;
     (function mv(t){ if (!document.body.contains(g) || fin) return; const dt = Math.min(.05, (t-last)/1000); last = t; const max = cont.clientWidth - g.offsetWidth - 46;
-      x += dir*vel*dt; if (x >= max){ x = max; dir = -1; } else if (x <= 46){ x = 46; dir = 1; }
+      if (apunta){ const tx = cont.clientWidth/2 - g.offsetWidth/2; x += (tx - x) * Math.min(1, dt*14); } else { x += dir*vel*dt; if (x >= max){ x = max; dir = -1; } else if (x <= 46){ x = 46; dir = 1; } }
       y = 14 + Math.sin((t-t0)/260)*12; g.style.transform = `translate(${x}px,${y}px)`; bird.style.transform = `scaleX(${dir>0?1:-1}) rotate(${Math.sin((t-t0)/90)*4}deg)`; requestAnimationFrame(mv); })(last);
     const msg = (tx, c) => { const m = document.getElementById("tr-msg"); m.textContent = tx; m.style.color = c; m.style.opacity = 1; setTimeout(() => { if (m) m.style.opacity = 0; }, 750); };
-    const tirar = () => { if (busy || fin) return; busy = true; intentos++; jgCtx(); jgTick(900,.25,.05); const sh = document.getElementById("tr-shot"), H = cont.clientHeight;
+    const tirar = () => { if (busy || fin) return; busy = true; intentos++; if (intentos >= 2) apunta = true; jgCtx(); jgTick(900,.25,.05); const sh = document.getElementById("tr-shot"), H = cont.clientHeight;
       const top = y + 112, F = 500; /* centro del regalo */
       sh.getAnimations().forEach(a => a.cancel()); sh.animate([{bottom:(H*0.30)+"px", opacity:1, transform:"translateX(-50%) rotate(0)"}, {bottom:(H-top-14)+"px", opacity:1, transform:"translateX(-50%) rotate(360deg)"}], {duration:F, easing:"linear", fill:"forwards"});
       setTimeout(() => { const gc = x + g.offsetWidth/2, cx = cont.clientWidth/2; sh.getAnimations().forEach(an => an.cancel()); sh.style.opacity = 0;
-        if (Math.abs(gc - cx) <= 32 && usarOtra()){ saved.otra = true; save(); msg("¡Lo esquivó! 🕊️💨", "#b3261e"); g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${y-40}px)`},{transform:`translate(${x}px,${y}px)`}], {duration:450});
+        if (apunta) { const tx = cx - g.offsetWidth/2; x = tx; } const gc2 = x + g.offsetWidth/2;
+        if (!apunta && Math.abs(gc - cx) <= 32 && usarOtra()){ saved.otra = true; save(); msg("¡Lo esquivó! 🕊️💨", "#b3261e"); g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x}px,${y-40}px)`},{transform:`translate(${x}px,${y}px)`}], {duration:450});
           document.getElementById("tr-int").textContent = "¡Casi! El pajarito lo esquivó. Inténtalo otra vez."; setTimeout(() => busy = false, 450); return; }
-        if (Math.abs(gc - cx) <= 32){ fin = true; msg("¡LE DISTE! 🎉", "#1f7a3a"); jgFanfare && jgFanfare(); const r = document.getElementById("tr-r"), cu = document.getElementById("tr-cu");
+        if (apunta || Math.abs(gc2 - cx) <= 32){ fin = true; msg("¡LE DISTE! 🎉", "#1f7a3a"); jgFanfare && jgFanfare(); const r = document.getElementById("tr-r"), cu = document.getElementById("tr-cu");
           const rr = r.getBoundingClientRect(), cr = cont.getBoundingClientRect(); const box2 = r.cloneNode(true); box2.style.cssText += `;position:absolute;left:${rr.left-cr.left}px;top:${rr.top-cr.top}px;margin:0;z-index:5`; cont.append(box2); r.style.visibility = "hidden"; cu.style.visibility = "hidden";
           g.animate([{transform:`translate(${x}px,${y}px)`},{transform:`translate(${x + dir*160}px,${y-160}px)`}], {duration:900, easing:"ease-in", fill:"forwards"});
           box2.animate([{transform:"translate(0,0) rotate(0)"},{transform:`translate(${cont.clientWidth/2-28-(rr.left-cr.left)}px,${H*0.70-(rr.top-cr.top)}px) rotate(540deg) scale(.8)`}], {duration:900, easing:"cubic-bezier(.5,0,.9,.6)", fill:"forwards"});
@@ -671,6 +672,7 @@ function viewJuego(r){
     ${(() => { const cp = Object.entries(S.programs||{}).filter(([,p]) => p.owner!==S.uid && p.activo!==false && S.members[p.owner]?.role==="admin"); return cp.length ? `<div class="card"><h2>Diseña tu propia ruleta</h2><p class="note" style="margin-top:-6px">La ruleta de Lunaya ya está lista para usar: solo toca "Inscribir cliente". Si quieres una a tu gusto, cópiala y cámbiale lo que quieras: colores, textos, regalos, fotos y mensaje. La copia es solo tuya.</p><div class="list">${cp.map(([id,p])=>`<div class="item" style="cursor:default"><div><div class="t">${TI(p.tipo).e} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div></div><button class="btn small" data-pcopy="${id}">Copiar y diseñar</button></div>`).join("")}</div></div>` : ""; })()}`;
 }
 function bindJuego(){
+  try { const by = sessionStorage.getItem("ly-back-y"); if (by !== null){ sessionStorage.removeItem("ly-back-y"); setTimeout(() => window.scrollTo(0, +by||0), 60); } } catch {}
   document.querySelectorAll("[data-try]").forEach(b => b.onclick = () => probarJuego(S.programs?.[misProgramas()[0]?.[0]], b.dataset.try));
   if (document.getElementById("try-ad")) document.getElementById("try-ad").onclick = () => { const pr = misProgramas(); if (!pr.length) return;
     if (pr.length === 1) { probarJuego(pr[0][1], pr[0][1].tipo, true); return; }
@@ -1051,3 +1053,5 @@ function openCampana(code){
     document.getElementById("cp-img").onclick = () => openShare(code);
   });
 }
+
+window.addEventListener("popstate", () => { if (document.getElementById("jg") && window.__demo){ try { musicStop(); } catch {} location.reload(); } });
