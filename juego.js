@@ -676,7 +676,7 @@ function bindJuego(){
   document.querySelectorAll("[data-try]").forEach(b => b.onclick = () => probarJuego(S.programs?.[misProgramas()[0]?.[0]], b.dataset.try));
   if (document.getElementById("try-ad")) document.getElementById("try-ad").onclick = () => { const pr = misProgramas(); if (!pr.length) return;
     if (pr.length === 1) { probarJuego(pr[0][1], pr[0][1].tipo, true); return; }
-    openModal(`<h3>¿Qué juego quieres grabar?</h3><div class="opts">${pr.map(([pid,p]) => `<button class="opt" data-tad="${pid}">${TI(p.tipo).e} ${esc(p.name||"Programa")}</button>`).join("")}</div><div class="row"><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    openModal(`<h3>¿Qué juego quieres grabar?</h3><div class="opts">${pr.map(([pid,p]) => `<button class="opt" data-tad="${pid}">${TI(p.tipo).e} ${esc(p.name||"Programa")}${p.owner!==S.uid?" · de "+esc(firstName(memberName(p.owner))):""}</button>`).join("")}</div><div class="row"><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
       document.querySelectorAll("[data-tad]").forEach(x => x.onclick = () => { const p = S.programs[x.dataset.tad]; probarJuego(p, p.tipo, true); }); }); };
   const m = document.getElementById("main"); if (!m) return; const on = (sel, fn) => m.querySelectorAll(sel).forEach(fn);
   const q = id => document.getElementById(id);
