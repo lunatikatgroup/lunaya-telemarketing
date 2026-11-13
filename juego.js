@@ -455,6 +455,7 @@ async function startJuego(code, avance){
   /* ===== Sorteo: sin juego, solo foto + formulario + reglas oficiales ===== */
   function showSorteo(){ const so = J.sorteo || {}; const fecha = so.fecha ? new Intl.DateTimeFormat("es-US",{weekday:"long", day:"numeric", month:"long", year:"numeric"}).format(new Date(so.fecha + "T12:00:00")) : "";
     const patro = so.patro || "Kalud"; const gan = +so.ganadores || 1; const premio = so.premio || "un producto de cocina";
+    if (so.modo === "regalo") return showRegalo(so, patro, premio);
     const reglas = `<details class="jg-card" style="text-align:left;font-size:13px;color:#555"><summary style="font-weight:800;cursor:pointer;color:#333">Reglas oficiales del sorteo</summary>
       <p><b>No se requiere compra para participar ni para ganar.</b> Comprar no aumenta tus probabilidades.</p>
       <p><b>Quién puede participar:</b> personas mayores de 18 años que vivan en el condado de San Diego, California. Una participación por persona y por número de teléfono.</p>
@@ -493,6 +494,42 @@ async function startJuego(code, avance){
       catch(e){ console.log(e);
         try { const js = await S.db.doc("juegos/"+code).get(); const n2 = js.data()?.n || 0; if (n2 !== (J.n||0)){ J.n = n2; b.disabled = false; b.textContent = "¡Quiero participar!"; return document.getElementById("jg-send").click(); } } catch {}
         b.disabled = false; b.textContent = "¡Quiero participar!"; err.textContent = "Ese número ya está participando en este sorteo."; } };
+  }
+  /* Regalo para todas: deja sus datos y recibe un regalo (sin fecha ni ganadores) */
+  function showRegalo(so, patro, premio){
+    const terms = `<details class="jg-card" style="text-align:left;font-size:13px;color:#555"><summary style="font-weight:800;cursor:pointer;color:#333">Términos de la promoción</summary>
+      <p>Para mayores de 18 años que vivan en el condado de San Diego, California. Un regalo por persona y por hogar, hasta agotar existencias. El regalo no se puede cambiar por dinero.</p>
+      <p>Uno de nuestros representantes te llama para coordinar la entrega de tu regalo.</p>
+      <p><b>Organiza:</b> ${esc(patro)}. Esta promoción no está patrocinada, avalada ni administrada por Meta, Facebook, Instagram ni WhatsApp, ni está asociada a ellos.</p>
+      <p><b>Tus datos:</b> los usamos para coordinar la entrega de tu regalo y para contactarte con información sobre productos y promociones de cocina, según la autorización que das. No los vendemos.</p></details>`;
+    if (saved.done){ box.innerHTML = `<div class="jg-top">🎉 ¡Felicitaciones! 🎉</div><h1 class="jg-h">¡Ganaste${saved.name?", "+esc(firstName(saved.name)):""}!</h1>
+      <p class="jg-p">Felicitaciones, uno de nuestros representantes te va a llamar para coordinar la entrega de tu regalo. ¡Es totalmente gratis! 🎁</p>${terms}`; return; }
+    box.innerHTML = `${so.img ? `<img src="${so.img}" alt="" style="width:100%;max-width:520px;border-radius:22px;display:block;margin:0 auto 12px;box-shadow:0 10px 30px rgba(0,0,0,.18)">` : ""}
+      <h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1>
+      <p class="jg-p"><b>${esc(premio)}</b><br>¡Totalmente gratis! 🎉</p>
+      <div class="jg-card"><h3>Déjanos tus datos para recibir tu regalo</h3>
+        <input type="text" id="jg-name" placeholder="Tu nombre y apellido" autocomplete="name">
+        <input type="tel" id="jg-tel" placeholder="Tu celular (10 dígitos)" inputmode="tel" autocomplete="tel">
+        <label class="ck"><input type="checkbox" id="jg-ok"><span>Confirmo que soy mayor de 18 años y que vivo en el condado de San Diego. Autorizo que me llamen o me escriban por mensaje o WhatsApp para coordinar la entrega de mi regalo y darme información sobre productos de cocina.</span></label>
+        <div class="jg-err" id="jg-err"></div>
+        <button class="jg-btn" id="jg-send">¡Quiero mi regalo!</button></div>
+      <p class="jg-small">Totalmente gratis. Un regalo por persona.</p>${terms}`;
+    const tel = document.getElementById("jg-tel");
+    tel.oninput = () => { const d = tel.value.replace(/\D/g,"").replace(/^1(?=\d{10})/,"").slice(0,10); tel.value = d.length>6 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d.length>3 ? `(${d.slice(0,3)}) ${d.slice(3)}` : d; };
+    document.getElementById("jg-send").onclick = async () => {
+      const err = document.getElementById("jg-err"); const name = document.getElementById("jg-name").value.trim().replace(/\s+/g," "); const t = telOk(tel.value);
+      if (name.length < 3 || !/[a-záéíóúñ]{2}/i.test(name)) { err.textContent = "Escribe tu nombre."; return; }
+      if (!t){ err.textContent = "Escribe tu número completo de 10 dígitos, con código de área."; return; }
+      if (!document.getElementById("jg-ok").checked){ err.textContent = "Marca la casilla para poder contactarte."; return; }
+      err.textContent = ""; const b = document.getElementById("jg-send"); b.disabled = true; b.textContent = "Guardando…";
+      if (demo){ saved.done = true; saved.name = name; return showRegalo(so, patro, premio); }
+      const lid = code + "_" + t;
+      try { const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:String(premio).slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
+        const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
+        saved.done = true; saved.name = name; saved.tel = t; save(); showRegalo(so, patro, premio); }
+      catch(e){ console.log(e);
+        try { const js = await S.db.doc("juegos/"+code).get(); const n2 = js.data()?.n || 0; if (n2 !== (J.n||0)){ J.n = n2; b.disabled = false; b.textContent = "¡Quiero mi regalo!"; return document.getElementById("jg-send").click(); } } catch {}
+        b.disabled = false; b.textContent = "¡Quiero mi regalo!"; err.textContent = "Ese número ya está registrado en esta promoción."; } };
   }
   function showDone(){
     setTimeout(musicStop, 2500);

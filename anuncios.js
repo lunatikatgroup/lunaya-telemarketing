@@ -168,21 +168,24 @@ async function flyerChico(file){ const url = URL.createObjectURL(file); try { co
 function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Primero crea un programa de ruleta"); return; }
   const max = addDays(today(), 60); const def = addDays(today(), 14);
   openModal(`<h3>Link para tu anuncio en Meta</h3>
-    <label class="f">¿Qué va a ver la gente al tocar el anuncio?<select class="i" id="lm-t"><option value="sorteo">📝 Sorteo: solo deja sus datos (sin juego)</option><option value="ruleta">🎡 La ruleta: gira y gana</option></select></label>
+    <label class="f">¿Qué va a ver la gente al tocar el anuncio?<select class="i" id="lm-t"><option value="regalo">🎁 Participa y gana: deja sus datos y recibe un regalo (sin fecha)</option><option value="sorteo">📝 Sorteo con fecha y ganadores</option><option value="ruleta">🎡 La ruleta: gira y gana</option></select></label>
     <div id="lm-ru"><label class="f">¿Qué ruleta usa?<select class="i" id="lm-p">${pr.map(([pid,p]) => `<option value="${pid}">${esc(p.name||"Programa")}</option>`).join("")}</select></label></div>
-    <div id="lm-so"><div class="f"><span>Foto del sorteo (la misma del anuncio)</span><div class="row"><label class="btn small ghost" style="cursor:pointer">📷 Subir foto<input type="file" id="lm-f" accept="image/*" hidden></label><span class="note" id="lm-fn"></span></div></div>
+    <div id="lm-so"><div class="f"><span>Foto (la misma del anuncio)</span><div class="row"><label class="btn small ghost" style="cursor:pointer">📷 Subir foto<input type="file" id="lm-f" accept="image/*" hidden></label><span class="note" id="lm-fn"></span></div></div>
       <label class="f">Premio<input class="i" id="lm-pr" value="un producto de cocina" maxlength="70"></label>
-      <div class="grid2"><label class="f">Cuántos ganadores<input class="i" type="number" id="lm-g" value="1" min="1" max="50"></label><label class="f">Valor aproximado (opcional)<input class="i" id="lm-v" placeholder="$200" maxlength="20"></label>
-      <label class="f">Fecha del sorteo<input class="i" type="date" id="lm-d" value="${def}" min="${today()}" max="${max}"></label><label class="f">Quién organiza<input class="i" id="lm-o" value="Kalud" maxlength="60"></label></div>
+      <div id="lm-sd"><div class="grid2"><label class="f">Cuántos ganadores<input class="i" type="number" id="lm-g" value="1" min="1" max="50"></label><label class="f">Valor aproximado (opcional)<input class="i" id="lm-v" placeholder="$200" maxlength="20"></label>
+      <label class="f">Fecha del sorteo<input class="i" type="date" id="lm-d" value="${def}" min="${today()}" max="${max}"></label></div>
       <p class="note">La página trae las <b>reglas oficiales</b> (no se requiere compra, mayores de 18, condado de San Diego, cómo se escoge al ganador y que no es de Meta). Después de la fecha deja de recibir participaciones.</p></div>
+      <label class="f">Quién organiza<input class="i" id="lm-o" value="Kalud" maxlength="60"></label></div>
     <label class="f">Nombre para reconocerlo (solo lo ves tú)<input class="i" id="lm-n" value="Anuncio Meta ${esc(fmt(Date.now(),{day:"numeric",month:"short"}))}"></label>
     <div class="row"><button class="btn" id="lm-ok">Crear link</button><button class="btn ghost" data-close>Cancelar</button></div><div id="lm-r"></div>`, () => {
     const q = x => document.getElementById(x); let flyer = "";
-    const sync = () => { const so = q("lm-t").value === "sorteo"; q("lm-so").style.display = so ? "" : "none"; q("lm-ru").style.display = so ? "none" : ""; }; q("lm-t").onchange = sync; sync();
+    const sync = () => { const t = q("lm-t").value, so = t !== "ruleta"; q("lm-so").style.display = so ? "" : "none"; q("lm-ru").style.display = so ? "none" : ""; q("lm-sd").style.display = t === "sorteo" ? "" : "none"; }; q("lm-t").onchange = sync; sync();
     q("lm-f").onchange = async () => { const f = q("lm-f").files[0]; if (!f) return; q("lm-fn").textContent = "Preparando…"; try { flyer = await flyerChico(f); q("lm-fn").textContent = "✅ " + f.name; } catch { flyer = ""; q("lm-fn").textContent = "No se pudo leer la foto"; } };
-    q("lm-ok").onclick = async () => { const b = q("lm-ok"); const so = q("lm-t").value === "sorteo";
-      let sorteo = null, until = 0;
-      if (so){ const d = q("lm-d").value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < today() || d > max){ toast("Pon la fecha del sorteo (máximo 60 días)"); return; }
+    q("lm-ok").onclick = async () => { const b = q("lm-ok"); const so = q("lm-t").value !== "ruleta";
+      let sorteo = null, until = 0; const modo = q("lm-t").value;
+      if (modo === "regalo"){ if (!flyer){ toast("Sube la foto del anuncio"); return; }
+        sorteo = {modo:"regalo", img:flyer, premio:(q("lm-pr").value.trim() || "un producto de cocina").slice(0,70), patro:(q("lm-o").value.trim() || "Kalud").slice(0,60)}; }
+      else if (so){ const d = q("lm-d").value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d < today() || d > max){ toast("Pon la fecha del sorteo (máximo 60 días)"); return; }
         if (!flyer){ toast("Sube la foto del sorteo"); return; }
         sorteo = {img:flyer, premio:(q("lm-pr").value.trim() || "un producto de cocina").slice(0,70), ganadores:Math.max(1, Math.min(50, +q("lm-g").value||1)), valor:q("lm-v").value.trim().slice(0,20), fecha:d, patro:(q("lm-o").value.trim() || "Kalud").slice(0,60)};
         until = new Date(d + "T23:59:00").getTime(); }
