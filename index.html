@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611121930"></script>
-<script src="anuncios.js?v=202611121930"></script>
-<script src="juego.js?v=202611121930"></script>
+<script src="demo.js?v=202611122022"></script>
+<script src="anuncios.js?v=202611122022"></script>
+<script src="juego.js?v=202611122022"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611121930";
+const APP_VER = "202611122022";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1880,14 +1880,14 @@ function openPerfil(id){ const m = S.members[id] || {}; const per = ["semana","m
     const ub = document.getElementById("pf-unbl"); if (ub) ub.onclick = () => S.db.doc("members/"+id).update({bloqueado:firebase.firestore.FieldValue.delete()}).then(() => { toast("Acceso devuelto: "+memberName(id)); openPerfil(id); }, writeErr);
     document.querySelectorAll("[data-pper]").forEach(b => b.onclick = () => { S.f.pper = b.dataset.pper; openPerfil(id); });
     document.querySelectorAll(".modal [data-appt]").forEach(b => b.onclick = () => openAppt(b.dataset.appt)); }); }
-function board(title, list, metrics, sortKey){
+function board(title, list, metrics, sortKey, total){
   const max = Math.max(1, ...list.map(x => x[sortKey]));
   const medal = i => i===0?"🥇":i===1?"🥈":i===2?"🥉":String(i+1);
   if (!list.length) return `<div class="card"><h2>${title}</h2><div class="empty">Todavía no hay personas en este grupo.</div></div>`;
   return `<div class="card"><h2>${title}</h2><div class="list">${list.map((x,i)=>`<div class="item" style="cursor:default;display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;gap:6px;${x.id===S.uid?"outline:2px solid var(--accent)":""}">
     <div class="row" style="justify-content:space-between"><div class="row"><span style="font-family:var(--serif);font-weight:700;font-size:20px;width:30px;text-align:center">${medal(i)}</span><span class="t nm-av" ${puedePerfil(x.id)?`data-perfil="${x.id}" style="cursor:pointer;text-decoration:underline dotted"`:""}>${av(x.id,34)}${esc(x.name)}${x.id===S.uid?' <span class="note">(tú)</span>':""}</span></div><b style="font-family:var(--serif);font-size:20px">${sortKey==="monto"?money(x.monto):x[sortKey]}</b></div>
     <div class="bar" style="margin-top:0"><i style="width:${Math.round(x[sortKey]*100/max)}%"></i></div>
-    <div class="row note" style="gap:14px">${metrics.filter(([k]) => k!=="citas" || role()==="admin" || x.id===S.uid).map(([k,l])=>`<span><b style="color:var(--ink)">${k==="monto"?money(x[k]):x[k]}</b> ${l}</span>`).join("")}</div></div>`).join("")}</div></div>`;
+    <div class="row note" style="gap:14px">${metrics.filter(([k]) => k!=="citas" || role()==="admin" || x.id===S.uid).map(([k,l])=>`<span><b style="color:var(--ink)">${k==="monto"?money(x[k]):x[k]}</b> ${l}</span>`).join("")}</div></div>`).join("")}</div>${total ? `<div class="row" style="justify-content:space-between;margin-top:10px;padding:12px 14px;border-radius:14px;background:var(--accent);color:#fff"><b>Total</b><span style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline">${metrics.filter(([k]) => k!=="citas" || role()==="admin").map(([k,l]) => `<span style="font-size:13px;opacity:.9"><b>${list.reduce((n,x)=>n+(+x[k]||0),0)}</b> ${l}</span>`).join("")}<b style="font-family:var(--serif);font-size:22px">${money(list.reduce((n,x)=>n+(+x[sortKey]||0),0))}</b></span></div>` : ""}</div>`;
 }
 function viewRanking(){
   const p = ["semana","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
@@ -1901,15 +1901,15 @@ function viewRanking(){
   h += board("Distribuidores y emprendedores", soc, [["referidos","referidos"],["citas","citas"],["demos","demostraciones"],["ventas","ventas"]], "monto");
   /* Ventas aprobadas: lo que ya se aprobó (lo que cuenta para comisiones) */
   const socA = socios().map(s => { const e = socioEval(s.id, rg); return {id:s.id, name:s.name, ventas:e.ventas, aprob:e.aprob, monto:e.montoAprob||0}; }).filter(x => x.aprob).sort((a,b)=>b.monto-a.monto||b.aprob-a.aprob);
-  const teleA = telesLunaya().map(t => { const e = teleEval(t.id, rg); return {id:t.id, name:t.name, ventas:e.ventas, aprob:e.aprob, monto:e.montoAprob||0}; }).filter(x => x.aprob).sort((a,b)=>b.monto-a.monto||b.aprob-a.aprob);
-  h += board("✅ Ventas aprobadas · distribuidores y emprendedores", socA, [["aprob","aprobadas"],["ventas","ventas en total"]], "monto");
+  const teleA = telesLunaya().map(t => { const e = teleEval(t.id, rg); return {id:t.id, name:t.name, citas:e.citas, demos:e.demos, ventas:e.ventas, aprob:e.aprob, monto:e.montoAprob||0}; }).filter(x => x.aprob || x.citas).sort((a,b)=>b.monto-a.monto||b.aprob-a.aprob||b.citas-a.citas);
+  h += board("✅ Ventas aprobadas · distribuidores y emprendedores", socA, [["aprob","aprobadas"],["ventas","ventas en total"]], "monto", true);
   /* Por distribución: lo que vende cada emprendedor suma a la distribución de su patrocinador (Jorge → Andrés, Rebeca → Katerine) */
   const dg = {}; socios().forEach(s => { const e = socioEval(s.id, rg); if (!e.aprob && !e.ventas) return; const d = pagadorDe(s.id) || s.id;
     const x = dg[d] ||= {id:d, name:"", ventas:0, aprob:0, monto:0, gente:0}; x.ventas += e.ventas; x.aprob += e.aprob; x.monto += e.montoAprob||0; if (e.aprob) x.gente++; });
   const distA = Object.values(dg).filter(x => x.aprob).map(x => { const m = S.members[x.id] || {}; const dn = m.distNombre || (x.id===ownerUid() ? "Lunatikat Group" : "");
     return {...x, name: (dn ? dn + " · " : "") + (m.name || memberName(x.id))}; }).sort((a,b)=>b.monto-a.monto||b.aprob-a.aprob);
-  h += board("✅ Ventas aprobadas · por distribución", distA, [["aprob","aprobadas"],["gente","personas vendieron"],["ventas","ventas en total"]], "monto");
-  h += board("✅ Ventas aprobadas · telemarketers", teleA, [["aprob","aprobadas"],["ventas","ventas en total"]], "monto");
+  h += board("✅ Ventas aprobadas · por distribución", distA, [["aprob","aprobadas"],["gente","personas vendieron"],["ventas","ventas en total"]], "monto", true);
+  h += board("✅ Ventas aprobadas · telemarketers", teleA, [["citas","citas"],["demos","demostraciones"],["ventas","ventas"],["aprob","aprobadas"]], "monto", true);
   return h;
 }
 
