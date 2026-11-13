@@ -497,17 +497,20 @@ async function startJuego(code, avance){
   }
   /* Regalo para todas: deja sus datos y recibe un regalo (sin fecha ni ganadores) */
   function showRegalo(so, patro, premio){
-    const terms = `<details class="jg-card" style="text-align:left;font-size:13px;color:#555"><summary style="font-weight:800;cursor:pointer;color:#333">Términos de la promoción</summary>
-      <p>Para mayores de 18 años que vivan en el condado de San Diego, California. Un regalo por persona y por hogar, hasta agotar existencias. El regalo no se puede cambiar por dinero.</p>
-      <p>Uno de nuestros representantes te llama para coordinar la entrega de tu regalo.</p>
+    const terms = `<details class="jg-card" style="text-align:left;font-size:13px;color:#555"><summary style="font-weight:800;cursor:pointer;color:#333">Reglas de la promoción</summary>
+      <p><b>No se requiere compra para participar ni para ganar.</b> Comprar no aumenta tus probabilidades.</p>
+      <p><b>Quién puede participar:</b> mayores de 18 años que vivan en el condado de San Diego, California. Una participación por persona y por número de teléfono.</p>
+      <p><b>Cómo se escoge al ganador:</b> cada lunes se escoge al azar ${(+so.ganadores||1) > 1 ? (+so.ganadores)+" ganadores" : "1 ganador(a)"} entre las personas que participaron la semana anterior (de lunes a domingo). Las probabilidades dependen de cuántas personas participen esa semana.</p>
+      <p><b>Premio:</b> ${esc(premio)}. No se puede cambiar por dinero.</p>
+      <p><b>Aviso al ganador:</b> por llamada, mensaje o WhatsApp al número registrado. Si no responde en 7 días, se escoge a otra persona.</p>
       <p><b>Organiza:</b> ${esc(patro)}. Esta promoción no está patrocinada, avalada ni administrada por Meta, Facebook, Instagram ni WhatsApp, ni está asociada a ellos.</p>
-      <p><b>Tus datos:</b> los usamos para coordinar la entrega de tu regalo y para contactarte con información sobre productos y promociones de cocina, según la autorización que das. No los vendemos.</p></details>`;
-    if (saved.done){ box.innerHTML = `<div class="jg-top">🎉 ¡Felicitaciones! 🎉</div><h1 class="jg-h">¡Ganaste${saved.name?", "+esc(firstName(saved.name)):""}!</h1>
-      <p class="jg-p">Felicitaciones, uno de nuestros representantes te va a llamar para coordinar la entrega de tu regalo. ¡Es totalmente gratis! 🎁</p>${terms}`; return; }
+      <p><b>Tus datos:</b> los usamos para avisarte si ganas y para contactarte con información sobre productos de cocina. No los vendemos.</p></details>`;
+    if (saved.done){ box.innerHTML = `<div class="jg-top">✅ ¡Listo!</div><h1 class="jg-h">¡Gracias por participar${saved.name?", "+esc(firstName(saved.name)):""}!</h1>
+      <p class="jg-p">Si sales ganador(a), uno de nuestros representantes te va a llamar para entregarte tu regalo. ¡Mucha suerte! 🍀</p>${terms}`; return; }
     const imgH = so.img ? `<img src="${so.img}" alt="" style="width:100%;max-width:520px;border-radius:22px;display:block;margin:0 auto 12px;box-shadow:0 10px 30px rgba(0,0,0,.18)">` : "";
     if (!showRegalo.paso){ box.innerHTML = `${imgH}<h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1>
       <p class="jg-p"><b>${esc(premio)}</b><br>¡Totalmente gratis! 🎉</p><button class="jg-btn go" id="jg-part">¡PARTICIPAR! <span style="font-size:22px">›</span></button>
-      <p class="jg-small">Totalmente gratis. Un regalo por persona.</p>${terms}`;
+      <p class="jg-small">Totalmente gratis. No se requiere compra.</p>${terms}`;
       document.getElementById("jg-part").onclick = () => { showRegalo.paso = 1; showRegalo(so, patro, premio); window.scrollTo(0,0); }; return; }
     box.innerHTML = `<h1 class="jg-h" style="margin-top:4px">¡Ya casi! 🎁</h1>
       <div class="jg-card">
@@ -516,7 +519,7 @@ async function startJuego(code, avance){
         <label class="ck"><input type="checkbox" id="jg-ok"><span>Soy mayor de 18 años. Si salgo ganador(a), autorizo que uno de nuestros representantes me llame o me escriba para entregarme mi regalo.</span></label>
         <div class="jg-err" id="jg-err"></div>
         <button class="jg-btn" id="jg-send">¡Participar!</button></div>
-      <p class="jg-small">Totalmente gratis. Un regalo por persona.</p>${terms}`;
+      <p class="jg-small">Totalmente gratis. No se requiere compra.</p>${terms}`;
     const tel = document.getElementById("jg-tel");
     tel.oninput = () => { const d = tel.value.replace(/\D/g,"").replace(/^1(?=\d{10})/,"").slice(0,10); tel.value = d.length>6 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : d.length>3 ? `(${d.slice(0,3)}) ${d.slice(3)}` : d; };
     document.getElementById("jg-send").onclick = async () => {
