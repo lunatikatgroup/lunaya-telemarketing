@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611130806"></script>
-<script src="anuncios.js?v=202611130806"></script>
-<script src="juego.js?v=202611130806"></script>
+<script src="demo.js?v=202611130915"></script>
+<script src="anuncios.js?v=202611130915"></script>
+<script src="juego.js?v=202611130915"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611130806";
+const APP_VER = "202611130915";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -329,7 +329,7 @@ function undoCall(at){
 
 /* ===== Arranque (Firebase) ===== */
 const onErr = e => { console.log(e); if (e && e.code === "permission-denied") return; S.timedOut = true; render(); };
-function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.tdSubs = {}; S.ldSubs = {}; S.subscribed = false; S.invSub = false;
+function teardown(){ S.unsub.forEach(u => { try { u(); } catch {} }); S.unsub = []; S.tdSubs = {}; S.ldSubs = {}; S.subscribed = false; S.pdSub = null; S.pdAll = null; S.invSub = false;
   S.members = {}; S.appts = {}; S.logs = {}; S.config = {}; S.invites = {}; S.drives = {}; S.me = null; S.loaded = {me:false, members:false, appts:false, logs:false}; inviteDone = false; ownerDone = false; }
 function boot(){
   const cfg = window.LUNAYA_CONFIG || {};
@@ -385,19 +385,23 @@ async function migrarGrupos(){
   const ids = new Set(Object.entries(S.members).filter(([id,m]) => m.upline===S.uid || mine.some(([x])=>x===id)).map(([id])=>id));
   for (const [aid,a] of Object.entries(S.apub||{})) if (ids.has(a.socioId)) { try { await S.db.doc("apptp/"+aid).update({up:S.uid, dir:false}); } catch(e){ /* ya estaba */ } }
 }
+/* Pagos de distribuidores: todos para dirección y la asistente; si el perfil carga después (asistente), se vuelve a suscribir con todo */
+function subPagosDist(){ const all = !!(S.isOwner || S.me?.role==="admin" || (["tele","socio"].includes(S.me?.role) && S.me?.asistente));
+  if (S.pdSub && S.pdAll === all) return; if (S.pdSub) { try { S.pdSub(); } catch {} } S.pdAll = all;
+  const q = all ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
+  S.pdSub = q.onSnapshot(s => { S.pagosDist = {}; s.docs.forEach(d => S.pagosDist[d.id] = d.data()); render(); }, e => console.log("pagosdist", e)); S.unsub.push(() => { try { S.pdSub && S.pdSub(); } catch {} }); }
 function subscribeAll(){
   if (S.subscribed) return; S.subscribed = true;
   const from = addMonths(today().slice(0,8)+"01", -1);
   const loadTimer = setTimeout(() => { if (!S.loaded.appts){ S.timedOut = true; render(); } }, 12000);
-  S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; subTeleDists(); subLider(); render(); }, onErr));
+  S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); if (S.members[S.uid]) S.me = S.members[S.uid]; S.loaded.members = true; if (S.subscribed) subPagosDist(); subTeleDists(); subLider(); render(); }, onErr));
   S.apub = {}; S.privs = {};
   S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.apub = {}; s.docs.forEach(d => S.apub[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; mergeAppts(); render(); setTimeout(migrarGrupos, 1500); }, onErr));
   const privQ = [["teleId", S.uid], ["socioId", S.uid], ["dador", S.uid]]; if (S.me?.role === "tele" && !S.me?.upline) privQ.push(["tv", true]); if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
   privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; (S.privLoaded = S.privLoaded||{})[f] = true; mergeAppts(); render(); }, e => console.log(e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; if (!(s.metadata && s.metadata.fromCache)) S.cfgLoaded = true; render(); }, onErr));
-  { const q = (S.isOwner || S.me?.role==="admin" || (["tele","socio"].includes(S.me?.role) && S.me?.asistente)) ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
-    S.unsub.push(q.onSnapshot(s => { S.pagosDist = {}; s.docs.forEach(d => S.pagosDist[d.id] = d.data()); render(); }, e => console.log("pagosdist", e))); }
+  subPagosDist();
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
   if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
@@ -959,8 +963,23 @@ function empSemanaCard(payer){ const pe = (S.members[payer]||{}).planEmp || {}; 
 /* Pestaña de la asistente de pagos: lo que le deben a Katerine, cuadre y nómina de las telemarketers */
 function viewCobros(){ if (!esAsist() && role()!=="admin") return `<div class="card empty">Esta pantalla es solo para la asistente de pagos.</div>`;
   const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes";
-  return `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + recibidosCard() + cuadreCard() + comCard(p); }
+  return `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + recibidosCard() + cuadreCard() + nominaTeleCard(p) + comCard(p) + porDistribucionCard() + aporteResumen(p) + aporteDetalle(p); }
 /* Cuadre del programa de telemarketing: lo que pagan los distribuidores por telemarketing (+ la parte del garantizado de Andrés) contra la nómina de las telemarketers */
+/* Nómina de telemarketers con el detalle de cada orden (para la asistente que prepara la nómina) */
+function nominaVentas(t, rg){ return Object.values(S.appts).filter(a => a.teleId===t.id && a.tipoVisita!=="servicio" && a.sale && inR(a.when||0, rg) && a.status==="hecha").sort((x,y) => x.when-y.when); }
+function nominaTeleCard(p){ if (S.uid!==ownerUid() && !esAsist() && role()!=="admin") return ""; const rg = range(p); const rows = commissions(rg, "").filter(x => x.total || x.ventas || x.pend || x.citasReq);
+  const tot = rows.reduce((t,x)=>t+x.total,0); const st = a => a.saleStatus || "pendiente";
+  return `<div class="card"><h2>🧾 Nómina de telemarketers<span class="note">${PLABEL[p]||""}</span></h2><p class="note" style="margin-top:-6px">Sueldo + comisión de cada una, con el detalle de sus órdenes. La comisión se paga solo sobre ventas <b>aprobadas</b>.</p>
+    ${rows.length ? rows.map(x => { const vs = nominaVentas(x.t, rg); return `<details style="margin-top:6px"><summary style="cursor:pointer"><b>${esc(x.t.name)}</b> · ${money(x.total)} <span class="note">(sueldo ${money(x.sueldo)}${x.base && !x.cumple && x.cerrado ? " · no llegó a la meta "+x.citasReq+"/"+x.req : ""} + comisión ${money(x.comision)})</span></summary>
+      <div class="tbl-wrap"><table><thead><tr><th>Fecha cita</th><th>Cliente</th><th>Vendió</th><th>Estado</th><th class="n">Venta</th><th class="n">Comisión ${x.pct}%</th></tr></thead><tbody>${vs.map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(nomCli(a))}</td><td>${esc(memberName(a.socioId))}</td><td>${st(a)==="aprobada"?'<span style="color:#15803d;font-weight:700">aprobada</span>':st(a)==="cancelada"?'<span class="note">cancelada</span>':'<span style="color:#7e22ce">en verificación</span>'}</td><td class="n">${money(+a.amount||0)}</td><td class="n">${st(a)==="aprobada"?money((+a.amount||0)*x.pct/100):"—"}</td></tr>`).join("") || `<tr><td colspan="6" class="note">Sin ventas en este periodo.</td></tr>`}</tbody></table></div>
+      <p class="note">Citas: ${x.citasReq}${x.base?" de "+x.req+" requeridas":""} · días trabajados ${x.dias}/${x.diasMes}${x.lead?" · 1% de líder "+money(x.lead):""}</p></details>`; }).join("") : `<div class="empty">No hay nómina en este periodo.</div>`}
+    <div class="row" style="justify-content:space-between;margin-top:10px;padding:12px 14px;border-radius:14px;background:var(--accent);color:#fff"><b>Total nómina</b><b style="font-family:var(--serif);font-size:22px">${money(tot)}</b></div>
+    <div class="row" style="margin-top:8px"><button class="btn small" data-nomcsv="${p}">📥 Descargar nómina completa (Excel)</button></div></div>`; }
+function nominaCsv(p){ const rg = range(p); const L = [["Telemarketer","Fecha cita","Cliente","Vendió","Estado","Venta","% comisión","Comisión","Sueldo del periodo","Total a pagar"]];
+  commissions(rg, "").forEach(x => { const vs = nominaVentas(x.t, rg); if (!vs.length) L.push([x.t.name,"","","","","","","",Math.round(x.sueldo*100)/100,Math.round(x.total*100)/100]);
+    vs.forEach((a,i) => { const ok = (a.saleStatus||"pendiente")==="aprobada"; L.push([x.t.name, laDate(a.when), nomCli(a), memberName(a.socioId), a.saleStatus||"pendiente", +a.amount||0, x.pct+"%", ok ? Math.round((+a.amount||0)*x.pct)/100 : 0, i===0 ? Math.round(x.sueldo*100)/100 : "", i===0 ? Math.round(x.total*100)/100 : ""]); }); });
+  csvDownload(`nomina-telemarketers-${p}-${today()}.csv`, L); }
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-nomcsv]"); if (b) nominaCsv(b.dataset.nomcsv); });
 function cuadreCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = ownerUid();
   const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
   const ingRows = Object.entries(ing).sort((a,b) => (b[1].tm+b[1].gar)-(a[1].tm+a[1].gar)); const totTm = ingRows.reduce((t,[,o])=>t+o.tm,0), totGar = ingRows.reduce((t,[,o])=>t+o.gar,0), totIng = totTm + totGar;
