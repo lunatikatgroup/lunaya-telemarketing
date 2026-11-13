@@ -44,6 +44,7 @@ function anunciosCard(){
     : role()==="admin" && !S.config?.metaConfigId && !AD.token ? `<p class="note" style="margin-top:-6px">ID de la app: <b>${esc(id)}</b>. Falta el <b>ID de configuración</b> del inicio de sesión (Meta → Inicio de sesión con Facebook → Configuraciones).</p><div class="row" style="flex-wrap:nowrap"><input class="i" id="ad-cfgid" inputmode="numeric" placeholder="ID de configuración (solo números)"><button class="btn small" id="ad-cfgid-s">Guardar</button></div><button class="btn small ghost" id="ad-con" style="margin-top:8px">Probar sin configuración</button>`
     : AD.token ? `<p class="note" style="margin-top:-6px">Conectada como <b>${esc(AD.user?.name||"")}</b>. Los anuncios salen de <b>tu</b> cuenta de anuncios y se cobran a <b>tu</b> tarjeta en Meta.</p><button class="btn" id="ad-new">➕ Nuevo anuncio</button>`
     : `<p class="note" style="margin-top:-6px">Conecta tu Facebook para crear anuncios con tu página y tu cuenta de anuncios. Lunaya no guarda tu contraseña ni tu tarjeta.</p><button class="btn" id="ad-con">Conectar mi Facebook</button>`}
+    ${id ? `<div style="margin-top:8px"><button class="btn small ghost" id="ad-man">🔗 Link de la ruleta para un anuncio hecho en Meta</button></div>` : ""}
     ${mis.length ? `<div class="list" style="margin-top:10px">${mis.slice(0,20).map(([k,a]) => `<div class="item" style="cursor:default;display:grid;gap:4px"><div class="row" style="justify-content:space-between"><b>${esc(a.nombre)}</b><span class="tag ${a.estado==="ACTIVE"?"tg-good":a.estado==="PAUSED"?"tg-warn":"tg-mute"}">${a.estado==="ACTIVE"?"Activo":a.estado==="PAUSED"?"En pausa":esc(a.estado||"")}</span></div>
         <div class="m">${esc(a.zona||"")} · ${money(a.diario||0)}/día · ${a.dias||"?"} días · ${esc(a.ubic||"")} · link de ${esc(S.juegos?.[a.code]?.ref || a.code || "")}</div>
         <div class="m">${a.ins ? `Gastado ${money(a.ins.spend)} · ${a.ins.impressions||0} vistas · ${a.ins.clicks||0} clics` : ""} · ${prospDe(a.code)} prospecto(s) en Lunaya</div>
@@ -58,6 +59,7 @@ function bindAnuncios(m){ const q = x => m.querySelector(x);
     try { await fbConectar(); if (!AD.cuentas.length) toast("Tu Facebook no tiene cuentas de anuncios activas"); else if (!AD.paginas.length) toast("Tu Facebook no administra ninguna página"); render(); }
     catch(e){ console.log(e); toast(e.message || "No se pudo conectar"); b.disabled = false; b.textContent = "Conectar mi Facebook"; } };
   if (q("#ad-new")) q("#ad-new").onclick = openNuevoAnuncio;
+  if (q("#ad-man")) q("#ad-man").onclick = openLinkManual;
   m.querySelectorAll("[data-adprev]").forEach(b => b.onclick = () => adVista(b.dataset.adprev));
   m.querySelectorAll("[data-adins]").forEach(b => b.onclick = () => adResultados(b.dataset.adins));
   m.querySelectorAll("[data-adact]").forEach(b => b.onclick = () => { const [k, st] = b.dataset.adact.split("|"); adEstado(k, st); }); }
@@ -158,3 +160,21 @@ async function adVista(k){ const a = (S.anuncios||{})[k] || window.__ads?.[k]; i
       catch(e){ box.textContent = "No se pudo cargar: " + (e.message || "error") + ". Vuelve a conectar tu Facebook y prueba otra vez."; } };
     document.querySelectorAll("[data-fmt]").forEach(b => b.onclick = () => ver(b.dataset.fmt, b));
     ver("MOBILE_FEED_STANDARD", document.querySelector("[data-fmt]")); }); }
+
+/* Link de ruleta para un anuncio que se crea directo en el Administrador de anuncios de Meta */
+function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Primero crea un programa de ruleta"); return; }
+  openModal(`<h3>Link para tu anuncio en Meta</h3><p class="note" style="margin-top:-4px">Crea un link solo para ese anuncio: la gente ve <b>¡Gira y gana!</b> sin nombre, y los prospectos llegan aquí a Lunaya.</p>
+    <label class="f">¿Qué ruleta usa?<select class="i" id="lm-p">${pr.map(([pid,p]) => `<option value="${pid}">${esc(p.name||"Programa")}</option>`).join("")}</select></label>
+    <label class="f">Nombre para reconocerlo (solo lo ves tú)<input class="i" id="lm-n" value="Anuncio Meta ${esc(fmt(Date.now(),{day:"numeric",month:"short"}))}"></label>
+    <div class="row"><button class="btn" id="lm-ok">Crear link</button><button class="btn ghost" data-close>Cancelar</button></div><div id="lm-r"></div>`, () => {
+    const q = x => document.getElementById(x);
+    q("lm-ok").onclick = async () => { const b = q("lm-ok"); b.disabled = true;
+      try { const code = newCode() + newCode().slice(0,2); const base = juegoBase(S.uid, q("lm-p").value); const nombre = (q("lm-n").value.trim() || "Anuncio Meta").slice(0,60);
+        const j = {...base, until:0, ref:nombre, alias:"Kalud", kind:"cliente", anuncio:true};
+        const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), j);
+        bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid:base.pid, name:nombre, tel:"", kind:"ref", status:"ref", socioId:S.uid, up:base.up, tv:base.tv, by:S.uid, ref:nombre, at:Date.now()}); await bt.commit();
+        S.juegos[code] = j; const link = jgLink(code) + "&utm_source=meta&utm_campaign=" + code;
+        q("lm-r").innerHTML = `<label class="f" style="margin-top:10px">Tu link (pégalo en Meta donde dice <b>URL del sitio web</b>)<textarea class="i" id="lm-l" readonly style="min-height:70px">${esc(link)}</textarea></label><div class="row"><button class="btn" id="lm-c">📋 Copiar link</button><a class="btn ghost" href="${link}" target="_blank" rel="noopener">🎡 Verla</a></div>`;
+        q("lm-c").onclick = async () => { try { await navigator.clipboard.writeText(link); toast("Link copiado"); } catch { q("lm-l").select(); toast("Mantén presionado para copiar"); } };
+        b.style.display = "none"; }
+      catch(e){ b.disabled = false; writeErr(e); } }; }); }
