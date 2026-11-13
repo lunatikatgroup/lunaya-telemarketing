@@ -47,7 +47,7 @@ function anunciosCard(){
     ${mis.length ? `<div class="list" style="margin-top:10px">${mis.slice(0,20).map(([k,a]) => `<div class="item" style="cursor:default;display:grid;gap:4px"><div class="row" style="justify-content:space-between"><b>${esc(a.nombre)}</b><span class="tag ${a.estado==="ACTIVE"?"tg-good":a.estado==="PAUSED"?"tg-warn":"tg-mute"}">${a.estado==="ACTIVE"?"Activo":a.estado==="PAUSED"?"En pausa":esc(a.estado||"")}</span></div>
         <div class="m">${esc(a.zona||"")} · ${money(a.diario||0)}/día · ${a.dias||"?"} días · ${esc(a.ubic||"")} · link de ${esc(S.juegos?.[a.code]?.ref || a.code || "")}</div>
         <div class="m">${a.ins ? `Gastado ${money(a.ins.spend)} · ${a.ins.impressions||0} vistas · ${a.ins.clicks||0} clics` : ""} · ${prospDe(a.code)} prospecto(s) en Lunaya</div>
-        ${AD.token ? `<div class="row"><button class="btn small ghost" data-adins="${k}">🔄 Ver resultados</button>${a.estado==="PAUSED"?`<button class="btn small" data-adact="${k}|ACTIVE">▶️ Activar</button>`:a.estado==="ACTIVE"?`<button class="btn small ghost" data-adact="${k}|PAUSED">⏸️ Pausar</button>`:""}</div>` : ""}</div>`).join("")}</div>` : ""}
+        ${AD.token ? `<div class="row"><button class="btn small ghost" data-adprev="${k}">👀 Cómo se ve</button><button class="btn small ghost" data-adins="${k}">🔄 Ver resultados</button>${a.estado==="PAUSED"?`<button class="btn small" data-adact="${k}|ACTIVE">▶️ Activar</button>`:a.estado==="ACTIVE"?`<button class="btn small ghost" data-adact="${k}|PAUSED">⏸️ Pausar</button>`:""}</div>` : ""}</div>`).join("")}</div>` : ""}
     ${AD.log.length && role()==="admin" ? `<details style="margin-top:8px"><summary class="note">Detalles técnicos</summary><div class="note">${AD.log.slice(-5).map(esc).join("<br>")}</div></details>` : ""}</div>`; }
 const prospDe = code => Object.values(S.leads||{}).filter(l => (l.kind==="jugador"||l.kind==="hoja") && l.code && (l.code===code || raizDe(l.code)===code)).length;
 
@@ -58,6 +58,7 @@ function bindAnuncios(m){ const q = x => m.querySelector(x);
     try { await fbConectar(); if (!AD.cuentas.length) toast("Tu Facebook no tiene cuentas de anuncios activas"); else if (!AD.paginas.length) toast("Tu Facebook no administra ninguna página"); render(); }
     catch(e){ console.log(e); toast(e.message || "No se pudo conectar"); b.disabled = false; b.textContent = "Conectar mi Facebook"; } };
   if (q("#ad-new")) q("#ad-new").onclick = openNuevoAnuncio;
+  m.querySelectorAll("[data-adprev]").forEach(b => b.onclick = () => adVista(b.dataset.adprev));
   m.querySelectorAll("[data-adins]").forEach(b => b.onclick = () => adResultados(b.dataset.adins));
   m.querySelectorAll("[data-adact]").forEach(b => b.onclick = () => { const [k, st] = b.dataset.adact.split("|"); adEstado(k, st); }); }
 
@@ -142,3 +143,18 @@ async function adResultados(k){ const a = S.anuncios?.[k]; if (!a) return;
 function subAnuncios(){ if (S.subAds || !S.uid) return; S.subAds = true;
   const q = role()==="admin" ? S.db.collection("anuncios") : S.db.collection("anuncios").where("owner","==",S.uid);
   S.unsub.push(q.onSnapshot(s => { S.anuncios = {}; s.docs.forEach(d => S.anuncios[d.id] = d.data()); if (S.view==="juego") render(); }, e => console.log("anuncios", e))); }
+
+/* Vista previa: como lo ve el cliente en Facebook e Instagram, y la ruleta a la que lleva */
+async function adVista(k){ const a = (S.anuncios||{})[k] || window.__ads?.[k]; if (!a){ toast("No encuentro ese anuncio"); return; }
+  openModal(`<h3>Así se ve tu anuncio</h3><div class="row" style="gap:6px"><button class="btn small" data-fmt="MOBILE_FEED_STANDARD">Facebook</button><button class="btn small ghost" data-fmt="INSTAGRAM_STANDARD">Instagram</button><button class="btn small ghost" data-fmt="INSTAGRAM_STORY">Historia</button></div>
+    <div id="av-box" style="margin-top:10px;min-height:200px" class="note">Cargando…</div>
+    <div class="row" style="margin-top:8px">${a.code ? `<a class="btn ghost" href="${jgLink(a.code)}" target="_blank" rel="noopener">🎡 Ver la ruleta a la que lleva</a>` : ""}<button class="btn ghost" data-close>Cerrar</button></div>
+    <p class="note">Si juegas la ruleta para probar, no dejes tus datos o te va a salir como prospecto.</p>`, () => {
+    const box = document.getElementById("av-box");
+    const ver = async (fmt, btn) => { document.querySelectorAll("[data-fmt]").forEach(x => x.classList.toggle("ghost", x!==btn)); box.textContent = "Cargando…";
+      try { const r = await fbApi("/"+a.ad+"/previews", "get", {ad_format:fmt}); const html = r?.data?.[0]?.body || "";
+        if (!html){ box.textContent = "Meta no mandó la vista previa. Prueba otra vez en un momento."; return; }
+        box.innerHTML = html; const f = box.querySelector("iframe"); if (f){ f.style.width = "100%"; f.style.maxWidth = "420px"; f.style.height = fmt==="INSTAGRAM_STORY" ? "700px" : "620px"; f.style.border = "0"; } }
+      catch(e){ box.textContent = "No se pudo cargar: " + (e.message || "error") + ". Vuelve a conectar tu Facebook y prueba otra vez."; } };
+    document.querySelectorAll("[data-fmt]").forEach(b => b.onclick = () => ver(b.dataset.fmt, b));
+    ver("MOBILE_FEED_STANDARD", document.querySelector("[data-fmt]")); }); }
