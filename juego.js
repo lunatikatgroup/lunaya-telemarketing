@@ -509,11 +509,12 @@ async function startJuego(code, avance){
     if (saved.done){ box.innerHTML = `<div style="font-size:64px;text-align:center">✅</div><h1 class="jg-h">¡Información enviada!</h1>
       <p class="jg-p">¡Te deseamos mucha suerte! 🍀</p>${terms}`; return; }
     const imgH = so.img ? `<img src="${so.img}" alt="" style="width:100%;max-width:520px;border-radius:22px;display:block;margin:0 auto 12px;box-shadow:0 10px 30px rgba(0,0,0,.18)">` : "";
-    if (!showRegalo.paso){ box.innerHTML = `${imgH}<h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1>
+    if (false && !showRegalo.paso){ box.innerHTML = `${imgH}<h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1>
       <p class="jg-p"><b>${esc(premio)}</b><br>¡Totalmente gratis! 🎉</p><button class="jg-btn go" id="jg-part">¡PARTICIPAR! <span style="font-size:22px">›</span></button>
       <p class="jg-small">Totalmente gratis. No se requiere compra.</p>${terms}`;
       document.getElementById("jg-part").onclick = () => { showRegalo.paso = 1; showRegalo(so, patro, premio); window.scrollTo(0,0); }; return; }
-    box.innerHTML = `<div class="jg-card">
+    box.innerHTML = `${imgH.replace("max-width:520px","max-width:min(300px,38vh)")}<h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1><p class="jg-p" style="margin-top:-4px"><b>${esc(premio)}</b> · ¡Totalmente gratis! 🎉</p>
+      <div class="jg-card">
         <input type="text" id="jg-name" placeholder="Nombre y apellido" autocomplete="name">
         <input type="tel" id="jg-tel" placeholder="Celular (10 dígitos)" inputmode="tel" autocomplete="tel">
         <label class="ck"><input type="checkbox" id="jg-ok"><span>Soy mayor de edad. Si salgo ganador(a), autorizo que un representante me llame para entregarme mi regalo.</span></label>
