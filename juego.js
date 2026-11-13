@@ -505,18 +505,17 @@ async function startJuego(code, avance){
       <p><b>Aviso al ganador:</b> por llamada, mensaje o WhatsApp al número registrado. Si no responde en 7 días, se escoge a otra persona.</p>
       <p><b>Organiza:</b> ${esc(patro)}. Esta promoción no está patrocinada, avalada ni administrada por Meta, Facebook, Instagram ni WhatsApp, ni está asociada a ellos.</p>
       <p><b>Tus datos:</b> los usamos para avisarte si ganas y para contactarte con información sobre productos de cocina. No los vendemos.</p></details>`;
-    if (saved.done){ box.innerHTML = `<div class="jg-top">✅ ¡Listo!</div><h1 class="jg-h">¡Gracias por participar${saved.name?", "+esc(firstName(saved.name)):""}!</h1>
-      <p class="jg-p">Si sales ganador(a), uno de nuestros representantes te va a llamar para entregarte tu regalo. ¡Mucha suerte! 🍀</p>${terms}`; return; }
+    if (saved.done){ box.innerHTML = `<div style="font-size:64px;text-align:center">✅</div><h1 class="jg-h">¡Información enviada!</h1>
+      <p class="jg-p">¡Te deseamos mucha suerte! 🍀</p>${terms}`; return; }
     const imgH = so.img ? `<img src="${so.img}" alt="" style="width:100%;max-width:520px;border-radius:22px;display:block;margin:0 auto 12px;box-shadow:0 10px 30px rgba(0,0,0,.18)">` : "";
     if (!showRegalo.paso){ box.innerHTML = `${imgH}<h1 class="jg-h" style="margin-top:4px">¡Participa y gana!</h1>
       <p class="jg-p"><b>${esc(premio)}</b><br>¡Totalmente gratis! 🎉</p><button class="jg-btn go" id="jg-part">¡PARTICIPAR! <span style="font-size:22px">›</span></button>
       <p class="jg-small">Totalmente gratis. No se requiere compra.</p>${terms}`;
       document.getElementById("jg-part").onclick = () => { showRegalo.paso = 1; showRegalo(so, patro, premio); window.scrollTo(0,0); }; return; }
-    box.innerHTML = `<h1 class="jg-h" style="margin-top:4px">¡Ya casi! 🎁</h1>
-      <div class="jg-card">
+    box.innerHTML = `<div class="jg-card">
         <input type="text" id="jg-name" placeholder="Nombre y apellido" autocomplete="name">
         <input type="tel" id="jg-tel" placeholder="Celular (10 dígitos)" inputmode="tel" autocomplete="tel">
-        <label class="ck"><input type="checkbox" id="jg-ok"><span>Soy mayor de 18 años. Si salgo ganador(a), autorizo que uno de nuestros representantes me llame o me escriba para entregarme mi regalo.</span></label>
+        <label class="ck"><input type="checkbox" id="jg-ok"><span>Soy mayor de edad. Si salgo ganador(a), autorizo que un representante me llame para entregarme mi regalo.</span></label>
         <div class="jg-err" id="jg-err"></div>
         <button class="jg-btn" id="jg-send">¡Participar!</button></div>
       <p class="jg-small">Totalmente gratis. No se requiere compra.</p>${terms}`;
@@ -526,7 +525,7 @@ async function startJuego(code, avance){
       const err = document.getElementById("jg-err"); const name = document.getElementById("jg-name").value.trim().replace(/\s+/g," "); const t = telOk(tel.value);
       if (name.length < 3 || !/[a-záéíóúñ]{2}/i.test(name)) { err.textContent = "Escribe tu nombre."; return; }
       if (!t){ err.textContent = "Escribe tu número completo de 10 dígitos, con código de área."; return; }
-      if (!document.getElementById("jg-ok").checked){ err.textContent = "Marca la casilla para poder contactarte."; return; }
+      if (!document.getElementById("jg-ok").checked){ err.textContent = "Marca la casilla para participar."; return; }
       err.textContent = ""; const b = document.getElementById("jg-send"); b.disabled = true; b.textContent = "Guardando…";
       if (demo){ saved.done = true; saved.name = name; return showRegalo(so, patro, premio); }
       const lid = code + "_" + t;
