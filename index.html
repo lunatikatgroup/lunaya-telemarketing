@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611141303"></script>
-<script src="anuncios.js?v=202611141303"></script>
-<script src="juego.js?v=202611141303"></script>
+<script src="demo.js?v=202611141305"></script>
+<script src="anuncios.js?v=202611141305"></script>
+<script src="juego.js?v=202611141305"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611141303";
+const APP_VER = "202611141305";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -744,7 +744,7 @@ function aportes(r){ const c = com(); const out = {};
   Object.values(S.appts).forEach(a => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r) || origenDe(a)!=="tm" || a.pctDir) return;
     const t = S.members[a.teleId]; if (t && t.upline) return; /* telemarketers propias de un distribuidor: no es el programa */
     const p = pagaVenta(a); if (!p) return; const pm = S.members[p] || {};
-    if (planPase(p)){ const da = quienDio(a); if (da && da !== p && da !== a.socioId) return; } /* plan especial: la cita que le dieron se cobra solo con su % de cita pasada */ const otroDir = pm.role==="admin" && p!==ownerUid(); const d = pm.role==="admin" && !otroDir ? costoTMd(a) : null; const pct = otroDir ? pctDir(p) : d ? d.total : aporteDe(p); /* Dirección: % real de la telemarketer + 1% de la líder (Carly en sus propias citas: solo su %) */
+    if (planPase(p)){ const da = quienDio(a); if (da && da !== p && da !== a.socioId) return; } /* plan especial: la cita que le dieron se cobra solo con su % de cita pasada */ const otroDir = pm.role==="admin" && p!==ownerUid(); const d = pm.role==="admin" ? costoTMd(a) : null; const pct = d ? d.total : aporteDe(p); /* Dirección: % real de la telemarketer + 1% de la líder (Carly en sus propias citas: solo su %) */
     const o = out[p] = out[p] || {payer:p, ventas:0, vol:0, monto:0, rows:[]}; const m = (+a.amount||0)*pct/100; o.ventas++; o.vol += +a.amount||0; o.monto += m; o.rows.push({a, pct, m, txt: d ? d.txt : "fijo"}); });
   return out; }
 /* % que paga cada distribuidor por las ventas de telemarketing: el suyo si Dirección se lo puso, o el general */
@@ -846,7 +846,7 @@ function deudasSemana(rg){ const out = {}; const D = p => (out[p] ||= {payer:p, 
     if (a.pctDir && paga!==ownerUid()){ const pct = +a.pctDir; add(paga, ownerUid(), "esp", a, id, pct, amt*pct/100); return; }
     /* programa de telemarketing (solo distribuidores; Dirección paga directo a sus telemarketers) */
     const t = S.members[a.teleId]; const esTM = origenDe(a)==="tm" && !(t && t.upline);
-    if (esTM && paga!==ownerUid() && !(planPase(paga) && da && da!==paga && da!==a.socioId)){ const pct = pm.role==="admin" ? pctDir(paga) : aporteDe(paga); add(paga, ownerUid(), "tm", a, id, pct, amt*pct/100); }
+    if (esTM && paga!==ownerUid() && !(planPase(paga) && da && da!==paga && da!==a.socioId)){ const pct = pm.role==="admin" ? costoTM(a) : aporteDe(paga); add(paga, ownerUid(), "tm", a, id, pct, amt*pct/100); }
     /* cita pasada */
     if (da && da!==a.socioId && da!==paga){ const pp = planPase(paga), dm = S.members[da] || {}; const pct = pp ? (dm.role==="admin" ? +pp.dir : +pp.dist) : PASE_PCT(); add(paga, da, "pase", a, id, pct, amt*pct/100); }
     /* comisión del emprendedor */
