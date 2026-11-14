@@ -640,7 +640,8 @@ function repetidoHtml(id){ const o = otrasVeces(id); if (!o.length) return "";
 const nuevosLeads = () => prospectos().filter(([,l]) => l.status==="nuevo").length;
 /* Programas que puede usar: los suyos, los de su director o distribuidor y los de Dirección (son para todo el mundo, ya listos con sus fotos) */
 function misProgramas(){ const yo = pagadorDe(S.uid);
-  return Object.entries(S.programs||{}).filter(([,p]) => p.activo!==false && (p.owner===S.uid || p.owner===yo || pagadorDe(p.owner)===yo || esDir(p.owner)))
+  /* cada quien ve solo sus ruletas + la principal de Katerine (y el emprendedor, también las de su patrocinador) */
+  return Object.entries(S.programs||{}).filter(([,p]) => p.activo!==false && (p.owner===S.uid || p.owner===ownerUid() || (p.owner===yo && yo!==S.uid)))
     .sort((a,b) => (b[1].owner===S.uid) - (a[1].owner===S.uid) || esDir(b[1].owner) - esDir(a[1].owner) || (b[1].createdAt||0)-(a[1].createdAt||0)); }
 const esDir = uid => S.members?.[uid]?.role==="admin";
 const progName = pid => S.programs?.[pid]?.name || "Programa";
