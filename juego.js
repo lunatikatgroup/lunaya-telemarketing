@@ -274,14 +274,14 @@ async function startJuego(code, avance){
   if (J.anuncio && !J.sorteo && !saved.portada) showPortada(); else showIntro();
 
   /* Portada de los anuncios: la foto completa de los productos con una ruleta pequeña y "¡Quiero jugar!" */
-  function showPortada(){ const TJ = TI(tipo); const img = /^data:image\/jpeg;base64,/.test(P.fondo||"") ? P.fondo : "portada-ad.jpg?v=1";
+  function showPortada(){ const TJ = TI(tipo); const propia = /^data:image\/jpeg;base64,/.test(P.fondo||""), img = propia ? P.fondo : "portada-ad.jpg?v=2";
     box.innerHTML = `<style>@keyframes jgrot{to{transform:rotate(360deg)}}@keyframes jgpul{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}</style>
       <div style="position:relative;width:min(100%,560px);justify-self:center;border-radius:22px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.2)">
         <img src="${img}" alt="" style="display:block;width:100%;height:auto">
-        <div style="position:absolute;left:0;right:0;top:3%;display:grid;justify-items:center;gap:6px">
+        ${propia || tipo!=="ruleta" ? `<div style="position:absolute;left:0;right:0;top:3%;display:grid;justify-items:center;gap:6px">
           ${tipo==="ruleta" && prizes.length>=2 ? `<div style="width:34%;animation:jgrot 9s linear infinite;filter:drop-shadow(0 8px 14px rgba(0,0,0,.25))">${wheelSvg(rueda, "jg-mini").replace('<div class="jg-ptr"></div>','').replace('class="jg-wrap"','style="position:relative"')}</div>` : `<div style="font-size:64px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.2))">${TJ.e}</div>`}
           <div style="background:rgba(255,255,255,.9);border-radius:16px;padding:8px 16px;font:800 clamp(18px,4.6vw,26px)/1.15 Manrope,sans-serif;color:#14213d;max-width:90%">${tipo==="ruleta" ? "🎡 ¡Gira la ruleta y gánate un regalo!" : "🎁 " + esc(TJ.corto) + " Gánate un regalo"}</div>
-        </div>
+        </div>` : ""}
       </div>
       <p class="jg-p" style="margin:0"><b>¡Totalmente gratis! 🎉</b></p>
       <button class="jg-btn go" id="jg-port" style="animation:jgpul 1.2s ease-in-out infinite">¡QUIERO JUGAR! <span style="font-size:22px">›</span></button>`;
