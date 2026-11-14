@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611140822"></script>
-<script src="anuncios.js?v=202611140822"></script>
-<script src="juego.js?v=202611140822"></script>
+<script src="demo.js?v=202611140825"></script>
+<script src="anuncios.js?v=202611140825"></script>
+<script src="juego.js?v=202611140825"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611140822";
+const APP_VER = "202611140825";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -558,7 +558,11 @@ function sueldoDe(t, r, base){
   let a = m0 > startOf(t) ? m0 : startOf(t); let b = m1 < today() ? m1 : today();
   if (t.leftAt){ const l = laDate(t.leftAt); if (l < b) b = l; }
   const dias = a <= b ? workDays(a, b) : 0;
-  return {sueldo: total ? base * dias / total : 0, dias, total};
+  /* El sueldo es mensual: cada día trabajado vale base ÷ días laborales DE SU MES (una quincena ≈ la mitad) */
+  /* cada quincena (1–15 y 16–fin de mes) vale la mitad del sueldo; si trabajó parte, se prorratea por días laborales de esa quincena */
+  let frac = 0; if (a <= b){ let d = a; while (d <= b){ const mi = d.slice(0,8)+"01", mf = addDays(addMonths(mi, 1), -1), q1 = d.slice(0,8)+"15";
+      const qi = d <= q1 ? mi : addDays(q1, 1), qf = d <= q1 ? q1 : mf, fin = b < qf ? b : qf; frac += 0.5 * workDays(d, fin) / workDays(qi, qf); d = addDays(fin, 1); } }
+  return {sueldo: base * frac, dias, total, frac};
 }
 /* ===== Comisiones de emprendedores =====
    Cada quien paga a SUS emprendedores con su plan (Dirección o el distribuidor):
@@ -1070,7 +1074,7 @@ function commissions(r, up=""){
     const own = x.monto * pct/100; const lead = x.t.lider ? (teamMonto - x.monto) * c.liderPct/100 : 0; /* la líder no cobra el 1% sobre sus propias ventas */
     const sd = sueldoDe(x.t, r, base);
     /* Requisito del sueldo base: la meta semanal x 4 al mes (20 por semana = 80), proporcional a los días que trabajó */
-    const req = Math.round(metaSem() * 4 * (sd.total ? sd.dias / sd.total : 0)), citas = teleEval(x.t.id, r).citas, cumple = !base || !!up || citas >= req, cerrado = r[1] <= Date.now();
+    const req = Math.round(metaSem() * 4 * (sd.frac || 0)), citas = teleEval(x.t.id, r).citas, cumple = !base || !!up || citas >= req, cerrado = r[1] <= Date.now();
     const sueldoEf = base && cerrado && !cumple ? 0 : sd.sueldo;
     return {...x, pct, base, sueldo:sueldoEf, sueldoAcum:sd.sueldo, req, citasReq:citas, cumple, cerrado, dias:sd.dias, diasMes:sd.total, own, lead, comision:own+lead, total:sueldoEf+own+lead}; });
 }
