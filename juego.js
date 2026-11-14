@@ -220,6 +220,11 @@ body.jg{background:radial-gradient(circle at 12% 18%,rgba(var(--glow),.9) 0 3%,t
 .jg-bgimg{position:fixed;inset:0;z-index:0;background-color:#f5eae0;background-position:center bottom;background-size:cover;background-repeat:no-repeat}
 body.foto .jg-giftdec{display:none}
 body.foto .jg-p{text-shadow:0 1px 8px rgba(255,255,255,.9)}
+body.foto .jg-wrap{order:-3;margin-top:0;isolation:isolate}
+body.foto .jg-wrap::before{content:"";position:absolute;inset:-4%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.96) 58%,rgba(255,255,255,.75) 68%,rgba(255,255,255,0) 72%);z-index:-1}
+body.foto #jg-spin{order:-2}
+body.foto .jg-crownrow{display:none}
+body.foto .jg-top,body.foto .jg-name,body.foto .jg-pill,body.foto .jg-p,body.foto .jg-chips{background:rgba(255,255,255,.82);border-radius:14px;padding:4px 10px;justify-self:center}
 .jg-mute{position:fixed;top:12px;right:12px;z-index:40;border:1.5px solid #ead9ad;background:#fff;border-radius:999px;width:44px;height:44px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 `;
 async function startJuego(code, avance){
