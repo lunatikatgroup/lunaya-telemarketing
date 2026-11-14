@@ -271,7 +271,7 @@ async function startJuego(code, avance){
   if (J.until && J.until < Date.now() && !saved.done){ box.innerHTML = `<div class="jg-top">Juega y gana</div><div class="jg-h">Esta promoción ya terminó</div><p class="jg-p">Pídele a ${esc(ref)} que te mande un link nuevo.</p>`; return; }
   if (saved.done) return showDone();
   if (saved.prize !== undefined) return showForm(saved.prize);
-  if (J.anuncio && !J.sorteo && !saved.portada) showPortada(); else showIntro();
+  if (J.anuncio && !J.sorteo && !saved.portada && tipo==="ruleta") showPortada(); else showIntro();
 
   /* Portada de los anuncios: la foto completa de los productos con una ruleta pequeña y "¡Quiero jugar!" */
   function showPortada(){ const TJ = TI(tipo); const propia = false, img = "portada-ad.jpg?v=2";
