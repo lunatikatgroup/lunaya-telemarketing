@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611140838"></script>
-<script src="anuncios.js?v=202611140838"></script>
-<script src="juego.js?v=202611140838"></script>
+<script src="demo.js?v=202611140840"></script>
+<script src="anuncios.js?v=202611140840"></script>
+<script src="juego.js?v=202611140840"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611140838";
+const APP_VER = "202611140840";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -796,7 +796,7 @@ function teleNominaCard(){ const p = ["quin","quinant","mes","mesant"].includes(
   const pend = Object.values(S.appts).filter(a => a.teleId===S.uid && a.sale && (a.saleStatus||"pendiente")==="pendiente" && (a.when||0) < rg[1]).length;
   const g = {}; v.forEach(a => { const k = pagaVenta(a) || a.socioId; (g[k] ||= []).push(a); });
   const tot = v.reduce((t,a)=>t+(+a.amount||0),0);
-  let h = `<div class="card"><h2>Detalle para mi pago ${periodChips(["quin","quinant","mes","mesant"])}</h2><p class="note" style="margin-top:-6px">Se paga cada quincena (1–15 y 16–fin de mes) lo que se <b>aprobó</b> en esa quincena: nombre del cliente, monto de la venta y tu comisión (${pct}%).${pend?` Tienes ${pend} venta(s) en verificación: pasan a la quincena en que las aprueben.`:""}</p>
+  let h = `<div class="card"><h2>Detalle para mi pago ${periodChips(["quin","quinant","mes","mesant"])}</h2><p class="note" style="margin-top:-6px">Se paga cada quincena lo que se <b>aprobó antes del corte</b> (del 1 al 14 se paga el 15; del 15 al día antes de fin de mes se paga el 30): nombre del cliente, monto de la venta y tu comisión (${pct}%).${pend?` Tienes ${pend} venta(s) en verificación: pasan a la quincena en que las aprueben.`:""}</p>
     ${v.length ? `<div class="tiles"><div class="tile"><b>${v.length}</b><span>Ventas aprobadas</span></div><div class="tile"><b>${money(tot)}</b><span>Volumen</span></div><div class="tile acc"><b>${money(tot*pct/100)}</b><span>Tu comisión</span></div></div>
     ${Object.entries(g).map(([k,l]) => { const vol = l.reduce((t,a)=>t+(+a.amount||0),0); return `<details style="margin-top:8px"><summary style="cursor:pointer"><b>${esc(memberName(k))}</b> · ${l.length} venta(s) · ${money(vol)} · tu comisión <b>${money(vol*pct/100)}</b></summary>
       <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th class="n">Venta</th><th class="n">Tu comisión</th></tr></thead><tbody>${l.map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nom(a))}</b></td><td>${esc(memberName(a.socioId))}</td><td class="n">${money(+a.amount||0)}</td><td class="n">${money((+a.amount||0)*pct/100)}</td></tr>`).join("")}</tbody></table></div></details>`; }).join("")}` : `<div class="empty">No tienes ventas aprobadas en este periodo.</div>`}</div>`;
@@ -973,7 +973,7 @@ function viewCobros(){ if (!esAsist() && role()!=="admin") return `<div class="c
 /* Nómina de telemarketers con el detalle de cada orden (para la asistente que prepara la nómina) */
 /* orden de los socios: Katerine, luego la otra dirección (Andrés), luego los demás por nombre */
 const socioOrden = id => { const m = S.members[id] || {}; return (id===ownerUid() ? "0" : m.role==="admin" ? "1" : "2") + (m.name||"").toLowerCase(); };
-function nominaVentas(t, rg){ return Object.values(S.appts).filter(a => a.teleId===t.id && a.tipoVisita!=="servicio" && a.sale && a.status==="hecha" && ((a.saleStatus==="aprobada" && inR(aprobAt(a), rg)) || ((a.saleStatus||"pendiente")==="pendiente" && (a.when||0) < rg[1]))).sort((x,y) => socioOrden(x.socioId).localeCompare(socioOrden(y.socioId)) || x.when-y.when); }
+function nominaVentas(t, rg){ return Object.values(S.appts).filter(a => a.teleId===t.id && a.tipoVisita!=="servicio" && a.sale && a.status==="hecha" && ((a.saleStatus==="aprobada" && enCorte(a, rg)) || ((a.saleStatus||"pendiente")==="pendiente" && (a.when||0) < rg[1]))).sort((x,y) => socioOrden(x.socioId).localeCompare(socioOrden(y.socioId)) || x.when-y.when); }
 function nominaTeleCard(p){ if (S.uid!==ownerUid() && !esAsist() && role()!=="admin") return ""; const rg = range(p); const rows = commissions(rg, "").filter(x => x.total || x.ventas || x.pend || x.citasReq);
   const tot = rows.reduce((t,x)=>t+x.total,0); const st = a => a.saleStatus || "pendiente";
   return `<div class="card"><h2>🧾 Nómina de telemarketers<span class="note">${PLABEL[p]||""}</span></h2><p class="note" style="margin-top:-6px">Sueldo + comisión de cada una, con el detalle de sus órdenes. La comisión se paga solo sobre ventas <b>aprobadas</b>.</p>
@@ -1071,7 +1071,10 @@ function aporteResumen(p){ const ap = aportes(range(p)); const rows = Object.val
     ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Quién paga</th><th class="n">Ventas de telemarketing</th><th class="n">Volumen</th><th class="n">Porcentaje</th><th class="n">A pagar</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(memberName(x.payer))}</b><div class="note">${S.members[x.payer]?.tipo===DIST?"distribuidor":"dirección"}</div></td><td class="n">${x.ventas}</td><td class="n">${money(x.vol)}</td><td class="n"><b>${pctTxt(x)}</b><div class="note">${S.members[x.payer]?.tipo===DIST?"fijo":[...new Set(x.rows.map(r=>`${r.txt} = ${r.pct}%`))].join("<br>")}</div></td><td class="n"><b>${money(x.monto)}</b></td></tr>`).join("")}<tr class="total"><td>Total</td><td class="n">${rows.reduce((t,x)=>t+x.ventas,0)}</td><td class="n">${money(rows.reduce((t,x)=>t+x.vol,0))}</td><td></td><td class="n">${money(rows.reduce((t,x)=>t+x.monto,0))}</td></tr></tbody></table></div>`:`<div class="empty">No hay ventas aprobadas de telemarketing en este periodo.</div>`}</div>`; }
 /* Plan de comisiones: el general de Dirección, o el propio del distribuidor para SUS telemarketers */
 const planTeleDe = up => up ? {sueldo:0, pct:0, liderPct:0, ...(S.members[up]?.planTele||{})} : com();
-const aprobTele = (tid, r) => Object.values(S.appts).filter(a => a.teleId===tid && a.sale && a.saleStatus==="aprobada" && a.tipoVisita!=="servicio" && inR(aprobAt(a), r));
+/* Corte de la nómina: a Katerine le pagan la orden ~2 días después de aprobada, así que entra en la quincena la orden aprobada hasta el día ANTES del corte
+   (1–14 → se paga el 15; 15 → fin de mes-1 → se paga el 30/31). Lo aprobado el mismo día del corte pasa a la siguiente. */
+const NOM_DESFASE = 864e5; const enCorte = (a, r) => inR(aprobAt(a) + NOM_DESFASE, r);
+const aprobTele = (tid, r) => Object.values(S.appts).filter(a => a.teleId===tid && a.sale && a.saleStatus==="aprobada" && a.tipoVisita!=="servicio" && enCorte(a, r));
 function commissions(r, up=""){
   const c = planTeleDe(up); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0] && t.sinNomina===false)].filter(t => (t.upline||"")===up && !t.sinNomina);
   /* la comisión se paga sobre ventas aprobadas */
@@ -1368,7 +1371,7 @@ function viewHoy(r){
     const per = socios().map(s => ({s, e:teleEval(S.uid, rg, s.id)})).filter(x => x.e.calls || x.e.citas || x.e.demos);
     h += `<div class="card"><h2>Por socio<span class="note">${PLABEL[S.f.period]}</span></h2>${per.length?evalTable(per.map(x=>({name:x.s.name, e:x.e, id:x.s.id})), true):`<div class="empty">Sin actividad en este periodo.</div>`}</div>`;
     const qp = S.f.tqp==="quinant" ? "quinant" : "quin"; const mine = commissions(range(qp), S.me?.upline||"").find(x => x.t.id===S.uid);
-    if (mine) h += `<div class="card"><h2>Tu pago de la quincena <div class="chips"><button class="chip ${qp==="quin"?"on":""}" data-tqp="quin">Esta quincena</button><button class="chip ${qp==="quinant"?"on":""}" data-tqp="quinant">Quincena anterior</button></div></h2><p class="note" style="margin-top:-6px">${rangoTxt(qp)} · se paga lo aprobado en estas fechas; lo que siga en verificación pasa a la próxima quincena.</p><div class="tiles">
+    if (mine) h += `<div class="card"><h2>Tu pago de la quincena <div class="chips"><button class="chip ${qp==="quin"?"on":""}" data-tqp="quin">Esta quincena</button><button class="chip ${qp==="quinant"?"on":""}" data-tqp="quinant">Quincena anterior</button></div></h2><p class="note" style="margin-top:-6px">${rangoTxt(qp)} · se paga lo aprobado hasta el día antes del corte (las órdenes se cobran ~2 días después); lo demás pasa a la próxima quincena.</p><div class="tiles">
       <div class="tile"><b>${money(mine.own)}</b><span>${mine.pct}% de tus ventas aprobadas</span><small>${money(mine.monto)} aprobado${mine.pend?` · ${mine.pend} pendiente(s)`:""}</small></div>
       ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.comision)}</b><span>Total comisión</span></div>${mine.base?`<div class="tile"><b>${money(mine.sueldo)}</b><span>Sueldo de la quincena</span><small>${mine.citasReq} de ${mine.req} citas</small></div><div class="tile acc"><b>${money(mine.total)}</b><span>Total a cobrar</span></div>`:""}</div>
       <p class="note">La comisión sale solo de ventas aprobadas. Las pendientes suman en la quincena en que las aprueben.</p>
