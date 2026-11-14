@@ -77,9 +77,9 @@ function wheelSvg(prizes, id="jg-wheel"){
   let s = "";
   prizes.forEach((p,i) => { const a0 = i*a, a1 = (i+1)*a, [x0,y0] = pt(a0,R), [x1,y1] = pt(a1,R), mid = a0+a/2; const col = SL[i % SL.length];
     s += n===1 ? `<circle cx="${R}" cy="${R}" r="${R}" fill="${col}"/>` : `<path d="M${R},${R} L${x0.toFixed(2)},${y0.toFixed(2)} A${R},${R} 0 ${a>180?1:0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}" stroke="${JGT.g[1]}" stroke-width="2.5"/>`;
-    const cy = R - R*0.57, sz = Math.min(108, Math.max(42, 2*Math.PI*R*0.57/n*0.8)); const lbl = esc(String(p.n||"").slice(0,16));
+    const cy = R - R*0.6, sz = Math.min(122, Math.max(46, 2*Math.PI*R*0.6/n*0.88)); const lbl = esc(String(p.n||"").slice(0,16));
     s += `<g transform="rotate(${mid} ${R} ${R})">${p.img?`<clipPath id="${id}c${i}"><circle cx="${R}" cy="${cy}" r="${sz/2}"/></clipPath><circle cx="${R}" cy="${cy}" r="${sz/2+3.5}" fill="#fff" stroke="${JGT.g[1]}" stroke-width="2"/><image href="${p.img}" x="${R-sz/2}" y="${cy-sz/2}" width="${sz}" height="${sz}" clip-path="url(#${id}c${i})" preserveAspectRatio="xMidYMid slice"/>`:`<text x="${R}" y="${cy+12}" text-anchor="middle" font-size="34">${p.emo||"🎁"}</text>`}
-      <rect x="${R - Math.min(sz*0.95, lbl.length*6.6+16)/2}" y="${cy-sz/2-5}" width="${Math.min(sz*0.95, lbl.length*6.6+16)}" height="17" rx="8.5" fill="${JGT.ink}"/><text x="${R}" y="${cy-sz/2+7}" text-anchor="middle" font-size="${n>6?9:10.5}" font-weight="800" fill="#fff">${lbl}</text></g>`; });
+      <rect x="${R - Math.min(sz*0.95, lbl.length*7.4+18)/2}" y="${cy-sz/2-7}" width="${Math.min(sz*0.95, lbl.length*7.4+18)}" height="19" rx="9.5" fill="${JGT.ink}"/><text x="${R}" y="${cy-sz/2+7}" text-anchor="middle" font-size="${n>6?10.5:12}" font-weight="800" fill="#fff">${lbl}</text></g>`; });
   for (let i=0;i<24;i++){ const [x,y] = pt(i*15, R+9); s += `<circle cx="${x}" cy="${y}" r="5.5" fill="#ffe9a8" opacity=".55" filter="url(#jg-glow)" class="jg-bulb${i%2}"/><circle cx="${x}" cy="${y}" r="2.8" fill="#fffdf2"/>`; }
   return `<div class="jg-wrap"><svg viewBox="-14 -14 ${2*R+28} ${2*R+28}" class="jg-svg"><defs><linearGradient id="jg-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${JGT.g[0]}"/><stop offset=".5" stop-color="${JGT.g[1]}"/><stop offset="1" stop-color="${JGT.g[2]}"/></linearGradient><filter id="jg-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="2.2"/></filter></defs><circle cx="${R}" cy="${R}" r="${R+14}" fill="url(#jg-gold)"/>
     <g id="${id}" style="transform-origin:${R}px ${R}px">${s}</g><circle cx="${R}" cy="${R}" r="27" fill="${JGT.ink}" stroke="url(#jg-gold)" stroke-width="5"/><text x="${R}" y="${R+9}" text-anchor="middle" font-size="24">🎁</text></svg>
@@ -152,7 +152,7 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-h{font-family:var(--serif);font-weight:700;font-size:28px;line-height:1.1;margin:0;color:#14213d;text-transform:none;letter-spacing:0}
 .jg-h b{color:#a8761b}
 .jg-p{margin:0;color:#5b5547;font-size:16px}
-.jg-wrap{position:relative;width:min(92vw,400px);margin:4px auto 0}
+.jg-wrap{position:relative;width:min(96vw,60vh,640px);margin:4px auto 0;justify-self:center}
 .jg-svg{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 28px rgba(120,90,20,.28))}
 .jg-ptr{position:absolute;left:50%;top:-8px;transform:translateX(-50%);width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:36px solid var(--ink);filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))}
 .jg-bulb0{animation:jgb 1s infinite}.jg-bulb1{animation:jgb 1s .5s infinite}
