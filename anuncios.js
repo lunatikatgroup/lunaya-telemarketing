@@ -168,7 +168,7 @@ async function flyerChico(file){ const url = URL.createObjectURL(file); try { co
 function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Primero crea un programa de ruleta"); return; }
   const max = addDays(today(), 60); const def = addDays(today(), 14);
   openModal(`<h3>Link para tu anuncio en Meta</h3>
-    <label class="f">¿Qué va a ver la gente al tocar el anuncio?<select class="i" id="lm-t"><option value="regalo">🎁 Participa y gana: deja sus datos y recibe un regalo (sin fecha)</option><option value="sorteo">📝 Sorteo con fecha y ganadores</option><option value="ruleta">🎮 Un juego: ruleta, rasca y gana, pajarito…</option></select></label>
+    <label class="f">¿Qué va a ver la gente al tocar el anuncio?<select class="i" id="lm-t"><option value="regalo">🎁 Participa y gana: deja sus datos y recibe un regalo (sin fecha)</option><option value="sorteo">📝 Sorteo con fecha y ganadores</option><option value="ruleta">🎮 Un juego: ruleta, raspa y gana, pajarito…</option></select></label>
     <div id="lm-ru"><label class="f">¿Qué juego?<select class="i" id="lm-j"></select></label><label class="f">¿Con qué regalos? (programa)<select class="i" id="lm-p">${pr.map(([pid,p]) => `<option value="${pid}">${esc(p.name||"Programa")}${p.owner!==S.uid?" · de "+esc(firstName(memberName(p.owner))):""}</option>`).join("")}</select></label></div>
     <div id="lm-so"><div class="f"><span>Foto (la misma del anuncio)</span><div class="row"><label class="btn small ghost" style="cursor:pointer">📷 Subir foto<input type="file" id="lm-f" accept="image/*" hidden></label><span class="note" id="lm-fn"></span></div></div>
       <label class="f">Premio<input class="i" id="lm-pr" value="un producto de cocina" maxlength="70"></label>
@@ -178,7 +178,7 @@ function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Pr
       <label class="f">Quién organiza<input class="i" id="lm-o" value="Kalud" maxlength="60"></label></div>
     <div class="note" id="lm-pz" style="margin:-4px 0 8px"></div>
     <div style="margin-bottom:8px"><button class="btn small ghost" id="lm-ver" type="button">👀 Ver cómo lo ve el cliente</button></div>
-    <label class="f">Nombre para reconocerlo (solo lo ves tú)<input class="i" id="lm-n" value="Anuncio Meta ${esc(fmt(Date.now(),{day:"numeric",month:"short"}))}" placeholder="Ej: Meta · Rasca y gana"></label>
+    <label class="f">Nombre para reconocerlo (solo lo ves tú)<input class="i" id="lm-n" value="Anuncio Meta ${esc(fmt(Date.now(),{day:"numeric",month:"short"}))}" placeholder="Ej: Meta · Raspa y gana"></label>
     <div class="row"><button class="btn" id="lm-ok">Crear link</button><button class="btn ghost" data-close>Cancelar</button></div><div id="lm-r"></div>`, () => {
     const q = x => document.getElementById(x); let flyer = "";
     const sync = () => { const t = q("lm-t").value, so = t !== "ruleta"; q("lm-so").style.display = so ? "" : "none"; q("lm-ru").style.display = so ? "none" : ""; q("lm-sd").style.display = t === "sorteo" ? "" : "none"; }; q("lm-t").onchange = sync; sync();
