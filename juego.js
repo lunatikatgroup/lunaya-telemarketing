@@ -260,7 +260,7 @@ async function startJuego(code, avance){
   const OTRA = {n:"¡Otra vez!", w:0, img:"", emo:"🔄", otra:true}; const rueda = otraVez && prizes.length >= 2 ? [...prizes.slice(0,1), OTRA, ...prizes.slice(1)] : prizes; const T = setTema(P.tema), TX = txtDe(P);
   const bs = document.body.style; [["--b1",T.bg[0]],["--b2",T.bg[1]],["--b3",T.bg[2]],["--g1",T.g[0]],["--g2",T.g[1]],["--g3",T.g[2]],["--g4",T.g[3]],["--ink",T.ink],["--acc",T.acc],["--glow",T.glow]].forEach(([k,v]) => bs.setProperty(k, v));
   document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r"));
-  const fsrc = J.anuncio ? "" : fondoSrc(P); if (fsrc){ document.body.classList.add("foto"); document.querySelectorAll(".jg-rib").forEach(r => r.remove()); const bg = document.createElement("div"); bg.className = "jg-bgimg"; bg.style.backgroundImage = `linear-gradient(rgba(250,245,238,.75), rgba(250,245,238,.35) 40%, rgba(250,245,238,0) 60%), url("${fsrc}")`; document.body.style.setProperty("--prodimg", `url("${fsrc}")`); document.body.prepend(bg); } const shownName = J.alias || J.ref; const ref = firstName(shownName) ? shownName : "Tu amiga";
+  const fsrc = fondoSrc(P); if (fsrc){ document.body.classList.add("foto"); document.querySelectorAll(".jg-rib").forEach(r => r.remove()); const bg = document.createElement("div"); bg.className = "jg-bgimg"; bg.style.backgroundImage = `linear-gradient(rgba(250,245,238,.75), rgba(250,245,238,.35) 40%, rgba(250,245,238,0) 60%), url("${fsrc}")`; document.body.style.setProperty("--prodimg", `url("${fsrc}")`); document.body.prepend(bg); } const shownName = J.alias || J.ref; const ref = firstName(shownName) ? shownName : "Tu amiga";
   const vence = J.until ? new Intl.DateTimeFormat("es-US",{weekday:"long", day:"numeric", month:"long"}).format(new Date(J.until)) : "";
   const meta = P.meta || {refs:14, cada:4};
   { const go = () => { jgUnlock(); if (P.musica !== false && !saved.done) musicStart(); ["touchend","click","keydown"].forEach(ev => document.removeEventListener(ev, go, true)); };
@@ -274,7 +274,7 @@ async function startJuego(code, avance){
   if (J.anuncio && !J.sorteo && !saved.portada) showPortada(); else showIntro();
 
   /* Portada de los anuncios: la foto completa de los productos con una ruleta pequeña y "¡Quiero jugar!" */
-  function showPortada(){ const TJ = TI(tipo); const propia = /^data:image\/jpeg;base64,/.test(P.fondo||""), img = propia ? P.fondo : "portada-ad.jpg?v=2";
+  function showPortada(){ const TJ = TI(tipo); const propia = false, img = "portada-ad.jpg?v=2";
     box.innerHTML = `<style>@keyframes jgrot{to{transform:rotate(360deg)}}@keyframes jgpul{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}</style>
       <div style="position:relative;width:min(100%,560px);justify-self:center;border-radius:22px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.2)">
         <img src="${img}" alt="" style="display:block;width:100%;height:auto">
