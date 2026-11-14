@@ -168,8 +168,8 @@ async function flyerChico(file){ const url = URL.createObjectURL(file); try { co
 function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Primero crea un programa de ruleta"); return; }
   const max = addDays(today(), 60); const def = addDays(today(), 14);
   openModal(`<h3>Link para tu anuncio en Meta</h3>
-    <label class="f">¿Qué va a ver la gente al tocar el anuncio?<select class="i" id="lm-t"><option value="regalo">🎁 Participa y gana: deja sus datos y recibe un regalo (sin fecha)</option><option value="sorteo">📝 Sorteo con fecha y ganadores</option><option value="ruleta">🎡 La ruleta: gira y gana</option></select></label>
-    <div id="lm-ru"><label class="f">¿Qué ruleta usa?<select class="i" id="lm-p">${pr.map(([pid,p]) => `<option value="${pid}">${esc(p.name||"Programa")}${p.owner!==S.uid?" · de "+esc(firstName(memberName(p.owner))):""}</option>`).join("")}</select></label></div>
+    <label class="f">¿Qué va a ver la gente al tocar el anuncio?<select class="i" id="lm-t"><option value="regalo">🎁 Participa y gana: deja sus datos y recibe un regalo (sin fecha)</option><option value="sorteo">📝 Sorteo con fecha y ganadores</option><option value="ruleta">🎮 Un juego: ruleta, rasca y gana, pajarito…</option></select></label>
+    <div id="lm-ru"><label class="f">¿Qué juego?<select class="i" id="lm-j"></select></label><label class="f">¿Con qué regalos? (programa)<select class="i" id="lm-p">${pr.map(([pid,p]) => `<option value="${pid}">${esc(p.name||"Programa")}${p.owner!==S.uid?" · de "+esc(firstName(memberName(p.owner))):""}</option>`).join("")}</select></label></div>
     <div id="lm-so"><div class="f"><span>Foto (la misma del anuncio)</span><div class="row"><label class="btn small ghost" style="cursor:pointer">📷 Subir foto<input type="file" id="lm-f" accept="image/*" hidden></label><span class="note" id="lm-fn"></span></div></div>
       <label class="f">Premio<input class="i" id="lm-pr" value="un producto de cocina" maxlength="70"></label>
       <div id="lm-sd"><div class="grid2"><label class="f">Cuántos ganadores<input class="i" type="number" id="lm-g" value="1" min="1" max="50"></label><label class="f">Valor aproximado (opcional)<input class="i" id="lm-v" placeholder="$200" maxlength="20"></label>
@@ -178,13 +178,14 @@ function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Pr
       <label class="f">Quién organiza<input class="i" id="lm-o" value="Kalud" maxlength="60"></label></div>
     <div class="note" id="lm-pz" style="margin:-4px 0 8px"></div>
     <div style="margin-bottom:8px"><button class="btn small ghost" id="lm-ver" type="button">👀 Ver cómo lo ve el cliente</button></div>
-    <label class="f">Nombre para reconocerlo (solo lo ves tú)<input class="i" id="lm-n" value="Anuncio Meta ${esc(fmt(Date.now(),{day:"numeric",month:"short"}))}"></label>
+    <label class="f">Nombre para reconocerlo (solo lo ves tú)<input class="i" id="lm-n" value="Anuncio Meta ${esc(fmt(Date.now(),{day:"numeric",month:"short"}))}" placeholder="Ej: Meta · Rasca y gana"></label>
     <div class="row"><button class="btn" id="lm-ok">Crear link</button><button class="btn ghost" data-close>Cancelar</button></div><div id="lm-r"></div>`, () => {
     const q = x => document.getElementById(x); let flyer = "";
     const sync = () => { const t = q("lm-t").value, so = t !== "ruleta"; q("lm-so").style.display = so ? "" : "none"; q("lm-ru").style.display = so ? "none" : ""; q("lm-sd").style.display = t === "sorteo" ? "" : "none"; }; q("lm-t").onchange = sync; sync();
+    const jsel = () => { const p = S.programs?.[q("lm-p").value]; const cur = q("lm-j").value; q("lm-j").innerHTML = juegosDe(p).map(([k,t]) => `<option value="${k}" ${k===(cur||p?.tipo)?"selected":""}>${t.e} ${t.n}</option>`).join(""); }; jsel(); q("lm-p").addEventListener("change", jsel);
     const pz = () => { const p = S.programs?.[q("lm-p").value]; q("lm-pz").innerHTML = q("lm-t").value==="ruleta" && p ? "🎁 Regalos de esta ruleta: <b>" + (p.prizes||[]).map(x => esc(x.n)).join(" · ") + "</b>" : ""; }; q("lm-p").onchange = pz; q("lm-t").addEventListener("change", pz); pz();
     q("lm-ver").onclick = () => { const t = q("lm-t").value;
-      if (t === "ruleta"){ const p = S.programs?.[q("lm-p").value]; if (p) probarJuego(p, p.tipo, true); return; }
+      if (t === "ruleta"){ const p = S.programs?.[q("lm-p").value]; if (p) probarJuego(p, q("lm-j").value || p.tipo, true); return; }
       const so = {modo: t==="regalo" ? "regalo" : undefined, img: flyer, premio:(q("lm-pr").value.trim() || "un producto de cocina"), ganadores:+q("lm-g").value||1, fecha:q("lm-d").value, patro:(q("lm-o").value.trim()||"Kalud")};
       probarJuego(pr[0][1], pr[0][1].tipo, true, so); };
     q("lm-f").onchange = async () => { const f = q("lm-f").files[0]; if (!f) return; q("lm-fn").textContent = "Preparando…"; try { flyer = await flyerChico(f); q("lm-fn").textContent = "✅ " + f.name; } catch { flyer = ""; q("lm-fn").textContent = "No se pudo leer la foto"; } };
@@ -198,7 +199,7 @@ function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Pr
         until = new Date(d + "T23:59:00").getTime(); }
       b.disabled = true;
       try { const code = newCode() + newCode().slice(0,2); const base = juegoBase(S.uid, so ? pr[0][0] : q("lm-p").value); const nombre = (q("lm-n").value.trim() || "Anuncio Meta").slice(0,60);
-        const j = {...base, until, ref:nombre, alias:"Kalud", kind:"cliente", anuncio:true, ...(sorteo ? {sorteo} : {})};
+        const jt = !so ? q("lm-j").value : ""; const j = {...base, until, ref:nombre, alias:"Kalud", kind:"cliente", anuncio:true, ...(sorteo ? {sorteo} : {}), ...(jt && jt !== (S.programs?.[q("lm-p").value]?.tipo||"ruleta") ? {tipo:jt} : {})};
         const bt = S.db.batch(); bt.set(S.db.doc("juegos/"+code), j);
         bt.set(S.db.doc("leads/"+code+"_ref"), {code, pid:base.pid, name:nombre, tel:"", kind:"ref", status:"ref", socioId:S.uid, up:base.up, tv:base.tv, by:S.uid, ref:nombre, at:Date.now()}); await bt.commit();
         S.juegos[code] = j; const link = jgLink(code) + "&utm_source=meta&utm_campaign=" + code;
