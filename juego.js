@@ -594,7 +594,7 @@ function subJuegos(){ if (window.subAnuncios) setTimeout(subAnuncios, 0);
 }
 /* Suscribe links y prospectos de un filtro; devuelve cómo cancelarlo (para quitar el acceso de una telemarketer a un distribuidor) */
 function jgSub(f, v){ const k = f+"|"+v;
-  const u1 = S.db.collection("juegos").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.jl[k] = m; S.juegos = Object.assign({}, ...Object.values(S.jl)); if (S.view==="juego") render(); }, e => console.log("juegos", k, e));
+  const u1 = S.db.collection("juegos").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.jl[k] = m; S.juegos = Object.assign({}, ...Object.values(S.jl)); linksSiempre(m); if (S.view==="juego") render(); }, e => console.log("juegos", k, e));
   const u2 = S.db.collection("leads").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.ll[k] = m; const prev = S.leads; S.leads = Object.assign({}, ...Object.values(S.ll));
       if (S.leadsReady){ Object.entries(S.leads).forEach(([id,l]) => { if (!prev[id] && l.kind==="jugador") avisar(S.juegos?.[l.code]?.anuncio ? "📣 Nuevo prospecto del anuncio" : "🎁 Nuevo prospecto de la ruleta", `${l.name} · ${ganoTxt(l)}${l.ref && !S.juegos?.[l.code]?.anuncio?" · amiga de "+l.ref:""}${otrasVeces(id).length?" · 🔁 ya estaba en otro programa":""}`); }); }
       render(); }, e => console.log("leads", k, e));
@@ -711,7 +711,7 @@ async function fotoChica(file, sz=300){ const url = URL.createObjectURL(file); t
   x.fillStyle = "#fff"; x.fillRect(0,0,sz,sz); x.drawImage(img, (img.width-s)/2, (img.height-s)/2, s, s, 0, 0, sz, sz); return c.toDataURL("image/jpeg", 0.72); } finally { URL.revokeObjectURL(url); } }
 
 function openPrograma(pid, copia){
-  const P = pid ? JSON.parse(JSON.stringify(S.programs[pid])) : copia ? {...JSON.parse(JSON.stringify(S.programs[copia])), name:(S.programs[copia].name||"")+" (mío)", createdAt:0, owner:""} : {name:"", tema:"oro", textos:{}, tipo:"ruleta", prizes:[{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""}], meta:{refs:14, cada:4}, dias:7, msg:""};
+  const P = pid ? JSON.parse(JSON.stringify(S.programs[pid])) : copia ? {...JSON.parse(JSON.stringify(S.programs[copia])), name:(S.programs[copia].name||"")+" (mío)", createdAt:0, owner:""} : {name:"", tema:"oro", textos:{}, tipo:"ruleta", prizes:[{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""},{n:"",w:25,img:""}], meta:{refs:14, cada:4}, dias:0, msg:""};
   const rowsHtml = () => P.prizes.map((p,i)=>`<div class="row" style="flex-wrap:nowrap;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:8px">
       <label style="cursor:pointer;flex:none">${p.img?`<img src="${p.img}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block">`:`<span style="width:56px;height:56px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:12px;text-align:center;font-weight:700;color:var(--muted)">📷<br>Foto</span>`}<input type="file" accept="image/*" data-pimg="${i}" hidden></label>
       <input class="i" data-pn="${i}" value="${esc(p.n)}" placeholder="Regalo ${i+1}" style="flex:1;min-width:0">
@@ -728,7 +728,7 @@ function openPrograma(pid, copia){
       <div class="row" style="margin-top:8px;justify-content:space-between"><button class="btn small ghost" id="pg-add">+ Agregar regalo</button><span class="note" id="pg-tot"></span></div>
       <p class="note" style="margin:4px 0 0">Pon 0% al regalo que quieres que se vea pero que nunca salga.</p></div>
     <label class="f">Cada regalo se gana por<select class="i" id="pg-cuenta"><option value="visitas" ${P.meta.cuenta!=="amigas"?"selected":""}>Visitas hechas a sus referidos (demostración)</option><option value="amigas" ${P.meta.cuenta==="amigas"?"selected":""}>Amigas que juegan</option></select></label>
-    <div class="grid2"><label class="f">Meta de referidos<input class="i" type="number" min="1" id="pg-refs" value="${P.meta.refs}"></label><label class="f">Un regalo cada<input class="i" type="number" min="1" id="pg-cada" value="${P.meta.cada}"></label><label class="f">Días que dura cada link<input class="i" type="number" min="0" max="60" id="pg-dias" value="${P.dias===0?0:(P.dias||7)}"><span class="note">0 = sin vencimiento (ilimitado)</span></label></div>
+    <div class="grid2"><label class="f">Meta de referidos<input class="i" type="number" min="1" id="pg-refs" value="${P.meta.refs}"></label><label class="f">Un regalo cada<input class="i" type="number" min="1" id="pg-cada" value="${P.meta.cada}"></label><label class="f">Días que dura cada link<input class="i" type="number" min="0" max="60" id="pg-dias" value="${P.diasFijo && P.dias>0 ? P.dias : 0}"><span class="note">0 = el link dura siempre. Pon un número solo si quieres que venza.</span></label></div>
     <label class="f">Mensaje que el cliente manda a sus amigas ({link} es donde va el link)<textarea class="i" id="pg-msg" style="min-height:160px">${esc(P.msg || defMsg(P.tipo))}</textarea></label>
     <div><div class="eyebrow" style="margin-bottom:6px">Diseño</div>
       <div class="opts">${Object.entries(TEMAS).map(([k,t])=>`<button class="opt ${(P.tema||"oro")===k?"on":""}" data-tema="${k}" style="display:flex;gap:8px;align-items:center"><span style="width:28px;height:28px;border-radius:50%;flex:none;background:linear-gradient(135deg,${t.g[0]},${t.g[1]} 50%,${t.bg[2]});border:2px solid ${t.ink}"></span>${t.n}</button>`).join("")}</div></div>
@@ -771,7 +771,7 @@ function openPrograma(pid, copia){
       const msg = q("pg-msg").value.trim(); if (!msg.includes("{link}")){ toast("El mensaje necesita {link} para poner el link"); return; }
       const precio = P.tipo==="precio" ? {n:q("pg-pn").value.trim().slice(0,60), v:Math.round(+q("pg-pv").value||0), img:P.precio?.img||""} : null;
       if (precio && (!precio.n || precio.v < 5)){ toast("Pon el nombre y el precio real del producto"); return; }
-      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4), cuenta:q("pg-cuenta").value}, dias:(q("pg-dias").value.trim()==="0" ? 0 : Math.min(60,Math.max(1,+q("pg-dias").value||7))), msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), fondo: P.fondo || "", reloj: +q("pg-reloj").value || 0, otraVez: q("pg-otra").checked, ...(P.tipo==="puzzle" ? {seg: Math.min(180, Math.max(20, +q("pg-seg").value || 60))} : {}), ...(precio ? {precio} : {}), createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
+      const doc = {name:P.name.slice(0,60), tipo:P.tipo, prizes, meta:{refs:Math.max(1,+q("pg-refs").value||14), cada:Math.max(1,+q("pg-cada").value||4), cuenta:q("pg-cuenta").value}, dias:Math.min(60,Math.max(0,Math.round(+q("pg-dias").value||0))), diasFijo:(+q("pg-dias").value||0) > 0, msg, owner:pid ? P.owner : S.uid, activo: pid ? q("pg-act").checked : true, musica: q("pg-mus").checked, tema: P.tema || "oro", textos: readTx(), fondo: P.fondo || "", reloj: +q("pg-reloj").value || 0, otraVez: q("pg-otra").checked, ...(P.tipo==="puzzle" ? {seg: Math.min(180, Math.max(20, +q("pg-seg").value || 60))} : {}), ...(precio ? {precio} : {}), createdAt:P.createdAt||Date.now(), updatedAt:Date.now()};
       if (JSON.stringify(doc).length > 900000){ toast("Las fotos pesan mucho. Quita alguna e intenta de nuevo."); return; }
       q("pg-save").disabled = true;
       try { if (pid) await S.db.doc("programs/"+pid).set(doc); else await S.db.collection("programs").add(doc); closeModal(); toast("Programa guardado"); } catch(e){ q("pg-save").disabled = false; writeErr(e); }
@@ -783,7 +783,7 @@ function openPrograma(pid, copia){
 function socioOpts(sel){ const r = role(); const l = r==="tele" ? sociosPara(S.me ? {...S.me, id:S.uid} : null) : r==="admin" ? [{id:S.uid, name:S.me?.name||"Yo"}, ...socios().filter(s=>s.id!==S.uid && S.members[s.id]?.upline===S.uid)] : [{id:S.uid, name:S.me?.name||"Yo"}];
   return l.map(s => `<option value="${s.id}" ${s.id===sel?"selected":""}>${s.id===S.uid?"Yo ("+esc(s.name)+")":esc(s.name)}</option>`).join(""); }
 function juegoBase(sid, pid){ const sm = S.members[sid] || {}; const p = S.programs[pid] || {};
-  return {pid, socioId:sid, up: sm.upline || "", tv: S.members[pagadorDe(sid)]?.role==="admin", by:S.uid, n:0, until: p.dias===0 ? 0 : Date.now() + (p.dias||7)*864e5, createdAt:Date.now(), meta:p.meta||{refs:14,cada:4}}; }
+  return {pid, socioId:sid, up: sm.upline || "", tv: S.members[pagadorDe(sid)]?.role==="admin", by:S.uid, n:0, until: (p.diasFijo && p.dias > 0) ? Date.now() + p.dias*864e5 : 0, createdAt:Date.now(), meta:p.meta||{refs:14,cada:4}}; }
 function progSel(id){ const l = misProgramas(); return `<label class="f">Programa<select class="i" id="${id}">${l.map(([pid,p])=>`<option value="${pid}">${TI(p.tipo).e} ${esc(p.name)}${p.owner!==S.uid?(esDir(p.owner)?" · Lunaya (listo para usar)":" · de "+esc(firstName(memberName(p.owner)))):""}</option>`).join("")}</select></label>`; }
 
 /* Regalos por los que participa cada cliente: uno por cada nivel (ej.: a las 4, 8 y 12 visitas) */
@@ -1060,3 +1060,8 @@ window.addEventListener("popstate", () => { if (document.getElementById("jg") &&
 /* Prospecto de un anuncio con sorteo: no ganó todavía, solo participó */
 const esSorteoLead = l => !!(S.juegos?.[l.code]?.sorteo || String(l.prize||"").startsWith("Sorteo:"));
 const ganoTxt = l => esSorteoLead(l) ? "participó en el sorteo de " + String(l.prize||"").replace(/^Sorteo:\s*/,"") + " (todavía NO ha ganado)" : "ganó " + l.prize;
+
+/* Los links ya no vencen: los que se crearon con el vencimiento automático de 7 días pasan a durar siempre (no toca sorteos ni programas con días fijos) */
+const lsHechos = new Set();
+function linksSiempre(m){ Object.entries(m||{}).forEach(([c,j]) => { if (!j.until || j.sorteo || lsHechos.has(c)) return; const p = S.programs?.[j.pid]; if (p && p.diasFijo) return;
+  if (j.by!==S.uid && j.socioId!==S.uid) return; lsHechos.add(c); S.db.doc("juegos/"+c).update({until:0}).catch(e => console.log("until", c, e)); }); }
