@@ -275,7 +275,7 @@ async function startJuego(code, avance){
 
   function showIntro(){
     const n = J.n || 0;
-    box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div>${J.anuncio ? nameHtml(TI(tipo).corto) : `<div class="jg-top">${esc(TX.top)}</div>
+    box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div>${J.anuncio ? nameHtml(TI(tipo).corto) + `<div class="jg-pill">${tipo==="ruleta" ? "¡Te ganaste un giro! 🎁" : "¡Te ganaste una oportunidad! 🎁"}</div>` : `<div class="jg-top">${esc(TX.top)}</div>
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>`}
       <p class="jg-p"><b>${esc(TX.sub)}</b><br>¡Totalmente gratis! 🎉</p>
       ${tipo==="rasca" ? scratchHtml() : tipo==="tiro" ? tiroHtml() : tipo==="pinata" ? pinataHtml() : tipo==="quiz" || tipo==="precio" || tipo==="puzzle" ? `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` + (tipo==="precio" ? precioHtml() : "") : tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
