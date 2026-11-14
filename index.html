@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611141324"></script>
-<script src="anuncios.js?v=202611141324"></script>
-<script src="juego.js?v=202611141324"></script>
+<script src="demo.js?v=202611141328"></script>
+<script src="anuncios.js?v=202611141328"></script>
+<script src="juego.js?v=202611141328"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611141324";
+const APP_VER = "202611141328";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1014,20 +1014,21 @@ function repartoDatos(rg){ const c = cuadreDatos(rg); const K = ownerUid(); cons
   const ingD = Object.entries(c.ing).filter(([id]) => S.members[id]?.role!=="admin").reduce((t,[,o]) => t+o.tm, 0);
   const sobraD = ingD - com.D; const gar = Math.max(0, c.sueldos - Math.max(0, sobraD)); const mitad = gar/2;
   return {c, A, com, ingD, sobraD, gar, mitad, ponK: com.K + mitad, ponA: com.A + mitad, sobraTotal: Math.max(0, sobraD - c.sueldos)}; }
-function repartoHtml(r){ const L = (t, v, b) => `<tr${b?' class="tot"':""}><td>${t}</td><td class="n">${money(v)}</td></tr>`; const nA = firstName(memberName(r.A)||"Andrés");
-  return `<table>${L("1. Pagan los distribuidores (sin Andrés)", r.ingD)}${L("2. Comisión de las telemarketers por las ventas de esos distribuidores", r.com.D)}${L(r.sobraD>=0 ? "3. Les sobra para el garantizado (1 − 2)" : "3. Falta para cubrir sus comisiones (1 − 2)", r.sobraD, true)}
-    ${L("4. Sueldos (garantizado) de la quincena", r.c.sueldos)}${L("5. Garantizado que falta cubrir (4 − 3)", r.gar, true)}${L(`Mitad Katerine`, r.mitad)}${L(`Mitad ${esc(nA)}`, r.mitad)}</table>
-    <table style="margin-top:10px"><tr><th>Quién pone</th><th class="n">Comisión de sus ventas</th><th class="n">Mitad del garantizado</th><th class="n">Total</th></tr>
-    <tr><td>Katerine (ella + sus emprendedores)</td><td class="n">${money(r.com.K)}</td><td class="n">${money(r.mitad)}</td><td class="n"><b>${money(r.ponK)}</b></td></tr>
-    <tr><td>${esc(nA)} (él + sus emprendedores)</td><td class="n">${money(r.com.A)}</td><td class="n">${money(r.mitad)}</td><td class="n"><b>${money(r.ponA)}</b></td></tr>
-    <tr><td>Distribuidores</td><td class="n" colspan="2">lo que pagan</td><td class="n"><b>${money(r.ingD)}</b></td></tr>
-    <tr class="tot"><td colspan="3">Total = nómina${r.sobraTotal ? " + sobrante" : ""}</td><td class="n">${money(r.ponK + r.ponA + r.ingD)}</td></tr></table>`; }
-function nominaCard(){ if (S.uid!==ownerUid() && !esAsist() && !esLiderTM()) return ""; const p = NOM_P[S.f.nomp] ? S.f.nomp : "quinant"; const rg = range(p); const c = cuadreDatos(rg);
+function repartoHtml(r){ const L = (t, v, cls) => `<tr${cls?` class="${cls}"`:""}><td>${t}</td><td class="n">${v}</td></tr>`; const res = r.ingD - r.com.D - r.c.sueldos;
+  return `<table>
+    ${L("💵 Recibido de los distribuidores", money(r.ingD))}
+    ${L("➖ Comisiones de las telemarketers por sus ventas", "− "+money(r.com.D))}
+    ${L("➖ Garantizado (sueldos) de la quincena", "− "+money(r.c.sueldos))}
+    ${L(res >= 0 ? "✅ A favor de Dirección" : "⚠️ Falta: lo ponen los directores (mitad y mitad)", `<b>${res<0?"− ":""}${money(Math.abs(res))}</b>`, "tot")}
+    ${res < 0 ? L("Cada director pone", money(Math.abs(res)/2)) : ""}
+  </table>
+  <p class="note" style="margin-top:6px">Aparte, cada director paga la comisión de las telemarketers por sus propias ventas (y las de sus emprendedores): Katerine ${money(r.com.K)} · ${esc(firstName(memberName(r.A)||"Andrés"))} ${money(r.com.A)}.</p>`; }
+function nominaCard(){ if (role()!=="admin" && !esAsist() && !esLiderTM()) return ""; const p = NOM_P[S.f.nomp] ? S.f.nomp : "quinant"; const rg = range(p); const c = cuadreDatos(rg);
   return `<div class="card"><h2>🧾 Nómina <div class="chips">${Object.entries(NOM_P).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-nomp="${v}">${l}</button>`).join("")}</div></h2>
     <p class="note" style="margin-top:-6px">${rangoTxt(p)}. Abre el documento con el pago de cada telemarketer: cada cliente, quién vendió, la venta, la comisión, el sueldo y el total.${esLiderTM() ? " Revísalo y confírmale a la asistente si está correcto." : ""}</p>
-    <div class="tiles"><div class="tile"><b>${money(c.totNom)}</b><span>Total de la nómina</span><small>${money(c.sueldos)} sueldos · ${money(c.coms)} comisiones</small></div>${esLiderTM() ? "" : `<div class="tile"><b>${money(c.totIng)}</b><span>Entran de comisiones</span><small>distribuidores y Andrés</small></div>`}${S.uid===ownerUid() ? `<div class="tile warn"><b>${money(repartoDatos(rg).gar)}</b><span>Garantizado que falta</span><small>mitad Katerine, mitad Andrés</small></div>` : ""}</div>
-    ${S.uid===ownerUid() ? (() => { const r = repartoDatos(rg); return `<details style="margin-top:8px" open><summary style="cursor:pointer"><b>⚖️ Cuadre: quién pone qué</b> · Katerine ${money(r.ponK)} · ${esc(firstName(memberName(r.A)||"Andrés"))} ${money(r.ponA)}</summary><div class="tbl-wrap">${repartoHtml(r)}</div></details>`; })() : ""}
-    ${S.uid===ownerUid() ? (() => { const dentro = c.nom.map(x => x.t), fuera = [...byRole("tele").filter(t => t.sinNomina), ...byRole("baja").filter(t => t.prevRole==="tele" && t.sinNomina!==false && (t.leftAt||0) >= Date.now()-60*864e5)].filter(t => !t.upline);
+    <div class="tiles"><div class="tile"><b>${money(c.totNom)}</b><span>Total de la nómina</span><small>${money(c.sueldos)} sueldos · ${money(c.coms)} comisiones</small></div>${esLiderTM() ? "" : `<div class="tile"><b>${money(c.totIng)}</b><span>Entran de comisiones</span><small>distribuidores y directores</small></div>`}${role()==="admin" ? `${(() => { const r = repartoDatos(rg), res = r.ingD - r.com.D - r.c.sueldos; return `<div class="tile ${res<0?"warn":"acc"}"><b>${money(Math.abs(res))}</b><span>${res<0 ? "Falta (lo ponen los directores)" : "A favor de Dirección"}</span></div>`; })()}` : ""}</div>
+    ${role()==="admin" ? (() => { const r = repartoDatos(rg); return `<details style="margin-top:8px" open><summary style="cursor:pointer"><b>⚖️ Cuadre de la quincena</b></summary><div class="tbl-wrap">${repartoHtml(r)}</div></details>`; })() : ""}
+    ${role()==="admin" ? (() => { const dentro = c.nom.map(x => x.t), fuera = [...byRole("tele").filter(t => t.sinNomina), ...byRole("baja").filter(t => t.prevRole==="tele" && t.sinNomina!==false && (t.leftAt||0) >= Date.now()-60*864e5)].filter(t => !t.upline);
       return `<details style="margin-top:8px"><summary style="cursor:pointer">👥 Quién entra en la nómina (${dentro.length})</summary><div class="list" style="margin-top:6px">${dentro.map(t => `<div class="item" style="cursor:default"><span>${esc(t.name)}${t.role==="baja"?' <span class="note">(ya no está)</span>':""}</span><button class="btn small ghost" data-sinnom="${t.id}|1">✕ Quitar de la nómina</button></div>`).join("")}${fuera.map(t => `<div class="item" style="cursor:default;opacity:.6"><span>${esc(t.name)} <span class="note">fuera de la nómina</span></span><button class="btn small ghost" data-sinnom="${t.id}|0">↩️ Volver a poner</button></div>`).join("")}</div><p class="note">Quitar de la nómina no borra a la persona ni sus citas; solo deja de salir aquí (sueldo y comisión).</p></details>`; })() : ""}
     <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="btn" data-nomdoc="${p}|tele">📄 Nómina por telemarketer</button><button class="btn ghost" data-nomdoc="${p}|socio">📄 Nómina por socio</button><button class="btn small ghost" data-nomcsv="${p}">📥 Excel</button></div></div>`; }
 function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); const titulo = (NOM_P[p]||"") + " · " + rangoTxt(p); const st = a => a.saleStatus || "pendiente";
@@ -1050,7 +1051,7 @@ function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); con
     <div class="big"><span>TOTAL A PAGAR · ${(NOM_P[p]||"").toUpperCase()}</span><b>${money(c.totNom)}</b></div>
     <h2>Reporte de actividad de cada telemarketer</h2><table><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">Aprobadas</th><th class="n">Canceladas</th><th class="n">Volumen vendido</th><th class="n">Volumen aprobado</th></tr>${(() => { const T = {calls:0,citas:0,demos:0,ventas:0,aprob:0,cancel:0,monto:0,montoAprob:0}; const rws = filas.map(x => { const e = teleEval(x.t.id, rg); Object.keys(T).forEach(k => T[k] += +e[k]||0); return `<tr><td>${esc(x.t.name)}</td>${R(e.calls)}${R(e.citas)}${R(e.demos)}${R(e.ventas)}${R(e.aprob)}${R(e.cancel)}${R(money(e.monto))}${R(money(e.montoAprob||0))}</tr>`; }).join(""); return rws + `<tr class="tot"><td>Total</td>${R(T.calls)}${R(T.citas)}${R(T.demos)}${R(T.ventas)}${R(T.aprob)}${R(T.cancel)}${R(money(T.monto))}${R(money(T.montoAprob))}</tr>`; })()}</table>
 ${esLiderTM() ? "" : `    <h2>¿De dónde sale el dinero?</h2><table><tr><th>Quién paga</th><th class="n">Comisión de telemarketing</th></tr>${Object.entries(c.ing).sort((a,b)=>b[1].tm-a[1].tm).map(([id,o]) => `<tr><td>${esc(memberName(id))}</td>${R(money(o.tm))}</tr>`).join("") || `<tr><td colspan="2" style="color:#888">Nada en este periodo.</td></tr>`}
-      <tr class="tot"><td>Total de comisiones que entran</td>${R(money(c.totIng))}</tr></table>${S.uid===ownerUid() ? `<h2>⚖️ Cuadre: quién pone qué</h2>${repartoHtml(repartoDatos(rg))}` : ""}`}
+      <tr class="tot"><td>Total de comisiones que entran</td>${R(money(c.totIng))}</tr></table>${role()==="admin" ? `<h2>⚖️ Cuadre de la quincena</h2>${repartoHtml(repartoDatos(rg))}` : ""}`}
     <p style="color:#888;font-size:12px;margin-top:18px">La comisión se paga sobre ventas aprobadas hasta el día antes del corte (1–14 y 15–fin de mes menos 1); lo que sigue en verificación pasa a la próxima quincena. Lo de los distribuidores es lo que les toca pagar en el periodo (pagado o no). Generado con Lunaya · ${fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"})}</p></body></html>`;
   const w = window.open(URL.createObjectURL(new Blob([html], {type:"text/html"})), "_blank"); if (!w) toast("Permite abrir ventanas para ver la nómina"); }
 document.addEventListener("click", async e => { const q = e.target.closest && e.target.closest("[data-sinnom]"); if (q){ const [id, v] = q.dataset.sinnom.split("|"); try { await S.db.doc("members/"+id).update({sinNomina: v==="1"}); if (S.members[id]) S.members[id].sinNomina = v==="1"; toast(v==="1" ? "Quitada de la nómina" : "Vuelve a estar en la nómina"); render(); } catch(err){ writeErr(err); } } });
@@ -1936,7 +1937,7 @@ function viewPagos(){
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
   h += aporteResumen(p) + aporteDetalle(p) + pasesCard(p);
-  h = (S.uid!==ownerUid() ? reporteSemanaCard() : nominaCard() + miAporteCard()) + deudasKatCard() + recibidosCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
+  h = nominaCard() + (S.uid!==ownerUid() ? reporteSemanaCard() : miAporteCard()) + deudasKatCard() + recibidosCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
   h += empSemanaCard(S.uid) + empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
