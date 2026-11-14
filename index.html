@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611140821"></script>
-<script src="anuncios.js?v=202611140821"></script>
-<script src="juego.js?v=202611140821"></script>
+<script src="demo.js?v=202611140822"></script>
+<script src="anuncios.js?v=202611140822"></script>
+<script src="juego.js?v=202611140822"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611140821";
+const APP_VER = "202611140822";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -989,7 +989,7 @@ function cuadreDatos(rg){ const K = ownerUid(); const ing = {}; Object.values(de
 function nominaCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const p = NOM_P[S.f.nomp] ? S.f.nomp : "quinant"; const rg = range(p); const c = cuadreDatos(rg);
   return `<div class="card"><h2>🧾 Nómina <div class="chips">${Object.entries(NOM_P).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-nomp="${v}">${l}</button>`).join("")}</div></h2>
     <p class="note" style="margin-top:-6px">${rangoTxt(p)}. Abre el documento con el pago de cada telemarketer: cada cliente, quién vendió, la venta, la comisión, el sueldo y el total.</p>
-    <div class="tiles"><div class="tile"><b>${money(c.totNom)}</b><span>Total de la nómina</span><small>${money(c.sueldos)} sueldos · ${money(c.coms)} comisiones</small></div><div class="tile"><b>${money(c.totIng)}</b><span>Ponen los distribuidores</span></div><div class="tile ${c.pones?"warn":"acc"}"><b>${money(c.pones || c.sobra)}</b><span>${c.pones ? "Te toca poner a ti" : "Te sobra"}</span><small>${c.pones ? "del garantizado" : ""}</small></div></div>
+    <div class="tiles"><div class="tile"><b>${money(c.totNom)}</b><span>Total de la nómina</span><small>${money(c.sueldos)} sueldos · ${money(c.coms)} comisiones</small></div><div class="tile"><b>${money(c.totIng)}</b><span>Ponen los distribuidores</span></div>${S.uid===ownerUid() ? `<div class="tile ${c.pones?"warn":"acc"}"><b>${money(c.pones || c.sobra)}</b><span>${c.pones ? "Te toca poner a ti" : "Te sobra"}</span><small>${c.pones ? "del garantizado" : ""}</small></div>` : ""}</div>
     <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="btn" data-nomdoc="${p}|tele">📄 Nómina por telemarketer</button><button class="btn ghost" data-nomdoc="${p}|socio">📄 Nómina por socio</button><button class="btn small ghost" data-nomcsv="${p}">📥 Excel</button></div></div>`; }
 function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); const titulo = (NOM_P[p]||"") + " · " + rangoTxt(p); const st = a => a.saleStatus || "pendiente";
   const stTxt = a => st(a)==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : st(a)==="cancelada" ? '<span style="color:#999">cancelada</span>' : '<span style="color:#7e22ce">en verificación</span>';
@@ -1010,12 +1010,12 @@ function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); con
     ${cuerpo}
     <div class="big"><span>TOTAL A PAGAR · ${(NOM_P[p]||"").toUpperCase()}</span><b>${money(c.totNom)}</b></div>
     <h2>¿De dónde sale el dinero?</h2><table><tr><th>Distribuidor</th><th class="n">Comisión telemarketing</th><th class="n">Parte del garantizado</th><th class="n">Total</th></tr>${Object.entries(c.ing).sort((a,b)=>(b[1].tm+b[1].gar)-(a[1].tm+a[1].gar)).map(([id,o]) => `<tr><td>${esc(memberName(id))}</td>${R(money(o.tm))}${R(money(o.gar))}${R(money(o.tm+o.gar))}</tr>`).join("") || `<tr><td colspan="4" style="color:#888">Nada en este periodo.</td></tr>`}
-      <tr class="tot"><td colspan="3">Lo que ponen los distribuidores</td>${R(money(c.totIng))}</tr><tr class="tot"><td colspan="3">${c.pones ? "Lo que te toca poner a ti (diferencia del garantizado)" : "Te sobra"}</td>${R(money(c.pones || c.sobra))}</tr></table>
+      <tr class="tot"><td colspan="3">Lo que ponen los distribuidores</td>${R(money(c.totIng))}</tr>${S.uid===ownerUid() ? `<tr class="tot"><td colspan="3">${c.pones ? "Lo que te toca poner a ti (diferencia del garantizado)" : "Te sobra"}</td>${R(money(c.pones || c.sobra))}</tr>` : ""}</table>
     <p style="color:#888;font-size:12px;margin-top:18px">La comisión se paga solo sobre ventas aprobadas; las ventas cuentan el día de la cita. Lo de los distribuidores es lo que les toca pagar en el periodo (pagado o no). Generado con Lunaya · ${fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"})}</p></body></html>`;
   const w = window.open(URL.createObjectURL(new Blob([html], {type:"text/html"})), "_blank"); if (!w) toast("Permite abrir ventanas para ver la nómina"); }
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-nomdoc]"); if (b){ const [p, m] = b.dataset.nomdoc.split("|"); nominaDoc(p, m); }
   const c = e.target.closest && e.target.closest("[data-nomp]"); if (c){ S.f.nomp = c.dataset.nomp; render(); } });
-function cuadreCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = ownerUid();
+function cuadreCard(){ if (S.uid!==ownerUid()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = ownerUid();
   const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
   const ingRows = Object.entries(ing).sort((a,b) => (b[1].tm+b[1].gar)-(a[1].tm+a[1].gar)); const totTm = ingRows.reduce((t,[,o])=>t+o.tm,0), totGar = ingRows.reduce((t,[,o])=>t+o.gar,0), totIng = totTm + totGar;
   const nom = commissions(rg, ""); const sueldos = nom.reduce((t,x)=>t+x.sueldo,0), coms = nom.reduce((t,x)=>t+x.comision,0), totEg = sueldos + coms; const res = totIng - totEg;
