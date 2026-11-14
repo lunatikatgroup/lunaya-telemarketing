@@ -176,10 +176,17 @@ function openLinkManual(){ const pr = misProgramas(); if (!pr.length){ toast("Pr
       <label class="f">Fecha del sorteo<input class="i" type="date" id="lm-d" value="${def}" min="${today()}" max="${max}"></label></div>
       <p class="note">La página trae las <b>reglas oficiales</b> (no se requiere compra, mayores de 18, condado de San Diego, cómo se escoge al ganador y que no es de Meta). Después de la fecha deja de recibir participaciones.</p></div>
       <label class="f">Quién organiza<input class="i" id="lm-o" value="Kalud" maxlength="60"></label></div>
+    <div class="note" id="lm-pz" style="margin:-4px 0 8px"></div>
+    <div style="margin-bottom:8px"><button class="btn small ghost" id="lm-ver" type="button">👀 Ver cómo lo ve el cliente</button></div>
     <label class="f">Nombre para reconocerlo (solo lo ves tú)<input class="i" id="lm-n" value="Anuncio Meta ${esc(fmt(Date.now(),{day:"numeric",month:"short"}))}"></label>
     <div class="row"><button class="btn" id="lm-ok">Crear link</button><button class="btn ghost" data-close>Cancelar</button></div><div id="lm-r"></div>`, () => {
     const q = x => document.getElementById(x); let flyer = "";
     const sync = () => { const t = q("lm-t").value, so = t !== "ruleta"; q("lm-so").style.display = so ? "" : "none"; q("lm-ru").style.display = so ? "none" : ""; q("lm-sd").style.display = t === "sorteo" ? "" : "none"; }; q("lm-t").onchange = sync; sync();
+    const pz = () => { const p = S.programs?.[q("lm-p").value]; q("lm-pz").innerHTML = q("lm-t").value==="ruleta" && p ? "🎁 Regalos de esta ruleta: <b>" + (p.prizes||[]).map(x => esc(x.n)).join(" · ") + "</b>" : ""; }; q("lm-p").onchange = pz; q("lm-t").addEventListener("change", pz); pz();
+    q("lm-ver").onclick = () => { const t = q("lm-t").value;
+      if (t === "ruleta"){ const p = S.programs?.[q("lm-p").value]; if (p) probarJuego(p, p.tipo, true); return; }
+      const so = {modo: t==="regalo" ? "regalo" : undefined, img: flyer, premio:(q("lm-pr").value.trim() || "un producto de cocina"), ganadores:+q("lm-g").value||1, fecha:q("lm-d").value, patro:(q("lm-o").value.trim()||"Kalud")};
+      probarJuego(pr[0][1], pr[0][1].tipo, true, so); };
     q("lm-f").onchange = async () => { const f = q("lm-f").files[0]; if (!f) return; q("lm-fn").textContent = "Preparando…"; try { flyer = await flyerChico(f); q("lm-fn").textContent = "✅ " + f.name; } catch { flyer = ""; q("lm-fn").textContent = "No se pudo leer la foto"; } };
     q("lm-ok").onclick = async () => { const b = q("lm-ok"); const so = q("lm-t").value !== "ruleta";
       let sorteo = null, until = 0; const modo = q("lm-t").value;
