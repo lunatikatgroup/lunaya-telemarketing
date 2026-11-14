@@ -152,7 +152,7 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-name{font-family:var(--serif);font-weight:700;font-size:clamp(40px,12vw,58px);line-height:1;margin:2px 0 0;color:#a8761b;text-transform:none;letter-spacing:0;text-wrap:balance}
 .jg-h{font-family:var(--serif);font-weight:700;font-size:28px;line-height:1.1;margin:0;color:#14213d;text-transform:none;letter-spacing:0}
 .jg-h b{color:#a8761b}
-.jg-p{margin:0;color:#5b5547;font-size:16px}
+.jg-p{margin:0;color:#2c2a24;font-size:clamp(17px,2.4vw,22px);line-height:1.35}
 .jg-wrap{position:relative;width:min(98vw,70vh,780px);margin:4px auto 0;justify-self:center}
 .jg-svg{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 28px rgba(120,90,20,.28))}
 .jg-ptr{position:absolute;left:50%;top:-8px;transform:translateX(-50%);width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:36px solid var(--ink);filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))}
@@ -175,7 +175,7 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-prize .pn{font-family:var(--serif);font-weight:700;font-size:30px;color:var(--acc);text-align:center}
 .jg-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .jg-chip{background:#fff;border:1.5px solid #ead9ad;color:#14213d;border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:700}
-.jg-small{font-size:12.5px;color:#8a826f}
+.jg-small{font-size:clamp(13px,1.7vw,15px);color:#4f4a3e}
 .jg-gifts{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
 .jg-gift{display:grid;justify-items:center;gap:6px;font-size:13px;font-weight:800;color:#14213d}
 .jg-gift img,.jg-gift span.ph{width:92px;height:92px;border-radius:50%;object-fit:cover;border:4px solid #e2bb4f;background:#fff;display:grid;place-items:center;font-size:40px}
