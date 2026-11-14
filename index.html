@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611132225"></script>
-<script src="anuncios.js?v=202611132225"></script>
-<script src="juego.js?v=202611132225"></script>
+<script src="demo.js?v=202611140821"></script>
+<script src="anuncios.js?v=202611140821"></script>
+<script src="juego.js?v=202611140821"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611132225";
+const APP_VER = "202611140821";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -963,7 +963,7 @@ function empSemanaCard(payer){ const pe = (S.members[payer]||{}).planEmp || {}; 
 /* Pestaña de la asistente de pagos: lo que le deben a Katerine, cuadre y nómina de las telemarketers */
 function viewCobros(){ if (!esAsist() && role()!=="admin") return `<div class="card empty">Esta pantalla es solo para la asistente de pagos.</div>`;
   const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes";
-  return `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + recibidosCard() + cuadreCard() + nominaTeleCard(p) + comCard(p) + porDistribucionCard() + aporteResumen(p) + aporteDetalle(p); }
+  return nominaCard() + `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + recibidosCard() + cuadreCard() + nominaTeleCard(p) + comCard(p) + porDistribucionCard() + aporteResumen(p) + aporteDetalle(p); }
 /* Cuadre del programa de telemarketing: lo que pagan los distribuidores por telemarketing (+ la parte del garantizado de Andrés) contra la nómina de las telemarketers */
 /* Nómina de telemarketers con el detalle de cada orden (para la asistente que prepara la nómina) */
 function nominaVentas(t, rg){ return Object.values(S.appts).filter(a => a.teleId===t.id && a.tipoVisita!=="servicio" && a.sale && inR(a.when||0, rg) && a.status==="hecha").sort((x,y) => x.when-y.when); }
@@ -980,6 +980,41 @@ function nominaCsv(p){ const rg = range(p); const L = [["Telemarketer","Fecha ci
     vs.forEach((a,i) => { const ok = (a.saleStatus||"pendiente")==="aprobada"; L.push([x.t.name, laDate(a.when), nomCli(a), memberName(a.socioId), a.saleStatus||"pendiente", +a.amount||0, x.pct+"%", ok ? Math.round((+a.amount||0)*x.pct)/100 : 0, i===0 ? Math.round(x.sueldo*100)/100 : "", i===0 ? Math.round(x.total*100)/100 : ""]); }); });
   csvDownload(`nomina-telemarketers-${p}-${today()}.csv`, L); }
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-nomcsv]"); if (b) nominaCsv(b.dataset.nomcsv); });
+
+/* ===== Nómina: botón que abre un documento con el pago de cada telemarketer (por telemarketer o por socio) + cuánto pone Katerine ===== */
+const NOM_P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"};
+function cuadreDatos(rg){ const K = ownerUid(); const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
+  const nom = commissions(rg, ""); const totIng = Object.values(ing).reduce((t,o)=>t+o.tm+o.gar,0), sueldos = nom.reduce((t,x)=>t+x.sueldo,0), coms = nom.reduce((t,x)=>t+x.comision,0);
+  return {ing, nom, totIng, sueldos, coms, totNom: sueldos+coms, pones: Math.max(0, sueldos+coms-totIng), sobra: Math.max(0, totIng-sueldos-coms)}; }
+function nominaCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const p = NOM_P[S.f.nomp] ? S.f.nomp : "quinant"; const rg = range(p); const c = cuadreDatos(rg);
+  return `<div class="card"><h2>🧾 Nómina <div class="chips">${Object.entries(NOM_P).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-nomp="${v}">${l}</button>`).join("")}</div></h2>
+    <p class="note" style="margin-top:-6px">${rangoTxt(p)}. Abre el documento con el pago de cada telemarketer: cada cliente, quién vendió, la venta, la comisión, el sueldo y el total.</p>
+    <div class="tiles"><div class="tile"><b>${money(c.totNom)}</b><span>Total de la nómina</span><small>${money(c.sueldos)} sueldos · ${money(c.coms)} comisiones</small></div><div class="tile"><b>${money(c.totIng)}</b><span>Ponen los distribuidores</span></div><div class="tile ${c.pones?"warn":"acc"}"><b>${money(c.pones || c.sobra)}</b><span>${c.pones ? "Te toca poner a ti" : "Te sobra"}</span><small>${c.pones ? "del garantizado" : ""}</small></div></div>
+    <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="btn" data-nomdoc="${p}|tele">📄 Nómina por telemarketer</button><button class="btn ghost" data-nomdoc="${p}|socio">📄 Nómina por socio</button><button class="btn small ghost" data-nomcsv="${p}">📥 Excel</button></div></div>`; }
+function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); const titulo = (NOM_P[p]||"") + " · " + rangoTxt(p); const st = a => a.saleStatus || "pendiente";
+  const stTxt = a => st(a)==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : st(a)==="cancelada" ? '<span style="color:#999">cancelada</span>' : '<span style="color:#7e22ce">en verificación</span>';
+  const R = v => `<td class="n">${v}</td>`; const filas = c.nom.filter(x => x.total || nominaVentas(x.t, rg).length);
+  let cuerpo = "";
+  if (modo === "socio"){ const g = {}; filas.forEach(x => nominaVentas(x.t, rg).forEach(a => { (g[a.socioId] ||= []).push({a, x}); }));
+    cuerpo = Object.entries(g).sort((a,b) => memberName(a[0]).localeCompare(memberName(b[0]))).map(([sid, L]) => { const vol = L.reduce((t,{a})=>t+(st(a)==="aprobada"?+a.amount||0:0),0), com = L.reduce((t,{a,x})=>t+(st(a)==="aprobada"?(+a.amount||0)*x.pct/100:0),0);
+      return `<h2>${esc(memberName(sid))}</h2><table><tr><th>Fecha cita</th><th>Cliente</th><th>Telemarketer</th><th>Estado</th><th class="n">Venta</th><th class="n">Comisión</th></tr>${L.sort((a,b)=>a.a.when-b.a.when).map(({a,x}) => `<tr><td>${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(nomCli(a))}</td><td>${esc(x.t.name)} (${x.pct}%)</td><td>${stTxt(a)}</td>${R(money(+a.amount||0))}${R(st(a)==="aprobada"?money((+a.amount||0)*x.pct/100):"—")}</tr>`).join("")}<tr class="tot"><td colspan="4">Total aprobado de ${esc(memberName(sid))}</td>${R(money(vol))}${R(money(com))}</tr></table>`; }).join("") || "<p>No hay ventas en este periodo.</p>";
+    cuerpo += `<h2>Pago de cada telemarketer</h2><table><tr><th>Telemarketer</th><th class="n">Sueldo</th><th class="n">Comisión</th><th class="n">Total a pagar</th></tr>${filas.map(x => `<tr><td>${esc(x.t.name)}${x.t.lider?" (líder)":""}</td>${R(money(x.sueldo))}${R(money(x.comision))}${R("<b>"+money(x.total)+"</b>")}</tr>`).join("")}</table>`; }
+  else cuerpo = filas.map(x => { const vs = nominaVentas(x.t, rg);
+    return `<h2>${esc(x.t.name)}${x.t.lider?" · líder":""}</h2><table><tr><th>Fecha cita</th><th>Cliente</th><th>Vendió</th><th>Estado</th><th class="n">Venta</th><th class="n">Comisión ${x.pct}%</th></tr>${vs.map(a => `<tr><td>${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(nomCli(a))}</td><td>${esc(memberName(a.socioId))}</td><td>${stTxt(a)}</td>${R(money(+a.amount||0))}${R(st(a)==="aprobada"?money((+a.amount||0)*x.pct/100):"—")}</tr>`).join("") || `<tr><td colspan="6" style="color:#888">Sin ventas en este periodo.</td></tr>`}
+      <tr><td colspan="5">Comisión por sus ventas aprobadas</td>${R(money(x.own))}</tr>${x.lead?`<tr><td colspan="5">1% de líder (ventas del equipo)</td>${R(money(x.lead))}</tr>`:""}
+      <tr><td colspan="5">Sueldo${x.base ? ` (${x.dias}/${x.diasMes} días · citas ${x.citasReq} de ${x.req}${x.cerrado && !x.cumple ? " · no llegó a la meta" : ""})` : ""}</td>${R(money(x.sueldo))}</tr>
+      <tr class="tot"><td colspan="5">Total a pagar a ${esc(x.t.name)}</td>${R(money(x.total))}</tr></table>`; }).join("") || "<p>No hay nómina en este periodo.</p>";
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Nómina · ${esc(titulo)}</title><style>body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#222;margin:22px}h1{color:#7a2840;font-family:Georgia,serif;margin:0}h2{color:#7a2840;font-family:Georgia,serif;font-size:19px;margin:22px 0 6px}p.s{color:#a07a1a;margin:4px 0 16px}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #eee;padding:6px 6px;text-align:left}th{background:#f7efe0}td.n,th.n{text-align:right}tr.tot td{font-weight:800;background:#fbf3e6}.t{display:flex;flex-wrap:wrap;gap:10px}.t div{border:1px solid #e8d9b8;border-radius:12px;padding:10px 14px;min-width:150px}.t b{display:block;font-size:20px;color:#7a2840}.big{margin-top:22px;padding:16px;border-radius:14px;background:#7a2840;color:#fff;font-size:18px;display:flex;justify-content:space-between}.btn{position:fixed;right:14px;top:14px;padding:10px 14px;border:0;border-radius:10px;background:#7a2840;color:#fff;font-weight:700}@media print{.btn{display:none}}</style></head><body>
+    <button class="btn" onclick="print()">🖨️ Imprimir / Guardar PDF</button><h1>Nómina de telemarketing</h1><p class="s">${esc(titulo)} · ${modo==="socio"?"por socio":"por telemarketer"} · Lunatikat Group</p>
+    <div class="t"><div><b>${money(c.totNom)}</b>Total nómina</div><div><b>${money(c.sueldos)}</b>Sueldos</div><div><b>${money(c.coms)}</b>Comisiones</div></div>
+    ${cuerpo}
+    <div class="big"><span>TOTAL A PAGAR · ${(NOM_P[p]||"").toUpperCase()}</span><b>${money(c.totNom)}</b></div>
+    <h2>¿De dónde sale el dinero?</h2><table><tr><th>Distribuidor</th><th class="n">Comisión telemarketing</th><th class="n">Parte del garantizado</th><th class="n">Total</th></tr>${Object.entries(c.ing).sort((a,b)=>(b[1].tm+b[1].gar)-(a[1].tm+a[1].gar)).map(([id,o]) => `<tr><td>${esc(memberName(id))}</td>${R(money(o.tm))}${R(money(o.gar))}${R(money(o.tm+o.gar))}</tr>`).join("") || `<tr><td colspan="4" style="color:#888">Nada en este periodo.</td></tr>`}
+      <tr class="tot"><td colspan="3">Lo que ponen los distribuidores</td>${R(money(c.totIng))}</tr><tr class="tot"><td colspan="3">${c.pones ? "Lo que te toca poner a ti (diferencia del garantizado)" : "Te sobra"}</td>${R(money(c.pones || c.sobra))}</tr></table>
+    <p style="color:#888;font-size:12px;margin-top:18px">La comisión se paga solo sobre ventas aprobadas; las ventas cuentan el día de la cita. Lo de los distribuidores es lo que les toca pagar en el periodo (pagado o no). Generado con Lunaya · ${fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"})}</p></body></html>`;
+  const w = window.open(URL.createObjectURL(new Blob([html], {type:"text/html"})), "_blank"); if (!w) toast("Permite abrir ventanas para ver la nómina"); }
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-nomdoc]"); if (b){ const [p, m] = b.dataset.nomdoc.split("|"); nominaDoc(p, m); }
+  const c = e.target.closest && e.target.closest("[data-nomp]"); if (c){ S.f.nomp = c.dataset.nomp; render(); } });
 function cuadreCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = ownerUid();
   const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
   const ingRows = Object.entries(ing).sort((a,b) => (b[1].tm+b[1].gar)-(a[1].tm+a[1].gar)); const totTm = ingRows.reduce((t,[,o])=>t+o.tm,0), totGar = ingRows.reduce((t,[,o])=>t+o.gar,0), totIng = totTm + totGar;
@@ -1855,7 +1890,7 @@ function viewPagos(){
   h += `<div class="card"><h2>Por socio</h2><div class="tbl-wrap"><table><thead><tr><th>Socio</th><th class="n">Citas</th><th class="n">Demostraciones</th><th class="n">Cant. de ventas</th><th class="n">Volumen de ventas</th></tr></thead><tbody>${ss.map(x=>`<tr><td><b>${esc(x.s.name)}</b></td><td class="n">${x.e.citas}</td><td class="n">${x.e.demos}</td><td class="n">${x.e.ventas}</td><td class="n">${money(x.e.monto)}</td></tr>`).join("")}</tbody></table></div></div>`;
   h += comCard(p);
   h += aporteResumen(p) + aporteDetalle(p) + pasesCard(p);
-  h = (S.uid!==ownerUid() ? reporteSemanaCard() : miAporteCard()) + deudasKatCard() + recibidosCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
+  h = (S.uid!==ownerUid() ? reporteSemanaCard() : nominaCard() + miAporteCard()) + deudasKatCard() + recibidosCard() + cuadreCard() + yoDeboCard() + porDistribucionCard() + h;
   /* Dirección ve las comisiones de los emprendedores de los dos directores (Katerine y Andrés) */
   h += empSemanaCard(S.uid) + empPagosCard(S.uid, p) + rutaGrupoCard(S.uid); byRole("admin").filter(m => m.id!==S.uid).forEach(m => { h += empPagosCard(m.id, p); });
   return h;
