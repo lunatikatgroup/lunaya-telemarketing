@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611140825"></script>
-<script src="anuncios.js?v=202611140825"></script>
-<script src="juego.js?v=202611140825"></script>
+<script src="demo.js?v=202611140827"></script>
+<script src="anuncios.js?v=202611140827"></script>
+<script src="juego.js?v=202611140827"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611140825";
+const APP_VER = "202611140827";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -994,6 +994,8 @@ function nominaCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const p 
   return `<div class="card"><h2>🧾 Nómina <div class="chips">${Object.entries(NOM_P).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-nomp="${v}">${l}</button>`).join("")}</div></h2>
     <p class="note" style="margin-top:-6px">${rangoTxt(p)}. Abre el documento con el pago de cada telemarketer: cada cliente, quién vendió, la venta, la comisión, el sueldo y el total.</p>
     <div class="tiles"><div class="tile"><b>${money(c.totNom)}</b><span>Total de la nómina</span><small>${money(c.sueldos)} sueldos · ${money(c.coms)} comisiones</small></div><div class="tile"><b>${money(c.totIng)}</b><span>Ponen los distribuidores</span></div>${S.uid===ownerUid() ? `<div class="tile ${c.pones?"warn":"acc"}"><b>${money(c.pones || c.sobra)}</b><span>${c.pones ? "Te toca poner a ti" : "Te sobra"}</span><small>${c.pones ? "del garantizado" : ""}</small></div>` : ""}</div>
+    ${S.uid===ownerUid() ? (() => { const dentro = c.nom.map(x => x.t), fuera = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele")].filter(t => !t.upline && t.sinNomina);
+      return `<details style="margin-top:8px"><summary style="cursor:pointer">👥 Quién entra en la nómina (${dentro.length})</summary><div class="list" style="margin-top:6px">${dentro.map(t => `<div class="item" style="cursor:default"><span>${esc(t.name)}${t.role==="baja"?' <span class="note">(ya no está)</span>':""}</span><button class="btn small ghost" data-sinnom="${t.id}|1">✕ Quitar de la nómina</button></div>`).join("")}${fuera.map(t => `<div class="item" style="cursor:default;opacity:.6"><span>${esc(t.name)} <span class="note">fuera de la nómina</span></span><button class="btn small ghost" data-sinnom="${t.id}|0">↩️ Volver a poner</button></div>`).join("")}</div><p class="note">Quitar de la nómina no borra a la persona ni sus citas; solo deja de salir aquí (sueldo y comisión).</p></details>`; })() : ""}
     <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="btn" data-nomdoc="${p}|tele">📄 Nómina por telemarketer</button><button class="btn ghost" data-nomdoc="${p}|socio">📄 Nómina por socio</button><button class="btn small ghost" data-nomcsv="${p}">📥 Excel</button></div></div>`; }
 function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); const titulo = (NOM_P[p]||"") + " · " + rangoTxt(p); const st = a => a.saleStatus || "pendiente";
   const stTxt = a => st(a)==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : st(a)==="cancelada" ? '<span style="color:#999">cancelada</span>' : '<span style="color:#7e22ce">en verificación</span>';
@@ -1017,6 +1019,7 @@ function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); con
       <tr class="tot"><td colspan="3">Lo que ponen los distribuidores</td>${R(money(c.totIng))}</tr>${S.uid===ownerUid() ? `<tr class="tot"><td colspan="3">${c.pones ? "Lo que te toca poner a ti (diferencia del garantizado)" : "Te sobra"}</td>${R(money(c.pones || c.sobra))}</tr>` : ""}</table>
     <p style="color:#888;font-size:12px;margin-top:18px">La comisión se paga solo sobre ventas aprobadas; las ventas cuentan el día de la cita. Lo de los distribuidores es lo que les toca pagar en el periodo (pagado o no). Generado con Lunaya · ${fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"})}</p></body></html>`;
   const w = window.open(URL.createObjectURL(new Blob([html], {type:"text/html"})), "_blank"); if (!w) toast("Permite abrir ventanas para ver la nómina"); }
+document.addEventListener("click", async e => { const q = e.target.closest && e.target.closest("[data-sinnom]"); if (q){ const [id, v] = q.dataset.sinnom.split("|"); try { await S.db.doc("members/"+id).update({sinNomina: v==="1"}); if (S.members[id]) S.members[id].sinNomina = v==="1"; toast(v==="1" ? "Quitada de la nómina" : "Vuelve a estar en la nómina"); render(); } catch(err){ writeErr(err); } } });
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-nomdoc]"); if (b){ const [p, m] = b.dataset.nomdoc.split("|"); nominaDoc(p, m); }
   const c = e.target.closest && e.target.closest("[data-nomp]"); if (c){ S.f.nomp = c.dataset.nomp; render(); } });
 function cuadreCard(){ if (S.uid!==ownerUid()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = ownerUid();
@@ -1065,7 +1068,7 @@ function aporteResumen(p){ const ap = aportes(range(p)); const rows = Object.val
 /* Plan de comisiones: el general de Dirección, o el propio del distribuidor para SUS telemarketers */
 const planTeleDe = up => up ? {sueldo:0, pct:0, liderPct:0, ...(S.members[up]?.planTele||{})} : com();
 function commissions(r, up=""){
-  const c = planTeleDe(up); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0])].filter(t => (t.upline||"")===up);
+  const c = planTeleDe(up); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0])].filter(t => (t.upline||"")===up && !t.sinNomina);
   /* la comisión se paga sobre ventas aprobadas */
   const rows = teles.map(t => { const e = teleEval(t.id, r); return {t, monto:e.montoAprob, ventas:e.aprob, pend:e.pend, cancel:e.cancel}; });
   const teamMonto = rows.reduce((s,x)=>s+x.monto,0);
