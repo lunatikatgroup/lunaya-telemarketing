@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611140832"></script>
-<script src="anuncios.js?v=202611140832"></script>
-<script src="juego.js?v=202611140832"></script>
+<script src="demo.js?v=202611140838"></script>
+<script src="anuncios.js?v=202611140838"></script>
+<script src="juego.js?v=202611140838"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611140832";
+const APP_VER = "202611140838";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -789,14 +789,14 @@ function aporteDetalle(p){ const ap = aportes(range(p)); const rows = Object.val
       <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Emprendedor</th><th>Telemarketer</th><th class="n">Venta</th><th class="n">Comisión</th></tr></thead><tbody>${x.rows.sort((a,b) => a.a.when - b.a.when).map(r => `<tr><td class="note">${fmt(r.a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nom(r.a))}</b></td><td>${esc(memberName(r.a.socioId))}</td><td>${esc(memberName(r.a.teleId))}</td><td class="n">${money(+r.a.amount||0)}</td><td class="n">${money(r.m)}</td></tr>`).join("")}</tbody></table></div></details>`).join("")}
     <button class="btn small ghost" id="ap-csv" style="margin-top:10px">⬇️ Descargar para la nómina</button></div>`; }
 /* Telemarketer: el detalle de cada venta aprobada, por distribuidor, para su pago (cliente, monto y su comisión) */
-function teleNominaCard(){ const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes"; const rg = range(p);
+function teleNominaCard(){ const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "quin"; const rg = range(p);
   const mine = commissions(rg, S.me?.upline||"").find(x => x.t.id===S.uid); const pct = mine ? mine.pct : (+planTeleDe(S.me?.upline||"").pct||0);
   const nom = a => a._priv && a.client ? a.client : (a.nomVenta || "(nombre pendiente)");
-  const v = Object.values(S.appts).filter(a => a.teleId===S.uid && a.sale && a.saleStatus==="aprobada" && inR(a.when||0, rg)).sort((a,b) => a.when - b.when);
-  const pend = Object.values(S.appts).filter(a => a.teleId===S.uid && a.sale && (a.saleStatus||"pendiente")==="pendiente" && inR(a.when||0, rg)).length;
+  const v = aprobTele(S.uid, rg).sort((a,b) => aprobAt(a) - aprobAt(b));
+  const pend = Object.values(S.appts).filter(a => a.teleId===S.uid && a.sale && (a.saleStatus||"pendiente")==="pendiente" && (a.when||0) < rg[1]).length;
   const g = {}; v.forEach(a => { const k = pagaVenta(a) || a.socioId; (g[k] ||= []).push(a); });
   const tot = v.reduce((t,a)=>t+(+a.amount||0),0);
-  let h = `<div class="card"><h2>Detalle para mi pago ${periodChips(["quin","quinant","mes","mesant"])}</h2><p class="note" style="margin-top:-6px">Cada venta aprobada de tus citas, agrupada por el distribuidor que la paga: nombre del cliente, monto de la venta y tu comisión (${pct}%).${pend?` Tienes ${pend} venta(s) pendientes de aprobar: suman cuando las aprueben.`:""}</p>
+  let h = `<div class="card"><h2>Detalle para mi pago ${periodChips(["quin","quinant","mes","mesant"])}</h2><p class="note" style="margin-top:-6px">Se paga cada quincena (1–15 y 16–fin de mes) lo que se <b>aprobó</b> en esa quincena: nombre del cliente, monto de la venta y tu comisión (${pct}%).${pend?` Tienes ${pend} venta(s) en verificación: pasan a la quincena en que las aprueben.`:""}</p>
     ${v.length ? `<div class="tiles"><div class="tile"><b>${v.length}</b><span>Ventas aprobadas</span></div><div class="tile"><b>${money(tot)}</b><span>Volumen</span></div><div class="tile acc"><b>${money(tot*pct/100)}</b><span>Tu comisión</span></div></div>
     ${Object.entries(g).map(([k,l]) => { const vol = l.reduce((t,a)=>t+(+a.amount||0),0); return `<details style="margin-top:8px"><summary style="cursor:pointer"><b>${esc(memberName(k))}</b> · ${l.length} venta(s) · ${money(vol)} · tu comisión <b>${money(vol*pct/100)}</b></summary>
       <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Socio</th><th class="n">Venta</th><th class="n">Tu comisión</th></tr></thead><tbody>${l.map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nom(a))}</b></td><td>${esc(memberName(a.socioId))}</td><td class="n">${money(+a.amount||0)}</td><td class="n">${money((+a.amount||0)*pct/100)}</td></tr>`).join("")}</tbody></table></div></details>`; }).join("")}` : `<div class="empty">No tienes ventas aprobadas en este periodo.</div>`}</div>`;
@@ -973,7 +973,7 @@ function viewCobros(){ if (!esAsist() && role()!=="admin") return `<div class="c
 /* Nómina de telemarketers con el detalle de cada orden (para la asistente que prepara la nómina) */
 /* orden de los socios: Katerine, luego la otra dirección (Andrés), luego los demás por nombre */
 const socioOrden = id => { const m = S.members[id] || {}; return (id===ownerUid() ? "0" : m.role==="admin" ? "1" : "2") + (m.name||"").toLowerCase(); };
-function nominaVentas(t, rg){ return Object.values(S.appts).filter(a => a.teleId===t.id && a.tipoVisita!=="servicio" && a.sale && inR(a.when||0, rg) && a.status==="hecha").sort((x,y) => socioOrden(x.socioId).localeCompare(socioOrden(y.socioId)) || x.when-y.when); }
+function nominaVentas(t, rg){ return Object.values(S.appts).filter(a => a.teleId===t.id && a.tipoVisita!=="servicio" && a.sale && a.status==="hecha" && ((a.saleStatus==="aprobada" && inR(aprobAt(a), rg)) || ((a.saleStatus||"pendiente")==="pendiente" && (a.when||0) < rg[1]))).sort((x,y) => socioOrden(x.socioId).localeCompare(socioOrden(y.socioId)) || x.when-y.when); }
 function nominaTeleCard(p){ if (S.uid!==ownerUid() && !esAsist() && role()!=="admin") return ""; const rg = range(p); const rows = commissions(rg, "").filter(x => x.total || x.ventas || x.pend || x.citasReq);
   const tot = rows.reduce((t,x)=>t+x.total,0); const st = a => a.saleStatus || "pendiente";
   return `<div class="card"><h2>🧾 Nómina de telemarketers<span class="note">${PLABEL[p]||""}</span></h2><p class="note" style="margin-top:-6px">Sueldo + comisión de cada una, con el detalle de sus órdenes. La comisión se paga solo sobre ventas <b>aprobadas</b>.</p>
@@ -1001,7 +1001,7 @@ function nominaCard(){ if (S.uid!==ownerUid() && !esAsist()) return ""; const p 
       return `<details style="margin-top:8px"><summary style="cursor:pointer">👥 Quién entra en la nómina (${dentro.length})</summary><div class="list" style="margin-top:6px">${dentro.map(t => `<div class="item" style="cursor:default"><span>${esc(t.name)}${t.role==="baja"?' <span class="note">(ya no está)</span>':""}</span><button class="btn small ghost" data-sinnom="${t.id}|1">✕ Quitar de la nómina</button></div>`).join("")}${fuera.map(t => `<div class="item" style="cursor:default;opacity:.6"><span>${esc(t.name)} <span class="note">fuera de la nómina</span></span><button class="btn small ghost" data-sinnom="${t.id}|0">↩️ Volver a poner</button></div>`).join("")}</div><p class="note">Quitar de la nómina no borra a la persona ni sus citas; solo deja de salir aquí (sueldo y comisión).</p></details>`; })() : ""}
     <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="btn" data-nomdoc="${p}|tele">📄 Nómina por telemarketer</button><button class="btn ghost" data-nomdoc="${p}|socio">📄 Nómina por socio</button><button class="btn small ghost" data-nomcsv="${p}">📥 Excel</button></div></div>`; }
 function nominaDoc(p, modo){ const rg = range(p); const c = cuadreDatos(rg); const titulo = (NOM_P[p]||"") + " · " + rangoTxt(p); const st = a => a.saleStatus || "pendiente";
-  const stTxt = a => st(a)==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : st(a)==="cancelada" ? '<span style="color:#999">cancelada</span>' : '<span style="color:#7e22ce">en verificación</span>';
+  const stTxt = a => st(a)==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : st(a)==="cancelada" ? '<span style="color:#999">cancelada</span>' : '<span style="color:#7e22ce">en verificación · pasa a la próxima quincena</span>';
   const R = v => `<td class="n">${v}</td>`; const filas = c.nom.filter(x => x.total || nominaVentas(x.t, rg).length);
   let cuerpo = "";
   if (modo === "socio"){ const g = {}; filas.forEach(x => nominaVentas(x.t, rg).forEach(a => { (g[a.socioId] ||= []).push({a, x}); }));
@@ -1071,10 +1071,12 @@ function aporteResumen(p){ const ap = aportes(range(p)); const rows = Object.val
     ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Quién paga</th><th class="n">Ventas de telemarketing</th><th class="n">Volumen</th><th class="n">Porcentaje</th><th class="n">A pagar</th></tr></thead><tbody>${rows.map(x=>`<tr><td><b>${esc(memberName(x.payer))}</b><div class="note">${S.members[x.payer]?.tipo===DIST?"distribuidor":"dirección"}</div></td><td class="n">${x.ventas}</td><td class="n">${money(x.vol)}</td><td class="n"><b>${pctTxt(x)}</b><div class="note">${S.members[x.payer]?.tipo===DIST?"fijo":[...new Set(x.rows.map(r=>`${r.txt} = ${r.pct}%`))].join("<br>")}</div></td><td class="n"><b>${money(x.monto)}</b></td></tr>`).join("")}<tr class="total"><td>Total</td><td class="n">${rows.reduce((t,x)=>t+x.ventas,0)}</td><td class="n">${money(rows.reduce((t,x)=>t+x.vol,0))}</td><td></td><td class="n">${money(rows.reduce((t,x)=>t+x.monto,0))}</td></tr></tbody></table></div>`:`<div class="empty">No hay ventas aprobadas de telemarketing en este periodo.</div>`}</div>`; }
 /* Plan de comisiones: el general de Dirección, o el propio del distribuidor para SUS telemarketers */
 const planTeleDe = up => up ? {sueldo:0, pct:0, liderPct:0, ...(S.members[up]?.planTele||{})} : com();
+const aprobTele = (tid, r) => Object.values(S.appts).filter(a => a.teleId===tid && a.sale && a.saleStatus==="aprobada" && a.tipoVisita!=="servicio" && inR(aprobAt(a), r));
 function commissions(r, up=""){
   const c = planTeleDe(up); const teles = [...byRole("tele"), ...byRole("baja").filter(t => t.prevRole==="tele" && (t.leftAt||0) >= r[0] && t.sinNomina===false)].filter(t => (t.upline||"")===up && !t.sinNomina);
   /* la comisión se paga sobre ventas aprobadas */
-  const rows = teles.map(t => { const e = teleEval(t.id, r); return {t, monto:e.montoAprob, ventas:e.aprob, pend:e.pend, cancel:e.cancel}; });
+  /* se paga lo APROBADO dentro del periodo (fecha de aprobación); lo que no está aprobado pasa al siguiente */
+  const rows = teles.map(t => { const e = teleEval(t.id, r); const ap = aprobTele(t.id, r); return {t, monto:ap.reduce((n,a)=>n+(+a.amount||0),0), ventas:ap.length, pend:e.pend, cancel:e.cancel}; });
   const teamMonto = rows.reduce((s,x)=>s+x.monto,0);
   /* Plan propio por persona (ej. Francelis: sin sueldo, 3%); si no tiene, usa el plan general */
   return rows.map(x => { const pct = (x.t.pct ?? "") === "" ? c.pct : +x.t.pct; const base = (x.t.sueldo ?? "") === "" ? c.sueldo : +x.t.sueldo;
@@ -1365,13 +1367,13 @@ function viewHoy(r){
     h += `<div class="card"><h2>Tu efectividad ${periodChips()}</h2>${evalTiles(e)}${e.sinRes?`<p class="note">${e.sinRes} cita(s) tuyas aún no tienen resultado del socio.</p>`:""}</div>`;
     const per = socios().map(s => ({s, e:teleEval(S.uid, rg, s.id)})).filter(x => x.e.calls || x.e.citas || x.e.demos);
     h += `<div class="card"><h2>Por socio<span class="note">${PLABEL[S.f.period]}</span></h2>${per.length?evalTable(per.map(x=>({name:x.s.name, e:x.e, id:x.s.id})), true):`<div class="empty">Sin actividad en este periodo.</div>`}</div>`;
-    const mine = commissions(range(S.f.period==="mesant"?"mesant":"mes"), S.me?.upline||"").find(x => x.t.id===S.uid);
-    if (mine) h += `<div class="card"><h2>Tu comisión<span class="note">${S.f.period==="mesant"?"Mes anterior":"Este mes"}</span></h2><div class="tiles">
+    const qp = S.f.tqp==="quinant" ? "quinant" : "quin"; const mine = commissions(range(qp), S.me?.upline||"").find(x => x.t.id===S.uid);
+    if (mine) h += `<div class="card"><h2>Tu pago de la quincena <div class="chips"><button class="chip ${qp==="quin"?"on":""}" data-tqp="quin">Esta quincena</button><button class="chip ${qp==="quinant"?"on":""}" data-tqp="quinant">Quincena anterior</button></div></h2><p class="note" style="margin-top:-6px">${rangoTxt(qp)} · se paga lo aprobado en estas fechas; lo que siga en verificación pasa a la próxima quincena.</p><div class="tiles">
       <div class="tile"><b>${money(mine.own)}</b><span>${mine.pct}% de tus ventas aprobadas</span><small>${money(mine.monto)} aprobado${mine.pend?` · ${mine.pend} pendiente(s)`:""}</small></div>
-      ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.comision)}</b><span>Total comisión</span></div></div>
-      <p class="note">La comisión sale solo de ventas aprobadas. Las pendientes suman cuando quedan aprobadas.</p>
+      ${S.me?.lider?`<div class="tile"><b>${money(mine.lead)}</b><span>${com().liderPct}% del equipo</span></div>`:""}<div class="tile acc"><b>${money(mine.comision)}</b><span>Total comisión</span></div>${mine.base?`<div class="tile"><b>${money(mine.sueldo)}</b><span>Sueldo de la quincena</span><small>${mine.citasReq} de ${mine.req} citas</small></div><div class="tile acc"><b>${money(mine.total)}</b><span>Total a cobrar</span></div>`:""}</div>
+      <p class="note">La comisión sale solo de ventas aprobadas. Las pendientes suman en la quincena en que las aprueben.</p>
       ${mine.base ? (() => { const sw = teleEval(S.uid, range("semana")).citas; return `<div class="banner ${sw>=metaSem()?"good":"warn"}" style="margin-top:8px">📅 Esta semana llevas <b>${sw} de ${metaSem()} citas</b>. El requisito para cobrar el sueldo base es ${metaSem()} citas por semana (${metaSem()*4} al mes).</div>`; })() : ""}
-      ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado este mes</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile ${mine.cumple?"":"warn"}"><b>${mine.citasReq} / ${mine.req}</b><span>Citas para cobrar el sueldo</span><small>${mine.cumple ? "✅ ya cumpliste" : `te faltan ${mine.req - mine.citasReq}`} · meta ${metaSem()} por semana</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
+      ${mine.base?`<div class="eyebrow" style="margin-top:10px">Sueldo garantizado (aparte de la comisión)</div><div class="tiles"><div class="tile"><b>${money(mine.sueldo)}</b><span>Acumulado esta quincena</span><small>${mine.dias} de ${mine.diasMes} días laborales</small></div><div class="tile ${mine.cumple?"":"warn"}"><b>${mine.citasReq} / ${mine.req}</b><span>Citas para cobrar el sueldo</span><small>${mine.cumple ? "✅ ya cumpliste" : `te faltan ${mine.req - mine.citasReq}`} · meta ${metaSem()} por semana</small></div><div class="tile"><b>${money(mine.total)}</b><span>Total a cobrar</span><small>comisión + sueldo</small></div></div>`:""}</div>`;
     h += teleNominaCard() + citasDiaCard();
   } else if (r==="socio"){
     const pend = Object.entries(S.appts).filter(([,a]) => a.socioId===S.uid && a.status==="agendada" && a.tipoVisita!=="servicio" && a.when < Date.now()-3600e3);
@@ -2656,6 +2658,7 @@ function bindCommon(){
   all("[data-go]", b => b.onclick = () => go(b.dataset.go));
   all("[data-hrp]", b => b.onclick = () => { S.f.hrp = b.dataset.hrp; render(); });
   all("[data-rrp]", b => b.onclick = () => { S.f.rrp = b.dataset.rrp; render(); });
+  all("[data-tqp]", b => b.onclick = () => { S.f.tqp = b.dataset.tqp; render(); });
   all("[data-cdp]", b => b.onclick = () => { S.f.cdp = b.dataset.cdp; render(); });
   all("[data-rdp]", b => b.onclick = () => { S.f.rdp = b.dataset.rdp; render(); });
   all("[data-rdm]", b => b.onclick = () => { S.f.rdm = b.dataset.rdm; render(); });
