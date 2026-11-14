@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611140854"></script>
-<script src="anuncios.js?v=202611140854"></script>
-<script src="juego.js?v=202611140854"></script>
+<script src="demo.js?v=202611141027"></script>
+<script src="anuncios.js?v=202611141027"></script>
+<script src="juego.js?v=202611141027"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611140854";
+const APP_VER = "202611141027";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -991,7 +991,9 @@ document.addEventListener("click", e => { const b = e.target.closest && e.target
 
 /* ===== Nómina: botón que abre un documento con el pago de cada telemarketer (por telemarketer o por socio) + cuánto pone Katerine ===== */
 const NOM_P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"};
-function cuadreDatos(rg){ const K = ownerUid(); const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || x.tipo!=="tm") return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
+/* Lo que entra a Katerine por citas de telemarketing: el % del programa, la comisión especial, y las citas de telemarketing que le pasó con plan propio (ej. Jhojanna) */
+const tmAKat = x => x.tipo==="tm" ? x.m : (x.tipo==="esp" || x.tipo==="pase") ? (x.rows||[]).filter(r => origenDe(r.a)==="tm").reduce((t,r)=>t+r.m,0) : 0;
+function cuadreDatos(rg){ const K = ownerUid(); const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K) return; const m = tmAKat(x); if (!m) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o.tm += m; }));
   const nom = commissions(rg, ""); const totIng = Object.values(ing).reduce((t,o)=>t+o.tm+o.gar,0), sueldos = nom.reduce((t,x)=>t+x.sueldo,0), coms = nom.reduce((t,x)=>t+x.comision,0);
   return {ing, nom, totIng, sueldos, coms, totNom: sueldos+coms, pones: Math.max(0, sueldos+coms-totIng), sobra: Math.max(0, totIng-sueldos-coms)}; }
 function nominaCard(){ if (S.uid!==ownerUid() && !esAsist() && !esLiderTM()) return ""; const p = NOM_P[S.f.nomp] ? S.f.nomp : "quinant"; const rg = range(p); const c = cuadreDatos(rg);
@@ -1028,7 +1030,7 @@ document.addEventListener("click", async e => { const q = e.target.closest && e.
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-nomdoc]"); if (b){ const [p, m] = b.dataset.nomdoc.split("|"); nominaDoc(p, m); }
   const c = e.target.closest && e.target.closest("[data-nomp]"); if (c){ S.f.nomp = c.dataset.nomp; render(); } });
 function cuadreCard(){ if (S.uid!==ownerUid()) return ""; const P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"}; const p = P[S.f.cdp] ? S.f.cdp : "quinant"; const rg = range(p); const K = ownerUid();
-  const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K || (x.tipo!=="tm" && x.tipo!=="gar")) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o[x.tipo] += x.m; }));
+  const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K) return; const o0 = ing[d.payer] || {tm:0, gar:0}; if (x.tipo==="gar") o0.gar += x.m; else { const m = tmAKat(x); if (!m) return; o0.tm += m; } ing[d.payer] = o0; }));
   const ingRows = Object.entries(ing).sort((a,b) => (b[1].tm+b[1].gar)-(a[1].tm+a[1].gar)); const totTm = ingRows.reduce((t,[,o])=>t+o.tm,0), totGar = ingRows.reduce((t,[,o])=>t+o.gar,0), totIng = totTm + totGar;
   const nom = commissions(rg, ""); const sueldos = nom.reduce((t,x)=>t+x.sueldo,0), coms = nom.reduce((t,x)=>t+x.comision,0), totEg = sueldos + coms; const res = totIng - totEg;
   return `<div class="card"><h2>⚖️ Cuadre del telemarketing <div class="chips">${Object.entries(P).map(([v,l]) => `<button class="chip ${p===v?"on":""}" data-cdp="${v}">${l}</button>`).join("")}</div></h2>
