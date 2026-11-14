@@ -222,8 +222,12 @@ body.jg{background:radial-gradient(circle at 12% 18%,rgba(var(--glow),.9) 0 3%,t
 body.foto .jg-giftdec{display:none}
 body.foto .jg-p{text-shadow:0 1px 8px rgba(255,255,255,.9)}
 body.foto .jg-wrap{order:-3;margin-top:0;isolation:isolate}
-body.foto .jg-bgimg{background-size:100% auto !important;background-position:center bottom !important}
-body.foto .jg-pg{padding-bottom:min(58vw,62vh)}
+.jg-prods{display:none}
+@media (min-aspect-ratio:1/1){ body.foto .jg-bgimg{background-size:100% auto !important;background-position:center bottom !important} }
+@media (max-aspect-ratio:1/1){
+  body.foto .jg-bgimg{background-image:none !important;background:linear-gradient(#f7efe4,#efe2cf) !important}
+  body.foto .jg-prods{display:block;order:-1;width:100vw;justify-self:center;aspect-ratio:1080/520;margin:-6px 0 -4px;background:var(--prodimg) center 92%/100% auto no-repeat;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 92%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 92%,transparent)}
+}
 body.foto .jg-wrap::before{content:"";position:absolute;inset:-4%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.96) 58%,rgba(255,255,255,.75) 68%,rgba(255,255,255,0) 72%);z-index:-1}
 body.foto #jg-spin{order:-2}
 body.foto .jg-crownrow{display:none}
@@ -256,7 +260,7 @@ async function startJuego(code, avance){
   const OTRA = {n:"¡Otra vez!", w:0, img:"", emo:"🔄", otra:true}; const rueda = otraVez && prizes.length >= 2 ? [...prizes.slice(0,1), OTRA, ...prizes.slice(1)] : prizes; const T = setTema(P.tema), TX = txtDe(P);
   const bs = document.body.style; [["--b1",T.bg[0]],["--b2",T.bg[1]],["--b3",T.bg[2]],["--g1",T.g[0]],["--g2",T.g[1]],["--g3",T.g[2]],["--g4",T.g[3]],["--ink",T.ink],["--acc",T.acc],["--glow",T.glow]].forEach(([k,v]) => bs.setProperty(k, v));
   document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r"));
-  const fsrc = J.anuncio ? fondoSrc(P).replace("fondo-cocina.jpg?v=2", "fondo-cocina-ad.jpg?v=1") : fondoSrc(P); if (fsrc){ document.body.classList.add("foto"); document.querySelectorAll(".jg-rib").forEach(r => r.remove()); const bg = document.createElement("div"); bg.className = "jg-bgimg"; bg.style.backgroundImage = `linear-gradient(rgba(250,245,238,.75), rgba(250,245,238,.35) 40%, rgba(250,245,238,0) 60%), url("${fsrc}")`; document.body.prepend(bg); } const shownName = J.alias || J.ref; const ref = firstName(shownName) ? shownName : "Tu amiga";
+  const fsrc = J.anuncio ? fondoSrc(P).replace("fondo-cocina.jpg?v=2", "fondo-cocina-ad.jpg?v=1") : fondoSrc(P); if (fsrc){ document.body.classList.add("foto"); document.querySelectorAll(".jg-rib").forEach(r => r.remove()); const bg = document.createElement("div"); bg.className = "jg-bgimg"; bg.style.backgroundImage = `linear-gradient(rgba(250,245,238,.75), rgba(250,245,238,.35) 40%, rgba(250,245,238,0) 60%), url("${fsrc}")`; document.body.style.setProperty("--prodimg", `url("${fsrc}")`); document.body.prepend(bg); } const shownName = J.alias || J.ref; const ref = firstName(shownName) ? shownName : "Tu amiga";
   const vence = J.until ? new Intl.DateTimeFormat("es-US",{weekday:"long", day:"numeric", month:"long"}).format(new Date(J.until)) : "";
   const meta = P.meta || {refs:14, cada:4};
   { const go = () => { jgUnlock(); if (P.musica !== false && !saved.done) musicStart(); ["touchend","click","keydown"].forEach(ev => document.removeEventListener(ev, go, true)); };
@@ -278,6 +282,7 @@ async function startJuego(code, avance){
         ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(rueda)}
       <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2&&!J.anuncio?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
       ${tipo==="caja" || tipo==="rasca" || tipo==="precio" || tipo==="tiro" || tipo==="pinata" ? "" : `<button class="jg-btn go" id="jg-spin">${esc(TX.btn||"¡GIRAR!")} <span style="font-size:22px">›</span></button>`}
+      ${fsrc ? `<div class="jg-prods" aria-hidden="true"></div>` : ""}
       <p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`;
     const sh = document.getElementById("jg-show"); if (sh && sh.scrollWidth > sh.clientWidth + 10){ let dir = 1; const iv = setInterval(() => { if (!document.body.contains(sh)) return clearInterval(iv); const max = sh.scrollWidth - sh.clientWidth; if (sh.scrollLeft >= max - 4) dir = -1; else if (sh.scrollLeft <= 4) dir = 1; sh.scrollBy({left: dir * sh.clientWidth * 0.5, behavior:"smooth"}); }, 2200); sh.addEventListener("touchstart", () => clearInterval(iv), {once:true}); }
     if (tipo==="caja") box.querySelectorAll("[data-box]").forEach(b => b.onclick = () => openBox(b));
