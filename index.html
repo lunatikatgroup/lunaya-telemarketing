@@ -186,13 +186,13 @@ nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611141543"></script>
-<script src="anuncios.js?v=202611141543"></script>
-<script src="juego.js?v=202611141543"></script>
+<script src="demo.js?v=202611161503"></script>
+<script src="anuncios.js?v=202611161503"></script>
+<script src="juego.js?v=202611161503"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611141543";
+const APP_VER = "202611161503";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -971,7 +971,7 @@ function empSemanaCard(payer){ const pe = (S.members[payer]||{}).planEmp || {}; 
 /* Pestaña de la asistente de pagos: lo que le deben a Katerine, cuadre y nómina de las telemarketers */
 function viewCobros(){ if (!esAsist() && role()!=="admin") return `<div class="card empty">Esta pantalla es solo para la asistente de pagos.</div>`;
   const p = ["quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes";
-  return nominaCard() + `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + recibidosCard() + cuadreCard() + nominaTeleCard(p) + comCard(p) + porDistribucionCard() + aporteResumen(p) + aporteDetalle(p); }
+  return nominaCard() + `<div class="card"><p class="note" style="margin:0">Aquí ves lo que cada distribuidor le debe a ${esc(memberName(ownerUid()))} cada semana, con los clientes de cada orden. Usa <b>📲 Recordar por WhatsApp</b> para cobrar y, cuando te manden la foto del depósito y confirmes que llegó, toca <b>✅ Marcar pagado</b>.</p></div>` + deudasKatCard() + recibidosCard() + cuadreCard() + nominaTeleCard(p) + comCard(p) + empSemanaCard(ownerUid()).replace("PAGO A TUS EMPRENDEDORES","PAGO A LOS EMPRENDEDORES DE "+esc(firstName2(memberName(ownerUid())).toUpperCase())).replace(/Tu día de pago/g,"Día de pago") + empPagosCard(ownerUid(), p) + porDistribucionCard() + aporteResumen(p) + aporteDetalle(p); }
 /* Cuadre del programa de telemarketing: lo que pagan los distribuidores por telemarketing (+ la parte del garantizado de Andrés) contra la nómina de las telemarketers */
 /* Nómina de telemarketers con el detalle de cada orden (para la asistente que prepara la nómina) */
 /* orden de los socios: Katerine, luego la otra dirección (Andrés), luego los demás por nombre */
@@ -1148,6 +1148,13 @@ function render(){
   if (r==="nuevo" || r==="pendiente"){ $("#nav").hidden = true; main.innerHTML = viewJoin(); bindJoin(); return; }
   if (S.me?.bloqueado && r!=="admin" && !S.isOwner){ $("#nav").hidden = true; main.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:54px">🔒</div><h2 style="justify-content:center">Acceso suspendido temporalmente</h2><p>Tu acceso a Lunaya está inhabilitado por el momento.</p>${S.me.bloqueado.motivo?`<p class="note"><b>Motivo:</b> ${esc(S.me.bloqueado.motivo)}</p>`:""}<p class="note">Comunícate con Katerine para reactivarlo.</p><button class="btn ghost" id="bq-out">Salir</button></div>`; const bo = $("#bq-out"); if (bo) bo.onclick = () => firebase.auth().signOut(); return; }
   /* Requisito para entrar: cada distribuidor (y el otro director) escribe el nombre de su distribución */
+  if (S.me && r!=="baja" && !/^\d{2}-\d{2}$/.test(S.me.cumple||"") && !S.cuSkip){ $("#nav").hidden = true; const MES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    main.innerHTML = `<div class="card" style="max-width:520px;margin:20px auto"><div style="font-size:44px;text-align:center">🎂</div><h2 style="justify-content:center;text-align:center">¿Cuándo es tu cumpleaños?</h2><p class="note" style="text-align:center">Solo el día y el mes (no el año). Ese día todo el equipo lo va a celebrar contigo 🎉. Es necesario para entrar a la app.</p>
+      <form id="cu-form"><div class="grid2"><label class="f">Día<select class="i" id="cu-d" required><option value="">—</option>${Array.from({length:31},(x,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}</option>`).join("")}</select></label><label class="f">Mes<select class="i" id="cu-m" required><option value="">—</option>${MES.map((m,i)=>`<option value="${String(i+1).padStart(2,"0")}">${m}</option>`).join("")}</select></label></div><button class="btn" type="submit" style="width:100%;margin-top:8px">Guardar y entrar</button></form></div>`;
+    $("#cu-form").onsubmit = async e => { e.preventDefault(); const d = $("#cu-d").value, m = $("#cu-m").value; if (!d || !m){ toast("Escoge el día y el mes"); return; }
+      const dim = [31,29,31,30,31,30,31,31,30,31,30,31][+m-1]; if (+d > dim){ toast("Ese día no existe en ese mes"); return; } const v = m+"-"+d;
+      try { await S.db.doc("members/"+S.uid).update({cumple:v}); S.me = {...S.me, cumple:v}; if (S.members[S.uid]) S.members[S.uid].cumple = v; toast("¡Gracias! 🎂"); render(); } catch(err){ console.log(err); S.cuSkip = true; toast("No se pudo guardar todavía; avísale a Katerine"); render(); } };
+    return; }
   if (((r==="socio" && S.me?.tipo===DIST) || (r==="admin" && !S.isOwner)) && !String(S.me?.distNombre||"").trim() && !S.dnSkip){ $("#nav").hidden = true;
     main.innerHTML = `<div class="card" style="max-width:520px;margin:20px auto"><div style="font-size:44px;text-align:center">🏢</div><h2 style="justify-content:center;text-align:center">¿Cómo se llama tu distribución?</h2><p class="note" style="text-align:center">Escribe el nombre de tu distribución tal como quieres que salga en los reportes de ventas. Es necesario para entrar a la app.</p>
       <form id="dn-form"><input class="i" id="dn-v" maxlength="60" required placeholder="Ej.: Lunatikat Group" style="width:100%;font-size:18px;margin:8px 0"><button class="btn" type="submit" style="width:100%">Guardar y entrar</button></form></div>`;
@@ -1162,7 +1169,7 @@ function render(){
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
-  html += relojBar() + motivaCard() + codigosBtn() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
+  html += relojBar() + cumpleCard() + motivaCard() + codigosBtn() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
@@ -1349,6 +1356,9 @@ const MOTIVA = [
   ["Instruye al niño en su camino, y aun cuando fuere viejo no se apartará de él.", "Proverbios 22:6"],
   ["Termina lo que empiezas: la constancia vale más que el talento.", ""],
   ["Cada día es un regalo; por eso se llama presente.", ""]];
+function cumpleCard(){ const md = today().slice(5); const L = Object.entries(S.members||{}).filter(([,m]) => m.cumple===md && m.role!=="baja").map(([id,m]) => m.name||"");
+  if (!L.length) return ""; const nm = L.map(n => esc(firstName2(n))).join(L.length===2 ? " y " : ", ");
+  return `<div class="card" style="text-align:center;background:linear-gradient(135deg,#fff4d6,#ffe1ea);border:2px solid #e2bb4f"><div style="font-size:40px">🎂🎉🎈</div><div style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--accent)">¡Hoy estamos celebrando el cumpleaños de ${nm}!</div><p class="note" style="margin:6px 0 0">Mándale un mensajito y deséale un día lleno de bendiciones 💛</p></div>`; }
 function motivaCard(){ const t = today(); const n = Math.floor(laToMs(t,"12:00") / 864e5); const [txt, cita] = MOTIVA[n % MOTIVA.length];
   return `<div class="card" style="text-align:center;padding:10px 14px;margin-bottom:12px;background:linear-gradient(135deg,rgba(201,151,31,.10),transparent)"><div class="eyebrow">✨ Mensaje del día</div><p style="font-family:var(--serif);font-size:17px;margin:4px 0">“${esc(txt)}”</p>${cita?`<div class="note">${esc(cita)}</div>`:""}</div>`; }
 /* ===== Ventas que esperan "Aprobada" o "Cancelada" (para que el distribuidor no se olvide) ===== */
