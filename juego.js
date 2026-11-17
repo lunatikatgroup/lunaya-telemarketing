@@ -297,7 +297,8 @@ async function startJuego(code, avance){
   if (!rr.J){ box.innerHTML = `<div class="jg-h">Este link ya no está disponible</div><p class="jg-p">Pídele a quien te lo mandó un link nuevo.</p>`; return; }
   J = rr.J; P = conJuego(rr.P, J); if (J.sorteo) P = {...P, musica:false}; if (Array.isArray(J.solo) && J.solo.length){ const keep = (P.prizes||[]).filter((x,i) => J.solo.includes(i)); if (keep.length) P = {...P, prizes:keep}; }
   const key = "ly-jg-" + code; let saved = {}; try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch {}
-  if (demo) saved = {}; const save = () => { if (demo) return; try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
+  const prueba = !demo && /[?&]prueba=1/.test(location.search); if (prueba){ const pb = document.createElement("div"); pb.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99;background:#14213d;color:#fff;padding:8px 12px;text-align:center;font:600 13px Manrope,sans-serif"; pb.textContent = "🧪 Modo prueba: así lo ve un cliente nuevo. No se guarda nada."; document.body.append(pb); }
+  if (demo || prueba) saved = {}; const save = () => { if (demo || prueba) return; try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta";
   /* "Otra oportunidad": el primer intento no gana (casilla de girar otra vez, caja vacía, tarjeta "sigue participando", el pajarito esquiva) para que quiera seguir jugando */
   const otraVez = P.otraVez !== false && !J.anuncio; const usarOtra = () => otraVez && !saved.otra;
@@ -541,7 +542,7 @@ async function startJuego(code, avance){
       if (!document.getElementById("jg-ok").checked){ err.textContent = "Marca la casilla para poder contactarte."; return; }
       err.textContent = ""; const b = document.getElementById("jg-send"); b.disabled = true; b.textContent = "Guardando…";
       const lid = code + "_" + t;
-      if (demo){ saved.done = true; saved.name = name; showDone(); return; }
+      if (demo || prueba){ saved.done = true; saved.name = name; showDone(); return; }
       try {
         const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:String(prizes[i]?.n||"").slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
         const go = async conQ => { const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), conQ && saved.quiz ? {...ld, quiz:String(saved.quiz).slice(0,120)} : ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit(); };
@@ -588,7 +589,7 @@ async function startJuego(code, avance){
       if (!t){ err.textContent = "Escribe tu número completo de 10 dígitos, con código de área."; return; }
       if (!document.getElementById("jg-ok").checked){ err.textContent = "Marca la casilla para poder participar."; return; }
       err.textContent = ""; const b = document.getElementById("jg-send"); b.disabled = true; b.textContent = "Guardando…";
-      if (demo){ saved.done = true; saved.name = name; return showSorteo(); }
+      if (demo || prueba){ saved.done = true; saved.name = name; return showSorteo(); }
       const lid = code + "_" + t;
       try { const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:("Sorteo: " + premio).slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
         const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
@@ -630,7 +631,7 @@ async function startJuego(code, avance){
       if (!t){ err.textContent = "Escribe tu número completo de 10 dígitos, con código de área."; return; }
       if (!document.getElementById("jg-ok").checked){ err.textContent = "Marca la casilla para participar."; return; }
       err.textContent = ""; const b = document.getElementById("jg-send"); b.disabled = true; b.textContent = "Guardando…";
-      if (demo){ saved.done = true; saved.name = name; return showRegalo(so, patro, premio); }
+      if (demo || prueba){ saved.done = true; saved.name = name; return showRegalo(so, patro, premio); }
       const lid = code + "_" + t;
       try { const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:String(premio).slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
         const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
@@ -669,7 +670,7 @@ async function startJuego(code, avance){
       const c = saved.child || code; const jj = saved.child ? {ref:firstName(saved.name)+" "+(String(saved.name||"").split(/\s+/)[1]||"")} : J;
       try { const blob = await promoImg(jj, P, linkDe(c)); S.jgFile = {c, file: new File([blob], "regalo.png", {type:"image/png"})}; } catch(e){ console.log("img", e); }
       return c; };
-    const listo = demo ? Promise.resolve(code) : preparar();
+    const listo = demo || prueba ? Promise.resolve(code) : preparar();
     document.getElementById("jg-inv").onclick = async () => {
       const b = document.getElementById("jg-inv"); const c = saved.child || code; const msg = fillMsg(P.msg || defMsg(tipo), {link:linkDe(c)});
       const f = S.jgFile && S.jgFile.c === c ? S.jgFile.file : null;
@@ -1017,7 +1018,7 @@ function openShare(code){
     ${msg?`<label class="f">Mensaje para que ${esc(firstName(j.ref))} se lo reenvíe a sus amigas<textarea class="i" id="sh-m" style="min-height:150px">${esc(msg)}</textarea></label>`:""}
     <div class="opts">
       ${msg?`<a class="btn" id="sh-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="sh-sms">Mensaje de texto</a>`:""}
-      <button class="btn ghost" id="sh-img">🖼️ Imagen con QR</button><button class="btn ${j.anuncio?"":"ghost"}" id="sh-copy">${msg?"Copiar mensaje":"📋 Copiar link"}</button></div>
+      ${j.anuncio ? `<a class="btn ghost" href="${link}&prueba=1" target="_blank" rel="noopener">🧪 Probar como cliente nuevo</a>` : ""}<button class="btn ghost" id="sh-img">🖼️ Imagen con QR</button><button class="btn ${j.anuncio?"":"ghost"}" id="sh-copy">${msg?"Copiar mensaje":"📋 Copiar link"}</button></div>
     <div id="sh-out"></div><div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     const q = id => document.getElementById(id); const txt = () => q("sh-m") ? q("sh-m").value : link;
     const upd = () => { if (q("sh-wa")) q("sh-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(txt())}`; if (q("sh-sms")) q("sh-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(txt())}`; };
