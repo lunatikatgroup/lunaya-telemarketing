@@ -5,7 +5,7 @@
 
 const JG_ST = {nuevo:"Nuevo", llamado:"Ya se llamó", cita:"Tiene cita", no_interesa:"No le interesa"};
 const JG_COLORS = ["#c1272d", "#14213d", "#d4a72c", "#1f6f8b", "#8e2c6b", "#2f7d4f", "#e07a2e", "#3b4bb3"];
-const jgLink = code => APP_URL + "?j=" + code;
+const jgLink = code => APP_URL.replace(/[^/]*$/, "") + "jugar.html?j=" + code;
 const telFmt = t => { const d = String(t||"").replace(/\D/g,"").slice(-10); return d.length===10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : t || ""; };
 const firstName = n => String(n||"").trim().split(/\s+/)[0] || "";
 function telOk(t){ const d = String(t||"").replace(/\D/g,""); const x = d.length===11 && d[0]==="1" ? d.slice(1) : d;
