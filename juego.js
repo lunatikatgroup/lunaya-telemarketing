@@ -623,7 +623,7 @@ function subJuegos(){ if (window.subAnuncios) setTimeout(subAnuncios, 0);
 function jgSub(f, v){ const k = f+"|"+v;
   const u1 = S.db.collection("juegos").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.jl[k] = m; S.juegos = Object.assign({}, ...Object.values(S.jl)); linksSiempre(m); if (S.view==="juego") render(); }, e => console.log("juegos", k, e));
   const u2 = S.db.collection("leads").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.ll[k] = m; const prev = S.leads; S.leads = Object.assign({}, ...Object.values(S.ll));
-      if (S.leadsReady){ Object.entries(S.leads).forEach(([id,l]) => { if (!prev[id] && l.kind==="jugador") avisar(S.juegos?.[l.code]?.anuncio ? "📣 Nuevo prospecto del anuncio" : "🎁 Nuevo prospecto de la ruleta", `${l.name} · ${ganoTxt(l)}${l.ref && !S.juegos?.[l.code]?.anuncio?" · amiga de "+l.ref:""}${otrasVeces(id).length?" · 🔁 ya estaba en otro programa":""}`); }); }
+      if (S.leadsReady){ Object.entries(S.leads).forEach(([id,l]) => { if (!prev[id] && l.kind==="jugador") avisar(`${S.juegos?.[l.code]?.anuncio ? "📣 Prospecto nuevo" : "🎁 Prospecto nuevo"}: ${l.name}`, `${ganoTxt(l)}${l.ref && !S.juegos?.[l.code]?.anuncio?" · amiga de "+l.ref:""}${otrasVeces(id).length?" · 🔁 ya estaba en otro programa":""}`, () => { go("juego"); setTimeout(() => window.openLead && openLead(id), 300); }); }); }
       render(); }, e => console.log("leads", k, e));
   return [u1, u2, () => { delete S.jl[k]; delete S.ll[k]; S.juegos = Object.assign({}, ...Object.values(S.jl)); S.leads = Object.assign({}, ...Object.values(S.ll)); }];
 }

@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611161909"></script>
-<script src="anuncios.js?v=202611161909"></script>
-<script src="juego.js?v=202611161909"></script>
+<script src="demo.js?v=202611161932"></script>
+<script src="anuncios.js?v=202611161932"></script>
+<script src="juego.js?v=202611161932"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611161909";
+const APP_VER = "202611161932";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1674,14 +1674,16 @@ function pendBanner(){ const l = sinReporte(); if (!l.length) return ""; const r
   return `<div class="banner bad" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div>⏰ <b>${l.length===1?"Tienes 1 cita sin reportar":`Tienes ${l.length} citas sin reportar`}</b><div class="note" style="color:inherit">${r==="tele"?`Si el socio ya te contó qué pasó, repórtalo tú. La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`:`¿Qué pasó? La más antigua: ${esc(cName(a))}, ${fmtWhen(a.when)}`}</div></div>${r==="tele" && a.agendo!==S.uid?"":`<button class="btn small" data-pend="${l[0][0]}">Reportar ahora</button>`}</div>`; }
 /* Avisos del teléfono mientras la app está abierta (no necesitan servidor) */
 function notiOk(){ try { return "Notification" in window && Notification.permission==="granted"; } catch { return false; } }
-function avisar(t, b){ if (S.demo || !notiOk()) return; try { new Notification(t, {body:b, icon:"icon-192.png", tag:t}); } catch {} }
+/* Notificación: lo importante va en el título (es lo que se alcanza a leer en el iPhone); al tocarla abre lo que avisa */
+function avisar(t, b, abrir){ if (S.demo || !notiOk()) return; try { const n = new Notification(String(t).slice(0,70), {body:b, icon:"icon-192.png", tag:t+"|"+Date.now()}); n.onclick = () => { try { window.focus(); n.close(); if (abrir) abrir(); } catch {} }; } catch {} }
 function vigilar(){ if (!S.uid) return; const mine = Object.entries(S.appts||{});
   if (!S.seenIds){ S.seenIds = new Set(mine.map(([id])=>id)); S.seenUnread = unreadTotal(); S.pendNotified = false; }
   else {
-    mine.forEach(([id,a]) => { if (!S.seenIds.has(id)){ S.seenIds.add(id); if (a.socioId===S.uid && a.agendo!==S.uid) avisar("📅 Nueva cita", `${cName(a)} · ${fmtWhen(a.when)} · agendó ${memberName(a.agendo||a.teleId)}`); } });
-    const u = unreadTotal(); if (u > (S.seenUnread||0)) avisar("💬 Mensaje nuevo en una cita", "Abre Citas para leerlo"); S.seenUnread = u;
+    mine.forEach(([id,a]) => { if (!S.seenIds.has(id)){ S.seenIds.add(id); if (a.socioId===S.uid && a.agendo!==S.uid) avisar(`📅 Cita nueva: ${cName(a)}`, `${fmtWhen(a.when)} · la agendó ${memberName(a.agendo||a.teleId)}`, () => { go("citas"); openAppt(id); }); } });
+    const u = unreadTotal(); if (u > (S.seenUnread||0)){ let ult = null; mine.forEach(([id,a]) => { if (!unread(a)) return; (a.chat||[]).forEach(m => { if (m.by!==S.uid && (!ult || m.at > ult.m.at)) ult = {id, a, m}; }); });
+      if (ult) avisar(`💬 ${firstName2(memberName(ult.m.by))}: ${ult.m.text}`, `Cita de ${cName(ult.a)} · toca para responder`, () => { go("citas"); openAppt(ult.id); }); } S.seenUnread = u;
   }
-  const n = sinReporte().length; if (n && !S.pendNotified){ S.pendNotified = true; avisar("⏰ Citas sin reportar", `Tienes ${n} cita(s) sin resultado. ¿Qué pasó?`); }
+  const n = sinReporte().length; if (n && !S.pendNotified){ S.pendNotified = true; avisar(`⏰ Tienes ${n} cita(s) sin reportar`, "¿Qué pasó? Toca para reportarlas", () => go("citas")); }
   try { if (navigator.setAppBadge) (n+unreadTotal()) ? navigator.setAppBadge(n+unreadTotal()) : navigator.clearAppBadge(); } catch {}
 }
 function canChat(a){ return !!a._priv; }
