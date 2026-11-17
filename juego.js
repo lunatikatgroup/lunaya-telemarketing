@@ -952,14 +952,14 @@ function openAvance(code){ const j = S.juegos[code]; if (!j) return; const a = a
 /* Mandar el link: al cliente por WhatsApp o texto, imagen con QR, copiar */
 function openShare(code){
   const j = S.juegos[code]; if (!j) return; const p = conJuego(S.programs[j.pid] || {}, j); const link = jgLink(code); const cli = S.leads[code+"_ref"] || {};
-  const msg = j.kind==="campana" ? "" : fillMsg(p.msg || defMsg(p.tipo), {link});
+  const msg = j.kind==="campana" || j.anuncio ? "" : fillMsg(p.msg || defMsg(p.tipo), {link});
   const tel = telOk(cli.tel);
   openModal(`<h3>${j.kind==="campana"?"Campaña":"Link de "+esc(j.ref)}</h3>
-    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${qrSvg(link, 132)}<div style="flex:1;min-width:180px" class="note">Este link es solo de <b>${esc(j.ref)}</b>: cada amiga que juegue cuenta para su meta${j.until?` · vence el ${fmt(j.until,{day:"numeric",month:"long"})}`:""}.<div style="word-break:break-all;margin-top:6px">${esc(link)}</div></div></div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${qrSvg(link, 132)}<div style="flex:1;min-width:180px" class="note">${j.anuncio ? `📣 Link del anuncio <b>${esc(j.ref)}</b>. Cópialo y pégalo en Meta donde dice <b>Sitio web</b>.` : `Este link es solo de <b>${esc(j.ref)}</b>: cada amiga que juegue cuenta para su meta`}${j.until?` · vence el ${fmt(j.until,{day:"numeric",month:"long"})}`:""}.<div style="word-break:break-all;margin-top:6px">${esc(link)}</div></div></div>
     ${msg?`<label class="f">Mensaje para que ${esc(firstName(j.ref))} se lo reenvíe a sus amigas<textarea class="i" id="sh-m" style="min-height:150px">${esc(msg)}</textarea></label>`:""}
     <div class="opts">
       ${msg?`<a class="btn" id="sh-wa" target="_blank" rel="noopener">WhatsApp${tel?" a "+esc(firstName(j.ref)):""}</a><a class="btn dark" id="sh-sms">Mensaje de texto</a>`:""}
-      <button class="btn ghost" id="sh-img">🖼️ Imagen con QR</button><button class="btn ghost" id="sh-copy">Copiar ${msg?"mensaje":"link"}</button></div>
+      <button class="btn ghost" id="sh-img">🖼️ Imagen con QR</button><button class="btn ${j.anuncio?"":"ghost"}" id="sh-copy">${msg?"Copiar mensaje":"📋 Copiar link"}</button></div>
     <div id="sh-out"></div><div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     const q = id => document.getElementById(id); const txt = () => q("sh-m") ? q("sh-m").value : link;
     const upd = () => { if (q("sh-wa")) q("sh-wa").href = `https://wa.me/${tel?"1"+tel:""}?text=${encodeURIComponent(txt())}`; if (q("sh-sms")) q("sh-sms").href = `sms:${tel?"+1"+tel:""}&body=${encodeURIComponent(txt())}`; };
