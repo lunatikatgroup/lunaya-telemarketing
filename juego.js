@@ -208,6 +208,24 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-rad2{left:21.5%;top:74.5%;width:56.5%;height:23.5%;transform:none;border:0;border-radius:18px/22px;box-shadow:none}
 .jg-rad2 .under img{height:clamp(40px,12vw,70px)}
 .jg-rad2 .under .pn{font-size:clamp(15px,4.6vw,24px)}
+.jg-r9top{width:min(100%,540px);justify-self:center;aspect-ratio:1199/955;overflow:hidden;border-radius:22px 22px 0 0;margin-bottom:-14px}
+.jg-r9top img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.jg-r9{width:min(100%,540px);justify-self:center;box-sizing:border-box;padding:12px 14px 16px;border-radius:0 0 22px 22px;background:radial-gradient(rgba(255,230,160,.5) 1px,transparent 1.6px) 0 0/14px 14px,radial-gradient(circle at 30% 10%,#d3242f,#a8121d 55%,#760913);border:4px solid #e9c25a;border-top:0;box-shadow:0 14px 30px rgba(118,9,19,.3);position:relative;z-index:1}
+.jg-r9t{text-align:center;color:#fff;font:800 clamp(17px,4.8vw,22px)/1.2 Manrope,sans-serif;margin:2px 0 10px;text-shadow:0 2px 4px rgba(0,0,0,.3)}
+.jg-r9t b{color:#ffe08a}
+.jg-r9g{position:relative;width:100%;aspect-ratio:1;max-width:400px;margin:0 auto}
+.jg-r9s{position:absolute;width:31.33%;height:31.33%;border-radius:14px;background:#fff8e6;display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 0 0 3px #f3d27a}
+.jg-r9s[data-k="0"],.jg-r9s[data-k="3"],.jg-r9s[data-k="6"]{left:1.33%}.jg-r9s[data-k="1"],.jg-r9s[data-k="4"],.jg-r9s[data-k="7"]{left:34.67%}.jg-r9s[data-k="2"],.jg-r9s[data-k="5"],.jg-r9s[data-k="8"]{left:68%}
+.jg-r9s[data-k="0"],.jg-r9s[data-k="1"],.jg-r9s[data-k="2"]{top:1.33%}.jg-r9s[data-k="3"],.jg-r9s[data-k="4"],.jg-r9s[data-k="5"]{top:34.67%}.jg-r9s[data-k="6"],.jg-r9s[data-k="7"],.jg-r9s[data-k="8"]{top:68%}
+.jg-r9c{display:grid;justify-items:center;gap:2px;text-align:center;padding:4px}
+.jg-r9c img{width:62%;aspect-ratio:1;object-fit:cover;border-radius:50%;box-shadow:0 0 0 3px #fff,0 3px 8px rgba(0,0,0,.15)}
+.jg-r9c .e{font-size:clamp(28px,9vw,46px);line-height:1}
+.jg-r9c b{font:800 clamp(10px,2.9vw,14px)/1.1 Manrope,sans-serif;color:#7a0a14}
+.jg-r9s.win{background:radial-gradient(circle,#fffbe8,#fde59a 60%,#f0b84a);box-shadow:inset 0 0 0 4px #fff,0 0 18px 4px rgba(255,214,102,.95);animation:jgpul .8s ease-in-out infinite}
+.jg-r9s.dim{opacity:.45}
+#jg-r9cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+.jg-coin9{left:40%;top:40%;font-size:44px;animation:jgcoin2 2.2s ease-in-out infinite}
+@keyframes jgpul{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 .jg-rad2~.jg-coin2{left:45%;top:86%;font-size:clamp(26px,7vw,40px)}
 .jg-coin2{left:42%;top:52%;font-size:46px;animation:jgcoin2 2.2s ease-in-out infinite}
 @keyframes jgcoin2{0%{transform:translate(-40px,0) rotate(-10deg)}25%{transform:translate(50px,-18px) rotate(12deg)}50%{transform:translate(-10px,16px) rotate(-8deg)}75%{transform:translate(70px,8px) rotate(10deg)}100%{transform:translate(-40px,0) rotate(-10deg)}}
@@ -311,6 +329,7 @@ async function startJuego(code, avance){
 
   function showIntro(){
     if (J.anuncio && tipo === "quiz") return showQuiz(0, 0);
+    if (J.anuncio && tipo === "rasca") return showRaspa9();
     if (J.anuncio && tipo === "rasca"){ box.innerHTML = scratchAd() + `<p class="jg-p" style="margin:0"><b>👆 Raspa con tu dedo la parte dorada y descubre tu regalo</b><br>¡Totalmente gratis! 🎉</p><p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`; bindScratch(); return; }
     const n = J.n || 0;
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div>${J.anuncio ? nameHtml(TI(tipo).corto) + `<div class="jg-pill">${tipo==="ruleta" ? "¡Te ganaste un giro! 🎁" : "¡Te ganaste una oportunidad! 🎁"}</div>` : `<div class="jg-top">${esc(TX.top)}</div>
@@ -351,6 +370,30 @@ async function startJuego(code, avance){
     setTimeout(() => { d.remove(); after && after(); }, 1900); }
   /* ===== Rasca y gana ===== */
   function rascaOtra(){ return tipo==="rasca" && usarOtra(); }
+  /* Raspa y gana de los anuncios: 9 casillas, 3 iguales gana. Orden: regalo, "olla de presión" (para emocionar), regalo, regalo → gana a la 4ª casilla */
+  function showRaspa9(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const i = saved.pend, p = prizes[i] || {n:"Un regalo"};
+    const todos = (rr.P && rr.P.prizes) || prizes; const t = todos.find(x => x && x.n !== p.n && /olla/i.test(x.n||"")) || todos.find(x => x && x.n && x.n !== p.n) || {n:"Olla de presión", emo:"🍲"};
+    const otros = todos.filter(x => x && x.n && x.n !== p.n && x.n !== t.n); const relleno = [t, otros[0] || t, t, otros[1] || otros[0] || t, t];
+    const cel = x => `<div class="jg-r9c">${x.img ? `<img src="${x.img}" alt="">` : `<span class="e">${x.emo || "🎁"}</span>`}<b>${esc(x.n)}</b></div>`;
+    box.innerHTML = `<div class="jg-r9top"><img src="${PORTADAS.rasca[0]}" alt=""></div>
+      <div class="jg-r9"><div class="jg-r9t">¡Raspa y encuentra <b>3 iguales</b>! 🎁</div><div class="jg-r9g" id="jg-r9g">${[0,1,2,3,4,5,6,7,8].map(k => `<div class="jg-r9s" data-k="${k}"></div>`).join("")}<canvas id="jg-r9cv" width="600" height="600" aria-label="Raspa aquí"></canvas><div class="jg-coin jg-coin9" aria-hidden="true">🪙</div></div></div>
+      <p class="jg-p" style="margin:0"><b>👆 Raspa las casillas con tu dedo</b><br>¡Totalmente gratis! 🎉</p><p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`;
+    const cv = document.getElementById("jg-r9cv"), x = cv.getContext("2d"), W = 600, C = 200, G = 8; const slots = [...document.querySelectorAll(".jg-r9s")];
+    const rect = k => [ (k%3)*C + G, Math.floor(k/3)*C + G, C - 2*G, C - 2*G ];
+    const pint = () => { for (let k = 0; k < 9; k++){ const [a,b,w,h] = rect(k); const g = x.createLinearGradient(a,b,a+w,b+h); g.addColorStop(0,"#b8862b"); g.addColorStop(.35,"#f7dc8a"); g.addColorStop(.6,"#d9a93f"); g.addColorStop(1,"#f3d27a"); x.fillStyle = g; x.beginPath(); x.roundRect ? x.roundRect(a,b,w,h,22) : x.rect(a,b,w,h); x.fill();
+        x.fillStyle = "rgba(255,255,255,.5)"; for (let n = 0; n < 40; n++) x.fillRect(a + Math.random()*w, b + Math.random()*h, 2, 2); x.fillStyle = "#7a0a14"; x.font = "900 70px Manrope, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("?", a + w/2, b + h/2 + 4); } };
+    pint(); x.globalCompositeOperation = "destination-out";
+    const orden = [p, t, p, p]; let n = 0, ganados = 0, fin = false; const asig = {}, vis = {};
+    const toca = k => { if (asig[k] !== undefined || fin) return; const it = orden[n] || t; asig[k] = it === p; n++; slots[k].innerHTML = cel(it); };
+    const revela = k => { if (vis[k]) return; vis[k] = 1; const [a,b,w,h] = rect(k); x.fillRect(a-1,b-1,w+2,h+2); slots[k].classList.add("ok"); jgTick(650, .2, .05);
+      if (asig[k]){ ganados++; if (ganados >= 3){ fin = true; slots.forEach((s,j) => { if (asig[j]) s.classList.add("win"); }); let r = 0; setTimeout(() => { slots.forEach((s,j) => { if (asig[j] === undefined){ s.innerHTML = cel(relleno[r++ % relleno.length]); s.classList.add("ok","dim"); } }); cv.style.transition = "opacity .6s"; cv.style.opacity = "0"; }, 700); setTimeout(() => won(i), 1900); } } };
+    const pt = e => { const r = cv.getBoundingClientRect(), q = e.touches ? e.touches[0] : e; return [(q.clientX - r.left) * W / r.width, (q.clientY - r.top) * W / r.height]; };
+    let down = false, last = null, m = 0;
+    const mide = () => { const d = x.getImageData(0,0,W,W).data; for (let k = 0; k < 9; k++){ if (vis[k] || asig[k] === undefined) continue; const [a,b,w,h] = rect(k); let c = 0, tt = 0; for (let yy = b; yy < b+h; yy += 8) for (let xx = a; xx < a+w; xx += 8){ tt++; if (d[(yy*W + xx)*4 + 3] < 40) c++; } if (c/tt > 0.35) revela(k); } };
+    const draw = e => { if (!down || fin) return; e.preventDefault(); const [a,b] = pt(e); const k = Math.min(8, Math.max(0, Math.floor(b/C)*3 + Math.floor(a/C))); toca(k);
+      x.lineWidth = 56; x.lineCap = "round"; x.beginPath(); if (last) x.moveTo(last[0], last[1]); else x.moveTo(a, b); x.lineTo(a+0.1, b); x.stroke(); last = [a,b]; if (++m % 6 === 0){ jgTick(500 + Math.random()*300, 0.12, 0.03); mide(); } };
+    cv.addEventListener("pointerdown", e => { down = true; last = null; jgCtx(); const cn = document.querySelector(".jg-coin9"); if (cn) cn.style.opacity = "0"; draw(e); }); cv.addEventListener("pointermove", draw);
+    ["pointerup","pointerleave","pointercancel"].forEach(ev => cv.addEventListener(ev, () => { down = false; last = null; mide(); })); cv.addEventListener("touchmove", e => e.preventDefault(), {passive:false}); }
   /* Raspa y gana de los anuncios: se raspa directo sobre el diseño del anuncio */
   function scratchAd(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Un regalo"};
     return `<div class="jg-radw" id="jg-scr"><img src="${PORTADAS.rasca[0]}" alt=""><div class="jg-rad jg-rad2"><div class="under"><div style="display:flex;align-items:center;gap:8px;justify-content:center">${p.img?`<img src="${p.img}" alt="">`:`<span style="font-size:clamp(24px,7vw,40px)">🎁</span>`}<div class="pn">${esc(p.n)}</div></div></div><canvas id="jg-cv" width="600" height="273" data-src="${PORTADAS.rasca[0]}" data-box="305,1055,545,195,1199" aria-label="Raspa aquí"></canvas></div><div class="jg-coin jg-coin2" aria-hidden="true">🪙</div></div>`; }
