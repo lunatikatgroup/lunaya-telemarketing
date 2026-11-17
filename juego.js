@@ -517,7 +517,7 @@ async function startJuego(code, avance){
       document.getElementById("pz-t").textContent = `⏱ ${Math.ceil(r/1000)} segundos`; document.getElementById("pz-bar").style.width = (r*100/T) + "%"; setTimeout(tick, 250); };
     tick(); }
   /* Cuenta regresiva para reservar (si el programa la tiene) */
-  const relojMs = () => (+P.reloj||0) * 3600e3;
+  function relojMs(){ return (+P.reloj||0) * 3600e3; }
   function relojHtml(){ if (!relojMs()) return ""; if (!saved.at){ saved.at = Date.now(); save(); } return `<div class="jg-timer" id="jg-timer"></div>`; }
   function relojTick(){ const el = document.getElementById("jg-timer"); if (!el || !relojMs()) return; const f = saved.at + relojMs(), r = f - Date.now();
     if (r <= 0){ box.innerHTML = `<div class="jg-top">⏰ Se acabó el tiempo</div><div class="jg-h">Tu regalo ya no está reservado</div><p class="jg-p">Pídele a ${esc(ref)} que te mande un link nuevo.</p>`; return; }
