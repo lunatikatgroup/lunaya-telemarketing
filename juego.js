@@ -1037,6 +1037,7 @@ function openLead(id){
     <div class="note">${telFmt(t)}</div>${repetidoHtml(id)}<div id="ld-h"></div>
     <label class="f">Estado<select class="i" id="ld-st">${Object.entries(JG_ST).map(([k,v])=>`<option value="${k}" ${l.status===k?"selected":""}>${v}</option>`).join("")}</select></label>
     <label class="f">Notas<textarea class="i" id="ld-n" placeholder="Qué te dijo, cuándo volver a llamar…">${esc(l.notes||"")}</textarea></label>
+    ${l.kind!=="hoja" ? (() => { const L = (role()==="tele" ? sociosPara({...S.me, id:S.uid}) : socios()).filter(m => m.role!=="baja"); const ord = m => (m.id===l.socioId ? "0" : m.id===ownerUid() ? "1" : m.role==="admin" ? "2" : "3") + (m.name||""); return `<label class="f">¿Para quién es la cita?<select class="i" id="ld-para">${L.sort((a,b) => ord(a).localeCompare(ord(b))).map(m => `<option value="${m.id}" ${m.id===l.socioId?"selected":""}>${esc(m.name)}${m.role==="admin"?" · dirección":m.tipo?" · "+esc(m.tipo):""}${m.id===S.uid?" (tú)":""}</option>`).join("")}</select></label>`; })() : ""}
     <div class="row"><button class="btn" id="ld-cita">📅 Agendar cita</button><button class="btn ghost" id="ld-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>
     ${l.by===S.uid || l.socioId===S.uid || role()==="admin" ? `<button class="btn small ghost" id="ld-del" style="justify-self:start">🗑️ Borrar prospecto</button>` : ""}`, () => {
     const q = x => document.getElementById(x);
@@ -1045,7 +1046,7 @@ function openLead(id){
     if (q("ld-del")) q("ld-del").onclick = function(){ if (!this.dataset.sure){ this.dataset.sure = "1"; this.textContent = "Toca otra vez para borrarlo"; this.classList.add("danger"); return; }
       S.db.doc("leads/"+id).delete().then(() => { delete S.leads[id]; closeModal(); toast("Prospecto borrado"); render(); }, writeErr); };
     q("ld-save").onclick = async () => { if (await upd({status:q("ld-st").value, notes:q("ld-n").value.trim().slice(0,1000)})){ closeModal(); toast("Guardado"); } };
-    q("ld-cita").onclick = () => { const own = l.socioId===S.uid; if (!own){ if (!S.members[l.socioId]){ toast("Ese socio ya no está en el equipo"); return; } S.world = l.socioId; }
+    q("ld-cita").onclick = () => { const para = (q("ld-para") && q("ld-para").value) || l.socioId; const own = para===S.uid; if (!own){ if (!S.members[para]){ toast("Ese socio ya no está en el equipo"); return; } S.world = para; }
       const pre = {name:l.name, phone:telFmt(t), refBy:l.ref||"", code:l.code, notes:`${l.kind==="hoja" ? "Referido" : (esSorteoLead(l) ? "Anuncio Meta: "+ganoTxt(l) : "Ganó "+l.prize+" en "+TI(S.programs[l.pid]?.tipo).una)+(l.quiz?" · "+l.quiz:"")} · amiga de ${l.ref||""}${l.notes?" · "+l.notes:""}`, onSaved: aid => S.db.doc("leads/"+id).update({status:"cita", apptId:aid, statusAt:Date.now()}).catch(()=>{})};
       closeModal(); openCitaForm(own ? "" : "Ruleta", own, pre); };
   });
