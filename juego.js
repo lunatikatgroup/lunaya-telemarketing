@@ -200,12 +200,12 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-gana span{background:#fff;border:1.5px solid #e9c25a;border-radius:999px;padding:5px 12px;box-shadow:0 3px 8px rgba(0,0,0,.06)}
 .jg-radw{position:relative;width:min(100%,540px);justify-self:center;border-radius:22px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.2)}
 .jg-radw>img{display:block;width:100%;height:auto;pointer-events:none}
-.jg-rad{position:absolute;left:27%;top:43.2%;width:55.5%;height:26%;transform:rotate(-3deg);border-radius:12px;overflow:hidden;box-shadow:0 0 0 3px rgba(255,214,120,.95),0 6px 14px rgba(0,0,0,.25)}
+.jg-rad{position:absolute;left:8%;top:37%;width:84%;height:35%;transform:rotate(-2deg);border-radius:16px;border:4px solid #e9c25a;overflow:hidden;box-shadow:0 0 0 3px rgba(255,214,120,.95),0 6px 14px rgba(0,0,0,.25)}
 .jg-rad .under{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:4px;background:radial-gradient(circle,#fffbe8 0,#fde59a 45%,#f0b84a 100%)}
-.jg-rad .under img{height:clamp(50px,15vw,90px);aspect-ratio:1;object-fit:cover;border-radius:50%;box-shadow:0 0 0 3px #fff}
-.jg-rad .under .pn{font:800 clamp(14px,4.2vw,20px)/1.1 Manrope,sans-serif;color:#7a0a14;margin-top:3px}
+.jg-rad .under img{height:clamp(70px,22vw,130px);aspect-ratio:1;object-fit:cover;border-radius:50%;box-shadow:0 0 0 3px #fff}
+.jg-rad .under .pn{font:800 clamp(18px,5.5vw,28px)/1.1 Manrope,sans-serif;color:#7a0a14;margin-top:3px}
 .jg-rad canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
-.jg-coin2{left:40%;top:52%;font-size:38px;animation:jgcoin2 2.2s ease-in-out infinite}
+.jg-coin2{left:42%;top:52%;font-size:46px;animation:jgcoin2 2.2s ease-in-out infinite}
 @keyframes jgcoin2{0%{transform:translate(-40px,0) rotate(-10deg)}25%{transform:translate(50px,-18px) rotate(12deg)}50%{transform:translate(-10px,16px) rotate(-8deg)}75%{transform:translate(70px,8px) rotate(10deg)}100%{transform:translate(-40px,0) rotate(-10deg)}}
 .jg-scr canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 .jg-q{display:grid;gap:10px;margin:8px 0}
@@ -349,7 +349,7 @@ async function startJuego(code, avance){
   function rascaOtra(){ return tipo==="rasca" && usarOtra(); }
   /* Raspa y gana de los anuncios: se raspa directo sobre el diseño del anuncio */
   function scratchAd(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Un regalo"};
-    return `<div class="jg-radw" id="jg-scr"><img src="${PORTADAS.rasca[0]}" alt=""><div class="jg-rad"><div class="under"><div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:clamp(34px,10vw,52px)">🎁</div>`}<div class="pn">${esc(p.n)}</div></div></div><canvas id="jg-cv" width="600" height="300" aria-label="Raspa aquí"></canvas></div><div class="jg-coin jg-coin2" aria-hidden="true">🪙</div></div>`; }
+    return `<div class="jg-radw" id="jg-scr"><img src="${PORTADAS.rasca[0]}" alt=""><div class="jg-rad"><div class="under"><div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:clamp(34px,10vw,52px)">🎁</div>`}<div class="pn">${esc(p.n)}</div></div></div><canvas id="jg-cv" width="600" height="340" aria-label="Raspa aquí"></canvas></div><div class="jg-coin jg-coin2" aria-hidden="true">🪙</div></div>`; }
   function scratchHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Un regalo"};
     return `<div class="jg-scrw" id="jg-scr"><div class="jg-bow">${SVG_GIFT(58)}</div><span class="jg-rlab">¡Raspa aquí! ↓</span><div class="jg-scr"><div class="under">${rascaOtra() ? `<div><div style="font-size:54px">🍀</div><div class="pn">¡Sigue participando!</div><div style="font-size:13px;color:#555">Tienes otra tarjeta</div></div>` : `<div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:64px">🎁</div>`}<div class="pn">${esc(p.n)}</div></div>`}</div><canvas id="jg-cv" width="600" height="400" aria-label="Raspa aquí"></canvas></div><div class="jg-coin" aria-hidden="true">🪙</div></div><p class="jg-small" style="margin-top:0">👆 Pasa tu dedo sobre la tarjeta para raspar</p>`; }
   function bindScratch(){ const cv = document.getElementById("jg-cv"); if (!cv) return; const x = cv.getContext("2d"); const W = cv.width, H = cv.height;
