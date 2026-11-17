@@ -44,9 +44,9 @@ const QUIZ = [
   {q:"¿Cómo cocinas las verduras?", o:[["Al vapor o en su propio jugo",0],["Salteadas",1],["Hervidas en mucha agua",2],["Casi no comemos verduras",3]]},
   {q:"¿Guardas o calientas la comida en recipientes de plástico?", o:[["No, uso vidrio o acero",0],["A veces",1],["Casi siempre",2]]}
 ];
-const quizNivel = pts => pts <= 3 ? {k:"verde", e:"🟢", t:"¡Tu cocina está muy sana!", c:"Vas muy bien. Te podemos enseñar recetas para sacarle aún más sabor y nutrientes a tus alimentos."}
-  : pts <= 8 ? {k:"amarillo", e:"🟡", t:"Tu cocina está en nivel amarillo", c:"Hay algunos hábitos que puedes mejorar: el recubrimiento rayado de los sartenes y el exceso de aceite pueden afectar lo que comes. Una asesora te puede dar ideas sencillas."}
-  : {k:"rojo", e:"🔴", t:"Tu cocina necesita atención", c:"Varios de tus utensilios y hábitos podrían estar quitándole nutrientes a tu comida o agregándole cosas que no quieres. Vale la pena una asesoría gratuita en tu casa."};
+const quizNivel = pts => pts <= 3 ? {k:"verde", e:"🟢", t:"¡Tu cocina va por buen camino!", c:"Tienes buenos hábitos en tu cocina. Siempre hay detalles que pueden ayudarte a cuidar aún más la nutrición y la salud de tu familia."}
+  : pts <= 8 ? {k:"amarillo", e:"🟡", t:"Tu cocina está en nivel amarillo", c:"Algunos de los hábitos y utensilios que usas en tu cocina quizás no sean los más adecuados para mantener la nutrición y la salud de tu familia. Vale la pena evaluarlo."}
+  : {k:"rojo", e:"🔴", t:"Tu cocina necesita atención", c:"Los hábitos y utensilios que usas en tu cocina quizás no sean los más adecuados para mantener la nutrición y la salud de tu familia. Vale la pena evaluarlo."};
 const precioOpc = v => { const r = x => Math.max(5, Math.round(x/10)*10); const o = [v, r(v*0.55), r(v*1.6)]; return [...new Set(o)].sort(() => Math.random()-.5); };
 const defMsg = tipo => `¡Hola, amiga! 🥰 ¿Cómo estás?\n\nTe quiero invitar a participar en ${TI(tipo).una} de Royal Prestige 🎁 donde puedes ganar productos gratis para tu cocina 😍\n\nY si participas, también me ayudas a mí a ganarme un regalito 🤭💕\n\n👇 ¡Participa aquí!\n{link}\n\n¡Muchas gracias, amiga! ❤️`;
 const defCamp = (tipo) => `¡Hola {nombre}! 👋 Te escribe {yo}, de parte de {socio} de Royal Prestige.\n\nTenemos ${TI(tipo).una} de regalos para ti 🎁 ${TI(tipo).cta} y gana un regalo para tu cocina. ¡Es totalmente gratis! 🎉\n{link}`;
@@ -367,10 +367,10 @@ async function startJuego(code, avance){
     cv.addEventListener("pointerdown", e => { down = true; last = null; jgCtx(); const cn = cv.parentNode.parentNode.querySelector(".jg-coin"); if (cn) cn.style.opacity = "0"; draw(e); }); cv.addEventListener("pointermove", draw); ["pointerup","pointerleave","pointercancel"].forEach(ev => cv.addEventListener(ev, () => { down = false; last = null; }));
     cv.addEventListener("touchmove", e => e.preventDefault(), {passive:false}); }
   /* Después del test o del precio: se raspa el regalo */
-  function showScratch(titulo, extra){ box.innerHTML = `<div class="jg-top">${titulo}</div>${extra||""}<h1 class="jg-h" style="font-size:30px">¡Ganaste un regalo!</h1>${scratchHtml()}`; bindScratch(); }
+  function showScratch(titulo, extra){ box.innerHTML = `<div class="jg-top">${titulo}</div>${extra||""}${J.anuncio ? scratchAd() : scratchHtml()}`; bindScratch(); }
   /* ===== Test cocina sana ===== */
   function showQuiz(k, pts){ const Q = QUIZ[k]; if (!Q){ const nv = quizNivel(pts); saved.quiz = `Test: ${nv.k} (${pts} pts)`; save();
-      return showScratch("Tu resultado", `<div class="jg-res"><div class="big">${nv.e}</div><h3 style="margin:4px 0">${esc(nv.t)}</h3><p style="margin:0;color:#555">${esc(nv.c)}</p></div><p class="jg-p">${J.anuncio ? "¡Por completar el test ganaste un regalo! Raspa y descúbrelo 👇" : `Por completar el test, ${esc(ref)} te regala…`}</p>`); }
+      return showScratch("Tu resultado", `<div class="jg-res"><div class="big">${nv.e}</div><h3 style="margin:4px 0">${esc(nv.t)}</h3><p style="margin:0;color:#555">${esc(nv.c)}</p></div><h2 class="jg-h" style="font-size:26px;margin:6px 0 0">¡Felicitaciones por completar tu test! 🎉</h2><p class="jg-p" style="margin:0"><b>Raspa aquí y descubre tu regalo 👇</b></p>`); }
     box.innerHTML = `${k===0 && J.anuncio ? `<p class="jg-p" style="margin:0 0 4px;padding:0 44px"><b>Responde 5 preguntas rápidas, descubre qué tan sana es tu cocina y gana un regalo.</b><br>¡Totalmente gratis! 🎉</p>` : ""}<div class="jg-top">Test de cocina sana · ${k+1} de ${QUIZ.length}</div><div class="jg-qbar"><i style="width:${k*100/QUIZ.length}%"></i></div><h2 class="jg-h" style="font-size:24px;line-height:1.25">${esc(Q.q)}</h2><div class="jg-q">${Q.o.map(([t,v],i)=>`<button data-qa="${v}">${esc(t)}</button>`).join("")}</div>`;
     box.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => { jgTick(700, .2, .04); showQuiz(k+1, pts + (+b.dataset.qa||0)); }); }
   /* ===== Adivina el precio ===== */
