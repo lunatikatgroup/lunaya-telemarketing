@@ -642,6 +642,14 @@ async function startJuego(code, avance){
   function showDone(){
     setTimeout(musicStop, 2500);
     const i = saved.prize ?? 0; const mine = saved.child;
+    if (J.anuncio){ box.innerHTML = `<div class="jg-top">🎉 ¡Felicitaciones! 🎉</div><h1 class="jg-h">¡Ganaste${saved.name?", "+esc(firstName(saved.name)):""}!</h1>${prizeHtml(i)}
+      <p class="jg-p">Uno de nuestros representantes te va a llamar para coordinar la entrega de tu regalo. ¡Es totalmente gratis!</p>
+      <div class="jg-card" style="text-align:center"><h3>🎁 ¿Tienes amigas a las que también les gustaría ganar un regalo?</h3>
+        <p style="margin:0;color:#555">¡Compárteles el juego, es totalmente gratis!</p>
+        <button class="jg-btn alt" id="jg-inv">Compartir por WhatsApp</button></div>`;
+      document.getElementById("jg-inv").onclick = async () => { const msg = `🎁 ¡Mira! Estoy participando en un juego y gané un regalo para mi cocina, totalmente gratis. ¡Participa tú también! 👇\n${location.href.split("#")[0].replace(/[?&]a=1/,"")}`;
+        try { if (navigator.share) await navigator.share({text:msg}); else location.href = "https://wa.me/?text="+encodeURIComponent(msg); } catch {} };
+      return; }
     box.innerHTML = `<div class="jg-top">🎉 ¡Felicitaciones! 🎉</div><h1 class="jg-h">¡Ganaste${saved.name?", "+esc(firstName(saved.name)):""}!</h1>${prizeHtml(i)}
       <p class="jg-p">Uno de nuestros representantes te va a llamar para coordinar la entrega de tu regalo. ¡Es totalmente gratis!</p>
       <div class="jg-card" style="text-align:center"><h3>🎁 ¿Quieres ganar más regalos?</h3>
