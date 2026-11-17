@@ -388,7 +388,7 @@ async function startJuego(code, avance){
     const orden = [p, t]; let n = 0, ganados = 0, fin = false; const asig = {}, vis = {};
     const toca = k => { if (asig[k] !== undefined || fin) return; const it = orden[n] || p; asig[k] = it === p; n++; slots[k].innerHTML = cel(it); };
     const revela = k => { if (vis[k]) return; vis[k] = 1; const [a,b,w,h] = rect(k); x.fillRect(a-1,b-1,w+2,h+2); slots[k].classList.add("ok"); jgTick(650, .2, .05);
-      if (asig[k]){ ganados++; if (ganados >= 3){ fin = true; slots.forEach((s,j) => { if (asig[j]) s.classList.add("win"); }); let r = 0; setTimeout(() => { slots.forEach((s,j) => { if (asig[j] === undefined){ s.innerHTML = cel(relleno[r++ % relleno.length]); s.classList.add("ok","dim"); } }); cv.style.transition = "opacity .6s"; cv.style.opacity = "0"; }, 700); setTimeout(() => won(i), 1900); } } };
+      if (asig[k]){ ganados++; if (ganados >= 3){ fin = true; slots.forEach((s,j) => { if (asig[j]) s.classList.add("win"); }); setTimeout(() => won(i), 1700); } } };
     const pt = e => { const r = cv.getBoundingClientRect(), q = e.touches ? e.touches[0] : e; return [(q.clientX - r.left) * W / r.width, (q.clientY - r.top) * W / r.height]; };
     let down = false, last = null, m = 0;
     const mide = () => { const d = x.getImageData(0,0,W,W).data; for (let k = 0; k < 9; k++){ if (vis[k]) continue; const [a,b,w,h] = rect(k); let c = 0, tt = 0; for (let yy = b; yy < b+h; yy += 8) for (let xx = a; xx < a+w; xx += 8){ tt++; if (d[(yy*W + xx)*4 + 3] < 40) c++; } const rz = c/tt; if (asig[k] === undefined && rz > 0.08) toca(k); if (asig[k] !== undefined && rz > 0.35) revela(k); } };
