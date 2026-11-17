@@ -198,6 +198,15 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-rprods{width:min(100%,520px);justify-self:center;aspect-ratio:1159/368;background:url("prods-raspa.jpg?v=1") center/cover no-repeat;border-radius:18px;margin-top:4px;-webkit-mask-image:linear-gradient(transparent,#000 18%,#000 85%,transparent);mask-image:linear-gradient(transparent,#000 18%,#000 85%,transparent)}
 .jg-gana{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;font:700 14px Manrope,sans-serif;color:#7a0a14}
 .jg-gana span{background:#fff;border:1.5px solid #e9c25a;border-radius:999px;padding:5px 12px;box-shadow:0 3px 8px rgba(0,0,0,.06)}
+.jg-radw{position:relative;width:min(100%,540px);justify-self:center;border-radius:22px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.2)}
+.jg-radw>img{display:block;width:100%;height:auto;pointer-events:none}
+.jg-rad{position:absolute;left:27%;top:43.2%;width:55.5%;height:26%;transform:rotate(-3deg);border-radius:12px;overflow:hidden;box-shadow:0 0 0 3px rgba(255,214,120,.95),0 6px 14px rgba(0,0,0,.25)}
+.jg-rad .under{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:4px;background:radial-gradient(circle,#fffbe8 0,#fde59a 45%,#f0b84a 100%)}
+.jg-rad .under img{height:clamp(50px,15vw,90px);aspect-ratio:1;object-fit:cover;border-radius:50%;box-shadow:0 0 0 3px #fff}
+.jg-rad .under .pn{font:800 clamp(14px,4.2vw,20px)/1.1 Manrope,sans-serif;color:#7a0a14;margin-top:3px}
+.jg-rad canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+.jg-coin2{left:40%;top:52%;font-size:38px;animation:jgcoin2 2.2s ease-in-out infinite}
+@keyframes jgcoin2{0%{transform:translate(-40px,0) rotate(-10deg)}25%{transform:translate(50px,-18px) rotate(12deg)}50%{transform:translate(-10px,16px) rotate(-8deg)}75%{transform:translate(70px,8px) rotate(10deg)}100%{transform:translate(-40px,0) rotate(-10deg)}}
 .jg-scr canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 .jg-q{display:grid;gap:10px;margin:8px 0}
 .jg-q button{font:inherit;font-size:16px;font-weight:700;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid #e2bb4f;background:#fff;color:var(--ink,#14213d);cursor:pointer}
@@ -283,7 +292,7 @@ async function startJuego(code, avance){
   if (J.until && J.until < Date.now() && !saved.done){ box.innerHTML = `<div class="jg-top">Juega y gana</div><div class="jg-h">Esta promoción ya terminó</div><p class="jg-p">Pídele a ${esc(ref)} que te mande un link nuevo.</p>`; return; }
   if (saved.done) return showDone();
   if (saved.prize !== undefined) return showForm(saved.prize);
-  if (J.anuncio && !J.sorteo && !saved.portada && PORTADAS[tipo]) showPortada(); else showIntro();
+  if (J.anuncio && !J.sorteo && !saved.portada && PORTADAS[tipo] && tipo !== "rasca") showPortada(); else showIntro();
 
   /* Portada de los anuncios: la foto completa de los productos con una ruleta pequeña y "¡Quiero jugar!" */
   function showPortada(){ const L = PORTADAS[tipo]; const img = L[(+J.pv||0) % L.length];
@@ -297,6 +306,7 @@ async function startJuego(code, avance){
     document.getElementById("jg-port").onclick = () => { saved.portada = 1; save(); window.scrollTo(0,0); showIntro(); }; }
 
   function showIntro(){
+    if (J.anuncio && tipo === "rasca"){ box.innerHTML = scratchAd() + `<p class="jg-p" style="margin:0"><b>👆 Raspa con tu dedo la parte plateada y descubre tu regalo</b><br>¡Totalmente gratis! 🎉</p><p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`; bindScratch(); return; }
     const n = J.n || 0;
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div>${J.anuncio ? nameHtml(TI(tipo).corto) + `<div class="jg-pill">${tipo==="ruleta" ? "¡Te ganaste un giro! 🎁" : "¡Te ganaste una oportunidad! 🎁"}</div>` : `<div class="jg-top">${esc(TX.top)}</div>
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>`}
@@ -336,13 +346,16 @@ async function startJuego(code, avance){
     setTimeout(() => { d.remove(); after && after(); }, 1900); }
   /* ===== Rasca y gana ===== */
   function rascaOtra(){ return tipo==="rasca" && usarOtra(); }
+  /* Raspa y gana de los anuncios: se raspa directo sobre el diseño del anuncio */
+  function scratchAd(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Un regalo"};
+    return `<div class="jg-radw" id="jg-scr"><img src="${PORTADAS.rasca[0]}" alt=""><div class="jg-rad"><div class="under"><div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:clamp(34px,10vw,52px)">🎁</div>`}<div class="pn">${esc(p.n)}</div></div></div><canvas id="jg-cv" width="600" height="300" aria-label="Raspa aquí"></canvas></div><div class="jg-coin jg-coin2" aria-hidden="true">🪙</div></div>`; }
   function scratchHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Un regalo"};
     return `<div class="jg-scrw" id="jg-scr"><div class="jg-bow">${SVG_GIFT(58)}</div><span class="jg-rlab">¡Raspa aquí! ↓</span><div class="jg-scr"><div class="under">${rascaOtra() ? `<div><div style="font-size:54px">🍀</div><div class="pn">¡Sigue participando!</div><div style="font-size:13px;color:#555">Tienes otra tarjeta</div></div>` : `<div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:64px">🎁</div>`}<div class="pn">${esc(p.n)}</div></div>`}</div><canvas id="jg-cv" width="600" height="400" aria-label="Raspa aquí"></canvas></div><div class="jg-coin" aria-hidden="true">🪙</div></div><p class="jg-small" style="margin-top:0">👆 Pasa tu dedo sobre la tarjeta para raspar</p>`; }
   function bindScratch(){ const cv = document.getElementById("jg-cv"); if (!cv) return; const x = cv.getContext("2d"); const W = cv.width, H = cv.height;
     const g = x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#b9bec6"); g.addColorStop(.35,"#eef0f3"); g.addColorStop(.55,"#c3c8cf"); g.addColorStop(.8,"#f4f5f7"); g.addColorStop(1,"#9aa0a8"); x.fillStyle = g; x.fillRect(0,0,W,H);
     for (let k=0;k<900;k++){ x.fillStyle = Math.random()<.5 ? "rgba(255,255,255,.55)" : "rgba(110,115,125,.25)"; x.fillRect(Math.random()*W, Math.random()*H, 2, 2); }
     x.fillStyle = "rgba(255,255,255,.9)"; for (let k=0;k<26;k++){ const a = Math.random()*W, b = Math.random()*H, r = 3+Math.random()*5; x.beginPath(); x.moveTo(a-r,b); x.lineTo(a,b-r*.25); x.lineTo(a+r,b); x.lineTo(a,b+r*.25); x.fill(); x.beginPath(); x.moveTo(a,b-r); x.lineTo(a+r*.25,b); x.lineTo(a,b+r); x.lineTo(a-r*.25,b); x.fill(); }
-    x.textAlign = "center"; x.fillStyle = "#6b7079"; x.font = "900 54px Manrope, sans-serif"; x.fillText("RASPA AQUÍ", W/2, H/2 + 2); x.fillStyle = "#b3121f"; x.font = "700 28px Manrope, sans-serif"; x.fillText("🎁 y descubre tu regalo 🎁", W/2, H/2 + 46);
+    x.textAlign = "center"; x.fillStyle = "#6b7079"; x.font = "900 54px Manrope, sans-serif"; x.fillText("RASPA AQUÍ", W/2, H/2 + 2); x.fillStyle = "#b3121f"; x.font = "700 28px Manrope, sans-serif"; x.fillText(H < 350 ? "y descubre tu regalo" : "🎁 y descubre tu regalo 🎁", W/2, H/2 + 46);
     x.globalCompositeOperation = "destination-out"; let down = false, n = 0, fin = false, last = null;
     const pt = e => { const r = cv.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return [(t.clientX - r.left) * W / r.width, (t.clientY - r.top) * H / r.height]; };
     const draw = e => { if (!down || fin) return; e.preventDefault(); const [a,b] = pt(e); x.lineWidth = 70; x.lineCap = "round"; x.beginPath(); if (last) x.moveTo(last[0], last[1]); else x.moveTo(a, b); x.lineTo(a+0.1, b); x.stroke(); last = [a,b];
