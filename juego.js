@@ -14,7 +14,7 @@ function pickPrize(prizes){ const ok = prizes.map((p,i) => ({i, w: Math.max(0, +
   const pool = tot > 0 ? ok.filter(x=>x.w>0) : ok.map(x=>({...x, w:1})); tot = pool.reduce((t,x)=>t+x.w,0);
   let r = Math.random()*tot; for (const x of pool){ if ((r -= x.w) < 0) return x.i; } return pool[pool.length-1].i; }
 /* Probar un juego en la misma pantalla, sin guardar nada */
-function probarJuego(prog, tipo, anuncio, sorteo, solo){ if (!prog) return; window.__demoSorteo = sorteo || null; window.__demoSolo = solo || null; try { sessionStorage.setItem("ly-back-y", String(window.scrollY||0)); history.pushState({demo:1}, "", location.href); } catch {} window.__demoAd = !!anuncio; window.__demo = {...JSON.parse(JSON.stringify(prog)), ...(tipo ? {tipo} : {})}; window.__demo = conJuego(window.__demo, {tipo: tipo || prog.tipo}); closeModal && closeModal(); window.scrollTo(0,0); startJuego("PRUEBA"); }
+function probarJuego(prog, tipo, anuncio, sorteo, solo, pv){ if (!prog) return; window.__demoPv = pv || 0; window.__demoSorteo = sorteo || null; window.__demoSolo = solo || null; try { sessionStorage.setItem("ly-back-y", String(window.scrollY||0)); history.pushState({demo:1}, "", location.href); } catch {} window.__demoAd = !!anuncio; window.__demo = {...JSON.parse(JSON.stringify(prog)), ...(tipo ? {tipo} : {})}; window.__demo = conJuego(window.__demo, {tipo: tipo || prog.tipo}); closeModal && closeModal(); window.scrollTo(0,0); startJuego("PRUEBA"); }
 /* ===== Tipos de juego: el distribuidor escoge el que quiera ===== */
 const TIPOS_JG = {
   ruleta:{e:"🎡", n:"Ruleta", una:"una ruleta", cta:"Gira", corto:"¡Gira y gana!", pill:"te regaló un giro 🎁", sub:"Gira la ruleta y gana un regalo para tu cocina.", btn:"¡GIRAR!", d:"La clásica: gira y gana."},
@@ -188,6 +188,16 @@ body.jg{background:radial-gradient(ellipse at top,#fffdf7 0%,#faf3e3 55%,#f1e3c4
 .jg-scr .under{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:8px}
 .jg-scr .under img{width:44%;aspect-ratio:1;object-fit:cover;border-radius:50%}
 .jg-scr .under .pn{font-weight:800;font-size:18px;margin-top:4px;color:var(--ink,#14213d)}
+.jg-scrw{box-sizing:border-box;position:relative;width:100%;max-width:370px;margin:18px auto 4px;padding:14px;border-radius:22px;background:radial-gradient(rgba(255,230,160,.55) 1px,transparent 1.6px) 0 0/14px 14px,radial-gradient(circle at 30% 20%,#e3343f,#a8121d 60%,#760913);border:4px solid #e9c25a;box-shadow:0 0 0 2px #fff3c4 inset,0 16px 32px rgba(118,9,19,.35)}
+.jg-scrw .jg-scr{max-width:none;margin:0;border:3px solid #f3d27a;background:radial-gradient(circle,#fffbe8 0,#fde59a 45%,#f0b84a 100%);box-shadow:0 0 18px rgba(255,214,102,.7)}
+.jg-scrw .jg-scr .under img{box-shadow:0 0 0 4px #fff,0 6px 16px rgba(0,0,0,.2)}
+.jg-bow{position:absolute;left:-18px;top:-26px;transform:rotate(-14deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,.25));pointer-events:none}
+.jg-rlab{position:absolute;right:14px;top:-16px;background:#fff;color:#b3121f;font:italic 800 16px/1 Georgia,serif;border-radius:999px;padding:7px 14px;box-shadow:0 4px 10px rgba(0,0,0,.18);transform:rotate(-4deg);pointer-events:none}
+.jg-coin{position:absolute;left:18%;top:40%;font-size:44px;pointer-events:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.35));animation:jgcoin 2.4s ease-in-out infinite;transition:opacity .3s}
+@keyframes jgcoin{0%{transform:translate(0,0) rotate(-10deg)}25%{transform:translate(120px,-26px) rotate(12deg)}50%{transform:translate(40px,22px) rotate(-8deg)}75%{transform:translate(170px,10px) rotate(10deg)}100%{transform:translate(0,0) rotate(-10deg)}}
+.jg-rprods{width:min(100%,520px);justify-self:center;aspect-ratio:1159/368;background:url("prods-raspa.jpg?v=1") center/cover no-repeat;border-radius:18px;margin-top:4px;-webkit-mask-image:linear-gradient(transparent,#000 18%,#000 85%,transparent);mask-image:linear-gradient(transparent,#000 18%,#000 85%,transparent)}
+.jg-gana{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;font:700 14px Manrope,sans-serif;color:#7a0a14}
+.jg-gana span{background:#fff;border:1.5px solid #e9c25a;border-radius:999px;padding:5px 12px;box-shadow:0 3px 8px rgba(0,0,0,.06)}
 .jg-scr canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
 .jg-q{display:grid;gap:10px;margin:8px 0}
 .jg-q button{font:inherit;font-size:16px;font-weight:700;text-align:left;padding:14px 16px;border-radius:14px;border:2px solid #e2bb4f;background:#fff;color:var(--ink,#14213d);cursor:pointer}
@@ -234,6 +244,8 @@ body.foto .jg-crownrow{display:none}
 body.foto .jg-top,body.foto .jg-name,body.foto .jg-pill,body.foto .jg-p,body.foto .jg-chips{background:rgba(255,255,255,.82);border-radius:14px;padding:4px 10px;justify-self:center}
 .jg-mute{position:fixed;top:12px;right:12px;z-index:40;border:1.5px solid #ead9ad;background:#fff;border-radius:999px;width:44px;height:44px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
 `;
+/* Portadas de los anuncios (la imagen del anuncio + botón). Si hay varias, el link guarda cuál (pv) */
+const PORTADAS = {ruleta:["portada-ad.jpg?v=3"], rasca:["portada-raspa.jpg?v=1"], quiz:["portada-test.jpg?v=1","portada-test2.jpg?v=1"]};
 async function startJuego(code, avance){
   S.publicGame = true;
   document.body.className = "jg"; const st = document.createElement("style"); st.textContent = JG_CSS; document.head.appendChild(st);
@@ -244,7 +256,7 @@ async function startJuego(code, avance){
   const box = document.getElementById("jg"); code = String(code).toUpperCase().replace(/[^A-Z0-9]/g,"");
   let J, P; const padreQ = String(new URLSearchParams(location.search).get("p")||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
   const leer = async c => { for (let k = 0; k < 3; k++){ try { const js = await S.db.doc("juegos/"+c).get(); if (!js.exists) return {no:true}; const jd = js.data(); const ps = await S.db.doc("programs/"+jd.pid).get(); if (!ps.exists) return {no:true}; return {J:jd, P:ps.data()}; } catch(e){ console.log("juego", e); await new Promise(r => setTimeout(r, 1200*(k+1))); } } return {red:true}; };
-  const demo = code === "PRUEBA" && window.__demo; let rr = demo ? {J:{pid:"prueba", ref:"Tu cliente", n:0, until:0, tipo:window.__demo.tipo, anuncio:!!window.__demoAd, ...(window.__demoSorteo ? {sorteo:window.__demoSorteo} : {}), ...(window.__demoSolo ? {solo:window.__demoSolo} : {})}, P:window.__demo} : await leer(code);
+  const demo = code === "PRUEBA" && window.__demo; let rr = demo ? {J:{pid:"prueba", ref:"Tu cliente", n:0, until:0, tipo:window.__demo.tipo, anuncio:!!window.__demoAd, ...(window.__demoSorteo ? {sorteo:window.__demoSorteo} : {}), ...(window.__demoSolo ? {solo:window.__demoSolo} : {}), ...(window.__demoPv ? {pv:window.__demoPv} : {})}, P:window.__demo} : await leer(code);
   if (demo){ const bar = document.createElement("div"); bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99;background:#14213d;color:#fff;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;font:600 14px Manrope,sans-serif";
     if (window.__demoAd) bar.style.cssText = "position:fixed;right:8px;bottom:8px;z-index:99;opacity:.3;display:flex;gap:6px;font:600 12px Manrope,sans-serif";
     bar.innerHTML = window.__demoAd ? `<span style="display:flex;gap:6px"><button style="font:inherit;padding:6px 10px;border-radius:10px;border:0;background:#14213d;color:#fff" id="dm-re">↻</button><button style="font:inherit;padding:6px 10px;border-radius:10px;border:0;background:#14213d;color:#fff" id="dm-x">←</button></span>` : `<span>👀 Modo prueba: no se guarda nada</span><span style="display:flex;gap:8px"><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#e2bb4f;color:#14213d" id="dm-re">Otra vez</button><button style="font:inherit;padding:8px 12px;border-radius:10px;border:0;background:#fff;color:#14213d" id="dm-x">← Volver</button></span>`;
@@ -271,20 +283,17 @@ async function startJuego(code, avance){
   if (J.until && J.until < Date.now() && !saved.done){ box.innerHTML = `<div class="jg-top">Juega y gana</div><div class="jg-h">Esta promoción ya terminó</div><p class="jg-p">Pídele a ${esc(ref)} que te mande un link nuevo.</p>`; return; }
   if (saved.done) return showDone();
   if (saved.prize !== undefined) return showForm(saved.prize);
-  if (J.anuncio && !J.sorteo && !saved.portada && tipo==="ruleta") showPortada(); else showIntro();
+  if (J.anuncio && !J.sorteo && !saved.portada && PORTADAS[tipo]) showPortada(); else showIntro();
 
   /* Portada de los anuncios: la foto completa de los productos con una ruleta pequeña y "¡Quiero jugar!" */
-  function showPortada(){ const TJ = TI(tipo); const propia = false, img = "portada-ad.jpg?v=3";
-    box.innerHTML = `<style>@keyframes jgrot{to{transform:rotate(360deg)}}@keyframes jgpul{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}</style>
+  function showPortada(){ const L = PORTADAS[tipo]; const img = L[(+J.pv||0) % L.length];
+    const btn = tipo==="quiz" ? "¡HACER EL TEST!" : tipo==="rasca" ? "¡QUIERO RASPAR!" : "¡QUIERO JUGAR!";
+    box.innerHTML = `<style>@keyframes jgpul{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}</style>
       <div style="position:relative;width:min(100%,560px);justify-self:center;border-radius:22px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.2)">
         <img src="${img}" alt="" style="display:block;width:100%;height:auto">
-        ${propia || tipo!=="ruleta" ? `<div style="position:absolute;left:0;right:0;top:3%;display:grid;justify-items:center;gap:6px">
-          ${tipo==="ruleta" && prizes.length>=2 ? `<div style="width:34%;animation:jgrot 9s linear infinite;filter:drop-shadow(0 8px 14px rgba(0,0,0,.25))">${wheelSvg(rueda, "jg-mini").replace('<div class="jg-ptr"></div>','').replace('class="jg-wrap"','style="position:relative"')}</div>` : `<div style="font-size:64px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.2))">${TJ.e}</div>`}
-          <div style="background:rgba(255,255,255,.9);border-radius:16px;padding:8px 16px;font:800 clamp(18px,4.6vw,26px)/1.15 Manrope,sans-serif;color:#14213d;max-width:90%">${tipo==="ruleta" ? "🎡 ¡Gira la ruleta y gánate un regalo!" : "🎁 " + esc(TJ.corto) + " Gánate un regalo"}</div>
-        </div>` : ""}
       </div>
       <p class="jg-p" style="margin:0"><b>¡Totalmente gratis! 🎉</b></p>
-      <button class="jg-btn go" id="jg-port" style="animation:jgpul 1.2s ease-in-out infinite">¡QUIERO JUGAR! <span style="font-size:22px">›</span></button>`;
+      <button class="jg-btn go" id="jg-port" style="animation:jgpul 1.2s ease-in-out infinite">${btn} <span style="font-size:22px">›</span></button>`;
     document.getElementById("jg-port").onclick = () => { saved.portada = 1; save(); window.scrollTo(0,0); showIntro(); }; }
 
   function showIntro(){
@@ -292,7 +301,7 @@ async function startJuego(code, avance){
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div>${J.anuncio ? nameHtml(TI(tipo).corto) + `<div class="jg-pill">${tipo==="ruleta" ? "¡Te ganaste un giro! 🎁" : "¡Te ganaste una oportunidad! 🎁"}</div>` : `<div class="jg-top">${esc(TX.top)}</div>
       ${nameHtml(ref)}<div class="jg-pill">${esc(TX.pill)}</div>`}
       <p class="jg-p"><b>${esc(TX.sub)}</b><br>¡Totalmente gratis! 🎉</p>
-      ${tipo==="rasca" ? scratchHtml() : tipo==="tiro" ? tiroHtml() : tipo==="pinata" ? pinataHtml() : tipo==="quiz" || tipo==="precio" || tipo==="puzzle" ? `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` + (tipo==="precio" ? precioHtml() : "") : tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
+      ${tipo==="rasca" ? scratchHtml() + `<div class="jg-gana"><b style="width:100%;text-align:center">Puedes ganar:</b>${prizes.map(p=>`<span>🎁 ${esc(p.n)}</span>`).join("")}</div><div class="jg-rprods" aria-hidden="true"></div>` : tipo==="tiro" ? tiroHtml() : tipo==="pinata" ? pinataHtml() : tipo==="quiz" || tipo==="precio" || tipo==="puzzle" ? `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>` + (tipo==="precio" ? precioHtml() : "") : tipo==="caja" ? `<div class="jg-boxes">${[0,1,2].map(i=>`<button class="jg-box" data-box="${i}" aria-label="Caja ${i+1}">🎁</button>`).join("")}</div>
         ${prizes.some(p=>p.img) ? "" : `<div class="jg-gifts">${prizes.map(p=>`<div class="jg-gift">${p.img?`<img src="${p.img}" alt="">`:`<span class="ph">🎁</span>`}${esc(p.n)}</div>`).join("")}</div>`}` : wheelSvg(rueda)}
       <div class="jg-chips col">${vence?`<span class="jg-chip">${SVG_CAL}<span>Válido hasta el ${esc(vence)}</span></span>`:""}${n>=2&&!J.anuncio?`<span class="jg-chip">${SVG_PPL}<span>${n} amigas de ${esc(ref)} ya participaron</span></span>`:""}</div>
       ${tipo==="caja" || tipo==="rasca" || tipo==="precio" || tipo==="tiro" || tipo==="pinata" ? "" : `<button class="jg-btn go" id="jg-spin">${esc(TX.btn||"¡GIRAR!")} <span style="font-size:22px">›</span></button>`}
@@ -328,11 +337,12 @@ async function startJuego(code, avance){
   /* ===== Rasca y gana ===== */
   function rascaOtra(){ return tipo==="rasca" && usarOtra(); }
   function scratchHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Un regalo"};
-    return `<div class="jg-scr" id="jg-scr"><div class="under">${rascaOtra() ? `<div><div style="font-size:54px">🍀</div><div class="pn">¡Sigue participando!</div><div style="font-size:13px;color:#555">Tienes otra tarjeta</div></div>` : `<div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:64px">🎁</div>`}<div class="pn">${esc(p.n)}</div></div>`}</div><canvas id="jg-cv" width="600" height="400" aria-label="Raspa aquí"></canvas></div><p class="jg-small" style="margin-top:0">👆 Pasa tu dedo sobre la tarjeta para raspar</p>`; }
+    return `<div class="jg-scrw" id="jg-scr"><div class="jg-bow">${SVG_GIFT(58)}</div><span class="jg-rlab">¡Raspa aquí! ↓</span><div class="jg-scr"><div class="under">${rascaOtra() ? `<div><div style="font-size:54px">🍀</div><div class="pn">¡Sigue participando!</div><div style="font-size:13px;color:#555">Tienes otra tarjeta</div></div>` : `<div>${p.img?`<img src="${p.img}" alt="">`:`<div style="font-size:64px">🎁</div>`}<div class="pn">${esc(p.n)}</div></div>`}</div><canvas id="jg-cv" width="600" height="400" aria-label="Raspa aquí"></canvas></div><div class="jg-coin" aria-hidden="true">🪙</div></div><p class="jg-small" style="margin-top:0">👆 Pasa tu dedo sobre la tarjeta para raspar</p>`; }
   function bindScratch(){ const cv = document.getElementById("jg-cv"); if (!cv) return; const x = cv.getContext("2d"); const W = cv.width, H = cv.height;
-    const g = x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#d9b45a"); g.addColorStop(.5,"#f5e1a0"); g.addColorStop(1,"#b8861b"); x.fillStyle = g; x.fillRect(0,0,W,H);
-    x.fillStyle = "rgba(255,255,255,.35)"; for (let k=0;k<70;k++){ x.beginPath(); x.arc(Math.random()*W, Math.random()*H, 1+Math.random()*3, 0, 7); x.fill(); }
-    x.fillStyle = "#5a3d0c"; x.font = "800 46px Manrope, sans-serif"; x.textAlign = "center"; x.fillText("RASPA AQUÍ", W/2, H/2 - 6); x.font = "600 26px Manrope, sans-serif"; x.fillText("y descubre tu regalo 🎁", W/2, H/2 + 36);
+    const g = x.createLinearGradient(0,0,W,H); g.addColorStop(0,"#b9bec6"); g.addColorStop(.35,"#eef0f3"); g.addColorStop(.55,"#c3c8cf"); g.addColorStop(.8,"#f4f5f7"); g.addColorStop(1,"#9aa0a8"); x.fillStyle = g; x.fillRect(0,0,W,H);
+    for (let k=0;k<900;k++){ x.fillStyle = Math.random()<.5 ? "rgba(255,255,255,.55)" : "rgba(110,115,125,.25)"; x.fillRect(Math.random()*W, Math.random()*H, 2, 2); }
+    x.fillStyle = "rgba(255,255,255,.9)"; for (let k=0;k<26;k++){ const a = Math.random()*W, b = Math.random()*H, r = 3+Math.random()*5; x.beginPath(); x.moveTo(a-r,b); x.lineTo(a,b-r*.25); x.lineTo(a+r,b); x.lineTo(a,b+r*.25); x.fill(); x.beginPath(); x.moveTo(a,b-r); x.lineTo(a+r*.25,b); x.lineTo(a,b+r); x.lineTo(a-r*.25,b); x.fill(); }
+    x.textAlign = "center"; x.fillStyle = "#6b7079"; x.font = "900 54px Manrope, sans-serif"; x.fillText("RASPA AQUÍ", W/2, H/2 + 2); x.fillStyle = "#b3121f"; x.font = "700 28px Manrope, sans-serif"; x.fillText("🎁 y descubre tu regalo 🎁", W/2, H/2 + 46);
     x.globalCompositeOperation = "destination-out"; let down = false, n = 0, fin = false, last = null;
     const pt = e => { const r = cv.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return [(t.clientX - r.left) * W / r.width, (t.clientY - r.top) * H / r.height]; };
     const draw = e => { if (!down || fin) return; e.preventDefault(); const [a,b] = pt(e); x.lineWidth = 70; x.lineCap = "round"; x.beginPath(); if (last) x.moveTo(last[0], last[1]); else x.moveTo(a, b); x.lineTo(a+0.1, b); x.stroke(); last = [a,b];
@@ -340,7 +350,7 @@ async function startJuego(code, avance){
     const acabar = () => { if (fin) return; fin = true; cv.style.transition = "opacity .5s"; cv.style.opacity = "0"; const i = saved.pend;
       if (rascaOtra()){ saved.otra = true; save(); setTimeout(() => otraMsg("🍀 ¡Esta no tenía premio! <b>Raspa otra tarjeta</b>", () => { const w = document.getElementById("jg-scr"); if (w){ w.outerHTML = scratchHtml(); bindScratch(); } }), 600); return; }
       setTimeout(() => won(i), 500); };
-    cv.addEventListener("pointerdown", e => { down = true; last = null; jgCtx(); draw(e); }); cv.addEventListener("pointermove", draw); ["pointerup","pointerleave","pointercancel"].forEach(ev => cv.addEventListener(ev, () => { down = false; last = null; }));
+    cv.addEventListener("pointerdown", e => { down = true; last = null; jgCtx(); const cn = cv.parentNode.parentNode.querySelector(".jg-coin"); if (cn) cn.style.opacity = "0"; draw(e); }); cv.addEventListener("pointermove", draw); ["pointerup","pointerleave","pointercancel"].forEach(ev => cv.addEventListener(ev, () => { down = false; last = null; }));
     cv.addEventListener("touchmove", e => e.preventDefault(), {passive:false}); }
   /* Después del test o del precio: se raspa el regalo */
   function showScratch(titulo, extra){ box.innerHTML = `<div class="jg-top">${titulo}</div>${extra||""}<h1 class="jg-h" style="font-size:30px">¡Ganaste un regalo!</h1>${scratchHtml()}`; bindScratch(); }
