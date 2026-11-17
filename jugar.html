@@ -36,12 +36,16 @@ window.today = () => laDate(Date.now());
 window.memberName = () => ""; window.firstName2 = n => String(n||"").trim().split(/\s+/)[0] || "";
 window.role = () => ""; window.ownerUid = () => ""; window.pagadorDe = id => id; window.render = () => {}; window.openModal = () => {}; window.closeModal = () => {};
 </script>
-<script src="juego.js?v=202611162215"></script>
+<script src="juego.js?v=202611162218"></script>
 <script>
 (function(){ const cfg = window.LUNAYA_CONFIG || {}; const qs = new URLSearchParams(location.search); const code = qs.get("j");
   if (!code){ document.getElementById("jg-early").innerHTML = "<i>🎁</i>Este link no está completo."; return; }
   firebase.initializeApp(cfg.firebase); S.db = firebase.firestore(); try { S.db.settings({experimentalAutoDetectLongPolling:true, merge:true}); } catch(e){}
-  startJuego(code, qs.get("a")==="1"); })();
+  const falla = m => { const b = document.getElementById("jg"); if (!b || !/Preparando/.test(b.textContent)) return; b.innerHTML = `<div class="jg-h">No se pudo cargar</div><p class="jg-p">Revisa tu conexión y vuelve a intentar.</p><button class="jg-btn" onclick="location.reload()">Reintentar</button><p class="jg-small" style="opacity:.6">${String(m||"").replace(/[<>&]/g,"").slice(0,160)}</p>`; };
+  window.addEventListener("error", e => falla("e: " + (e.message||"") + " " + (e.lineno||"")));
+  window.addEventListener("unhandledrejection", e => falla("p: " + ((e.reason && (e.reason.message||e.reason))||"")));
+  setTimeout(() => falla("t: " + (window.__paso||"?")), 25000);
+  window.__paso = "inicio"; Promise.resolve(startJuego(code, qs.get("a")==="1")).catch(e => falla("c: " + (e && e.message || e))); })();
 </script>
 </body>
 </html>
