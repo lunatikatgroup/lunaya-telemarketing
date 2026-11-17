@@ -237,7 +237,7 @@ body.foto .jg-top,body.foto .jg-name,body.foto .jg-pill,body.foto .jg-p,body.fot
 async function startJuego(code, avance){
   S.publicGame = true;
   document.body.className = "jg"; const st = document.createElement("style"); st.textContent = JG_CSS; document.head.appendChild(st);
-  document.body.innerHTML = `<div class="jg-pg" id="jg"><div class="jg-p">Cargando…</div></div>`;
+  document.body.innerHTML = `<div class="jg-pg" id="jg"><div style="display:grid;place-items:center;gap:10px;margin-top:30vh;font:700 20px/1.3 -apple-system,Helvetica,Arial,sans-serif;color:#5b1424"><div style="font-size:72px;animation:jgb 1s ease-in-out infinite">🎁</div>Preparando tu regalo…</div><style>@keyframes jgb{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14px) rotate(6deg)}}</style></div>`;
   document.body.insertAdjacentHTML("afterbegin", SVG_RIBBON("l") + SVG_RIBBON("r"));
   const mb = document.createElement("button"); mb.className = "jg-mute"; mb.setAttribute("aria-label", "Música"); const paintMb = () => mb.textContent = jgMuted() ? "🔇" : "🎵"; paintMb();
   mb.onclick = e => { e.stopPropagation(); try { localStorage.setItem("ly-jg-mute", jgMuted() ? "0" : "1"); } catch {} paintMb(); if (jgMuted()) musicStop(); else musicStart(); }; document.body.appendChild(mb);
@@ -274,7 +274,7 @@ async function startJuego(code, avance){
   if (J.anuncio && !J.sorteo && !saved.portada && tipo==="ruleta") showPortada(); else showIntro();
 
   /* Portada de los anuncios: la foto completa de los productos con una ruleta pequeña y "¡Quiero jugar!" */
-  function showPortada(){ const TJ = TI(tipo); const propia = false, img = "portada-ad.jpg?v=2";
+  function showPortada(){ const TJ = TI(tipo); const propia = false, img = "portada-ad.jpg?v=3";
     box.innerHTML = `<style>@keyframes jgrot{to{transform:rotate(360deg)}}@keyframes jgpul{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}</style>
       <div style="position:relative;width:min(100%,560px);justify-self:center;border-radius:22px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.2)">
         <img src="${img}" alt="" style="display:block;width:100%;height:auto">
