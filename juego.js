@@ -268,7 +268,7 @@ async function startJuego(code, avance){
   if (demo) saved = {}; const save = () => { if (demo) return; try { localStorage.setItem(key, JSON.stringify(saved)); } catch {} };
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta";
   /* "Otra oportunidad": el primer intento no gana (casilla de girar otra vez, caja vacía, tarjeta "sigue participando", el pajarito esquiva) para que quiera seguir jugando */
-  const otraVez = P.otraVez !== false && !(J.anuncio && tipo !== "ruleta"); const usarOtra = () => otraVez && !saved.otra;
+  const otraVez = P.otraVez !== false && !J.anuncio; const usarOtra = () => otraVez && !saved.otra;
   const OTRA = {n:"¡Otra vez!", w:0, img:"", emo:"🔄", otra:true}; const rueda = otraVez && prizes.length >= 2 ? [...prizes.slice(0,1), OTRA, ...prizes.slice(1)] : prizes; const T = setTema(P.tema), TX = txtDe(P);
   const bs = document.body.style; [["--b1",T.bg[0]],["--b2",T.bg[1]],["--b3",T.bg[2]],["--g1",T.g[0]],["--g2",T.g[1]],["--g3",T.g[2]],["--g4",T.g[3]],["--ink",T.ink],["--acc",T.acc],["--glow",T.glow]].forEach(([k,v]) => bs.setProperty(k, v));
   document.querySelectorAll(".jg-rib").forEach(r => r.outerHTML = SVG_RIBBON(r.classList.contains("l") ? "l" : "r"));
