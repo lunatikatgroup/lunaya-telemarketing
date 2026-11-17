@@ -306,6 +306,7 @@ async function startJuego(code, avance){
     document.getElementById("jg-port").onclick = () => { saved.portada = 1; save(); window.scrollTo(0,0); showIntro(); }; }
 
   function showIntro(){
+    if (J.anuncio && tipo === "quiz") return showQuiz(0, 0);
     if (J.anuncio && tipo === "rasca"){ box.innerHTML = scratchAd() + `<p class="jg-p" style="margin:0"><b>👆 Raspa con tu dedo la parte plateada y descubre tu regalo</b><br>¡Totalmente gratis! 🎉</p><p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`; bindScratch(); return; }
     const n = J.n || 0;
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div>${J.anuncio ? nameHtml(TI(tipo).corto) + `<div class="jg-pill">${tipo==="ruleta" ? "¡Te ganaste un giro! 🎁" : "¡Te ganaste una oportunidad! 🎁"}</div>` : `<div class="jg-top">${esc(TX.top)}</div>
@@ -369,8 +370,8 @@ async function startJuego(code, avance){
   function showScratch(titulo, extra){ box.innerHTML = `<div class="jg-top">${titulo}</div>${extra||""}<h1 class="jg-h" style="font-size:30px">¡Ganaste un regalo!</h1>${scratchHtml()}`; bindScratch(); }
   /* ===== Test cocina sana ===== */
   function showQuiz(k, pts){ const Q = QUIZ[k]; if (!Q){ const nv = quizNivel(pts); saved.quiz = `Test: ${nv.k} (${pts} pts)`; save();
-      return showScratch("Tu resultado", `<div class="jg-res"><div class="big">${nv.e}</div><h3 style="margin:4px 0">${esc(nv.t)}</h3><p style="margin:0;color:#555">${esc(nv.c)}</p></div><p class="jg-p">Por completar el test, ${esc(ref)} te regala…</p>`); }
-    box.innerHTML = `<div class="jg-top">Test de cocina sana · ${k+1} de ${QUIZ.length}</div><div class="jg-qbar"><i style="width:${k*100/QUIZ.length}%"></i></div><h2 class="jg-h" style="font-size:24px;line-height:1.25">${esc(Q.q)}</h2><div class="jg-q">${Q.o.map(([t,v],i)=>`<button data-qa="${v}">${esc(t)}</button>`).join("")}</div>`;
+      return showScratch("Tu resultado", `<div class="jg-res"><div class="big">${nv.e}</div><h3 style="margin:4px 0">${esc(nv.t)}</h3><p style="margin:0;color:#555">${esc(nv.c)}</p></div><p class="jg-p">${J.anuncio ? "¡Por completar el test ganaste un regalo! Raspa y descúbrelo 👇" : `Por completar el test, ${esc(ref)} te regala…`}</p>`); }
+    box.innerHTML = `${k===0 && J.anuncio ? `<p class="jg-p" style="margin:0 0 4px;padding:0 44px"><b>Responde 5 preguntas rápidas, descubre qué tan sana es tu cocina y gana un regalo.</b><br>¡Totalmente gratis! 🎉</p>` : ""}<div class="jg-top">Test de cocina sana · ${k+1} de ${QUIZ.length}</div><div class="jg-qbar"><i style="width:${k*100/QUIZ.length}%"></i></div><h2 class="jg-h" style="font-size:24px;line-height:1.25">${esc(Q.q)}</h2><div class="jg-q">${Q.o.map(([t,v],i)=>`<button data-qa="${v}">${esc(t)}</button>`).join("")}</div>`;
     box.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => { jgTick(700, .2, .04); showQuiz(k+1, pts + (+b.dataset.qa||0)); }); }
   /* ===== Adivina el precio ===== */
   function precioHtml(){ const pr = P.precio || {}; if (!saved.opc){ saved.opc = precioOpc(+pr.v||100); save(); }
