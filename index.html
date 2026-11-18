@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611181304"></script>
-<script src="anuncios.js?v=202611181304"></script>
-<script src="juego.js?v=202611181304"></script>
+<script src="demo.js?v=202611181305"></script>
+<script src="anuncios.js?v=202611181305"></script>
+<script src="juego.js?v=202611181305"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611181304";
+const APP_VER = "202611181305";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1184,6 +1184,8 @@ function render(){
   html += relojBar() + cumpleCard() + motivaCard() + codigosBtn() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
+  { const nl = Object.entries(S.leads||{}).filter(([,l]) => l.kind==="jugador" && l.status==="nuevo" && !(l.intentos||[]).length && S.juegos?.[l.code]?.anuncio).sort((a,b) => (a[1].at||0)-(b[1].at||0));
+    if (nl.length && S.view!=="juego") html += `<div class="banner" style="background:#be185d;border-color:#9d174d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;animation:jgpul 1.6s ease-in-out infinite"><span>📣 <b>${nl.length} prospecto${nl.length>1?"s":""} de Meta sin llamar</b> · el más viejo lleva ${window.durTxt ? durTxt(Date.now()-(nl[0][1].at||Date.now())) : ""} esperando. ¡Llámalo ya!</span><button class="btn small" style="background:#fff;color:#9d174d" id="go-leads">Ver y llamar</button></div><style>@keyframes jgpul{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}</style>`; }
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
   if (S.view==="registrar" && (r==="tele" || r==="admin")) html += enVivoCard();
   if (needsWorld && !worldOk()) html += worldPicker();
@@ -2631,6 +2633,7 @@ function bindCommon(){
   document.querySelectorAll("[data-tmode]").forEach(b => b.onclick = () => { S.f.tmode = b.dataset.tmode; S.f.aSocio = ""; S.f.aTele = ""; render(); });
   document.querySelectorAll("[data-tsel]").forEach(b => b.onclick = () => { const v = b.dataset.tsel; if (S.f.tmode==="tele"){ S.f.aTele = S.f.aTele===v ? "" : v; S.f.aSocio = ""; } else { S.f.aSocio = S.f.aSocio===v ? "" : v; S.f.aTele = ""; } render(); });
   const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
+  const gl = document.getElementById("go-leads"); if (gl) gl.onclick = () => { const id = Object.entries(S.leads||{}).filter(([,l]) => l.kind==="jugador" && l.status==="nuevo" && !(l.intentos||[]).length && S.juegos?.[l.code]?.anuncio).sort((a,b) => (a[1].at||0)-(b[1].at||0))[0]?.[0]; go("juego"); if (id) setTimeout(() => window.openLead && openLead(id), 300); };
   const vn = document.getElementById("ver-no"); if (vn) vn.onclick = () => { S.f.verNo = !S.f.verNo; render(); };
   document.querySelectorAll("[data-metas]").forEach(b => b.onclick = openMetas);
   document.querySelectorAll("[data-tok]").forEach(b => b.onclick = () => { const id = b.dataset.tok, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, ok:true, okAt:Date.now()}}).then(() => toast("Aprobado. La cita pasa a "+memberName(t.to)), writeErr); });
