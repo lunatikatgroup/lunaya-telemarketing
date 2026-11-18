@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611180846"></script>
-<script src="anuncios.js?v=202611180846"></script>
-<script src="juego.js?v=202611180846"></script>
+<script src="demo.js?v=202611181025"></script>
+<script src="anuncios.js?v=202611181025"></script>
+<script src="juego.js?v=202611181025"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611180846";
+const APP_VER = "202611181025";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1625,6 +1625,7 @@ function openCitaForm(src, own, pre){
       <label class="f">Nombre del cliente<input class="i" id="c-name" autocomplete="off"></label>
       <label class="f">Teléfono<input class="i" id="c-phone" inputmode="tel" autocomplete="off"></label>
       <div id="c-hist" style="grid-column:1/-1"></div>
+      ${own ? "" : `<label class="f" style="grid-column:1/-1;background:#fff7e6;border:1px solid #f0c674;border-radius:12px;padding:8px 10px">📝 Precalificación del cliente<textarea class="i" id="c-pre" placeholder="Ej.: casada, trabajan los dos, estarán los dos en la cita, cocina con teflón, le interesan las ollas, buen crédito…" style="min-height:80px"></textarea><span class="note">Lo que le preguntaste al cliente. Lo ve el socio en la cita.</span></label>`}
       <label class="f">Ciudad<input class="i" id="c-city"></label>
       <label class="f">Dirección<input class="i" id="c-addr"></label>
       <label class="f">Fecha<input class="i" type="date" id="c-date" value="${tomorrow}"></label>
@@ -1650,7 +1651,7 @@ function openCitaForm(src, own, pre){
       try {
         const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if ($("#c-src")) src = $("#c-src").value; const servV = $("#c-tv") && $("#c-tv").value==="servicio"; const refBy = servV ? "" : $("#c-refby").value.trim().slice(0,80); const cred = !servV && own && $("#c-cred") ? $("#c-cred").value : ""; if (servV) src = "Servicio";
         const pub = {when:laToMs(d,t), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at, ...($("#c-tv") && $("#c-tv").value==="servicio" ? {tipoVisita:"servicio"} : {}), ...(pre && pre.leadMeta ? {lead:"meta"} : {})};
-        const priv = {client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:$("#c-notes").value.trim(), ...(refBy?{refBy}:{}),
+        const precal = $("#c-pre") ? $("#c-pre").value.trim() : ""; const priv = {client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:((precal ? "📝 Precalificación: " + precal + "\n" : "") + $("#c-notes").value.trim()).slice(0,3000), ...(refBy?{refBy}:{}),
           socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", tv: S.members[pagadorDe(socio)]?.role==="admin", createdAt:at};
         /* Se guardan juntas: o quedan las dos partes o ninguna (así nunca queda una cita sin los datos del cliente) */
         const bt = S.db.batch(); bt.set(ref, pub); bt.set(S.db.doc("apptp/"+ref.id), priv); await bt.commit();
