@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611171447"></script>
-<script src="anuncios.js?v=202611171447"></script>
-<script src="juego.js?v=202611171447"></script>
+<script src="demo.js?v=202611171738"></script>
+<script src="anuncios.js?v=202611171738"></script>
+<script src="juego.js?v=202611171738"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611171447";
+const APP_VER = "202611171738";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1749,7 +1749,9 @@ function viewCitas(r){
   const day = S.f.day || today(); const mon = mondayOf(day);
   const grp = isDist() ? [S.uid, ...grupoDe(S.uid).filter(m=>m.role==="socio").map(m=>m.id)] : [S.uid];
   const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (S.f.cview==="di" ? (a.socioId!==S.uid && (quienDio(a)===S.uid || a.agendo===S.uid || a.dador===S.uid || a.transferredBy===S.uid)) : S.f.cview!=="terr" ? a.socioId===S.uid : ((!S.f.aSocio || a.socioId===S.f.aSocio) && (!S.f.aTele || a.teleId===S.f.aTele)));
-  const all = Object.entries(S.appts).filter(vis);
+  const fuera = ([,a]) => ["no_se_hizo","cancelada"].includes(a.status) && !(a.segWhen && !a.sale);
+  const todas = Object.entries(S.appts).filter(vis); const all = S.f.verNo ? todas : todas.filter(x => !fuera(x));
+  const ocultas = S.f.verNo ? 0 : todas.filter(x => fuera(x) && laDate(x[1].when)===day).length;
   const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
   const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds || (a.segWhen && !a.sale && laDate(a.segWhen)===ds)).length;
     return `<button class="day ${ds===day?"on":""}" data-day="${ds}"><span>${names[i]}</span><b>${+ds.slice(8)}</b><small>${n||"·"}</small></button>`; }).join("");
@@ -1765,7 +1767,7 @@ function viewCitas(r){
     ${r==="admin" && S.f.cview==="terr"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
     <div class="week">${week}</div></div>
     ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
-    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}</div>`;
+    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}${ocultas||S.f.verNo?`<button class="btn small ghost" id="ver-no" style="margin-top:10px">${S.f.verNo?"Ocultar las que no se hicieron o se cancelaron":`👁️ Ver ${ocultas} que no se hicieron o se cancelaron`}</button>`:""}</div>`;
   if (r==="tele") h = pendLlamarCard() + h;
   h += citasDiaCard(true);
   if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
@@ -1915,7 +1917,7 @@ function openAppt(id){
           /* Si se corrige una venta que ya estaba puesta, se queda en el día en que se hizo (no pasa al día de la corrección) */
           saveR({status:"hecha", sale:true, amount:amt, saleStatus:a.saleStatus||"pendiente", resultAt: a.sale && a.resultAt ? a.resultAt : Date.now(), ...(a.sale && +a.amount !== amt ? {saleLog:firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, t:`Monto: ${money(+a.amount||0)} → ${money(amt)}`})} : {}), resultBy: a.sale && a.resultBy ? a.resultBy : S.uid, ...(ps ? {pasoPor:ps.value} : {})}); }; return; }
       $("#ar-extra").innerHTML = `<div class="grid2" style="margin-top:8px">${k==="hecha"?acb()+rb():""}${nb()}<div style="align-self:end"><button class="btn" id="ar-ok">${LBL[k]}</button></div></div>`; bindAc(); $("#ar-note") && $("#ar-note").focus();
-      $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid}); });
+      $("#ar-ok").onclick = () => saveR({status:k, sale:false, amount:0, segWhen:null, resultAt:Date.now(), resultBy:S.uid, ...(k==="no_se_hizo" && a.tipoVisita!=="servicio" ? {pendCall:{dia:addDays(today(),1), hora:"", at:Date.now(), by:S.uid, intentos:a.pendCall?.intentos||0, log:a.pendCall?.log||[], auto:true}} : {})}); });
     document.querySelectorAll("[data-ss]").forEach(b => b.onclick = () => save({saleStatus:b.dataset.ss, saleStatusAt:Date.now(), saleStatusBy:S.uid, saleLog:firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, t:"Estado: "+(SALE_ST[b.dataset.ss]||b.dataset.ss)})}));
     $("#fix-priv") && ($("#fix-priv").onclick = () => { const sm = S.members[a.socioId]||{};
       openModal(`<h3>Datos del cliente</h3><div class="grid2"><label class="f">Nombre del cliente<input class="i" id="fx-name"></label><label class="f">Teléfono<input class="i" id="fx-phone" inputmode="tel"></label><label class="f">Ciudad<input class="i" id="fx-city"></label><label class="f">Dirección<input class="i" id="fx-addr"></label><label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="fx-notes"></textarea></label></div><div class="row"><button class="btn" id="fx-save">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
@@ -2627,6 +2629,7 @@ function bindCommon(){
   document.querySelectorAll("[data-tmode]").forEach(b => b.onclick = () => { S.f.tmode = b.dataset.tmode; S.f.aSocio = ""; S.f.aTele = ""; render(); });
   document.querySelectorAll("[data-tsel]").forEach(b => b.onclick = () => { const v = b.dataset.tsel; if (S.f.tmode==="tele"){ S.f.aTele = S.f.aTele===v ? "" : v; S.f.aSocio = ""; } else { S.f.aSocio = S.f.aSocio===v ? "" : v; S.f.aTele = ""; } render(); });
   const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
+  const vn = document.getElementById("ver-no"); if (vn) vn.onclick = () => { S.f.verNo = !S.f.verNo; render(); };
   document.querySelectorAll("[data-metas]").forEach(b => b.onclick = openMetas);
   document.querySelectorAll("[data-tok]").forEach(b => b.onclick = () => { const id = b.dataset.tok, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, ok:true, okAt:Date.now()}}).then(() => toast("Aprobado. La cita pasa a "+memberName(t.to)), writeErr); });
   document.querySelectorAll("[data-trej]").forEach(b => b.onclick = () => { const id = b.dataset.trej, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, rej:true, rejAt:Date.now()}}).then(() => toast("No aprobado"), writeErr); });
