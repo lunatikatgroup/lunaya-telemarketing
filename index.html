@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611181025"></script>
-<script src="anuncios.js?v=202611181025"></script>
-<script src="juego.js?v=202611181025"></script>
+<script src="demo.js?v=202611181101"></script>
+<script src="anuncios.js?v=202611181101"></script>
+<script src="juego.js?v=202611181101"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611181025";
+const APP_VER = "202611181101";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2025,9 +2025,9 @@ function viewRanking(){
   const teles = telesLunaya().map(t => { const e = teleEval(t.id, rg); return {id:t.id, name:t.name, citas:e.citas, demos:e.demos, ventas:e.ventas, monto:e.monto}; }).sort((a,b)=>b.monto-a.monto||b.ventas-a.ventas||b.demos-a.demos||b.citas-a.citas);
   const soc = socios().map(s => { const e = socioEval(s.id, rg); return {id:s.id, name:s.name, referidos:e.referidos, citas:e.citas, demos:e.demos, ventas:e.ventas, monto:e.monto}; }).sort((a,b)=>b.monto-a.monto||b.ventas-a.ventas||b.demos-a.demos||b.referidos-a.referidos);
   const since = Date.now() - 30*864e5;
-  const feed = Object.values(S.appts).filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada" && ventaAt(a) >= since).sort((a,b)=>ventaAt(b)-ventaAt(a)).slice(0,15);
+  const feed = Object.entries(S.appts).map(([id,a]) => ({...a, _id:id})).filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada" && ventaAt(a) >= since).sort((a,b)=>ventaAt(b)-ventaAt(a)).slice(0,15);
   let h = `<div class="card"><h2>Periodo ${periodChips(["semana","mes","mesant"])}</h2><p class="note" style="margin:-6px 0 0">Se ordena por volumen de ventas. Las comisiones de cada persona son privadas y no salen aquí.</p></div>`;
-  h += `<div class="card"><h2>Últimas ventas</h2>${feed.length?`<div class="list">${feed.map(a=>`<div class="item" style="cursor:default"><div><div class="t nm-av">${av(a.socioId,34)}<span>🔥 ${esc(memberName(a.socioId))} vendió ${money(a.amount)}</span></div><div class="m">${deQuienCita(a)}${a.city?" · "+esc(a.city):""} · ${a.saleStatus==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : '<span style="color:#7e22ce;font-weight:700">en verificación</span>'}</div></div><span class="note" style="text-align:right">${fmt(ventaAt(a),{day:"numeric",month:"short"})}${a.saleStatus==="aprobada" && a.saleStatusAt && laDate(a.saleStatusAt)!==laDate(ventaAt(a)) ? `<br><small>aprobada ${fmt(a.saleStatusAt,{day:"numeric",month:"short"})}</small>` : ""}</span></div>`).join("")}</div>`:`<div class="empty">Todavía no hay ventas este mes. ¡La primera puede ser la tuya!</div>`}</div>`;
+  h += `<div class="card"><h2>Últimas ventas</h2>${feed.length?`<div class="list">${feed.map(a=>`<div class="item" ${role()==="admin"||a.socioId===S.uid?`data-appt="${a._id}" style="cursor:pointer"`:`style="cursor:default"`}><div><div class="t nm-av">${av(a.socioId,34)}<span>🔥 ${esc(memberName(a.socioId))} vendió ${money(a.amount)}</span></div><div class="m">${deQuienCita(a)}${a.city?" · "+esc(a.city):""} · ${a.saleStatus==="aprobada" ? '<span style="color:#15803d;font-weight:700">aprobada</span>' : '<span style="color:#7e22ce;font-weight:700">en verificación</span>'}</div></div><span class="note" style="text-align:right">${fmt(ventaAt(a),{day:"numeric",month:"short"})}${a.saleStatus==="aprobada" && a.saleStatusAt && laDate(a.saleStatusAt)!==laDate(ventaAt(a)) ? `<br><small>aprobada ${fmt(a.saleStatusAt,{day:"numeric",month:"short"})}</small>` : ""}</span></div>`).join("")}</div>`:`<div class="empty">Todavía no hay ventas este mes. ¡La primera puede ser la tuya!</div>`}</div>`;
   h += board("Telemarketers", teles, [["citas","citas"],["demos","demostraciones"],["ventas","ventas"]], "monto");
   h += board("Distribuidores y emprendedores", soc, [["referidos","referidos"],["citas","citas"],["demos","demostraciones"],["ventas","ventas"]], "monto");
   /* Ventas aprobadas: lo que ya se aprobó (lo que cuenta para comisiones) */
