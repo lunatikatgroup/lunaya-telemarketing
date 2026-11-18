@@ -318,7 +318,7 @@ async function startJuego(code, avance){
   if (J.until && J.until < Date.now() && !saved.done){ box.innerHTML = `<div class="jg-top">Juega y gana</div><div class="jg-h">Esta promoción ya terminó</div><p class="jg-p">Pídele a ${esc(ref)} que te mande un link nuevo.</p>`; return; }
   if (saved.done) return showDone();
   if (saved.prize !== undefined) return showForm(saved.prize);
-  if (J.anuncio && !J.sorteo && !saved.portada && PORTADAS[tipo] && tipo !== "rasca") showPortada(); else showIntro();
+  showIntro();
 
   /* Portada de los anuncios: la foto completa de los productos con una ruleta pequeña y "¡Quiero jugar!" */
   function showPortada(){ const L = PORTADAS[tipo]; const img = L[(+J.pv||0) % L.length];
@@ -353,7 +353,7 @@ async function startJuego(code, avance){
     else if (tipo==="pinata") bindPinata();
     else if (tipo==="puzzle") document.getElementById("jg-spin").onclick = () => showPuzzle();
     else if (tipo==="precio") box.querySelectorAll("[data-pr]").forEach(b => b.onclick = () => adivino(+b.dataset.pr));
-    else document.getElementById("jg-spin").onclick = spin;
+    else { document.getElementById("jg-spin").onclick = spin; const wr = box.querySelector(".jg-wrap"); if (wr){ wr.style.cursor = "pointer"; wr.onclick = () => { const b = document.getElementById("jg-spin"); if (b && !b.disabled) spin(); }; } }
   }
   function won(i){ saved.prize = i; save(); cuenta("jug"); setTimeout(() => { confetti(); jgFanfare(); showForm(i, true); if (jgMus) setTimeout(() => { try { jgMus.out.gain.setTargetAtTime(0.05, jgAudio.currentTime, 0.4); } catch {} }, 3500); }, 450); }
   function spin(){
@@ -422,9 +422,9 @@ async function startJuego(code, avance){
   /* Después del test o del precio: se raspa el regalo */
   function showScratch(titulo, extra){ box.innerHTML = `<div class="jg-top">${titulo}</div>${extra||""}${J.anuncio ? scratchAd() : `<h1 class="jg-h" style="font-size:30px">¡Ganaste un regalo!</h1>` + scratchHtml()}`; bindScratch(); }
   /* ===== Test cocina sana ===== */
-  function showQuiz(k, pts){ const Q = QUIZ[k]; if (!Q){ const nv = quizNivel(pts); saved.quiz = `Test: ${nv.k} (${pts} pts)`; save();
+  function showQuiz(k, pts){ const QZ = J.anuncio ? [QUIZ[0], QUIZ[2], QUIZ[4]] : QUIZ; const Q = QZ[k]; if (!Q){ const nv = quizNivel(J.anuncio ? Math.round(pts*5/3) : pts); saved.quiz = `Test: ${nv.k} (${pts} pts)`; save();
       return showScratch("Tu resultado", `<div class="jg-res"><div class="big">${nv.e}</div><h3 style="margin:4px 0">${esc(nv.t)}</h3><p style="margin:0;color:#555">${esc(nv.c)}</p></div>${J.anuncio ? `<h2 class="jg-h" style="font-size:26px;margin:6px 0 0">¡Felicitaciones por completar tu test! 🎉</h2><p class="jg-p" style="margin:0"><b>Raspa aquí y descubre tu regalo 👇</b></p>` : `<p class="jg-p">Por completar el test, ${esc(ref)} te regala…</p>`}`); }
-    box.innerHTML = `${k===0 && J.anuncio ? `<p class="jg-p" style="margin:0 0 4px;padding:0 44px"><b>Responde 5 preguntas rápidas, descubre qué tan sana es tu cocina y gana un regalo.</b><br>¡Totalmente gratis! 🎉</p>` : ""}<div class="jg-top">Test de cocina sana · ${k+1} de ${QUIZ.length}</div><div class="jg-qbar"><i style="width:${k*100/QUIZ.length}%"></i></div><h2 class="jg-h" style="font-size:24px;line-height:1.25">${esc(Q.q)}</h2><div class="jg-q">${Q.o.map(([t,v],i)=>`<button data-qa="${v}">${esc(t)}</button>`).join("")}</div>`;
+    box.innerHTML = `${k===0 && J.anuncio ? `<img src="${PORTADAS.quiz[(+J.pv||0) % PORTADAS.quiz.length]}" alt="" style="width:min(100%,420px);max-height:30vh;object-fit:cover;object-position:top;border-radius:18px;justify-self:center;box-shadow:0 8px 20px rgba(0,0,0,.15)"><p class="jg-p" style="margin:0 0 4px;padding:0 44px"><b>Responde 3 preguntas rápidas y gana un regalo.</b><br>¡Totalmente gratis! 🎉</p>` : ""}<div class="jg-top">Test de cocina sana · ${k+1} de ${QZ.length}</div><div class="jg-qbar"><i style="width:${k*100/QZ.length}%"></i></div><h2 class="jg-h" style="font-size:24px;line-height:1.25">${esc(Q.q)}</h2><div class="jg-q">${Q.o.map(([t,v],i)=>`<button data-qa="${v}">${esc(t)}</button>`).join("")}</div>`;
     box.querySelectorAll("[data-qa]").forEach(b => b.onclick = () => { jgTick(700, .2, .04); showQuiz(k+1, pts + (+b.dataset.qa||0)); }); }
   /* ===== Adivina el precio ===== */
   function precioHtml(){ const pr = P.precio || {}; if (!saved.opc){ saved.opc = precioOpc(+pr.v||100); save(); }
