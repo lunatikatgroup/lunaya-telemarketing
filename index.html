@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611181159"></script>
-<script src="anuncios.js?v=202611181159"></script>
-<script src="juego.js?v=202611181159"></script>
+<script src="demo.js?v=202611181229"></script>
+<script src="anuncios.js?v=202611181229"></script>
+<script src="juego.js?v=202611181229"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611181159";
+const APP_VER = "202611181229";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1788,7 +1788,8 @@ function canTransfer(a){ return a._priv && (a.socioId===S.uid || role()==="admin
 function transferTargets(a){ return socios().filter(m => m.id!==a.socioId && m.role!=="baja"); }
 /* La dirección (Katerine) y Andrés Mantilla pasan citas a cualquier emprendedor sin pedir permiso; los demás distribuidores sí piden aprobación al patrocinador */
 const sinPermisoTransf = () => role()==="admin" || /andr[eé]s\s+mantilla/i.test(S.me?.name || memberName(S.uid) || "");
-const sponsorDe = to => { const m = S.members[to] || {}; return !sinPermisoTransf() && esEmp(m) && m.upline && m.upline!==S.uid ? m.upline : ""; };
+/* Ya no se pide aprobación del patrocinador para pasarle una cita a su emprendedor */
+const sponsorDe = to => "";
 function pedirTransfer(id, to){ return S.db.doc("appts/"+id).update({transferReq:{to, by:S.uid, sponsor:sponsorDe(to), at:Date.now()}}); }
 /* Lo que espera aprobación de este patrocinador */
 const transfPorAprobar = () => Object.entries(S.appts||{}).filter(([,a]) => a.transferReq && a.transferReq.sponsor===S.uid && !a.transferReq.ok && !a.transferReq.rej);
@@ -1821,7 +1822,7 @@ function procesarDevoluciones(){ arreglarDevueltas(); quitarAccesoDevueltas(); O
     const to = duenoDe(a); if (!to || to === a.socioId) return; if (!(S.uid === a.socioId || S.uid === to || role()==="admin")) return;
     devDoing.add(id); chain("appt:"+id, () => devolverAppt(id)).then(() => { if (S.uid === to) avisar("↩️ Te regresó una cita", `${memberName(a.socioId)} no pudo hacer la cita de ${cName(a)}. Ya es tuya otra vez.`); else if (S.uid === a.socioId) toast(`La cita regresó a ${memberName(to)}`); }, e => { devDoing.delete(id); console.log("devolver", e); }); }); }
 function procesarTransfers(){ S.trSeen = S.trSeen || new Set(transfPorAprobar().map(([id]) => id));
-  transfPorAprobar().forEach(([id,a]) => { if (!S.trSeen.has(id)){ S.trSeen.add(id); avisar("🔀 Te piden pasar una cita a tu emprendedor", `${memberName(a.transferReq.by)} → ${memberName(a.transferReq.to)} · ${fmtWhen(a.when)}`); } }); Object.entries(S.appts||{}).forEach(([id,a]) => { const t = a.transferReq; if (!t || !t.ok || t.by!==S.uid || trDoing.has(id) || !a._priv) return; trDoing.add(id);
+  transfPorAprobar().forEach(([id,a]) => { if (!S.trSeen.has(id)){ S.trSeen.add(id); avisar("🔀 Te piden pasar una cita a tu emprendedor", `${memberName(a.transferReq.by)} → ${memberName(a.transferReq.to)} · ${fmtWhen(a.when)}`); } }); Object.entries(S.appts||{}).forEach(([id,a]) => { const t = a.transferReq; if (!t || t.rej || t.by!==S.uid || trDoing.has(id) || !a._priv) return; trDoing.add(id);
   chain("appt:"+id, () => transferAppt(id, t.to, true)).then(() => toast(`${memberName(t.sponsor)} aprobó: cita pasada a ${memberName(t.to)}`), e => { trDoing.delete(id); console.log(e); }); }); }
 async function transferAppt(id, to, clearReq){
   const a = S.appts[id], m = S.members[to]; if (!a || !m) return;
