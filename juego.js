@@ -302,6 +302,10 @@ async function startJuego(code, avance){
   const prizes = P.prizes || []; const tipo = P.tipo || "ruleta";
   const cuenta = k => { if (demo || prueba || !J.anuncio || saved["c_"+k]) return; saved["c_"+k] = 1; save(); try { S.db.doc("juegos/"+code).update({[k]: firebase.firestore.FieldValue.increment(1)}).catch(() => {}); } catch {} };
   cuenta("vis");
+  /* Zona aproximada por la conexión a internet (la ciudad que da su conexión; con datos del celular puede salir otra ciudad) */
+  if (!demo && !prueba && !saved.geo){ try { const ac = new AbortController(); setTimeout(() => ac.abort(), 4000);
+    fetch("https://get.geojs.io/v1/ip/geo.json", {signal: ac.signal}).then(r => r.json()).then(g => { const z = [g.city, g.region_code || g.region].filter(Boolean).join(", ") + (g.country_code && g.country_code !== "US" ? " (" + g.country_code + ")" : ""); if (z){ saved.geo = z.slice(0,50); save(); } }).catch(() => {}); } catch {} }
+  const qz = () => [saved.quiz, saved.geo && "📍 " + saved.geo].filter(Boolean).join(" · ").slice(0,120);
   /* "Otra oportunidad": el primer intento no gana (casilla de girar otra vez, caja vacía, tarjeta "sigue participando", el pajarito esquiva) para que quiera seguir jugando */
   const otraVez = P.otraVez !== false && !J.anuncio; const usarOtra = () => otraVez && !saved.otra;
   const OTRA = {n:"¡Otra vez!", w:0, img:"", emo:"🔄", otra:true}; const rueda = otraVez && prizes.length >= 2 ? [...prizes.slice(0,1), OTRA, ...prizes.slice(1)] : prizes; const T = setTema(P.tema), TX = txtDe(P);
@@ -546,8 +550,8 @@ async function startJuego(code, avance){
       if (demo || prueba){ saved.done = true; saved.name = name; showDone(); return; }
       try {
         const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:String(prizes[i]?.n||"").slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
-        const go = async conQ => { const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), conQ && saved.quiz ? {...ld, quiz:String(saved.quiz).slice(0,120)} : ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit(); };
-        try { await go(true); } catch(e1){ if (!saved.quiz) throw e1; await go(false); }
+        const go = async conQ => { const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), conQ && qz() ? {...ld, quiz:qz()} : ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit(); };
+        try { await go(true); } catch(e1){ if (!qz()) throw e1; await go(false); }
         saved.done = true; saved.name = name; saved.tel = t; save(); showDone();
       } catch(e){ console.log(e);
         /* el contador cambió mientras jugaba: se reintenta con el número nuevo */
@@ -593,7 +597,7 @@ async function startJuego(code, avance){
       if (demo || prueba){ saved.done = true; saved.name = name; return showSorteo(); }
       const lid = code + "_" + t;
       try { const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:("Sorteo: " + premio).slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
-        const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
+        const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), qz() ? {...ld, quiz:qz()} : ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
         saved.done = true; saved.name = name; saved.tel = t; save(); showSorteo(); }
       catch(e){ console.log(e);
         try { const js = await S.db.doc("juegos/"+code).get(); const n2 = js.data()?.n || 0; if (n2 !== (J.n||0)){ J.n = n2; b.disabled = false; b.textContent = "¡Quiero participar!"; return document.getElementById("jg-send").click(); } } catch {}
@@ -635,7 +639,7 @@ async function startJuego(code, avance){
       if (demo || prueba){ saved.done = true; saved.name = name; return showRegalo(so, patro, premio); }
       const lid = code + "_" + t;
       try { const ld = {code, pid:J.pid, name:name.slice(0,60), tel:t, prize:String(premio).slice(0,80), at:Date.now(), socioId:J.socioId, up:J.up||"", tv:!!J.tv, by:J.by, ref:J.ref||"", status:"nuevo", kind:"jugador", acepta:true};
-        const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
+        const bt = S.db.batch(); bt.set(S.db.doc("leads/"+lid), qz() ? {...ld, quiz:qz()} : ld); bt.update(S.db.doc("juegos/"+code), {n:(J.n||0)+1, last:lid}); await bt.commit();
         saved.done = true; saved.name = name; saved.tel = t; save(); showRegalo(so, patro, premio); }
       catch(e){ console.log(e);
         try { const js = await S.db.doc("juegos/"+code).get(); const n2 = js.data()?.n || 0; if (n2 !== (J.n||0)){ J.n = n2; b.disabled = false; b.textContent = "¡Participar!"; return document.getElementById("jg-send").click(); } } catch {}
