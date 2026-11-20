@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611190845"></script>
-<script src="anuncios.js?v=202611190845"></script>
-<script src="juego.js?v=202611190845"></script>
+<script src="demo.js?v=202611200909"></script>
+<script src="anuncios.js?v=202611200909"></script>
+<script src="juego.js?v=202611200909"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611190845";
+const APP_VER = "202611200909";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1773,6 +1773,7 @@ function viewCitas(r){
     ${r==="admin" && S.f.cview==="terr"?`<select class="i" id="a-filter" style="margin-bottom:10px" aria-label="Filtrar por socio"><option value="">Todos los socios</option>${socios().map(s=>`<option value="${s.id}" ${S.f.aSocio===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`:""}
     <div class="week">${week}</div></div>
     ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
+    <div class="card" style="padding:10px 12px"><input class="i" id="bq" type="search" placeholder="🔍 Buscar cita por nombre o teléfono (cualquier fecha)" autocomplete="off" value="${esc(S.f.bq||"")}"><div id="bq-r"></div></div>
     <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}${ocultas||S.f.verNo?`<button class="btn small ghost" id="ver-no" style="margin-top:10px">${S.f.verNo?"Ocultar las que no se hicieron o se cancelaron":`👁️ Ver ${ocultas} que no se hicieron o se cancelaron`}</button>`:""}</div>`;
   if (r==="tele") h = pendLlamarCard() + h;
   h += citasDiaCard(true);
@@ -2638,6 +2639,12 @@ function bindCommon(){
   const oc = document.getElementById("own-cita"); if (oc) oc.onclick = () => openCitaForm("", true);
   const gl = document.getElementById("go-leads"); if (gl) gl.onclick = () => { const id = Object.entries(S.leads||{}).filter(([,l]) => l.kind==="jugador" && l.status==="nuevo" && !(l.intentos||[]).length && !l.notes && S.juegos?.[l.code]?.anuncio).sort((a,b) => (a[1].at||0)-(b[1].at||0))[0]?.[0]; go("juego"); if (id) setTimeout(() => window.openLead && openLead(id), 300); };
   const vn = document.getElementById("ver-no"); if (vn) vn.onclick = () => { S.f.verNo = !S.f.verNo; render(); };
+  const bq = document.getElementById("bq"); if (bq){ const run = () => { const q = bq.value.trim().toLowerCase(); S.f.bq = bq.value; const out = document.getElementById("bq-r"); if (!out) return; if (q.length < 3){ out.innerHTML = ""; return; }
+      const qd = q.replace(/\D/g,""); const r = role(); const L = Object.entries(S.appts||{}).filter(([,a]) => r==="admin" || a.socioId===S.uid || a.teleId===S.uid || a.agendo===S.uid || a.transferredFrom===S.uid || a.dador===S.uid || (isDist() && grupoDe(S.uid).some(m => m.id===a.socioId)))
+        .filter(([,a]) => String(cName(a)||"").toLowerCase().includes(q) || (qd.length >= 4 && String(a.phone||"").replace(/\D/g,"").includes(qd))).sort((x,y) => (y[1].when||0)-(x[1].when||0)).slice(0,20);
+      out.innerHTML = L.length ? `<div class="note" style="margin:8px 0 4px">${L.length} resultado(s)</div><div class="list">${L.map(([id,a]) => apptItem(id,a,false)).join("")}</div>` : `<div class="note" style="margin-top:8px">No encontré citas con ese nombre o teléfono.</div>`;
+      out.querySelectorAll("[data-appt]").forEach(b => b.onclick = () => openAppt(b.dataset.appt)); };
+    bq.oninput = run; if (bq.value) run(); }
   document.querySelectorAll("[data-metas]").forEach(b => b.onclick = openMetas);
   document.querySelectorAll("[data-tok]").forEach(b => b.onclick = () => { const id = b.dataset.tok, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, ok:true, okAt:Date.now()}}).then(() => toast("Aprobado. La cita pasa a "+memberName(t.to)), writeErr); });
   document.querySelectorAll("[data-trej]").forEach(b => b.onclick = () => { const id = b.dataset.trej, t = S.appts[id]?.transferReq; S.db.doc("appts/"+id).update({transferReq:{...t, rej:true, rejAt:Date.now()}}).then(() => toast("No aprobado"), writeErr); });
