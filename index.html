@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611201422"></script>
-<script src="anuncios.js?v=202611201422"></script>
-<script src="juego.js?v=202611201422"></script>
+<script src="demo.js?v=202611201424"></script>
+<script src="anuncios.js?v=202611201424"></script>
+<script src="juego.js?v=202611201424"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611201422";
+const APP_VER = "202611201424";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1193,7 +1193,7 @@ function render(){
   if (S.view==="registrar" && (r==="tele" || r==="admin")) html += enVivoCard();
   if (needsWorld && !worldOk()) html += worldPicker();
   else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:(r==="admin" ? viewPagos : viewPagosDist), cobros:viewCobros, equipo:viewEquipo, lider:viewLider, ranking:viewRanking, juego:(x => window.viewJuego ? viewJuego(x) : `<div class="card empty">Cargando…</div>`)}[S.view])(r);
-  main.innerHTML = html; bindCommon(); setTimeout(mostrarNovedades, 1200); refreshChat(); if (S.view==="juego" && window.bindJuego) bindJuego(); if (window.bindDemo) bindDemo();
+  main.innerHTML = html; bindCommon(); setTimeout(() => { try { avisoReporteDia(); } catch {} }, 3000); setTimeout(mostrarNovedades, 1200); refreshChat(); if (S.view==="juego" && window.bindJuego) bindJuego(); if (window.bindDemo) bindDemo();
   if (S.openAppt && S.appts[S.openAppt] && !!S.appts[S.openAppt]._priv !== S.openPrivState && !document.querySelector(".modal input:focus,.modal textarea:focus")) openAppt(S.openAppt);
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); if (sel && "setSelectionRange" in el) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
@@ -1415,8 +1415,31 @@ function miAgendaCard(){ const d0 = S.f.mag || today(); const r = [laToMs(d0,"00
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">${Object.values(AG_COL).map(([c,l]) => `<span class="note" style="display:inline-flex;align-items:center;gap:4px"><i style="width:10px;height:10px;border-radius:3px;background:${c};display:inline-block"></i>${l}</span>`).join("")}</div>
     ${items.length ? `<div class="list">${items.map(x => `<${x.appt?"button":"div"} class="item" ${x.appt?`data-appt="${x.appt}"`:""} style="${x.appt?"":"cursor:default;"}border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div>${x.rec?`<button class="btn small ghost" data-rec-ok="${x.rec}" data-rec-dia="${x.dia||""}">✅</button>${(S.recs||{})[x.rec]?.rep ? `<button class="btn small ghost" data-rec-del="${x.rec}" title="Ya no repetir">🗑</button>` : ""}`:""}</${x.appt?"button":"div"}>`).join("")}</div>` : `<div class="empty">No tienes nada en la agenda este día.</div>`}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">➕ Agregar algo a mi agenda</summary><form id="act-form" class="grid2" style="margin-top:8px"><label class="f" style="grid-column:1/-1">¿Qué vas a hacer?<input class="i" id="act-t" placeholder="Ej.: entregar regalo a María, reunión de equipo" maxlength="80"></label><label class="f">Día<input class="i" type="date" id="act-d" value="${d0}"></label><label class="f">Hora${timeSel("act-h","10:00")}</label><label class="f" style="grid-column:1/-1">Nota (opcional)<input class="i" id="act-x" maxlength="200"></label><div><button class="btn" type="submit">Guardar en mi agenda</button></div></form></details></div>`; }
+/* ===== Reporte del día del socio (distribuidor o emprendedor): cómo le fue y qué mejorar mañana ===== */
+const REF_X_CASA = 4;
+function reporteDiaDatos(uid){ const ahora = Date.now(), h = Number(new Intl.DateTimeFormat("en-US",{hour:"numeric",hour12:false,timeZone:"America/Los_Angeles"}).format(ahora));
+  const dia = h >= 15 ? today() : addDays(today(), -1); const rg = [laToMs(dia,"00:00"), laToMs(addDays(dia,1),"00:00")]; const E = emb();
+  const mias = Object.values(S.appts).filter(a => a.socioId===uid && a.tipoVisita!=="servicio" && laDate(a.when||0)===dia);
+  const casas = mias.filter(a => a.status==="hecha").length, sinRep = mias.filter(a => a.status==="agendada").length, noSe = mias.filter(a => a.status==="no_se_hizo" || a.status==="cancelada").length;
+  const refs = mias.filter(a => a.status==="hecha").reduce((t,a) => t + (+a.refsDemo||0), 0); const ventas = mias.filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada");
+  const sem = embudoDe([uid], range("semana")); const dow = new Date(laToMs(dia,"12:00")).getUTCDay(); const quedan = Math.max(1, 6 - (dow===0 ? 6 : dow));
+  const tips = [];
+  if (sinRep) tips.push(`⏰ Tienes <b>${sinRep}</b> cita(s) de ${dia===today()?"hoy":"ayer"} sin reportar. Repórtalas para que cuenten.`);
+  if (!casas) tips.push(`🏠 ${dia===today()?"Hoy":"Ayer"} no entraste a ninguna casa. Para la meta de la semana (${E.demos} demostraciones) te faltan <b>${Math.max(0,E.demos-sem.demos)}</b>: ${dia===today()?"mañana":"hoy"} entra a <b>${Math.max(1,Math.ceil(Math.max(0,E.demos-sem.demos)/quedan))}</b> casa(s) o más.`);
+  else if (refs < casas*REF_X_CASA) tips.push(`👥 Entraste a <b>${casas}</b> casa(s) y sacaste <b>${refs}</b> referido(s): ${casas?Math.round(refs/casas*10)/10:0} por casa. La meta es <b>${REF_X_CASA} por casa</b>. En cada demo pide más referidos con el 4 en 14.`);
+  else tips.push(`🔥 ¡Muy bien! <b>${refs}</b> referidos en <b>${casas}</b> casa(s). Así se llena tu embudo.`);
+  if (sem.leads < E.leads) tips.push(`📈 Esta semana llevas <b>${sem.leads}</b> de <b>${E.leads}</b> números (referencias nuevas). Te faltan <b>${E.leads-sem.leads}</b>: unos <b>${Math.ceil((E.leads-sem.leads)/quedan)}</b> por día. Sin referencias no hay citas.`);
+  if (ventas.length) tips.push(`🎉 ¡Felicidades por ${ventas.length===1?"la venta":"las "+ventas.length+" ventas"}! ${money(ventas.reduce((t,a)=>t+(+a.amount||0),0))}.`);
+  return {dia, casas, refs, ventas:ventas.length, sinRep, noSe, citas:mias.length, tips}; }
+function reporteDiaCard(){ const r = role(); if (r!=="socio" && r!=="admin") return ""; const d = reporteDiaDatos(S.uid); if (!d.citas && new Date(laToMs(d.dia,"12:00")).getUTCDay()===0) return "";
+  return `<div class="card" style="border:2px solid #7a0a14"><h2>📋 Tu reporte ${d.dia===today()?"de hoy":"de ayer"}<span class="note">${fmt(laToMs(d.dia,"12:00"),{weekday:"long",day:"numeric",month:"short"})}</span></h2>
+    <div class="tiles"><div class="tile"><b>${d.citas}</b><span>Citas</span></div><div class="tile"><b>${d.casas}</b><span>Casas (demos)</span></div><div class="tile"><b>${d.refs}</b><span>Referidos</span></div><div class="tile"><b>${d.ventas}</b><span>Ventas</span></div></div>
+    <div style="display:grid;gap:6px;margin-top:10px">${d.tips.map(t => `<div style="background:var(--soft);border-radius:10px;padding:8px 10px">${t}</div>`).join("")}</div></div>`; }
+function avisoReporteDia(){ const r = role(); if (r!=="socio" && r!=="admin") return; const h = Number(new Intl.DateTimeFormat("en-US",{hour:"numeric",hour12:false,timeZone:"America/Los_Angeles"}).format(Date.now())); if (h < 19) return;
+  const k = "ly-rep-"+S.uid+"-"+today(); try { if (localStorage.getItem(k)) return; localStorage.setItem(k, "1"); } catch { return; }
+  const d = reporteDiaDatos(S.uid); avisar("📋 Tu reporte del día", `${d.casas} casa(s) · ${d.refs} referidos · ${d.ventas} venta(s). Toca para ver qué mejorar mañana.`, () => go("hoy")); }
 function viewHoy(r){
-  const rg = range(S.f.period); const top = (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? pendLlamarCard() : "") + recCard();
+  const rg = range(S.f.period); const top = reporteDiaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? pendLlamarCard() : "") + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
