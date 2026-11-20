@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611201008"></script>
-<script src="anuncios.js?v=202611201008"></script>
-<script src="juego.js?v=202611201008"></script>
+<script src="demo.js?v=202611201422"></script>
+<script src="anuncios.js?v=202611201422"></script>
+<script src="juego.js?v=202611201422"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611201008";
+const APP_VER = "202611201422";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1377,7 +1377,7 @@ function cumpleCard(){ const md = today().slice(5); const L = Object.entries(S.m
   if (!L.length) return ""; const nm = L.map(n => esc(firstName2(n))).join(L.length===2 ? " y " : ", ");
   return `<div class="card" style="text-align:center;background:linear-gradient(135deg,#fff4d6,#ffe1ea);border:2px solid #e2bb4f"><div style="font-size:40px">🎂🎉🎈</div><div style="font-family:var(--serif);font-size:22px;font-weight:700;color:var(--accent)">¡Hoy estamos celebrando el cumpleaños de ${nm}!</div><p class="note" style="margin:6px 0 0">Mándale un mensajito y deséale un día lleno de bendiciones 💛</p></div>`; }
 function motivaCard(){ const t = today(); const n = Math.floor(laToMs(t,"12:00") / 864e5); const [txt, cita] = MOTIVA[n % MOTIVA.length];
-  return `<div class="card" style="text-align:center;padding:10px 14px;margin-bottom:12px;background:linear-gradient(135deg,rgba(201,151,31,.10),transparent)"><div class="eyebrow">✨ Mensaje del día</div><p style="font-family:var(--serif);font-size:17px;margin:4px 0">“${esc(txt)}”</p>${cita?`<div class="note">${esc(cita)}</div>`:""}</div>`; }
+  return `<div class="card" style="text-align:center;padding:18px 16px;margin-bottom:14px;background:linear-gradient(135deg,#7a0a14,#b3121f 55%,#c9971f);border:3px solid #e9c25a;box-shadow:0 10px 26px rgba(122,10,20,.35);color:#fff"><div style="font:800 13px/1 Manrope,sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#ffe08a">✨ Mensaje del día ✨</div><p style="font-family:var(--serif);font-size:clamp(20px,5.4vw,26px);line-height:1.3;margin:10px 0 4px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.3)">“${esc(txt)}”</p>${cita?`<div style="font-size:14px;color:#ffe9b0;font-style:italic">${esc(cita)}</div>`:""}</div>`; }
 /* ===== Ventas que esperan "Aprobada" o "Cancelada" (para que el distribuidor no se olvide) ===== */
 function ventasPorAprobar(){ const r = role(); const grupo = isDist() ? new Set(grupoDe(S.uid).map(m => m.id)) : new Set();
   return Object.entries(S.appts).filter(([,a]) => a.sale && (a.saleStatus||"pendiente")==="pendiente" && a.status==="hecha" && (a.socioId===S.uid || grupo.has(a.socioId) || a.pasoPor===S.uid || (r==="admin" && pagadorDe(a.socioId)===S.uid))).sort((a,b) => a[1].when - b[1].when); }
@@ -1903,9 +1903,9 @@ function openAppt(id){
     const pasoOpts = () => { const m = S.members[a.socioId] || {}; const ids = [...new Set([m.upline, ...socios().filter(x => x.role==="admin" || x.tipo===DIST).map(x => x.id)].filter(Boolean))];
       return ids.map(id => `<option value="${id}" ${a.pasoPor===id?"selected":""}>${esc(memberName(id))}${id===m.upline?" (su patrocinador)":""}</option>`).join(""); };
     const pb = () => needAc ? `<label class="f" style="grid-column:1/-1">¿Por cuál distribuidor pasó la venta? <b style="color:var(--bad,#c0392b)">*</b><select class="i" id="ar-paso"><option value="">Escoge…</option>${pasoOpts()}</select></label>` : "";
-    const rb = () => `<label class="f">¿Cuántos referidos sacaste en esta casa?<input class="i" type="number" min="0" step="1" id="ar-refs" value="${a.refsDemo??""}" placeholder="0"></label>`;
+    const rb = () => `<label class="f" style="background:#fff7e6;border:1px solid #f0c674;border-radius:12px;padding:8px 10px">👥 ¿Cuántos referidos sacaste en esta casa? <b style="color:#b91c1c">(obligatorio)</b><input class="i" type="number" min="0" step="1" inputmode="numeric" id="ar-refs" value="${a.refsDemo??""}" placeholder="Escribe el número (0 si no sacaste)"></label>`;
     const nb = () => a._priv ? `<label class="f" style="grid-column:1/-1">¿Qué pasó con este cliente? (comentario)<textarea class="i" id="ar-note" maxlength="1000" placeholder="Ej: le gustó pero lo quiere hablar con su esposo; tiene ollas viejas…">${esc(a.resNote||"")}</textarea></label>` : "";
-    const saveR = async upd => { if (upd.status==="hecha"){ const ac = readAc(); if (ac===null) return; Object.assign(upd, ac); } const rf = $("#ar-refs"); if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); } catch(e){ writeErr(e); return; } }
+    const saveR = async upd => { if (upd.status==="hecha"){ const ac = readAc(); if (ac===null) return; Object.assign(upd, ac); } const rf = $("#ar-refs"); if (rf && upd.status==="hecha" && String(rf.value).trim()===""){ toast("Escribe cuántos referidos sacaste en esta casa (si no sacaste, pon 0)"); rf.style.outline = "3px solid #b91c1c"; rf.focus(); return; } if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); } catch(e){ writeErr(e); return; } }
       { const cur = S.appts[id] || a; if (cur._priv && cur.phone) histAdd(cur.socioId, cur.phone, cur.client, histEntry({...cur, ...upd, id}, {note: n ? n.value.trim() : (cur.resNote||"")}), [cur.agendo, cur.dador]); }
       save(upd); };
     const LBL = {hecha:"Guardar: demo sin venta", no_se_hizo:"Guardar: no se hizo", cancelada:"Guardar: cancelada"};
