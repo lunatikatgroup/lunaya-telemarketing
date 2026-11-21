@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611201836"></script>
-<script src="anuncios.js?v=202611201836"></script>
-<script src="juego.js?v=202611201836"></script>
+<script src="demo.js?v=202611201838"></script>
+<script src="anuncios.js?v=202611201838"></script>
+<script src="juego.js?v=202611201838"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611201836";
+const APP_VER = "202611201838";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -752,7 +752,7 @@ function aportes(r){ const c = com(); const out = {};
   Object.values(S.appts).forEach(a => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r) || origenDe(a)!=="tm" || a.pctDir) return;
     const t = S.members[a.teleId]; if (t && t.upline) return; /* telemarketers propias de un distribuidor: no es el programa */
     const p = pagaVenta(a); if (!p) return; const pm = S.members[p] || {};
-    if (planPase(p)){ const da = quienDio(a); if (da && da !== p && da !== a.socioId) return; } /* plan especial: la cita que le dieron se cobra solo con su % de cita pasada */ const otroDir = pm.role==="admin" && p!==ownerUid(); const d = pm.role==="admin" ? costoTMd(a) : null; const pct = d ? d.total : aporteDe(p); /* Dirección: % real de la telemarketer + 1% de la líder (Carly en sus propias citas: solo su %) */
+    if (planPase(p)){ const da = quienDio(a); if (da && da !== p && da !== a.socioId && da === ownerUid()) return; } /* plan especial: la cita que le dieron se cobra solo con su % de cita pasada */ const otroDir = pm.role==="admin" && p!==ownerUid(); const d = pm.role==="admin" ? costoTMd(a) : null; const pct = d ? d.total : aporteDe(p); /* Dirección: % real de la telemarketer + 1% de la líder (Carly en sus propias citas: solo su %) */
     const o = out[p] = out[p] || {payer:p, ventas:0, vol:0, monto:0, rows:[]}; const m = (+a.amount||0)*pct/100; o.ventas++; o.vol += +a.amount||0; o.monto += m; o.rows.push({a, pct, m, txt: d ? d.txt : "fijo"}); });
   return out; }
 /* % que paga cada distribuidor por las ventas de telemarketing: el suyo si Dirección se lo puso, o el general */
@@ -827,7 +827,7 @@ function quienDio(a){ if (a.transferredFrom && a.transferredFrom !== a.socioId) 
 function pases(r){ const out = [];
   Object.entries(S.appts).forEach(([id,a]) => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r)) return; const da = quienDio(a); if (!da || da === a.socioId) return;
     const sm = S.members[a.socioId] || {}; const paga = pagaVenta(a); if (!paga || paga === da) return;
-    const pp = planPase(paga); const dm = S.members[da] || {}; const pct = pp ? (dm.role==="admin" ? +pp.dir : +pp.dist) : PASE_PCT(); const m = (+a.amount||0) * pct / 100; out.push({id, a, dio:da, paga, pct, m}); });
+    const pp = planPase(paga); const dm = S.members[da] || {}; const pct = pp ? (da===ownerUid() ? +pp.dir : +pp.dist) : PASE_PCT(); const m = (+a.amount||0) * pct / 100; out.push({id, a, dio:da, paga, pct, m}); });
   return out; }
 const nomCli = a => a._priv && a.client ? a.client : (a.nomVenta || "(nombre pendiente)");
 function pasesCard(p, quien){ const l = pases(range(p)).filter(x => !quien || x.paga===quien || x.dio===quien); if (!l.length && quien) return "";
@@ -854,9 +854,9 @@ function deudasSemana(rg){ const out = {}; const D = p => (out[p] ||= {payer:p, 
     if (a.pctDir && paga!==ownerUid()){ const pct = +a.pctDir; add(paga, ownerUid(), "esp", a, id, pct, amt*pct/100); return; }
     /* programa de telemarketing (solo distribuidores; Dirección paga directo a sus telemarketers) */
     const t = S.members[a.teleId]; const esTM = origenDe(a)==="tm" && !(t && t.upline);
-    if (esTM && paga!==ownerUid() && !(planPase(paga) && da && da!==paga && da!==a.socioId)){ const pct = pm.role==="admin" ? costoTM(a) : aporteDe(paga); add(paga, ownerUid(), "tm", a, id, pct, amt*pct/100); }
+    if (esTM && paga!==ownerUid() && !(planPase(paga) && da && da!==paga && da!==a.socioId && da===ownerUid())){ const pct = pm.role==="admin" ? costoTM(a) : aporteDe(paga); add(paga, ownerUid(), "tm", a, id, pct, amt*pct/100); }
     /* cita pasada */
-    if (da && da!==a.socioId && da!==paga){ const pp = planPase(paga), dm = S.members[da] || {}; const pct = pp ? (dm.role==="admin" ? +pp.dir : +pp.dist) : PASE_PCT(); const m = amt*pct/100;
+    if (da && da!==a.socioId && da!==paga){ const pp = planPase(paga), dm = S.members[da] || {}; const pct = pp ? (da===ownerUid() ? +pp.dir : +pp.dist) : PASE_PCT(); const m = amt*pct/100;
       /* Si la cita la pasó un emprendedor, el que vendió le paga a su patrocinador (ej. Katerine) y el patrocinador le paga al emprendedor */
       const dp = esEmp(dm) ? (pagadorDe(da) || da) : da;
       if (dp !== da){ if (dp !== paga) add(paga, dp, "pase", a, id, pct, m); add(dp, da, "emp", a, id, pct, m); } else add(paga, da, "pase", a, id, pct, m); }
@@ -2028,7 +2028,7 @@ function openPerfil(id){ const m = S.members[id] || {}; const per = ["semana","m
     <div class="eyebrow" style="margin-top:10px">${tele ? "Citas que sacó" : "Sus citas (también las que le pasaron)"}</div>
     ${l.length ? `<div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>${tele?"Para":"De dónde salió"}</th><th>Resultado</th></tr></thead><tbody>${l.map(([aid,a]) => `<tr data-appt="${aid}" style="cursor:pointer"><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(cName(a))}</td><td class="note">${tele ? esc(memberName(a.socioId)) : esc(origenTxt(a))}${!tele && a.transferredFrom && a.transferredFrom!==id ? `<div>🔀 se la pasó ${esc(memberName(a.transferredBy||a.transferredFrom))}</div>` : ""}</td><td>${est(a)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">No tiene citas en este periodo.</div>`}
     ${role()==="admin" && (m.tipo===DIST || m.role==="admin") ? `<label class="f" style="margin-top:10px">Nombre de su distribución<div class="row" style="flex-wrap:nowrap"><input class="i" id="pf-dn" value="${esc(m.distNombre||"")}" placeholder="${esc(distNombre(id))}" style="flex:1"><button class="btn small" id="pf-dn-ok">Guardar</button></div></label>` : ""}
-    ${role()==="admin" && m.tipo===DIST ? (() => { const pp = planPase(id) || {}; return `<div class="eyebrow" style="margin-top:12px">Plan especial de comisiones</div><div class="grid2"><label class="f">Sus propias citas de telemarketing (%)<input class="i" type="number" min="0" step="0.5" id="pp-pro" value="${pp.propio ?? ""}" placeholder="${aporteDe(id)}"></label><label class="f">Citas que tú le das (%)<input class="i" type="number" min="0" step="0.5" id="pp-dir" value="${pp.dir ?? ""}" placeholder="${PASE_PCT()}"></label><label class="f">Citas que le pasa otro distribuidor (%)<input class="i" type="number" min="0" step="0.5" id="pp-dist" value="${pp.dist ?? ""}" placeholder="${PASE_PCT()}"></label></div><p class="note" style="margin:4px 0 0">Vacío = reglas normales. Con plan especial, la cita que le dan paga solo ese % (no se le suma el de telemarketing).</p><div class="row"><button class="btn small" id="pp-save">Guardar plan</button>${m.planPase?`<button class="btn small ghost" id="pp-del">Quitar plan especial</button>`:""}</div>`; })() : ""}
+    ${role()==="admin" && m.tipo===DIST ? (() => { const pp = planPase(id) || {}; return `<div class="eyebrow" style="margin-top:12px">Plan especial de comisiones</div><div class="grid2"><label class="f">Sus propias citas de telemarketing (%)<input class="i" type="number" min="0" step="0.5" id="pp-pro" value="${pp.propio ?? ""}" placeholder="${aporteDe(id)}"></label><label class="f">Citas que tú le das (%)<input class="i" type="number" min="0" step="0.5" id="pp-dir" value="${pp.dir ?? ""}" placeholder="${PASE_PCT()}"></label><label class="f">Citas que le pasa otro distribuidor o director (%)<input class="i" type="number" min="0" step="0.5" id="pp-dist" value="${pp.dist ?? ""}" placeholder="${PASE_PCT()}"></label></div><p class="note" style="margin:4px 0 0">Vacío = reglas normales. La cita que tú le das paga solo ese % (no se le suma el de telemarketing). Si se la pasa otro distribuidor o Andrés, paga ese % y además el de telemarketing.</p><div class="row"><button class="btn small" id="pp-save">Guardar plan</button>${m.planPase?`<button class="btn small ghost" id="pp-del">Quitar plan especial</button>`:""}</div>`; })() : ""}
     ${S.uid===ownerUid() && id!==S.uid && m.role!=="admin" ? `<div class="eyebrow" style="margin-top:12px">Asistente de pagos</div><label class="row" style="gap:8px;align-items:center"><input type="checkbox" id="as-chk" ${m.asistente?"checked":""}> <span>Puede ver y cobrar los pagos de los distribuidores (pestaña <b>Cobros</b>) y marcarlos como pagados</span></label>` : ""}
     ${S.uid===ownerUid() && id!==S.uid && (m.role==="admin" || m.tipo===DIST) ? `<div class="eyebrow" style="margin-top:12px">Garantizado de las telemarketers</div><div class="row"><label class="f" style="flex:1">Parte que paga (%)<input class="i" type="number" min="0" max="100" step="5" id="gp-v" value="${m.garPct ?? ""}" placeholder="${garPctDe(id)}"></label><button class="btn small" id="gp-save">Guardar</button></div><p class="note" style="margin:4px 0 0">Ahora: <b>${garPctDe(id)}%</b> del sueldo garantizado de cada telemarketer del programa. Se le cobra cada semana en su reporte, aparte del % de sus ventas.</p>` : ""}
     ${role()==="admin" && id!==S.uid && m.role!=="admin" ? (m.bloqueado ? `<div class="banner bad" style="margin-top:10px">🔒 Acceso suspendido desde el ${fmt(m.bloqueado.at,{day:"numeric",month:"short"})}${m.bloqueado.motivo?` · ${esc(m.bloqueado.motivo)}`:""}</div><button class="btn small" id="pf-unbl" style="margin-top:6px">✅ Devolverle el acceso</button>` : `<div class="eyebrow" style="margin-top:12px">Acceso</div><div class="row"><input class="i" id="pf-mot" placeholder="Motivo (ej.: pago pendiente)" maxlength="120" style="flex:1;min-width:180px"><button class="btn small danger" id="pf-bl">🚫 Suspender acceso</button></div><p class="note" style="margin:4px 0 0">No podrá entrar a la app hasta que le devuelvas el acceso. Sus citas y datos no se borran.</p>`) : ""}
