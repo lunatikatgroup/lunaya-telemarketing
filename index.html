@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611201828"></script>
-<script src="anuncios.js?v=202611201828"></script>
-<script src="juego.js?v=202611201828"></script>
+<script src="demo.js?v=202611201836"></script>
+<script src="anuncios.js?v=202611201836"></script>
+<script src="juego.js?v=202611201836"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611201828";
+const APP_VER = "202611201836";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1008,9 +1008,10 @@ document.addEventListener("click", e => { const b = e.target.closest && e.target
 const NOM_P = {quin:"Esta quincena", quinant:"Quincena anterior", mes:"Este mes", mesant:"Mes anterior"};
 /* Lo que entra a Katerine por citas de telemarketing: el % del programa, la comisión especial, y las citas de telemarketing que le pasó con plan propio (ej. Jhojanna) */
 const tmAKat = x => x.tipo==="tm" ? x.m : (x.tipo==="esp" || x.tipo==="pase") ? (x.rows||[]).filter(r => origenDe(r.a)==="tm").reduce((t,r)=>t+r.m,0) : 0;
-function cuadreDatos(rg){ const K = ownerUid(); const ing = {}; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K) return; const m = tmAKat(x); if (!m) return; const o = (ing[d.payer] ||= {tm:0, gar:0}); o.tm += m; }));
+/* Jhojanna (Nueva York) va aparte: lo que paga es de Katerine y no entra al cuadre con Andrés (solo California) */
+function cuadreDatos(rg){ const K = ownerUid(), NY = NYC_DIST(); const ing = {}; let ny = 0; Object.values(deudasSemana(rg)).forEach(d => Object.values(d.a).forEach(x => { if (x.to!==K) return; const m = tmAKat(x); if (!m) return; if (NY && d.payer===NY){ ny += m; return; } const o = (ing[d.payer] ||= {tm:0, gar:0}); o.tm += m; }));
   const nom = commissions(rg, ""); const totIng = Object.values(ing).reduce((t,o)=>t+o.tm+o.gar,0), sueldos = nom.reduce((t,x)=>t+x.sueldo,0), coms = nom.reduce((t,x)=>t+x.comision,0);
-  return {ing, nom, totIng, sueldos, coms, totNom: sueldos+coms, pones: Math.max(0, sueldos+coms-totIng), sobra: Math.max(0, totIng-sueldos-coms)}; }
+  return {ing, ny, nom, totIng, sueldos, coms, totNom: sueldos+coms, pones: Math.max(0, sueldos+coms-totIng), sobra: Math.max(0, totIng-sueldos-coms)}; }
 
 /* Reparto de la nómina entre Katerine, Andrés y los distribuidores:
    - cada directora paga la comisión de las ventas de su grupo (ella + sus emprendedores)
@@ -1019,7 +1020,7 @@ function cuadreDatos(rg){ const K = ownerUid(); const ing = {}; Object.values(de
 function repartoDatos(rg){ const c = cuadreDatos(rg); const K = ownerUid(); const A = byRole("admin").map(m => m.id).find(id => id!==K) || "";
   const nomIds = new Set(c.nom.map(x => x.t.id)); const com = {K:0, A:0, D:0};
   Object.values(S.appts).forEach(a => { if (!nomIds.has(a.teleId) || !a.sale || a.saleStatus!=="aprobada" || a.tipoVisita==="servicio" || !enCorte(a, rg)) return;
-    const g = grupoPago(a); const k = g===K ? "K" : g===A ? "A" : "D"; com[k] += (+a.amount||0) * costoTM(a) / 100; });
+    const g = grupoPago(a); const NY = NYC_DIST(); const k = g===K || (NY && g===NY) ? "K" : g===A ? "A" : "D"; com[k] += (+a.amount||0) * costoTM(a) / 100; });
   /* la comisión calculada por venta y la de la nómina pueden diferir en centavos: el ajuste va a los distribuidores */
   com.D = Math.max(0, c.coms - com.K - com.A);
   const ingD = Object.entries(c.ing).filter(([id]) => S.members[id]?.role!=="admin").reduce((t,[,o]) => t+o.tm, 0);
@@ -1032,6 +1033,7 @@ function repartoHtml(r){ const L = (t, v, cls) => `<tr${cls?` class="${cls}"`:""
     ${L("➖ Garantizado (sueldos) de la quincena", "− "+money(r.c.sueldos))}
     ${L(res >= 0 ? "✅ A favor de Dirección" : "⚠️ Falta: lo ponen los directores (mitad y mitad)", `<b>${res<0?"− ":""}${money(Math.abs(res))}</b>`, "tot")}
     ${res < 0 ? L("Cada director pone", money(Math.abs(res)/2)) : ""}
+    ${r.c.ny ? L("🗽 Aparte: lo que paga Jhojanna (Nueva York) es tuyo, no entra en este cuadre. Las comisiones de sus ventas las pagas tú", money(r.c.ny)) : ""}
   </table>
   <p class="note" style="margin-top:6px">Aparte, cada director paga la comisión de las telemarketers por sus propias ventas (y las de sus emprendedores): Katerine ${money(r.com.K)} · ${esc(firstName(memberName(r.A)||"Andrés"))} ${money(r.com.A)}.</p>`; }
 function nominaCard(){ if (role()!=="admin" && !esAsist() && !esLiderTM()) return ""; const p = NOM_P[S.f.nomp] ? S.f.nomp : "quinant"; const rg = range(p); const c = cuadreDatos(rg);
@@ -1062,7 +1064,7 @@ function nominaDoc(p, modo, solo){ const rg = range(p); const c = cuadreDatos(rg
     <div class="big"><span>${solo ? "TU PAGO" : "TOTAL A PAGAR"} · ${(NOM_P[p]||"").toUpperCase()}</span><b>${money(c.totNom)}</b></div>
     ${solo ? "" : `<h2>Reporte de actividad de cada telemarketer</h2><table><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Citas</th><th class="n">Demos</th><th class="n">Ventas</th><th class="n">Aprobadas</th><th class="n">Canceladas</th><th class="n">Volumen vendido</th><th class="n">Volumen aprobado</th></tr>${(() => { const T = {calls:0,citas:0,demos:0,ventas:0,aprob:0,cancel:0,monto:0,montoAprob:0}; const rws = filas.map(x => { const e = teleEval(x.t.id, rg); Object.keys(T).forEach(k => T[k] += +e[k]||0); return `<tr><td>${esc(x.t.name)}</td>${R(e.calls)}${R(e.citas)}${R(e.demos)}${R(e.ventas)}${R(e.aprob)}${R(e.cancel)}${R(money(e.monto))}${R(money(e.montoAprob||0))}</tr>`; }).join(""); return rws + `<tr class="tot"><td>Total</td>${R(T.calls)}${R(T.citas)}${R(T.demos)}${R(T.ventas)}${R(T.aprob)}${R(T.cancel)}${R(money(T.monto))}${R(money(T.montoAprob))}</tr>`; })()}</table>`}
 ${esLiderTM() || solo ? "" : `    <h2>¿De dónde sale el dinero?</h2><table><tr><th>Quién paga</th><th class="n">Comisión de telemarketing</th></tr>${Object.entries(c.ing).sort((a,b)=>b[1].tm-a[1].tm).map(([id,o]) => `<tr><td>${esc(memberName(id))}</td>${R(money(o.tm))}</tr>`).join("") || `<tr><td colspan="2" style="color:#888">Nada en este periodo.</td></tr>`}
-      <tr class="tot"><td>Total de comisiones que entran</td>${R(money(c.totIng))}</tr></table>${role()==="admin" ? `<h2>⚖️ Cuadre de la quincena</h2>${repartoHtml(repartoDatos(rg))}` : ""}`}
+      <tr class="tot"><td>Total de comisiones que entran (California)</td>${R(money(c.totIng))}</tr>${c.ny ? `<tr><td>🗽 ${esc(memberName(NYC_DIST()))} (Nueva York) · aparte, no entra al cuadre</td>${R(money(c.ny))}</tr>` : ""}</table>${role()==="admin" ? `<h2>⚖️ Cuadre de la quincena</h2>${repartoHtml(repartoDatos(rg))}` : ""}`}
     <p style="color:#888;font-size:12px;margin-top:18px">La comisión se paga sobre ventas aprobadas hasta el día antes del corte (1–14 y 15–fin de mes menos 1); lo que sigue en verificación pasa a la próxima quincena. Lo de los distribuidores es lo que les toca pagar en el periodo (pagado o no). Generado con Lunaya · ${fmt(Date.now(),{day:"numeric",month:"long",year:"numeric"})}</p></body></html>`;
   const w = window.open(URL.createObjectURL(new Blob([html], {type:"text/html"})), "_blank"); if (!w) toast("Permite abrir ventanas para ver la nómina"); }
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-minom]"); if (b) nominaDoc(b.dataset.minom, "tele", S.uid); });
