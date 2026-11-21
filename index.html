@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611211220"></script>
-<script src="anuncios.js?v=202611211220"></script>
-<script src="juego.js?v=202611211220"></script>
+<script src="demo.js?v=202611211427"></script>
+<script src="anuncios.js?v=202611211427"></script>
+<script src="juego.js?v=202611211427"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611211220";
+const APP_VER = "202611211427";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1659,7 +1659,7 @@ function openCitaForm(src, own, pre){
       <label class="f">Ciudad<input class="i" id="c-city"></label>
       <label class="f">Dirección<input class="i" id="c-addr"></label>
       <label class="f">Fecha<input class="i" type="date" id="c-date" value="${tomorrow}"></label>
-      <label class="f">Hora${timeSel("c-time","18:00")}</label>
+      <label class="f">Hora${timeSel("c-time","18:00")}</label><label class="f">Llegada${ventSel("c-vent", VENT_DEF)}</label>
       <label class="f" style="grid-column:1/-1">${own?"Notas":"Notas para el socio"}<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
     </div>
     <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
@@ -1680,7 +1680,7 @@ function openCitaForm(src, own, pre){
       const at = Date.now(); $("#c-save").disabled = true;
       try {
         const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if ($("#c-src")) src = $("#c-src").value; const servV = $("#c-tv") && $("#c-tv").value==="servicio"; const refBy = servV ? "" : $("#c-refby").value.trim().slice(0,80); const cred = !servV && own && $("#c-cred") ? $("#c-cred").value : ""; if (servV) src = "Servicio";
-        const pub = {when:laToMs(d,t), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at, ...($("#c-tv") && $("#c-tv").value==="servicio" ? {tipoVisita:"servicio"} : {}), ...(pre && pre.leadMeta ? {lead:"meta"} : {})};
+        const pub = {when:laToMs(d,t), vent:+($("#c-vent")?.value ?? VENT_DEF), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at, ...($("#c-tv") && $("#c-tv").value==="servicio" ? {tipoVisita:"servicio"} : {}), ...(pre && pre.leadMeta ? {lead:"meta"} : {})};
         const precal = $("#c-pre") ? $("#c-pre").value.trim() : ""; const priv = {client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:((precal ? "📝 Precalificación: " + precal + "\n" : "") + $("#c-notes").value.trim()).slice(0,3000), ...(refBy?{refBy}:{}),
           socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", tv: S.members[pagadorDe(socio)]?.role==="admin", createdAt:at};
         /* Se guardan juntas: o quedan las dos partes o ninguna (así nunca queda una cita sin los datos del cliente) */
@@ -1729,6 +1729,10 @@ function timeSel(id, v){ let [H,M] = (v||"18:00").split(":").map(Number); M = Ma
 function timeVal(id){ const el = document.getElementById(id); if (!el) return ""; const h = +el.querySelector("[data-th]").value, m = el.querySelector("[data-tm]").value, pm = el.querySelector("[data-tp]").value==="pm";
   const H = (h%12) + (pm?12:0); return `${String(H).padStart(2,"0")}:${m}`; }
 const horaTxt = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
+/* Intervalo de llegada: la cita se le da al cliente como "de 6 a 7" */
+const VENT_DEF = 60; const ventDe = a => a && a.vent !== undefined ? +a.vent : 0;
+const horaCita = (a, ms) => { const t = ms ?? a.when, v = ventDe(a); if (!v || ms !== undefined && ms !== a.when) return horaTxt(t); const i = horaTxt(t), f = horaTxt(t + v*60e3); const am = x => x.replace(/\s?[ap]\.?\s?m\.?$/i,"").trim(); return (i.slice(-4)===f.slice(-4) ? am(i) : i) + " – " + f; };
+const ventSel = (id, v) => `<select class="i" id="${id}">${[[0,"Hora exacta"],[30,"Intervalo de 30 min"],[60,"Intervalo de 1 hora"],[90,"Intervalo de 1 hora y media"],[120,"Intervalo de 2 horas"]].map(([m,t]) => `<option value="${m}" ${+v===m?"selected":""}>${t}</option>`).join("")}</select>`;
 const diaTxt = ms => `<div class="dia">${fmt(ms,{weekday:"long",day:"numeric",month:"long"})}</div>`;
 /* Citas de otro estado (ej. Nueva York): se marcan con otro color para pasárselas a quien trabaja allá (Jhojanna en NYC) */
 const EST_NOM = {NY:"Nueva York", NJ:"New Jersey", CT:"Connecticut", FL:"Florida", TX:"Texas", AZ:"Arizona", NV:"Nevada", IL:"Illinois", PA:"Pennsylvania", MA:"Massachusetts", GA:"Georgia", NC:"Carolina del Norte", WA:"Washington", OR:"Oregon", CO:"Colorado", UT:"Utah", NM:"Nuevo México"};
@@ -1748,11 +1752,11 @@ const esLeadMeta = a => a.lead === "meta" || /^Anuncio Meta|amiga de [^·]*(meta
 const segTM = a => !!(a.pendCall && !a.pendCall.hecho && a.pendCall.tipo==="seg" && !a.sale); /* seguimiento que la telemarketer todavía tiene que agendar */
 const segVis = a => !!(a.segWhen && !a.sale && !segTM(a));
 function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
-  if (role()==="tele" && a.teleId!==S.uid && a.agendo!==S.uid && !a._priv) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaTxt(t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de ${esc(memberName(a.agendo||a.teleId))} con ${esc(memberName(a.socioId))}</span></div>`;
+  if (role()==="tele" && a.teleId!==S.uid && a.agendo!==S.uid && !a._priv) return `<div class="appt" style="cursor:default;border-left-color:var(--line)"><span class="h"><span class="hora">${horaCita(a,t)}</span> Horario ocupado</span>${diaTxt(t)}<span class="note">Cita de ${esc(memberName(a.agendo||a.teleId))} con ${esc(memberName(a.socioId))}</span></div>`;
   const st = a.saleStatus||"pendiente";
   const tg = seg ? `<span class="tag tg-warn">🔁 Seguimiento</span>` : a.status==="hecha" ? (a.sale?`<span class="tag" style="color:#fff;background:${st==="aprobada"?"#15803d":st==="cancelada"?"#6b7280":"#7e22ce"}">Venta ${money(a.amount)} · ${st==="pendiente"?"en verificación":st}</span>`:`<span class="tag tg-good">Demo hecha</span>`) : a.status==="agendada" ? (a.when < Date.now()-3600e3 ? `<span class="tag tg-bad">Sin resultado</span>` : `<span class="tag tg-warn">Agendada</span>`) : `<span class="tag tg-mute">${APPT_ST[a.status]}</span>`;
   const est = estadoDe(a), serv = a.tipoVisita==="servicio", vend = a.sale && (a.saleStatus||"pendiente")!=="cancelada"; const vcol = a.saleStatus==="aprobada" ? ["#15803d","rgba(21,128,61,.16)"] : ["#7e22ce","rgba(126,34,206,.13)"];
-  return `<button class="appt ${a.status}" data-appt="${id}" ${vend && !serv?`style="border-left-color:${vcol[0]};background:linear-gradient(90deg,${vcol[1]},transparent 70%)"`:serv?`style="border-left-color:#0f766e;background:linear-gradient(90deg,rgba(15,118,110,.13),transparent 65%)"`:esLeadMeta(a)?`style="border-left:6px solid #be185d;background:linear-gradient(90deg,rgba(190,24,93,.20),rgba(190,24,93,.04) 75%)"`:est?`style="border-left-color:#1d4ed8;background:linear-gradient(90deg,rgba(29,78,216,.10),transparent 60%)"`:""}><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaTxt(t)}</span> ${esLeadMeta(a)?`<span class="tag" style="background:#be185d;color:#fff">📣 Cita lead</span> `:""}${esc(cName(a))} ${serv?`<span class="tag" style="background:#0f766e;color:#fff">🛠️ Servicio</span>`:""}${estTag(a)}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
+  return `<button class="appt ${a.status}" data-appt="${id}" ${vend && !serv?`style="border-left-color:${vcol[0]};background:linear-gradient(90deg,${vcol[1]},transparent 70%)"`:serv?`style="border-left-color:#0f766e;background:linear-gradient(90deg,rgba(15,118,110,.13),transparent 65%)"`:esLeadMeta(a)?`style="border-left:6px solid #be185d;background:linear-gradient(90deg,rgba(190,24,93,.20),rgba(190,24,93,.04) 75%)"`:est?`style="border-left-color:#1d4ed8;background:linear-gradient(90deg,rgba(29,78,216,.10),transparent 60%)"`:""}><div class="row" style="justify-content:space-between"><span class="h"><span class="hora">${horaCita(a,t)}</span> ${esLeadMeta(a)?`<span class="tag" style="background:#be185d;color:#fff">📣 Cita lead</span> `:""}${esc(cName(a))} ${serv?`<span class="tag" style="background:#0f766e;color:#fff">🛠️ Servicio</span>`:""}${estTag(a)}${unread(a)?` <span class="tag tg-bad">💬 ${unread(a)} nuevo${unread(a)>1?"s":""}</span>`:(a.chat&&a.chat.length?` <span class="note">💬 ${a.chat.length}</span>`:"")}</span>${tg}</div>${diaTxt(t)}${a.resNote&&a.status!=="agendada"?`<div class="note">📝 ${esc(a.resNote.length>90?a.resNote.slice(0,90)+"…":a.resNote)}</div>`:""}<div class="note">${esc(a.city||"")}${a.address?" · "+esc(a.address):""}</div><div class="note">Socio: ${esc(memberName(a.socioId))} · ${esc(origenTxt(a))}</div></button>`;
 }
 /* Territorio: resumen por socio o por telemarketer (hoy, semana, mes) */
 function terrResumen(){
@@ -1811,7 +1815,7 @@ function viewCitas(r){
 function gcalUrl(a, calId){
   const z = ms => new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
   const details = [a.phone?`Teléfono: ${a.phone}`:"", a.notes?`Notas: ${a.notes}`:"", `Agendó: ${memberName(a.teleId)} · Lunaya`].filter(Boolean).join("\n");
-  const q = new URLSearchParams({action:"TEMPLATE", text:`Demostración · ${a.client||"Cliente"}`, dates:`${z(a.when)}/${z(a.when+2*3600e3)}`, details, location:[a.address,a.city].filter(Boolean).join(", "), ctz:TZ});
+  const q = new URLSearchParams({action:"TEMPLATE", text:`Demostración · ${a.client||"Cliente"}`, dates:`${z(a.when)}/${z(a.when+Math.max(2*3600e3, (ventDe(a)+90)*60e3))}`, details, location:[a.address,a.city].filter(Boolean).join(", "), ctz:TZ});
   const cal = calId===undefined ? S.me?.gcalId : calId; if (cal) q.set("src", cal); /* abre directo en el calendario elegido (ej. Citas Lunaya) */
   return "https://calendar.google.com/calendar/render?" + q.toString();
 }
@@ -1877,7 +1881,7 @@ function openAppt(id, o0={}){
   const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc || liderAcc || (isDist() && S.members[a.socioId]?.upline===S.uid); const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid || teleAcc || liderAcc;
   const canClient = a._priv && (r==="admin" || a.agendo===S.uid || a.socioId===S.uid || liderAcc);
   openModal(`<h3>${esc(cName(a))}</h3>
-    <div class="note">${fmtWhen(a.when)} · hora San Diego · <b>${esc(origenTxt(a))}</b>${a.source?` · ${esc(a.source)}`:""}${a.refBy?` · referida por <b>${esc(a.refBy)}</b>`:""}</div>
+    <div class="note">${fmt(a.when,{weekday:"short",day:"numeric",month:"short"})}, ${horaCita(a)} · hora San Diego · <b>${esc(origenTxt(a))}</b>${a.source?` · ${esc(a.source)}`:""}${a.refBy?` · referida por <b>${esc(a.refBy)}</b>`:""}</div>
     ${a.status!=="agendada" && (a.resNote || a.refsDemo || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.refsDemo?`<div>👥 <b>${a.refsDemo}</b> referidos sacados en la demo</div>`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado puesto por ${esc(memberName(a.resultBy))}</div>`:""}</div>` : ""}
     ${a.pendCall && !a.pendCall.hecho ? `<div class="banner warn">📞 <b>Pendiente: llamar ${a.pendCall.dia===today()?"hoy":a.pendCall.dia<today()?"(atrasado) el "+fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"long",day:"numeric"}):"el "+fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"long",day:"numeric",month:"short"})}</b>${a.pendCall.hora?` · ${esc(a.pendCall.hora)}`:""} ${a.pendCall.tipo==="seg" ? " para agendar el seguimiento" : " para confirmar la nueva hora"}${a.pendCall.intentos?` · ${a.pendCall.intentos} intento(s) sin contestar`:""}
       ${(a.pendCall.log||[]).slice(-3).map(x => `<div class="note" style="color:inherit">• ${fmt(x.at,{weekday:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(x.by))}: ${esc(x.r)}</div>`).join("")}
@@ -1900,7 +1904,7 @@ function openAppt(id, o0={}){
       ${a.sale && (a.saleLog||[]).length ? `<div class="note" style="margin:4px 0">🧾 Cambios de la venta: ${(a.saleLog||[]).slice(-4).map(x => `${fmt(x.at,{day:"numeric",month:"short"})} · ${esc(memberName(x.by))} · ${esc(x.t)}`).join(" · ")}</div>` : ""}
       ${a.sale && (r!=="tele" || S.me?.lider)?`<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div>`:""}`:""}
     ${canClient?`<button class="btn small ghost" id="ap-cli">✏️ Editar datos del cliente</button>`:""}
-    ${canEdit?`<div class="eyebrow">Reprogramar · cambiar día u hora</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha" style="min-width:0;width:100%;max-width:100%">${timeSel("ap-time",laTime(a.when))}<button class="btn small ghost" id="ap-move">Cambiar fecha u hora</button></div>`:""}
+    ${canEdit?`<div class="eyebrow">Reprogramar · cambiar día u hora</div><div class="grid2"><input class="i" type="date" id="ap-date" value="${laDate(a.when)}" aria-label="Fecha" style="min-width:0;width:100%;max-width:100%">${timeSel("ap-time",laTime(a.when))}${ventSel("ap-vent", ventDe(a))}<button class="btn small ghost" id="ap-move">Cambiar fecha u hora</button></div>`:""}
     ${a.sale && S.uid===ownerUid() && a.socioId!==S.uid ? `<div class="eyebrow">💼 Comisión que te paga por esta venta</div><div class="grid2"><input class="i" id="pd-v" type="number" inputmode="decimal" min="0" step="0.5" value="${a.pctDir ?? ""}" placeholder="Normal (automático)"><div style="align-self:end"><button class="btn small ghost" id="pd-save">Guardar %</button></div></div><p class="note" style="margin:2px 0 8px">Ej.: le diste la cita y fue con tu emprendedora nueva → pon <b>15</b>. Al distribuidor solo le sale “Comisión de citas ${a.pctDir ? a.pctDir+"%" : "…%"}”, en lugar del telemarketing y la cita pasada. Vacío = cálculo normal.</p>` : ""}
     ${a.sale && esEmp(S.members[a.socioId]) && (r==="admin" || S.members[a.socioId]?.upline===S.uid) ? `<div class="eyebrow">💼 Comisión del emprendedor</div><div class="grid2"><select class="i" id="ce-sel"><option value="">Automático (${esc(CAT_TXT[(() => { const x = {...a}; delete x.catEmp; return catEmp(x); })()])})</option>${Object.entries(CAT_TXT).map(([k,l]) => `<option value="${k}" ${a.catEmp===k?"selected":""}>${esc(l)} · ${(planDe(pagaVenta(a)) || DEF_EMP)[k]}%</option>`).join("")}</select><div style="align-self:end"><button class="btn small ghost" id="ce-save">Guardar</button></div></div><p class="note" style="margin:2px 0 8px">Ahora cuenta como <b>${esc(CAT_TXT[catEmp(a)])}</b>. Si la cita se la diste tú, escoge “Solo, cita asignada”.</p>` : ""}
     ${r==="admin" && esEmp(S.members[a.socioId]) && a.status==="hecha" ? `<div class="eyebrow">🤝 Acompañamiento (Dirección)</div><div id="ac-edit"></div><button class="btn small ghost" id="ac-save" style="margin-top:6px">Guardar acompañamiento</button>` : ""}
@@ -1982,7 +1986,7 @@ function openAppt(id, o0={}){
       if (!this.dataset.sure){ this.dataset.sure="1"; this.textContent = "Toca otra vez para pasarla a "+memberName(to); this.classList.add("danger"); return; }
       if (sponsorDe(to)){ chain("appt:"+id, () => pedirTransfer(id, to)).then(() => { closeModal(); toast(`Le pedimos permiso a ${memberName(sponsorDe(to))}. Cuando apruebe, la cita pasa sola a ${memberName(to)}.`); }, writeErr); return; }
       chain("appt:"+id, () => transferAppt(id, to)).then(() => { closeModal(); toast("Cita transferida a "+memberName(to)); }, writeErr); });
-    $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=timeVal("ap-time"); if (d&&t) save({when:laToMs(d,t), status:"agendada", sale:false, amount:0, ...(a.pendCall && !a.pendCall.hecho ? {pendCall:{...a.pendCall, hecho:Date.now(), res:"reagendada", log:[...(a.pendCall.log||[]), {at:Date.now(), by:S.uid, r:"Reagendada para "+fmtWhen(laToMs(d,t))}]}} : {})}); });
+    $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=timeVal("ap-time"); if (d&&t) save({when:laToMs(d,t), vent:+($("#ap-vent")?.value||0), status:"agendada", sale:false, amount:0, ...(a.pendCall && !a.pendCall.hecho ? {pendCall:{...a.pendCall, hecho:Date.now(), res:"reagendada", log:[...(a.pendCall.log||[]), {at:Date.now(), by:S.uid, r:"Reagendada para "+fmtWhen(laToMs(d,t))}]}} : {})}); });
     document.querySelectorAll("[data-pc]").forEach(b => b.onclick = () => { const k = b.dataset.pc, pc = a.pendCall || {}, now = Date.now();
       if (pc.tipo==="seg" && (k==="ok" || k==="no")){ closeModal(); return pcRapido(k==="ok" ? "fecha" : "no", id); }
       if (k==="ok"){ const el = $("#ap-date"); if (el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.focus(); toast("Pon la nueva fecha y hora y toca “Cambiar fecha”"); } return; }
