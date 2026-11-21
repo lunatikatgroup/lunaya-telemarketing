@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611201854"></script>
-<script src="anuncios.js?v=202611201854"></script>
-<script src="juego.js?v=202611201854"></script>
+<script src="demo.js?v=202611201856"></script>
+<script src="anuncios.js?v=202611201856"></script>
+<script src="juego.js?v=202611201856"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611201854";
+const APP_VER = "202611201856";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2170,16 +2170,27 @@ const pcActivo = a => a.pendCall && !a.pendCall.hecho && !(a.status==="agendada"
 function pendLlamarCard(){ const r = role(); const vis = ([,a]) => r==="admin" || esAsist() || a.socioId===S.uid || a.teleId===S.uid || a.agendo===S.uid || a._priv || (isDist() && grupoDe(S.uid).some(m => m.id===a.socioId));
   const todo = Object.entries(S.appts).filter(([,a]) => pcActivo(a)).filter(vis).sort((x,y) => x[1].pendCall.dia.localeCompare(y[1].pendCall.dia));
   if (!todo.length) return "";
-  const hoyL = todo.filter(([,a]) => a.pendCall.dia <= today()), prox = todo.filter(([,a]) => a.pendCall.dia > today());
-  const ver = S.f.pcv || "hoy"; const l = ver==="hoy" ? hoyL : prox;
+  const enAg = ([,a]) => a.pendCall.agBy && a.pendCall.dia > today(); /* guardada en la agenda de una telemarketer: no sale en la lista de todos hasta ese día */
+  const hoyL = todo.filter(([,a]) => a.pendCall.dia <= today()), prox = todo.filter(x => x[1].pendCall.dia > today() && !enAg(x)), miAg = todo.filter(x => enAg(x) && (x[1].pendCall.agBy===S.uid || r==="admin" || esAsist()));
+  const ver = S.f.pcv || "hoy"; const l = ver==="hoy" ? hoyL : ver==="ag" ? miAg : prox;
   const quien = {}; hoyL.forEach(([,a]) => { const k = a.teleId || a.agendo || "—"; quien[k] = (quien[k]||0) + 1; });
   const canAct = a => r==="admin" || r==="tele" || esAsist() || a.socioId===S.uid;
-  return `<div class="card" style="border:2px solid var(--warn,#a3651a)"><h2>📞 Llamar para reagendar${hoyL.length?` <span class="tag tg-bad">${hoyL.length} para hoy</span>`:""}</h2><p class="note" style="margin-top:-6px">Llama al cliente y marca aquí mismo lo que pasó. Sale de la lista cuando le pones fecha nueva, cuando ya no quiere, o después de ${PC_MAX} veces sin contestar.</p>
+  return `<div class="card" style="border:2px solid var(--warn,#a3651a)"><h2>📞 Llamar para reagendar${hoyL.length?` <span class="tag tg-bad">${hoyL.length} para hoy</span>`:""}</h2><p class="note" style="margin-top:-6px">Llama al cliente y marca aquí mismo lo que pasó. Sale de la lista cuando le pones fecha nueva, cuando ya no quiere, cuando lo guardas en tu agenda para más adelante, o después de ${PC_MAX} veces sin contestar.</p>
     ${(r==="admin"||esAsist()) && Object.keys(quien).length ? `<p class="note" style="margin:0 0 8px">Pendientes de hoy por telemarketer: ${Object.entries(quien).sort((x,y)=>y[1]-x[1]).map(([k,n]) => `<b>${esc(firstName2(memberName(k)))}</b> ${n}`).join(" · ")}</p>` : ""}
-    <div class="chips" style="margin-bottom:8px"><button class="chip ${ver==="hoy"?"on":""}" data-pcv="hoy">Hoy y atrasados (${hoyL.length})</button><button class="chip ${ver==="prox"?"on":""}" data-pcv="prox">Próximos días (${prox.length})</button></div>
-    ${l.length ? `<div class="list">${l.map(([id,a]) => `<div class="item" style="display:block"><button class="item" data-appt="${id}" style="text-align:left;width:100%;border:0;padding:0;background:none"><div class="t">${esc(cName(a))}${a.phone?` · <span class="note">${esc(a.phone)}</span>`:""}</div><div class="m">${a.pendCall.dia<today()?"⚠️ Atrasado · ":a.pendCall.dia===today()?"Hoy · ":""}${fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"short",day:"numeric",month:"short"})}${a.pendCall.hora?" · "+esc(a.pendCall.hora):""} · socio ${esc(memberName(a.socioId))} · ${esc(memberName(a.teleId))}${a.pendCall.intentos?` · ${a.pendCall.intentos} sin contestar`:""}</div></button>${canAct(a) ? `<div class="row" style="margin-top:6px"><button class="btn small" data-pcq="fecha|${id}">📅 Ya tiene fecha</button><button class="btn small ghost" data-pcq="nc|${id}">📵 No contestó</button><button class="btn small ghost" data-pcq="no|${id}">🚫 Ya no quiere</button></div>` : ""}</div>`).join("")}</div>` : `<div class="empty">${ver==="hoy" ? "¡Nada pendiente para hoy! 🎉" : "No hay para los próximos días."}</div>`}</div>`; }
+    <div class="chips" style="margin-bottom:8px"><button class="chip ${ver==="hoy"?"on":""}" data-pcv="hoy">Hoy y atrasados (${hoyL.length})</button><button class="chip ${ver==="prox"?"on":""}" data-pcv="prox">Próximos días (${prox.length})</button>${miAg.length ? `<button class="chip ${ver==="ag"?"on":""}" data-pcv="ag">📌 ${r==="tele"&&!esAsist() ? "Mi agenda" : "En agendas de las teles"} (${miAg.length})</button>` : ""}</div>
+    ${l.length ? `<div class="list">${l.map(([id,a]) => `<div class="item" style="display:block"><button class="item" data-appt="${id}" style="text-align:left;width:100%;border:0;padding:0;background:none"><div class="t">${esc(cName(a))}${a.phone?` · <span class="note">${esc(a.phone)}</span>`:""}</div><div class="m">${a.pendCall.dia<today()?"⚠️ Atrasado · ":a.pendCall.dia===today()?"Hoy · ":""}${fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"short",day:"numeric",month:"short"})}${a.pendCall.hora?" · "+esc(a.pendCall.hora):""} · socio ${esc(memberName(a.socioId))} · ${esc(memberName(a.teleId))}${a.pendCall.intentos?` · ${a.pendCall.intentos} sin contestar`:""}${a.pendCall.agBy?` · 📌 agenda de ${esc(firstName2(memberName(a.pendCall.agBy)))}`:""}</div>${a.pendCall.agNota?`<div class="note">📝 ${esc(a.pendCall.agNota)}</div>`:""}</button>${canAct(a) ? `<div class="row" style="margin-top:6px"><button class="btn small" data-pcq="fecha|${id}">📅 Ya tiene fecha</button><button class="btn small ghost" data-pcq="nc|${id}">📵 No contestó</button><button class="btn small ghost" data-pcq="ag|${id}">📌 Llamar más adelante</button><button class="btn small ghost" data-pcq="no|${id}">🚫 Ya no quiere</button></div>` : ""}</div>`).join("")}</div>` : `<div class="empty">${ver==="hoy" ? "¡Nada pendiente para hoy! 🎉" : "No hay para los próximos días."}</div>`}</div>`; }
 function pcRapido(k, id){ const a = S.appts[id]; if (!a) return; const pc = a.pendCall || {}, now = Date.now();
   if (k==="fecha") return openAppt(id, {pcFecha:true});
+  if (k==="ag"){ const op = [["1 semana",7],["2 semanas",14],["1 mes",30],["3 meses",91],["6 meses",182]];
+    return openModal(`<h3>📌 Llamar más adelante</h3><p class="note" style="margin-top:-6px">${esc(cName(a))} se guarda en <b>tu agenda</b> y sale de la lista de todos. Ese día te aparece otra vez para llamarlo.</p>
+      <div class="chips" style="margin-bottom:8px">${op.map(([t,d]) => `<button class="chip" data-agd="${addDays(today(),d)}">${t}</button>`).join("")}</div>
+      <label class="f">Fecha<input class="i" type="date" id="ag-d" value="${addDays(today(),91)}" min="${addDays(today(),1)}"></label>
+      <label class="f">Nota (opcional)<input class="i" id="ag-n" maxlength="120" placeholder="Ej.: está de viaje, llamar cuando regrese" value="${esc(pc.agNota||"")}"></label>
+      <div class="row"><button class="btn" id="ag-ok">Guardar en mi agenda</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+      document.querySelectorAll("[data-agd]").forEach(b => b.onclick = () => { $("#ag-d").value = b.dataset.agd; document.querySelectorAll("[data-agd]").forEach(x => x.classList.toggle("on", x===b)); });
+      $("#ag-ok").onclick = () => { const d = $("#ag-d").value; if (!d || d <= today()) return toast("Escoge una fecha después de hoy"); const nota = $("#ag-n").value.trim().slice(0,120);
+        const up = {pendCall:{...pc, dia:d, hora:"", agBy:S.uid, agNota:nota, log:[...(pc.log||[]), {at:Date.now(), by:S.uid, r:`Guardada en la agenda de ${memberName(S.uid)} para el ${fmt(laToMs(d,"12:00"),{day:"numeric",month:"short",year:"numeric"})}${nota?" · "+nota:""}`}]}};
+        chain("appt:"+id, () => S.db.doc("appts/"+id).update(up)).then(() => { closeModal(); toast("Guardada en tu agenda"); render(); }, writeErr); }; }); }
   let up;
   if (k==="nc"){ const n = (pc.intentos||0) + 1; up = n >= PC_MAX ? {pendCall:{...pc, intentos:n, hecho:now, res:"sin_respuesta", log:[...(pc.log||[]), {at:now, by:S.uid, r:`No contestó (${n} veces) · sale de la lista`}]}} : {pendCall:{...pc, intentos:n, dia:addDays(today(),1), log:[...(pc.log||[]), {at:now, by:S.uid, r:"No contestó"}]}}; }
   if (k==="no"){ if (!confirm("¿El cliente ya no quiere la cita? Se marca como cancelada.")) return; up = {status:"cancelada", pendCall:{...pc, hecho:now, res:"no_quiere", log:[...(pc.log||[]), {at:now, by:S.uid, r:"Ya no quiere la cita"}]}}; }
