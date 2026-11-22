@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611211819"></script>
-<script src="anuncios.js?v=202611211819"></script>
-<script src="juego.js?v=202611211819"></script>
+<script src="demo.js?v=202611211821"></script>
+<script src="anuncios.js?v=202611211821"></script>
+<script src="juego.js?v=202611211821"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611211819";
+const APP_VER = "202611211821";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1787,12 +1787,17 @@ function viewCitas(r){
   const grp = isDist() ? [S.uid, ...grupoDe(S.uid).filter(m=>m.role==="socio").map(m=>m.id)] : [S.uid];
   const vis = ([,a]) => r==="socio" ? (grp.includes(a.socioId) && (!S.f.aSocio || a.socioId===S.f.aSocio)) : r==="tele" ? (a.socioId===S.world && (S.f.aSocio!=="_me" || a.teleId===S.uid)) : (S.f.cview==="di" ? (a.socioId!==S.uid && (quienDio(a)===S.uid || a.agendo===S.uid || a.dador===S.uid || a.transferredBy===S.uid)) : S.f.cview!=="terr" ? a.socioId===S.uid : ((!S.f.aSocio || a.socioId===S.f.aSocio) && (!S.f.aTele || a.teleId===S.f.aTele)));
   const fuera = ([,a]) => ["no_se_hizo","cancelada"].includes(a.status) && !(a.segWhen && !a.sale) && laDate(a.when) >= today();
-  const todas = Object.entries(S.appts).filter(vis); const all = S.f.verNo ? todas : todas.filter(x => !fuera(x));
-  const ocultas = S.f.verNo ? 0 : todas.filter(x => fuera(x) && laDate(x[1].when)===day).length;
+  const todas = Object.entries(S.appts).filter(vis); const all = todas;
+  const noHizo = ([,a]) => ["no_se_hizo","cancelada"].includes(a.status) && !segVis(a); /* van abajo, aparte */
+  const misV = r==="socio" || (r==="admin" && S.f.cview!=="terr" && S.f.cview!=="di");
+  const pasadas = misV ? Object.entries(S.appts).filter(([,a]) => a.socioId!==S.uid && !grp.includes(a.socioId) && laDate(a.when)===day && (a.transferredBy===S.uid || quienDio(a)===S.uid || a.dador===S.uid)) : [];
   const names = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
   const week = [...Array(7)].map((_,i) => { const ds = addDays(mon,i); const n = all.filter(([,a])=>laDate(a.when)===ds || (segVis(a) && laDate(a.segWhen)===ds)).length;
     return `<button class="day ${ds===day?"on":""}" data-day="${ds}"><span>${names[i]}</span><b>${+ds.slice(8)}</b><small>${n||"·"}</small></button>`; }).join("");
-  const list = [...all.filter(([,a])=>laDate(a.when)===day).map(([id,a])=>[id,a,false]), ...all.filter(([,a])=>segVis(a) && laDate(a.segWhen)===day).map(([id,a])=>[id,a,true])].sort((x,y)=>(x[2]?x[1].segWhen:x[1].when)-(y[2]?y[1].segWhen:y[1].when));
+  const list0 = [...all.filter(([,a])=>laDate(a.when)===day).map(([id,a])=>[id,a,false]), ...all.filter(([,a])=>segVis(a) && laDate(a.segWhen)===day).map(([id,a])=>[id,a,true])].sort((x,y)=>(x[2]?x[1].segWhen:x[1].when)-(y[2]?y[1].segWhen:y[1].when));
+  const list = list0.filter(x => x[2] || !noHizo(x)), listNo = list0.filter(x => !x[2] && noHizo(x));
+  const nHechas = list.filter(([,a,sg]) => !sg && a.status==="hecha").length, nFaltan = list.filter(([,a,sg]) => !sg && a.status==="agendada").length;
+  const resumenDia = list0.length || pasadas.length ? `<p class="note" style="margin:-4px 0 10px">${[list0.filter(x=>!x[2]).length+" cita(s)", nHechas?nHechas+" hecha(s)":"", nFaltan?nFaltan+" por hacer":"", listNo.length?listNo.length+" no se hizo/cancelada":"", pasadas.length?pasadas.length+" que pasaste":""].filter(Boolean).join(" · ")}</p>` : "";
   const pend = all.filter(([,a])=>a.status==="agendada" && a.tipoVisita!=="servicio" && a.when < Date.now()-3600e3).sort((a,b)=>a[1].when-b[1].when);
   let h = r==="tele" ? worldBar() : "";
   if (r==="admin") h += `<div class="chips" style="margin-bottom:12px"><button class="chip ${S.f.cview!=="terr"&&S.f.cview!=="di"?"on":""}" data-cview="mias">📅 Mis citas</button><button class="chip ${S.f.cview==="di"?"on":""}" data-cview="di">🤝 Citas que di</button><button class="chip ${S.f.cview==="terr"?"on":""}" data-cview="terr">🗺️ Territorio</button></div>`;
@@ -1805,7 +1810,9 @@ function viewCitas(r){
     <div class="week">${week}</div></div>
     ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
     <div class="card" style="padding:10px 12px"><input class="i" id="bq" type="search" placeholder="${role()==="tele"||esAsist() ? "🔍 Buscar cita por nombre o teléfono (todos los socios, cualquier fecha)" : "🔍 Buscar entre tus citas, las que diste y las que te dieron"}" autocomplete="off" value="${esc(S.f.bq||"")}"><div id="bq-r"></div></div>
-    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">Sin citas este día.</div>`}${ocultas||S.f.verNo?`<button class="btn small ghost" id="ver-no" style="margin-top:10px">${S.f.verNo?"Ocultar las que no se hicieron o se cancelaron":`👁️ Ver ${ocultas} que no se hicieron o se cancelaron`}</button>`:""}</div>`;
+    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${resumenDia}${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">${list0.length||pasadas.length ? "No quedan citas activas este día." : "Sin citas este día."}</div>`}
+    ${listNo.length ? `<div class="eyebrow" style="margin:14px 0 6px">❌ No se hicieron o se cancelaron (${listNo.length})</div><p class="note" style="margin:-2px 0 6px">${day >= today() ? "Las que siguen pendientes están en «📞 Llamar para reagendar»." : "Quedan aquí como registro."}</p><div class="list" style="opacity:.85">${listNo.map(([id,a]) => apptItem(id,a)).join("")}</div>` : ""}
+    ${pasadas.length ? `<div class="eyebrow" style="margin:14px 0 6px">🔀 Citas de este día que pasaste (${pasadas.length})</div><div class="list" style="opacity:.85">${pasadas.map(([id,a]) => `<div><div class="note" style="margin:0 0 3px 4px">Ahora la tiene <b>${esc(memberName(a.socioId))}</b>${a.status==="hecha" ? (a.sale ? " · ✅ venta" : " · demo hecha") : a.status==="agendada" ? "" : " · no se hizo"}</div>${apptItem(id,a)}</div>`).join("")}</div>` : ""}</div>`;
   if (r==="tele") h = pendLlamarCard() + h;
   h += citasDiaCard(true);
   if (pend.length) h += `<div class="card"><h2>Pendientes de resultado <span class="tag tg-bad">${pend.length}</span></h2><div class="list">${pend.slice(0,30).map(([id,a])=>apptItem(id,a)).join("")}</div></div>`;
