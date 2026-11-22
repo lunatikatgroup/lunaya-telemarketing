@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611211821"></script>
-<script src="anuncios.js?v=202611211821"></script>
-<script src="juego.js?v=202611211821"></script>
+<script src="demo.js?v=202611211822"></script>
+<script src="anuncios.js?v=202611211822"></script>
+<script src="juego.js?v=202611211822"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611211821";
+const APP_VER = "202611211822";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -370,7 +370,7 @@ function startData(){
     render();
   }, onErr));
 }
-const PRIV_KEYS = ["client","phone","city","address","notes","chat","seen","resNote"];
+const PRIV_KEYS = ["client","phone","city","address","notes","chat","seen","resNote","notasLog"];
 /* Citas transferidas antes del arreglo: quien la recibió marca solo quién se la dio, para que esa persona la siga viendo */
 let dadorFix = new Set();
 function arreglarDador(){ const pv = Object.assign({}, ...Object.values(S.privs||{}));
@@ -382,7 +382,7 @@ function arreglarDador(){ const pv = Object.assign({}, ...Object.values(S.privs|
   /* Ventas: el nombre del cliente queda visible para Dirección (solo el nombre, para la nómina de comisiones); lo pone quien ve los datos de la cita */
   Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || !a.sale || dadorFix.has("nv"+id)) return; const nm = String(q.client||"").trim().slice(0,80);
     if (!nm || a.nomVenta===nm) return; dadorFix.add("nv"+id); S.db.doc("appts/"+id).update({nomVenta:nm}).catch(e => console.log("nomVenta", id, e)); }); }
-function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, dador:q.dador, refBy:q.refBy, _priv:true} : {...x, _priv:false}; }); }
+function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, notasLog:q.notasLog, dador:q.dador, refBy:q.refBy, _priv:true} : {...x, _priv:false}; }); }
 const cName = a => a._priv ? (a.client||"Cliente") : "Cliente privado";
 /* Separar Dirección: cada director ve solo los clientes de sus propios emprendedores.
    Pasa una vez: a los emprendedores sin grupo les pone como grupo a quien los invitó, y ajusta sus citas. */
@@ -1749,6 +1749,15 @@ const estTag = a => { const e = estadoDe(a); return e ? `<span class="tag" style
 const NYC_DIST = () => { const j = Object.entries(S.members||{}).find(([,m]) => /jhojanna/i.test(m.name||"") && m.role==="socio"); return j ? j[0] : ""; };
 /* Cita que salió de un prospecto de un anuncio de Meta */
 const esLeadMeta = a => a.lead === "meta" || /^Anuncio Meta|amiga de [^·]*(meta|anuncio)/i.test(a.notes||"");
+/* Historial de comentarios: cada quien escribe su nota y queda con su nombre */
+const notasDe = a => Array.isArray(a.notasLog) ? a.notasLog : [];
+const notaMia = a => { const l = notasDe(a); const u = l[l.length-1]; return u && u.by===S.uid ? u.t : (!l.length && a.resultBy===S.uid ? (a.resNote||"") : ""); };
+async function guardarNota(id, a, txt){ txt = String(txt||"").trim(); const l = notasDe(a); const u = l[l.length-1];
+  if (!txt || (u && u.t===txt) || (!l.length && txt===(a.resNote||""))) return true;
+  const ent = {at:Date.now(), by:S.uid, t:txt.slice(0,1000)};
+  const nl = u && u.by===S.uid && Date.now()-u.at < 6*3600e3 ? [...l.slice(0,-1), ent] : [...(l.length || !a.resNote ? l : [{at:a.resultAt||0, by:a.resultBy||"", t:a.resNote, viejo:true}]), ent];
+  try { await S.db.doc("apptp/"+id).update({resNote:txt, notasLog:nl.slice(-30)}); return true; } catch(e){ writeErr(e); return false; } }
+const ST_TXT_R = a => a.status==="hecha" ? (a.sale ? "venta" : "demo hecha") : a.status==="no_se_hizo" ? "no se hizo" : a.status==="cancelada" ? "cancelada" : "agendada";
 const segTM = a => !!(a.pendCall && !a.pendCall.hecho && a.pendCall.tipo==="seg" && !a.sale); /* seguimiento que la telemarketer todavía tiene que agendar */
 const segVis = a => !!(a.segWhen && !a.sale && !segTM(a));
 function apptItem(id,a,seg){ const t = seg ? a.segWhen : a.when;
@@ -1889,7 +1898,7 @@ function openAppt(id, o0={}){
   const canClient = a._priv && (r==="admin" || a.agendo===S.uid || a.socioId===S.uid || liderAcc);
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmt(a.when,{weekday:"short",day:"numeric",month:"short"})}, ${horaCita(a)} · hora San Diego · <b>${esc(origenTxt(a))}</b>${a.source?` · ${esc(a.source)}`:""}${a.refBy?` · referida por <b>${esc(a.refBy)}</b>`:""}</div>
-    ${a.status!=="agendada" && (a.resNote || a.refsDemo || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.refsDemo?`<div>👥 <b>${a.refsDemo}</b> referidos sacados en la demo</div>`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado puesto por ${esc(memberName(a.resultBy))}</div>`:""}</div>` : ""}
+    ${a.status!=="agendada" && (a.resNote || a.refsDemo || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${notasDe(a).length ? notasDe(a).map(x => `<div style="margin-bottom:6px">📝 ${esc(x.t)}<div class="note">${x.viejo ? "Comentario anterior" : `— <b>${esc(memberName(x.by))}</b> · ${fmt(x.at,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}`}</div></div>`).join("") : a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.refsDemo?`<div>👥 <b>${a.refsDemo}</b> referidos sacados en la demo</div>`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado (${esc(ST_TXT_R(a))}) marcado por ${esc(memberName(a.resultBy))}${a.resultAt?" · "+fmt(a.resultAt,{weekday:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):""}</div>`:""}</div>` : ""}
     ${a.pendCall && !a.pendCall.hecho ? `<div class="banner warn">📞 <b>Pendiente: llamar ${a.pendCall.dia===today()?"hoy":a.pendCall.dia<today()?"(atrasado) el "+fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"long",day:"numeric"}):"el "+fmt(laToMs(a.pendCall.dia,"12:00"),{weekday:"long",day:"numeric",month:"short"})}</b>${a.pendCall.hora?` · ${esc(a.pendCall.hora)}`:""} ${a.pendCall.tipo==="seg" ? " para agendar el seguimiento" : " para confirmar la nueva hora"}${a.pendCall.intentos?` · ${a.pendCall.intentos} intento(s) sin contestar`:""}
       ${(a.pendCall.log||[]).slice(-3).map(x => `<div class="note" style="color:inherit">• ${fmt(x.at,{weekday:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(x.by))}: ${esc(x.r)}</div>`).join("")}
       ${canEdit||canResult ? `<div class="row" style="margin-top:8px"><button class="btn small" data-pc="ok">✅ Llamé: ya tiene nueva hora</button><button class="btn small ghost" data-pc="nc">📵 No contestó</button><button class="btn small ghost" data-pc="no">🚫 Ya no quiere</button></div>` : ""}</div>` : ""}
@@ -1900,7 +1909,7 @@ function openAppt(id, o0={}){
     <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
     ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
     ${canResult && a.tipoVisita==="servicio" ? `<div class="eyebrow">🛠️ Servicio</div><div class="opts"><button class="opt ${a.status==="hecha"?"on":""}" data-sv="hecha">✅ Hecho</button><button class="opt ${a.status==="no_se_hizo"?"on":""}" data-sv="no_se_hizo">❌ No hecho</button></div>
-      ${a._priv ? `<label class="f" style="margin-top:6px">Nota del servicio<textarea class="i" id="sv-note" maxlength="1000" placeholder="Ej: se cambió la válvula; vuelve en 6 meses…">${esc(a.resNote||"")}</textarea></label><button class="btn small ghost" id="sv-nsave">Guardar nota</button>` : ""}` : ""}
+      ${a._priv ? `<label class="f" style="margin-top:6px">Nota del servicio<textarea class="i" id="sv-note" maxlength="1000" placeholder="Ej: se cambió la válvula; vuelve en 6 meses…">${esc(notaMia(a))}</textarea></label><button class="btn small ghost" id="sv-nsave">Guardar nota</button>` : ""}` : ""}
     ${canResult && a.tipoVisita!=="servicio"?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
       <button class="opt ${a.status==="hecha"&&!a.sale&&!a.segWhen?"on":""}" data-ar="hecha">Demo hecha, sin venta</button>
       <button class="opt ${a.status==="hecha"&&!a.sale&&a.segWhen?"on":""}" data-ar="seguimiento">🔁 Demo hecha, dar seguimiento</button>
@@ -1947,12 +1956,12 @@ function openAppt(id, o0={}){
       return ids.map(id => `<option value="${id}" ${a.pasoPor===id?"selected":""}>${esc(memberName(id))}${id===m.upline?" (su patrocinador)":""}</option>`).join(""); };
     const pb = () => needAc ? `<label class="f" style="grid-column:1/-1">¿Por cuál distribuidor pasó la venta? <b style="color:var(--bad,#c0392b)">*</b><select class="i" id="ar-paso"><option value="">Escoge…</option>${pasoOpts()}</select></label>` : "";
     const rb = () => `<label class="f" style="background:#fff7e6;border:1px solid #f0c674;border-radius:12px;padding:8px 10px">👥 ¿Cuántos referidos sacaste en esta casa? <b style="color:#b91c1c">(obligatorio)</b><input class="i" type="number" min="0" step="1" inputmode="numeric" id="ar-refs" value="${a.refsDemo??""}" placeholder="Escribe el número (0 si no sacaste)"></label>`;
-    const nb = () => a._priv ? `<label class="f" style="grid-column:1/-1">¿Qué pasó con este cliente? (comentario)<textarea class="i" id="ar-note" maxlength="1000" placeholder="Ej: le gustó pero lo quiere hablar con su esposo; tiene ollas viejas…">${esc(a.resNote||"")}</textarea></label>` : "";
-    const saveR = async upd => { if (upd.status==="hecha"){ const ac = readAc(); if (ac===null) return; Object.assign(upd, ac); } const rf = $("#ar-refs"); if (rf && upd.status==="hecha" && String(rf.value).trim()===""){ toast("Escribe cuántos referidos sacaste en esta casa (si no sacaste, pon 0)"); rf.style.outline = "3px solid #b91c1c"; rf.focus(); return; } if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); } catch(e){ writeErr(e); return; } }
+    const nb = () => a._priv ? `<label class="f" style="grid-column:1/-1">¿Qué pasó con este cliente? (comentario)<textarea class="i" id="ar-note" maxlength="1000" placeholder="${a.resNote && !notaMia(a) ? "Escribe tu comentario (el anterior queda guardado con el nombre de quien lo puso)" : "Ej: le gustó pero lo quiere hablar con su esposo; tiene ollas viejas…"}">${esc(notaMia(a))}</textarea></label>` : "";
+    const saveR = async upd => { if (upd.status==="hecha"){ const ac = readAc(); if (ac===null) return; Object.assign(upd, ac); } const rf = $("#ar-refs"); if (rf && upd.status==="hecha" && String(rf.value).trim()===""){ toast("Escribe cuántos referidos sacaste en esta casa (si no sacaste, pon 0)"); rf.style.outline = "3px solid #b91c1c"; rf.focus(); return; } if (rf) upd.refsDemo = Math.max(0, Math.round(+rf.value||0)); else if (upd.status && upd.status!=="hecha") upd.refsDemo = 0; const n = $("#ar-note"); if (n && a._priv){ if (!(await guardarNota(id, S.appts[id] || a, n.value))) return; }
       { const cur = S.appts[id] || a; if (cur._priv && cur.phone) histAdd(cur.socioId, cur.phone, cur.client, histEntry({...cur, ...upd, id}, {note: n ? n.value.trim() : (cur.resNote||"")}), [cur.agendo, cur.dador]); }
       save(upd); };
     const LBL = {hecha:"Guardar: demo sin venta", no_se_hizo:"Guardar: no se hizo", cancelada:"Guardar: cancelada"};
-    const svNote = async () => { const n = $("#sv-note"); if (!n || !a._priv) return true; try { await S.db.doc("apptp/"+id).update({resNote:n.value.trim()}); return true; } catch(e){ writeErr(e); return false; } };
+    const svNote = async () => { const n = $("#sv-note"); if (!n || !a._priv) return true; return guardarNota(id, S.appts[id] || a, n.value); };
     document.querySelectorAll("[data-sv]").forEach(b => b.onclick = async () => { if (!(await svNote())) return; save({status:b.dataset.sv, resultAt:Date.now(), resultBy:S.uid}); });
     $("#sv-nsave") && ($("#sv-nsave").onclick = async () => { if (await svNote()){ toast("Nota guardada"); } });
     document.querySelectorAll("[data-ar]").forEach(b => b.onclick = () => { const k = b.dataset.ar;
