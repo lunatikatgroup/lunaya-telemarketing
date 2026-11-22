@@ -438,7 +438,7 @@ async function startJuego(code, avance){
   /* ===== Tiro al regalo: un pajarito vuela por el cielo llevando el regalo colgado; si la estrella le pega, el regalo cae a la canasta ===== */
   function tiroHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Regalo"};
     return `<style>@keyframes trnube{from{transform:translateX(-120px)}to{transform:translateX(480px)}}@keyframes tral{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.8)}}</style>
-      <div id="tr" style="position:relative;width:min(100%,360px,48vh);aspect-ratio:3/4;margin:6px auto;border-radius:18px;overflow:hidden;background:url(&quot;${J.anuncio ? "fondo-ave-ad.jpg?v=1" : "fondo-ave.jpg?v=1"}&quot;) center/100% 100% no-repeat,#f7efe0;border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
+      <div id="tr" style="position:relative;width:min(100%,360px,48vh);aspect-ratio:3/4;margin:6px auto;border-radius:18px;overflow:hidden;background:url(&quot;${J.anuncio ? "fondo-ave-ad.jpg?v=2" : "fondo-ave.jpg?v=1"}&quot;) center/100% 100% no-repeat,#f7efe0;border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
       ${[[30,18,0],[95,14,-6],[160,16,-12]].map(([t,sz,d])=>`<div style="position:absolute;top:${t}px;left:0;font-size:${sz}px;opacity:.85;animation:trnube ${14+Math.abs(d)}s linear ${d}s infinite">✨</div>`).join("")}
       <div id="tr-g" style="position:absolute;top:0;left:0;width:80px;height:142px;will-change:transform">
         <img id="tr-b" src="ave.png?v=1" alt="" style="position:absolute;left:-52px;top:0;width:104px;height:auto;transform-origin:94px 47px;filter:drop-shadow(0 4px 6px rgba(120,80,0,.35))">
