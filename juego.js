@@ -338,6 +338,9 @@ async function startJuego(code, avance){
   function showIntro(){
     if (J.anuncio && tipo === "quiz") return showQuiz(0, 0);
     if (J.anuncio && tipo === "rasca") return showRaspa9();
+    if (J.anuncio && tipo === "tiro"){ /* anuncio: todo cabe en la pantalla sin bajar */
+      box.innerHTML = `<h1 class="jg-h" style="font-size:clamp(24px,7vw,32px);margin:0 40px;line-height:1.1">¡Dispara y gana! 🎯</h1><p class="jg-p" style="margin:0;font-size:15px"><b>Dale al pajarito y el regalo es tuyo.</b> ¡Totalmente gratis!</p>${tiroHtml()}<p class="jg-small" style="margin:0">Un regalo por persona. Solo mayores de 18 años.</p>`;
+      bindTiro(); return; }
     if (J.anuncio && tipo === "rasca"){ box.innerHTML = scratchAd() + `<p class="jg-p" style="margin:0"><b>👆 Raspa con tu dedo la parte dorada y descubre tu regalo</b><br>¡Totalmente gratis! 🎉</p><p class="jg-small">Un regalo por persona. Solo mayores de 18 años. Sujeto a disponibilidad en tu zona.</p>`; bindScratch(); return; }
     const n = J.n || 0;
     box.innerHTML = `<div class="jg-giftdec">${SVG_GIFT(86)}</div><div class="jg-crownrow"><i></i>${SVG_CROWN}<i></i></div>${J.anuncio ? nameHtml(TI(tipo).corto) + `<div class="jg-pill">${tipo==="ruleta" ? "¡Te ganaste un giro! 🎁" : "¡Te ganaste una oportunidad! 🎁"}</div>` : `<div class="jg-top">${esc(TX.top)}</div>
@@ -438,7 +441,7 @@ async function startJuego(code, avance){
   /* ===== Tiro al regalo: un pajarito vuela por el cielo llevando el regalo colgado; si la estrella le pega, el regalo cae a la canasta ===== */
   function tiroHtml(){ if (saved.pend === undefined){ saved.pend = pickPrize(prizes); save(); } const p = prizes[saved.pend] || {n:"Regalo"};
     return `<style>@keyframes trnube{from{transform:translateX(-120px)}to{transform:translateX(480px)}}@keyframes tral{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.8)}}</style>
-      <div id="tr" style="position:relative;width:min(100%,360px,48vh);aspect-ratio:3/4;margin:6px auto;border-radius:18px;overflow:hidden;background:url(&quot;${J.anuncio ? "fondo-ave-ad.jpg?v=2" : "fondo-ave.jpg?v=1"}&quot;) center/100% 100% no-repeat,#f7efe0;border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
+      <div id="tr" style="position:relative;width:${J.anuncio ? "min(100%,360px,calc((100svh - 265px) * .75))" : "min(100%,360px,48vh)"};aspect-ratio:3/4;margin:6px auto;border-radius:18px;overflow:hidden;background:url(&quot;${J.anuncio ? "fondo-ave-ad.jpg?v=2" : "fondo-ave.jpg?v=1"}&quot;) center/100% 100% no-repeat,#f7efe0;border:3px solid #e2bb4f;touch-action:manipulation;cursor:pointer;user-select:none">
       ${[[30,18,0],[95,14,-6],[160,16,-12]].map(([t,sz,d])=>`<div style="position:absolute;top:${t}px;left:0;font-size:${sz}px;opacity:.85;animation:trnube ${14+Math.abs(d)}s linear ${d}s infinite">✨</div>`).join("")}
       <div id="tr-g" style="position:absolute;top:0;left:0;width:80px;height:142px;will-change:transform">
         <img id="tr-b" src="ave.png?v=1" alt="" style="position:absolute;left:-52px;top:0;width:104px;height:auto;transform-origin:94px 47px;filter:drop-shadow(0 4px 6px rgba(120,80,0,.35))">
@@ -447,7 +450,7 @@ async function startJuego(code, avance){
       <div id="tr-shot" style="position:absolute;left:50%;bottom:30%;font-size:28px;transform:translateX(-50%);opacity:0">⭐</div>
       <div id="tr-msg" style="position:absolute;left:0;right:0;top:48%;text-align:center;font:800 26px Manrope,sans-serif;color:#b3261e;opacity:0;transition:opacity .2s;text-shadow:0 2px 0 #fff"></div>
             </div>
-      <button class="jg-btn go" id="tr-go">¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0" id="tr-int">El pajarito lleva tu ${J.anuncio ? "regalo" : esc(p.n)}: lánzale una estrella y si le das, cae en la canasta.</p>`; }
+      <button class="jg-btn go" id="tr-go"${J.anuncio ? ' style="margin:4px auto 0"' : ""}>¡DISPARAR! ⭐</button><p class="jg-small" style="margin-top:0${J.anuncio ? ";display:none" : ""}" id="tr-int">El pajarito lleva tu ${J.anuncio ? "regalo" : esc(p.n)}: lánzale una estrella y si le das, cae en la canasta.</p>`; }
   function bindTiro(){ const cont = document.getElementById("tr"), g = document.getElementById("tr-g"), bird = document.getElementById("tr-b"); if (!cont) return; const i = saved.pend;
     let x = 46, y = 14, dir = 1, last = performance.now(), t0 = last, vel = Math.max(300, cont.clientWidth * 1.05), busy = false, fin = false, intentos = 0, apunta = false;
     (function mv(t){ if (!document.body.contains(g) || fin) return; const dt = Math.min(.05, (t-last)/1000); last = t; const max = cont.clientWidth - g.offsetWidth - 46;
