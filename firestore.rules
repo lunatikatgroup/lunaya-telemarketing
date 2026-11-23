@@ -265,7 +265,8 @@ service cloud.firestore {
          && request.resource.data.n == resource.data.get('n', 0) + 1
          && request.resource.data.last.matches('^' + code + '_[0-9]{10}$')
          && existsAfter(leadPath(request.resource.data.last)) && !exists(leadPath(request.resource.data.last));
-      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref', 'alias', 'regalos', 'visitas', 'ganados', 'avisados']);
+      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref', 'alias', 'regalos', 'visitas', 'ganados', 'avisados', 'img'])
+         && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 700000));
       // Anuncios: cuenta cuántos entraron y cuántos jugaron (de uno en uno)
       allow update: if resource.data.get('anuncio', false) == true
          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vis'])

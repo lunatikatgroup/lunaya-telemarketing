@@ -37,7 +37,7 @@ async function imgBase64(src){ const im = await loadImg(src); const c = document
   c.width = W; c.height = H; c.getContext("2d").drawImage(im, 0, 0, W, H); return c.toDataURL("image/jpeg", 0.88).split(",")[1]; }
 
 function anunciosCard(){
-  if (role()!=="admin" && !S.me?.anuncios) return "";
+  if (role()!=="admin") return ""; /* los distribuidores usan «Mis anuncios en Meta» (plantillasCard) */
   const id = adsAppId(); if (id && !AD.ready) fbCargar().catch(e => console.log("fb", e)); const mis = Object.entries(S.anuncios||{}).filter(([,a]) => a.owner===S.uid).sort((a,b) => (b[1].at||0) - (a[1].at||0));
   return `<div class="card"><h2>📣 Anuncios en Meta<span class="note">Facebook · Instagram · Estados de WhatsApp</span></h2>
     ${!id ? (role()==="admin" ? `<p class="note" style="margin-top:-6px">Pega aquí el <b>ID de la app</b> que creaste en developers.facebook.com.</p><div class="row" style="flex-wrap:nowrap"><input class="i" id="ad-appid" inputmode="numeric" placeholder="ID de la app (solo números)"><button class="btn small" id="ad-appid-s">Guardar</button></div>` : `<div class="note">Todavía no está lista la conexión con Meta.</div>`)
