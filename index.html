@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611231203"></script>
-<script src="anuncios.js?v=202611231203"></script>
-<script src="juego.js?v=202611231203"></script>
+<script src="demo.js?v=202611231216"></script>
+<script src="anuncios.js?v=202611231216"></script>
+<script src="juego.js?v=202611231216"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611231203";
+const APP_VER = "202611231216";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1195,7 +1195,7 @@ function render(){
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
-  html += relojBar() + cumpleCard() + motivaCard() + codigosBtn() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
+  html += mesBar() + relojBar() + cumpleCard() + motivaCard() + codigosBtn() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
   html += pendBanner();
   if ("Notification" in window && Notification.permission==="default" && !S.notiAsked) html += `<div class="banner" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🔔 Activa los avisos para saber cuando te asignen una cita o te escriban.</span><button class="btn small" id="noti-on">Activar avisos</button></div>`;
   { const nl = Object.entries(S.leads||{}).filter(([,l]) => l.kind==="jugador" && l.status==="nuevo" && !(l.intentos||[]).length && !l.notes && S.juegos?.[l.code]?.anuncio).sort((a,b) => (a[1].at||0)-(b[1].at||0));
@@ -2620,6 +2620,31 @@ function openOtroAgenda(){ const t = today();
       try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"actividad", nombre:n.slice(0,80), tel:"", when:laToMs(d,h), nota:$("#ot-x").value.trim().slice(0,200), hecho:false, at:Date.now(), ...($("#ot-r").value ? {rep:$("#ot-r").value} : {})}); S.f.mag = d; closeModal(); toast("Agregado a tu agenda"); render(); } catch(err){ writeErr(err); } }; }); }
 /* ===== Códigos de productos (sin precios): para llenar las órdenes ===== */
 const puedeCodigos = () => role()==="admin" || role()==="socio";
+/* ===== ¿Qué se celebra este mes? Sale arriba en todas las pantallas para que todos llamen con ese objetivo ===== */
+const MES_DEF = {
+  1:{t:"Año Nuevo · Día de Reyes (6)", o:"Propósitos de año nuevo: comer más sano y cuidar la familia. «Empieza el año cocinando saludable»."},
+  2:{t:"San Valentín (14) · Mes del Corazón", o:"Regalo para la pareja y salud del corazón: cocinar sin grasa. «El mejor regalo es cuidarse juntos»."},
+  3:{t:"Día de la Mujer (8) · Mes de la Nutrición", o:"Reconocer a la mujer de la casa y la buena alimentación. «Un regalo para ti, que cuidas a todos»."},
+  4:{t:"Semana Santa · Pascua · Día del Niño (30)", o:"Reuniones familiares y comidas de temporada. «Cocina para toda la familia en estas fechas»."},
+  5:{t:"Día de las Madres (10 de mayo y 2.º domingo) · Memorial Day", o:"El mes más fuerte del año: regalo para mamá. «Dale a mamá algo que use todos los días»."},
+  6:{t:"Día del Padre (3.er domingo) · Graduaciones · Bodas", o:"Regalos para papá, graduados y recién casados. «El primer juego de cocina de su nuevo hogar»."},
+  7:{t:"4 de Julio · Parrilladas de verano", o:"Reuniones y parrilladas en familia. «Cocina rápido y sano este verano»."},
+  8:{t:"Regreso a clases", o:"Loncheras y comidas sanas para los niños. «Cocina rápido y sano para el regreso a clases»."},
+  9:{t:"Independencias (15 y 16) · Mes de la Herencia Hispana · Labor Day", o:"Orgullo latino y comida de nuestra tierra. «Cocina nuestras recetas de siempre, más sano»."},
+  10:{t:"Mes de la Herencia Hispana (hasta el 15) · Mes de la lucha contra el cáncer de mama · Halloween", o:"Salud y prevención: comer sin químicos ni grasa. «Cuida tu salud desde tu cocina»."},
+  11:{t:"Acción de Gracias (4.º jueves) · Black Friday · Cyber Monday", o:"Las mejores ofertas del año y la cena de Acción de Gracias. «Aprovecha las ofertas de Black Friday para tu cocina»."},
+  12:{t:"Navidad · Nochebuena · Fin de año", o:"Regalo de Navidad para la familia y cenas en casa. «El regalo que toda la familia disfruta»."}};
+function mesInfo(){ const ym = today().slice(0,7), m = +ym.slice(5,7); const c = (S.config?.mesTema||{})[ym]; return {ym, m, t: c?.t || MES_DEF[m].t, o: c?.o || MES_DEF[m].o}; }
+function mesBar(){ if (!S.me && !S.isOwner) return ""; const x = mesInfo(); const nom = fmt(laToMs(x.ym+"-15","12:00"),{month:"long"});
+  return `<button class="banner" data-act="mes" style="width:100%;text-align:left;display:block;background:linear-gradient(90deg,#7a1f3d,#a8761b);color:#fff;border:0;margin-bottom:10px;cursor:pointer"><b>📅 ${esc(nom[0].toUpperCase()+nom.slice(1))}: ${esc(x.t)}</b><div style="font-size:13px;opacity:.92;margin-top:2px">🎯 ${esc(x.o)}</div></button>`; }
+function openMes(){ const x = mesInfo(); const adm = role()==="admin";
+  const sig = addMonths(x.ym+"-01", 1).slice(0,7), ms = +sig.slice(5,7), cs = (S.config?.mesTema||{})[sig];
+  openModal(`<h3>📅 ¿Qué se celebra este mes?</h3>${adm ? `<label class="f">Lo que se celebra<input class="i" id="ms-t" value="${esc(x.t)}" maxlength="120"></label><label class="f">Objetivo de las llamadas<textarea class="i" id="ms-o" maxlength="300" style="min-height:80px">${esc(x.o)}</textarea></label><p class="note">Lo ven arriba todas las personas del equipo. Si lo dejas como está, cada mes sale lo de siempre.</p><div class="row"><button class="btn" id="ms-ok">Guardar</button><button class="btn ghost" id="ms-def">Volver a lo de siempre</button><button class="btn ghost" data-close>Cerrar</button></div>`
+    : `<p><b>${esc(x.t)}</b></p><p>🎯 ${esc(x.o)}</p><div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`}
+    <p class="note" style="margin-top:12px">El mes que viene: <b>${esc(cs?.t || MES_DEF[ms].t)}</b></p>`, () => {
+    const sv = v => S.db.doc("config/main").set({mesTema:{[x.ym]: v}}, {merge:true}).then(() => { closeModal(); toast("Guardado"); render(); }, writeErr);
+    const ok = document.getElementById("ms-ok"); if (ok) ok.onclick = () => sv({t:$("#ms-t").value.trim().slice(0,120), o:$("#ms-o").value.trim().slice(0,300)});
+    const df = document.getElementById("ms-def"); if (df) df.onclick = () => sv(firebase.firestore.FieldValue.delete()); }); }
 function codigosBtn(){ return puedeCodigos() ? `<div class="row" style="justify-content:flex-end;gap:6px;margin:-4px 0 10px"><button class="btn small ghost" data-act="calc">🧮 Calculadora</button><button class="btn small ghost" data-act="codigos">📦 Códigos de productos</button></div>` : ""; }
 /* Búsqueda de productos tolerante: sin acentos, con o sin espacios ("fresca flow" = "frescaflow") y perdona una letra al final de palabras largas */
 const normProd = t => String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
@@ -2773,6 +2798,7 @@ function bindCommon(){
     if (a==="backup-all") return doBackupAll();
     if (a==="codigos") return openCodigos();
     if (a==="calc") return openCalc();
+    if (a==="mes") return openMes();
     if (a==="rep-img") return reporteImagen().catch(e => { console.log(e); toast("No se pudo crear la imagen"); });
     if (a==="rep-pdf") return reportePdf();
     if (a==="rd-pdf") return repDistPdf();
