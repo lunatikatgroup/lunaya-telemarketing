@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611231238"></script>
-<script src="anuncios.js?v=202611231238"></script>
-<script src="juego.js?v=202611231238"></script>
+<script src="demo.js?v=202611231248"></script>
+<script src="anuncios.js?v=202611231248"></script>
+<script src="juego.js?v=202611231248"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611231238";
+const APP_VER = "202611231248";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -840,9 +840,12 @@ const duenoOrig = a => { if (!a.transferredFrom || a.transferredFrom === a.socio
   return ""; };
 const pasoQuien = a => { const o = duenoOrig(a); if (o) return o; const b = S.members[a.transferredBy]; return a.transferredBy && b && (b.role==="socio" || b.role==="admin") ? a.transferredBy : a.transferredFrom; };
 function quienDio(a){ if (a.transferredFrom && a.transferredFrom !== a.socioId) return pasoQuien(a); const o = origenDe(a); if (o !== "asig") return ""; const d = dadorDe(a); const m = S.members[d]; return m && (m.role==="socio" || m.role==="admin") ? d : ""; }
+/* Citas de leads de Meta entre Katerine y Andrés: la publicidad la pagan los dos, así que no se cobran % de pase entre ellos */
+const esDirX = u => !!u && (u===ownerUid() || S.members[u]?.role==="admin");
+const sinPaseDir = (a, da, paga) => esLeadMeta(a) && esDirX(da) && esDirX(paga);
 function pases(r){ const out = [];
   Object.entries(S.appts).forEach(([id,a]) => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r)) return; const da = quienDio(a); if (!da || da === a.socioId) return;
-    const sm = S.members[a.socioId] || {}; const paga = pagaVenta(a); if (!paga || paga === da) return;
+    const sm = S.members[a.socioId] || {}; const paga = pagaVenta(a); if (!paga || paga === da || sinPaseDir(a, da, paga)) return;
     const pp = planPase(paga); const dm = S.members[da] || {}; const pct = pp ? (da===ownerUid() ? +pp.dir : +pp.dist) : PASE_PCT(); const m = (+a.amount||0) * pct / 100; out.push({id, a, dio:da, paga, pct, m}); });
   return out; }
 const nomCli = a => a._priv && a.client ? a.client : (a.nomVenta || "(nombre pendiente)");
@@ -872,7 +875,7 @@ function deudasSemana(rg){ const out = {}; const D = p => (out[p] ||= {payer:p, 
     const t = S.members[a.teleId]; const esTM = origenDe(a)==="tm" && !(t && t.upline);
     if (esTM && paga!==ownerUid() && !(planPase(paga) && da && da!==paga && da!==a.socioId && da===ownerUid())){ const ppT = planPase(paga), pasadaOtro = ppT && da && da!==paga && da!==a.socioId && da!==ownerUid(); const pct = pm.role==="admin" ? costoTM(a) : (pasadaOtro ? +(ppT.tmOtro ?? 5) : aporteDe(paga)); add(paga, ownerUid(), "tm", a, id, pct, amt*pct/100); } /* plan especial: cita que le pasa Andrés u otro distribuidor = acuerdo de ellos (10%) + 5% de telemarketing */
     /* cita pasada */
-    if (da && da!==a.socioId && da!==paga){ const pp = planPase(paga), dm = S.members[da] || {}; const pct = pp ? (da===ownerUid() ? +pp.dir : +pp.dist) : PASE_PCT(); const m = amt*pct/100;
+    if (da && da!==a.socioId && da!==paga && !sinPaseDir(a, da, paga)){ const pp = planPase(paga), dm = S.members[da] || {}; const pct = pp ? (da===ownerUid() ? +pp.dir : +pp.dist) : PASE_PCT(); const m = amt*pct/100;
       /* Si la cita la pasó un emprendedor, el que vendió le paga a su patrocinador (ej. Katerine) y el patrocinador le paga al emprendedor */
       const dp = esEmp(dm) ? (pagadorDe(da) || da) : da;
       if (dp !== da){ if (dp !== paga) add(paga, dp, "pase", a, id, pct, m); add(dp, da, "emp", a, id, pct, m); } else add(paga, da, "pase", a, id, pct, m); }
