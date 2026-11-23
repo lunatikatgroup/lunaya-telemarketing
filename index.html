@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611231237"></script>
-<script src="anuncios.js?v=202611231237"></script>
-<script src="juego.js?v=202611231237"></script>
+<script src="demo.js?v=202611231238"></script>
+<script src="anuncios.js?v=202611231238"></script>
+<script src="juego.js?v=202611231238"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611231237";
+const APP_VER = "202611231238";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -831,7 +831,14 @@ function liderNominaCard(rg, p){ const lp = +(planTeleDe("").liderPct||0); const
     <div class="tbl-wrap"><table><thead><tr><th>Fecha</th><th>Cliente</th><th>Telemarketer</th><th>Vendió</th><th class="n">Venta</th><th class="n">Tu ${lp}%</th></tr></thead><tbody>${v.map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td><b>${esc(nomCli(a))}</b></td><td>${esc(memberName(a.teleId))}</td><td>${esc(memberName(a.socioId))}</td><td class="n">${money(+a.amount||0)}</td><td class="n">${money((+a.amount||0)*lp/100)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty">Todavía no hay ventas aprobadas del equipo en este periodo.</div>`}</div>`; }
 /* ===== Comisión por pasar una cita (5%): quien dio la cita cobra; paga la compañía por donde pasó la venta ===== */
 const PASE_PCT = () => +(S.config.pasePct ?? 5);
-const pasoQuien = a => { const b = S.members[a.transferredBy]; return a.transferredBy && b && (b.role==="socio" || b.role==="admin") ? a.transferredBy : a.transferredFrom; };
+/* Dueño original de la cita: el primer socio que la tuvo. Si pasa de mano en mano (Katerine → Rebeca → Andrés → Catalina),
+   el % del pase se le paga al dueño original, no al último que la pasó. Las viejas se reconstruyen con el historial del chat. */
+const duenoOrig = a => { if (!a.transferredFrom || a.transferredFrom === a.socioId) return "";
+  if (a.dueno && a.dueno !== a.socioId) return a.dueno;
+  const tm = (a.chat||[]).map(c => /^🔀 Cita transferida de (.+?) a /.exec(c.text||"")).find(Boolean);
+  if (tm){ const id = Object.keys(S.members).find(k => memberName(k) === tm[1]); if (id && id !== a.socioId) return id; }
+  return ""; };
+const pasoQuien = a => { const o = duenoOrig(a); if (o) return o; const b = S.members[a.transferredBy]; return a.transferredBy && b && (b.role==="socio" || b.role==="admin") ? a.transferredBy : a.transferredFrom; };
 function quienDio(a){ if (a.transferredFrom && a.transferredFrom !== a.socioId) return pasoQuien(a); const o = origenDe(a); if (o !== "asig") return ""; const d = dadorDe(a); const m = S.members[d]; return m && (m.role==="socio" || m.role==="admin") ? d : ""; }
 function pases(r){ const out = [];
   Object.entries(S.appts).forEach(([id,a]) => { if (!a.sale || a.saleStatus!=="aprobada" || !inR(a.when||0, r)) return; const da = quienDio(a); if (!da || da === a.socioId) return;
@@ -1530,7 +1537,7 @@ function origenDe(a){ const t = S.members[a.teleId]; if (a.teleCredit || a.orige
   if (a.transferredFrom && a.transferredFrom!==a.socioId) return "asig"; return (a.agendo||a.teleId)===a.socioId ? "propia" : "asig"; }
 /* Quién le dio la cita al socio (telemarketer, quien se la transfirió o quien la agendó) */
 function dadorDe(a){ const o = origenDe(a); return o==="tm" ? a.teleId : o==="asig" ? (a.transferredFrom && a.transferredFrom!==a.socioId ? a.transferredFrom : (a.agendo||a.teleId)) : a.socioId; }
-function origenTxt(a){ const o = origenDe(a); const da = quienDio(a); return o==="tm" ? `📞 Telemarketing · ${memberName(a.teleId)}${da && da!==a.socioId ? ` · 🤝 se la pasó ${memberName(da)}` : ""}` : o==="asig" ? `🤝 Asignada por ${memberName(dadorDe(a))}` : "🙋 Propia"; }
+function origenTxt(a){ const o = origenDe(a); const da = quienDio(a); return o==="tm" ? `📞 Telemarketing · ${memberName(a.teleId)}${da && da!==a.socioId ? (a.transferredFrom && a.transferredFrom!==da && a.transferredFrom!==a.socioId ? ` · 👑 dueño ${memberName(da)} · 🤝 se la pasó ${memberName(a.transferredFrom)}` : ` · 🤝 se la pasó ${memberName(da)}`) : ""}` : o==="asig" ? `🤝 Asignada por ${memberName(dadorDe(a))}` : "🙋 Propia"; }
 function socioEval(id, r){
   const ap = Object.values(S.appts).filter(a => a.socioId===id && a.tipoVisita!=="servicio" && inR(a.when||0, r));
   const past = ap.filter(a => a.when <= Date.now());
@@ -1861,7 +1868,7 @@ function transfBanner(){ const l = transfPorAprobar(); const mias = Object.entri
 /* Cuando el patrocinador aprueba, quien la pidió hace el traspaso solo */
 let trDoing = new Set();
 /* Cita que se le dio a otro socio y no se pudo hacer (no se hizo o se canceló): regresa sola a su dueño (quien la dio), para que la reprograme o se la pase a otro */
-const duenoDe = a => { if (a.transferredFrom && a.transferredFrom !== a.socioId) return a.transferredFrom; const ag = a.agendo || a.teleId, m = S.members[ag];
+const duenoDe = a => { if (a.transferredFrom && a.transferredFrom !== a.socioId) return duenoOrig(a) || a.transferredFrom; const ag = a.agendo || a.teleId, m = S.members[ag];
   return ag && ag !== a.socioId && m && (m.role==="socio" || m.role==="admin") ? ag : ""; };
 const devDoing = new Set();
 async function devolverAppt(id){ const a = S.appts[id]; if (!a) return; const to = duenoDe(a), m = S.members[to]; if (!to || !m) return; const now = Date.now(), de = a.socioId;
@@ -1895,7 +1902,7 @@ async function transferAppt(id, to, clearReq){
   const a = S.appts[id], m = S.members[to]; if (!a || !m) return;
   const now = Date.now(), from = memberName(a.socioId);
   await S.db.doc("apptp/"+id).update({socioId:to, dir: m.tipo!==DIST && !m.upline, up: m.upline||"", tv: S.members[pagadorDe(to)]?.role==="admin", dador: a.socioId, chat: firebase.firestore.FieldValue.arrayUnion({at:now, by:S.uid, text:`🔀 Cita transferida de ${from} a ${m.name}`})});
-  await S.db.doc("appts/"+id).update({socioId:to, transferredFrom:a.socioId, transferredAt:now, transferredBy:S.uid, ...(clearReq ? {transferReq:firebase.firestore.FieldValue.delete()} : {})});
+  await S.db.doc("appts/"+id).update({socioId:to, transferredFrom:a.socioId, transferredAt:now, transferredBy:S.uid, dueno: duenoOrig(a) || a.socioId, ...(clearReq ? {transferReq:firebase.firestore.FieldValue.delete()} : {})});
 }
 function openAppt(id, o0={}){
   const a = S.appts[id]; if (!a) return; S.openPrivState = !!a._priv; const r = role();
