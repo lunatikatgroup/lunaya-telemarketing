@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611231216"></script>
-<script src="anuncios.js?v=202611231216"></script>
-<script src="juego.js?v=202611231216"></script>
+<script src="demo.js?v=202611231237"></script>
+<script src="anuncios.js?v=202611231237"></script>
+<script src="juego.js?v=202611231237"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611231216";
+const APP_VER = "202611231237";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2621,29 +2621,37 @@ function openOtroAgenda(){ const t = today();
 /* ===== Códigos de productos (sin precios): para llenar las órdenes ===== */
 const puedeCodigos = () => role()==="admin" || role()==="socio";
 /* ===== ¿Qué se celebra este mes? Sale arriba en todas las pantallas para que todos llamen con ese objetivo ===== */
+/* n-ésimo día de la semana del mes (dw: 0=domingo); n=-1 = el último */
+const nthDia = (y, m, dw, n) => { if (n > 0){ const f = new Date(Date.UTC(y, m-1, 1)).getUTCDay(); return 1 + (dw - f + 7) % 7 + (n-1)*7; } const ld = new Date(Date.UTC(y, m, 0)).getUTCDate(), l = new Date(Date.UTC(y, m-1, ld)).getUTCDay(); return ld - (l - dw + 7) % 7; };
+const pascua = y => { const a = y%19, b = Math.floor(y/100), c = y%100, d = Math.floor(b/4), e = b%4, f = Math.floor((b+8)/25), g = Math.floor((b-f+1)/3), h = (19*a+b-d-g+15)%30, i = Math.floor(c/4), k = c%4, l = (32+2*e+2*i-h-k)%7, m = Math.floor((a+11*h+22*l)/451); return [Math.floor((h+l-7*m+114)/31), ((h+l-7*m+114)%31)+1]; };
 const MES_DEF = {
-  1:{t:"Año Nuevo · Día de Reyes (6)", o:"Propósitos de año nuevo: comer más sano y cuidar la familia. «Empieza el año cocinando saludable»."},
-  2:{t:"San Valentín (14) · Mes del Corazón", o:"Regalo para la pareja y salud del corazón: cocinar sin grasa. «El mejor regalo es cuidarse juntos»."},
-  3:{t:"Día de la Mujer (8) · Mes de la Nutrición", o:"Reconocer a la mujer de la casa y la buena alimentación. «Un regalo para ti, que cuidas a todos»."},
-  4:{t:"Semana Santa · Pascua · Día del Niño (30)", o:"Reuniones familiares y comidas de temporada. «Cocina para toda la familia en estas fechas»."},
-  5:{t:"Día de las Madres (10 de mayo y 2.º domingo) · Memorial Day", o:"El mes más fuerte del año: regalo para mamá. «Dale a mamá algo que use todos los días»."},
-  6:{t:"Día del Padre (3.er domingo) · Graduaciones · Bodas", o:"Regalos para papá, graduados y recién casados. «El primer juego de cocina de su nuevo hogar»."},
-  7:{t:"4 de Julio · Parrilladas de verano", o:"Reuniones y parrilladas en familia. «Cocina rápido y sano este verano»."},
-  8:{t:"Regreso a clases", o:"Loncheras y comidas sanas para los niños. «Cocina rápido y sano para el regreso a clases»."},
-  9:{t:"Independencias (15 y 16) · Mes de la Herencia Hispana · Labor Day", o:"Orgullo latino y comida de nuestra tierra. «Cocina nuestras recetas de siempre, más sano»."},
-  10:{t:"Mes de la Herencia Hispana (hasta el 15) · Mes de la lucha contra el cáncer de mama · Halloween", o:"Salud y prevención: comer sin químicos ni grasa. «Cuida tu salud desde tu cocina»."},
-  11:{t:"Acción de Gracias (4.º jueves) · Black Friday · Cyber Monday", o:"Las mejores ofertas del año y la cena de Acción de Gracias. «Aprovecha las ofertas de Black Friday para tu cocina»."},
-  12:{t:"Navidad · Nochebuena · Fin de año", o:"Regalo de Navidad para la familia y cenas en casa. «El regalo que toda la familia disfruta»."}};
-function mesInfo(){ const ym = today().slice(0,7), m = +ym.slice(5,7); const c = (S.config?.mesTema||{})[ym]; return {ym, m, t: c?.t || MES_DEF[m].t, o: c?.o || MES_DEF[m].o}; }
-function mesBar(){ if (!S.me && !S.isOwner) return ""; const x = mesInfo(); const nom = fmt(laToMs(x.ym+"-15","12:00"),{month:"long"});
-  return `<button class="banner" data-act="mes" style="width:100%;text-align:left;display:block;background:linear-gradient(90deg,#7a1f3d,#a8761b);color:#fff;border:0;margin-bottom:10px;cursor:pointer"><b>📅 ${esc(nom[0].toUpperCase()+nom.slice(1))}: ${esc(x.t)}</b><div style="font-size:13px;opacity:.92;margin-top:2px">🎯 ${esc(x.o)}</div></button>`; }
+  1:{tema:"Mes de Año Nuevo", dias:y => [[1,"Año Nuevo"],[6,"Día de Reyes"]], o:"Propósitos de año nuevo: comer más sano y cuidar a la familia. «Empieza el año cocinando saludable»."},
+  2:{tema:"Mes del Amor y del Corazón", dias:y => [[14,"San Valentín"]], o:"Regalo para la pareja y salud del corazón: cocinar sin grasa. «El mejor regalo es cuidarse juntos»."},
+  3:{tema:"Mes de la Mujer y la Nutrición", dias:y => { const [pm,pd] = pascua(y); return [[8,"Día de la Mujer"], ...(pm===3 ? [[pd,"Pascua"]] : [])]; }, o:"Reconocer a la mujer de la casa y la buena alimentación. «Un regalo para ti, que cuidas a todos»."},
+  4:{tema:"Mes de la Familia", dias:y => { const [pm,pd] = pascua(y); return [...(pm===4 ? [[pd,"Pascua"]] : []), [30,"Día del Niño"]]; }, o:"Reuniones familiares y comidas de temporada. «Cocina para toda la familia en estas fechas»."},
+  5:{tema:"Mes de las Madres", dias:y => [[10,"Día de las Madres (México)"],[nthDia(y,5,0,2),"Día de las Madres (EE. UU.)"],[nthDia(y,5,1,-1),"Memorial Day"]].sort((a,b)=>a[0]-b[0]), o:"El mes más fuerte del año: regalo para mamá. «Dale a mamá algo que use todos los días»."},
+  6:{tema:"Mes de los Padres y las Graduaciones", dias:y => [[nthDia(y,6,0,3),"Día del Padre"]], o:"Regalos para papá, graduados y recién casados. «El primer juego de cocina de su nuevo hogar»."},
+  7:{tema:"Mes del Verano", dias:y => [[4,"Día de la Independencia (EE. UU.)"]], o:"Reuniones y parrilladas en familia. «Cocina rápido y sano este verano»."},
+  8:{tema:"Mes del Regreso a Clases", dias:y => [], o:"Loncheras y comidas sanas para los niños. «Cocina rápido y sano para el regreso a clases»."},
+  9:{tema:"Mes de la Herencia Hispana", dias:y => [[nthDia(y,9,1,1),"Labor Day"],[15,"Inicia el Mes de la Herencia Hispana"],[16,"Independencia de México"]].sort((a,b)=>a[0]-b[0]), o:"Orgullo latino y comida de nuestra tierra. «Cocina nuestras recetas de siempre, más sano»."},
+  10:{tema:"Mes de la Prevención y la Salud", dias:y => [[15,"Termina el Mes de la Herencia Hispana"],[31,"Halloween"]], o:"Mes de la lucha contra el cáncer de mama: salud y prevención desde la cocina. «Cuida tu salud desde tu cocina»."},
+  11:{tema:"Mes de Acción de Gracias", dias:y => { const ag = nthDia(y,11,4,4); return [[ag,"Acción de Gracias"],[ag+1,"Black Friday"],[ag+4 <= 30 ? ag+4 : ag+4-30, ag+4 <= 30 ? "Cyber Monday" : "Cyber Monday (dic)"]].filter(x => !/dic/.test(x[1])); }, o:"Las mejores ofertas del año y la cena de Acción de Gracias. «Aprovecha las ofertas de Black Friday para tu cocina»."},
+  12:{tema:"Mes de la Navidad", dias:y => [[24,"Nochebuena"],[25,"Navidad"],[31,"Fin de año"]], o:"Regalo de Navidad para la familia y cenas en casa. «El regalo que toda la familia disfruta»."}};
+function mesInfo(ym0){ const ym = ym0 || today().slice(0,7), y = +ym.slice(0,4), m = +ym.slice(5,7); const c = (S.config?.mesTema||{})[ym], d = MES_DEF[m];
+  return {ym, y, m, tema: c?.tema || c?.t || d.tema, o: c?.o || d.o, dias: d.dias(y), nom: fmt(laToMs(ym+"-15","12:00"),{month:"long"})}; }
+function mesBar(){ if (!S.me && !S.isOwner) return ""; const x = mesInfo(); const hoy = +today().slice(8,10), cap = s => s[0].toUpperCase()+s.slice(1);
+  const dia = ([d,l]) => { const p = d < hoy, h = d === hoy; return `<span style="display:inline-flex;align-items:center;gap:6px;background:${h?"#fff":"rgba(255,255,255,.16)"};color:${h?"#7a1f3d":"#fff"};border-radius:999px;padding:4px 10px 4px 4px;font-size:13px;font-weight:600;opacity:${p?.55:1}"><b style="background:${h?"#7a1f3d":"#f8e3a0"};color:${h?"#fff":"#7a1f3d"};border-radius:999px;min-width:26px;height:26px;display:grid;place-items:center;font-size:13px">${d}</b>${esc(l)}${h?" · ¡hoy!":""}</span>`; };
+  return `<button data-act="mes" style="width:100%;text-align:left;display:block;background:linear-gradient(120deg,#7a1f3d 0%,#9c2f4f 55%,#a8761b 100%);color:#fff;border:0;border-radius:18px;padding:14px 16px;margin-bottom:12px;cursor:pointer;box-shadow:0 6px 18px rgba(122,31,61,.25)">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font-family:var(--serif,Georgia),serif;font-size:30px;font-weight:700;line-height:1">${esc(cap(x.nom))}</span><span style="font-size:15px;font-weight:700;color:#f8e3a0;letter-spacing:.02em">${esc(x.tema)}</span></div>
+    ${x.dias.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${x.dias.map(dia).join("")}</div>` : ""}
+    <div style="margin-top:10px;font-size:13.5px;line-height:1.35;background:rgba(0,0,0,.14);border-radius:12px;padding:8px 10px">🎯 <b>Llama con este objetivo:</b> ${esc(x.o)}</div></button>`; }
 function openMes(){ const x = mesInfo(); const adm = role()==="admin";
-  const sig = addMonths(x.ym+"-01", 1).slice(0,7), ms = +sig.slice(5,7), cs = (S.config?.mesTema||{})[sig];
-  openModal(`<h3>📅 ¿Qué se celebra este mes?</h3>${adm ? `<label class="f">Lo que se celebra<input class="i" id="ms-t" value="${esc(x.t)}" maxlength="120"></label><label class="f">Objetivo de las llamadas<textarea class="i" id="ms-o" maxlength="300" style="min-height:80px">${esc(x.o)}</textarea></label><p class="note">Lo ven arriba todas las personas del equipo. Si lo dejas como está, cada mes sale lo de siempre.</p><div class="row"><button class="btn" id="ms-ok">Guardar</button><button class="btn ghost" id="ms-def">Volver a lo de siempre</button><button class="btn ghost" data-close>Cerrar</button></div>`
-    : `<p><b>${esc(x.t)}</b></p><p>🎯 ${esc(x.o)}</p><div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`}
-    <p class="note" style="margin-top:12px">El mes que viene: <b>${esc(cs?.t || MES_DEF[ms].t)}</b></p>`, () => {
+  const sx = mesInfo(addMonths(x.ym+"-01", 1).slice(0,7));
+  openModal(`<h3>📅 ¿Qué se celebra este mes?</h3>${adm ? `<label class="f">Tema del mes<input class="i" id="ms-t" value="${esc(x.tema)}" maxlength="80"></label><label class="f">Objetivo de las llamadas<textarea class="i" id="ms-o" maxlength="300" style="min-height:80px">${esc(x.o)}</textarea></label><p class="note">Lo ven arriba todas las personas del equipo. Si lo dejas como está, cada mes sale lo de siempre.</p><div class="row"><button class="btn" id="ms-ok">Guardar</button><button class="btn ghost" id="ms-def">Volver a lo de siempre</button><button class="btn ghost" data-close>Cerrar</button></div>`
+    : `<p><b>${esc(x.tema)}</b></p><p>${x.dias.map(([d,l]) => `<b>${d}</b> · ${esc(l)}`).join("<br>")}</p><p>🎯 ${esc(x.o)}</p><div class="row"><button class="btn ghost" data-close>Cerrar</button></div>`}
+    <p class="note" style="margin-top:12px">El mes que viene: <b>${esc(sx.tema)}</b>${sx.dias.length ? " · " + sx.dias.map(([d,l]) => d+" "+esc(l)).join(" · ") : ""}</p>`, () => {
     const sv = v => S.db.doc("config/main").set({mesTema:{[x.ym]: v}}, {merge:true}).then(() => { closeModal(); toast("Guardado"); render(); }, writeErr);
-    const ok = document.getElementById("ms-ok"); if (ok) ok.onclick = () => sv({t:$("#ms-t").value.trim().slice(0,120), o:$("#ms-o").value.trim().slice(0,300)});
+    const ok = document.getElementById("ms-ok"); if (ok) ok.onclick = () => sv({tema:$("#ms-t").value.trim().slice(0,80), o:$("#ms-o").value.trim().slice(0,300)});
     const df = document.getElementById("ms-def"); if (df) df.onclick = () => sv(firebase.firestore.FieldValue.delete()); }); }
 function codigosBtn(){ return puedeCodigos() ? `<div class="row" style="justify-content:flex-end;gap:6px;margin:-4px 0 10px"><button class="btn small ghost" data-act="calc">🧮 Calculadora</button><button class="btn small ghost" data-act="codigos">📦 Códigos de productos</button></div>` : ""; }
 /* Búsqueda de productos tolerante: sin acentos, con o sin espacios ("fresca flow" = "frescaflow") y perdona una letra al final de palabras largas */
