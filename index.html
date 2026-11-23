@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611212321"></script>
-<script src="anuncios.js?v=202611212321"></script>
-<script src="juego.js?v=202611212321"></script>
+<script src="demo.js?v=202611231010"></script>
+<script src="anuncios.js?v=202611231010"></script>
+<script src="juego.js?v=202611231010"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611212321";
+const APP_VER = "202611231010";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -561,17 +561,26 @@ const SALE_ST = {pendiente:"Pendiente de aprobación", aprobada:"Aprobada", canc
 /* Días laborales (lunes a sábado) entre dos fechas YYYY-MM-DD, ambas incluidas */
 function workDays(a, b){ let n = 0; for (let d = a; d <= b; d = addDays(d,1)){ const [y,m,da] = d.split("-").map(Number); if (new Date(Date.UTC(y,m-1,da,12)).getUTCDay() !== 0) n++; } return n; }
 const startOf = t => t.startDate || (t.joinedAt ? laDate(t.joinedAt) : "2000-01-01");
+/* Desde la quincena del 16 nov 2026: un día laboral solo cuenta si la telemarketer reportó llamadas o sacó citas ese día
+   (o si Katerine/la asistente lo marcó a mano como trabajado). Antes de esa fecha se contaba todo día laboral. */
+const DIAS_DESDE = "2026-11-16";
+const esLaboral = d => { const [y,m,da] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1,da,12)).getUTCDay() !== 0; };
+function trabajoDia(uid, d){ if (d < DIAS_DESDE) return true; const t = S.members[uid] || {}; if ((t.diasOk||[]).includes(d)) return true;
+  if (((S.logs||{})[`${d}_${uid}`]?.calls||[]).length) return true;
+  return Object.values(S.appts||{}).some(a => (a.agendo===uid || a.teleId===uid) && a.createdAt && laDate(a.createdAt)===d); }
+function diasTrab(uid, a, b){ let n = 0; for (let d = a; d <= b; d = addDays(d,1)) if (esLaboral(d) && trabajoDia(uid, d)) n++; return n; }
+function diasSinReporte(uid, a, b){ const out = []; for (let d = a; d <= b; d = addDays(d,1)) if (esLaboral(d) && d < today() && !trabajoDia(uid, d)) out.push(d); return out; }
 /* Sueldo proporcional: se acumula por día laboral trabajado (lun–sáb) dentro del mes */
 function sueldoDe(t, r, base){
   const m0 = laDate(r[0]), m1 = laDate(r[1]-1); const total = workDays(m0, m1);
   let a = m0 > startOf(t) ? m0 : startOf(t); let b = m1 < today() ? m1 : today();
   if (t.leftAt){ const l = laDate(t.leftAt); if (l < b) b = l; }
-  const dias = a <= b ? workDays(a, b) : 0;
+  const dias = a <= b ? diasTrab(t.id, a, b) : 0; const sinRep = a <= b ? diasSinReporte(t.id, a, b) : [];
   /* El sueldo es mensual: cada día trabajado vale base ÷ días laborales DE SU MES (una quincena ≈ la mitad) */
   /* cada quincena (1–15 y 16–fin de mes) vale la mitad del sueldo; si trabajó parte, se prorratea por días laborales de esa quincena */
   let frac = 0; if (a <= b){ let d = a; while (d <= b){ const mi = d.slice(0,8)+"01", mf = addDays(addMonths(mi, 1), -1), q1 = d.slice(0,8)+"15";
-      const qi = d <= q1 ? mi : addDays(q1, 1), qf = d <= q1 ? q1 : mf, fin = b < qf ? b : qf; frac += 0.5 * workDays(d, fin) / workDays(qi, qf); d = addDays(fin, 1); } }
-  return {sueldo: base * frac, dias, total, frac};
+      const qi = d <= q1 ? mi : addDays(q1, 1), qf = d <= q1 ? q1 : mf, fin = b < qf ? b : qf; frac += 0.5 * diasTrab(t.id, d, fin) / workDays(qi, qf); d = addDays(fin, 1); } }
+  return {sueldo: base * frac, dias, total, frac, sinRep};
 }
 /* ===== Comisiones de emprendedores =====
    Cada quien paga a SUS emprendedores con su plan (Dirección o el distribuidor):
@@ -995,7 +1004,7 @@ function nominaTeleCard(p){ if (S.uid!==ownerUid() && !esAsist() && role()!=="ad
   return `<div class="card"><h2>🧾 Nómina de telemarketers<span class="note">${PLABEL[p]||""}</span></h2><p class="note" style="margin-top:-6px">Sueldo + comisión de cada una, con el detalle de sus órdenes. La comisión se paga solo sobre ventas <b>aprobadas</b>.</p>
     ${rows.length ? rows.map(x => { const vs = nominaVentas(x.t, rg); return `<details style="margin-top:6px"><summary style="cursor:pointer"><b>${esc(x.t.name)}</b> · ${money(x.total)} <span class="note">(sueldo ${money(x.sueldo)}${x.base && !x.cumple && x.cerrado ? " · no llegó a la meta "+x.citasReq+"/"+x.req : ""} + comisión ${money(x.comision)})</span></summary>
       <div class="tbl-wrap"><table><thead><tr><th>Fecha cita</th><th>Cliente</th><th>Vendió</th><th>Estado</th><th class="n">Venta</th><th class="n">Comisión ${x.pct}%</th></tr></thead><tbody>${vs.map(a => `<tr><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(nomCli(a))}</td><td>${esc(memberName(a.socioId))}</td><td>${st(a)==="aprobada"?'<span style="color:#15803d;font-weight:700">aprobada</span>':st(a)==="cancelada"?'<span class="note">cancelada</span>':'<span style="color:#7e22ce">en verificación</span>'}</td><td class="n">${money(+a.amount||0)}</td><td class="n">${st(a)==="aprobada"?money((+a.amount||0)*x.pct/100):"—"}</td></tr>`).join("") || `<tr><td colspan="6" class="note">Sin ventas en este periodo.</td></tr>`}</tbody></table></div>
-      <p class="note">Citas: ${x.citasReq}${x.base?" de "+x.req+" requeridas":""} · días trabajados ${x.dias}/${x.diasMes}${x.lead?" · 1% de líder "+money(x.lead):""}</p></details>`; }).join("") : `<div class="empty">No hay nómina en este periodo.</div>`}
+      <p class="note">Citas: ${x.citasReq}${x.base?" de "+x.req+" requeridas":""} · días trabajados ${x.dias}/${x.diasMes}${x.lead?" · 1% de líder "+money(x.lead):""}</p>${x.sinRep && x.sinRep.length ? `<div class="banner warn" style="margin-top:6px">📵 <b>${x.sinRep.length} día(s) sin llamadas reportadas</b> (no cuentan para el sueldo): ${x.sinRep.map(d => `<span style="white-space:nowrap">${fmt(laToMs(d,"12:00"),{weekday:"short",day:"numeric",month:"short"})}${role()==="admin" ? ` <button class="btn small ghost" style="padding:1px 8px" data-dok="${x.t.id}|${d}">✅ Sí trabajó</button>` : ""}</span>`).join(" · ")}</div>` : ""}</details>`; }).join("") : `<div class="empty">No hay nómina en este periodo.</div>`}
     <div class="row" style="justify-content:space-between;margin-top:10px;padding:12px 14px;border-radius:14px;background:var(--accent);color:#fff"><b>Total nómina</b><b style="font-family:var(--serif);font-size:22px">${money(tot)}</b></div>
     <div class="row" style="margin-top:8px"><button class="btn small" data-nomcsv="${p}">📥 Descargar nómina completa (Excel)</button></div></div>`; }
 function nominaCsv(p){ const rg = range(p); const L = [["Telemarketer","Fecha cita","Cliente","Vendió","Estado","Venta","% comisión","Comisión","Sueldo del periodo","Total a pagar"]];
@@ -1137,7 +1146,7 @@ function commissions(r, up=""){
     /* Requisito del sueldo base: la meta semanal x 4 al mes (20 por semana = 80), proporcional a los días que trabajó */
     const req = Math.round(metaSem() * 4 * (sd.frac || 0)), citas = teleEval(x.t.id, r).citas, cumple = !base || !!up || citas >= req, cerrado = r[1] <= Date.now();
     const sueldoEf = base && cerrado && !cumple ? 0 : sd.sueldo;
-    return {...x, pct, base, sueldo:sueldoEf, sueldoAcum:sd.sueldo, req, citasReq:citas, cumple, cerrado, dias:sd.dias, diasMes:sd.total, own, lead, comision:own+lead, total:sueldoEf+own+lead}; });
+    return {...x, pct, base, sueldo:sueldoEf, sueldoAcum:sd.sueldo, req, citasReq:citas, cumple, cerrado, dias:sd.dias, diasMes:sd.total, sinRep:sd.sinRep||[], own, lead, comision:own+lead, total:sueldoEf+own+lead}; });
 }
 
 /* ===== Render ===== */
@@ -1659,7 +1668,7 @@ function openCitaForm(src, own, pre){
       <label class="f">Ciudad<input class="i" id="c-city"></label>
       <label class="f">Dirección<input class="i" id="c-addr"></label>
       <label class="f">Fecha<input class="i" type="date" id="c-date" value="${tomorrow}"></label>
-      <label class="f">Hora${timeSel("c-time","18:00")}</label><label class="f">Llegada${ventSel("c-vent", VENT_DEF)}</label>
+      <label class="f">Hora${timeSel("c-time","18:00")}</label><label class="f">Hora de llegada (intervalo)${ventSel("c-vent", VENT_DEF)}<span class="note">Así sale en la cita: «de 12:00 a 1:00 p.m.»</span></label>
       <label class="f" style="grid-column:1/-1">${own?"Notas":"Notas para el socio"}<textarea class="i" id="c-notes" placeholder="Quiénes estarán, qué le interesa…"></textarea></label>
     </div>
     <div class="row"><button class="btn" id="c-save">Guardar cita</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
@@ -1732,7 +1741,7 @@ const horaTxt = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
 /* Intervalo de llegada: la cita se le da al cliente como "de 6 a 7" */
 const VENT_DEF = 60; const ventDe = a => a && a.vent !== undefined ? +a.vent : 0;
 const horaCita = (a, ms) => { const t = ms ?? a.when, v = ventDe(a); if (!v || ms !== undefined && ms !== a.when) return horaTxt(t); const i = horaTxt(t), f = horaTxt(t + v*60e3); const am = x => x.replace(/\s?[ap]\.?\s?m\.?$/i,"").trim(); return (i.slice(-4)===f.slice(-4) ? am(i) : i) + " – " + f; };
-const ventSel = (id, v) => `<select class="i" id="${id}">${[[0,"Hora exacta"],[30,"Intervalo de 30 min"],[60,"Intervalo de 1 hora"],[90,"Intervalo de 1 hora y media"],[120,"Intervalo de 2 horas"]].map(([m,t]) => `<option value="${m}" ${+v===m?"selected":""}>${t}</option>`).join("")}</select>`;
+const ventSel = (id, v) => `<select class="i" id="${id}">${[[60,"De esa hora a 1 hora después"],[30,"30 minutos de intervalo"],[90,"1 hora y media de intervalo"],[120,"2 horas de intervalo"],[0,"Hora exacta (sin intervalo)"]].map(([m,t]) => `<option value="${m}" ${+v===m?"selected":""}>${t}</option>`).join("")}</select>`;
 const diaTxt = ms => `<div class="dia">${fmt(ms,{weekday:"long",day:"numeric",month:"long"})}</div>`;
 /* Citas de otro estado (ej. Nueva York): se marcan con otro color para pasárselas a quien trabaja allá (Jhojanna en NYC) */
 const EST_NOM = {NY:"Nueva York", NJ:"New Jersey", CT:"Connecticut", FL:"Florida", TX:"Texas", AZ:"Arizona", NV:"Nevada", IL:"Illinois", PA:"Pennsylvania", MA:"Massachusetts", GA:"Georgia", NC:"Carolina del Norte", WA:"Washington", OR:"Oregon", CO:"Colorado", UT:"Utah", NM:"Nuevo México"};
@@ -2002,7 +2011,7 @@ function openAppt(id, o0={}){
       if (!this.dataset.sure){ this.dataset.sure="1"; this.textContent = "Toca otra vez para pasarla a "+memberName(to); this.classList.add("danger"); return; }
       if (sponsorDe(to)){ chain("appt:"+id, () => pedirTransfer(id, to)).then(() => { closeModal(); toast(`Le pedimos permiso a ${memberName(sponsorDe(to))}. Cuando apruebe, la cita pasa sola a ${memberName(to)}.`); }, writeErr); return; }
       chain("appt:"+id, () => transferAppt(id, to)).then(() => { closeModal(); toast("Cita transferida a "+memberName(to)); }, writeErr); });
-    $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=timeVal("ap-time"); if (d&&t) save({when:laToMs(d,t), vent:+($("#ap-vent")?.value||0), status:"agendada", sale:false, amount:0, ...(a.pendCall && !a.pendCall.hecho ? {pendCall:{...a.pendCall, hecho:Date.now(), res:"reagendada", log:[...(a.pendCall.log||[]), {at:Date.now(), by:S.uid, r:"Reagendada para "+fmtWhen(laToMs(d,t))}]}} : {})}); });
+    $("#ap-move") &&($("#ap-move").onclick = () => { const d=$("#ap-date").value, t=timeVal("ap-time"); if (d&&t) save({when:laToMs(d,t), ...(+($("#ap-vent")?.value||0) !== ventDe(a) ? {vent:+($("#ap-vent")?.value||0)} : {}), status:"agendada", sale:false, amount:0, ...(a.pendCall && !a.pendCall.hecho ? {pendCall:{...a.pendCall, hecho:Date.now(), res:"reagendada", log:[...(a.pendCall.log||[]), {at:Date.now(), by:S.uid, r:"Reagendada para "+fmtWhen(laToMs(d,t))}]}} : {})}); });
     document.querySelectorAll("[data-pc]").forEach(b => b.onclick = () => { const k = b.dataset.pc, pc = a.pendCall || {}, now = Date.now();
       if (pc.tipo==="seg" && (k==="ok" || k==="no")){ closeModal(); return pcRapido(k==="ok" ? "fecha" : "no", id); }
       if (k==="ok"){ const el = $("#ap-date"); if (el){ el.scrollIntoView({behavior:"smooth", block:"center"}); el.focus(); toast("Pon la nueva fecha y hora y toca “Cambiar fecha”"); } return; }
@@ -2713,6 +2722,7 @@ function bindCommon(){
   all("[data-go2]", b => b.onclick = () => go(b.dataset.go2));
   all("[data-world]", b => b.onclick = () => setWorld(b.dataset.world));
   all("[data-appt]", b => b.onclick = () => openAppt(b.dataset.appt));
+  all("[data-dok]", b => b.onclick = e => { e.preventDefault(); const [u,d] = b.dataset.dok.split("|"); if (!confirm(`¿Marcar el ${d} como día trabajado de ${memberName(u)}? Le suma al sueldo.`)) return; S.db.doc("members/"+u).update({diasOk:firebase.firestore.FieldValue.arrayUnion(d)}).then(() => { toast("Día marcado como trabajado"); render(); }, writeErr); });
   all("[data-pcv]", b => b.onclick = () => { S.f.pcv = b.dataset.pcv; render(); });
   all("[data-pcq]", b => b.onclick = e => { e.stopPropagation(); const [k,id] = b.dataset.pcq.split("|"); pcRapido(k, id); });
   document.querySelectorAll("[data-pemp]").forEach(inp => inp.onchange = async () => { const cur = {...(S.me?.planEmp || planDe(S.uid) || DEF_EMP)}; document.querySelectorAll("[data-pemp]").forEach(x => { cur[x.dataset.pemp] = x.value==="" ? DEF_EMP[x.dataset.pemp] : +x.value; }); try { await S.db.doc("members/"+S.uid).update({planEmp:cur}); toast("Plan de comisiones guardado"); } catch(e){ writeErr(e); } });
