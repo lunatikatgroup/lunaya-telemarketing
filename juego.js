@@ -774,7 +774,9 @@ function gruposLeads(leads){ const g = {};
   Object.values(g).forEach(x => x.items.sort((a,b) => (a[1].status==="nuevo"?0:1) - (b[1].status==="nuevo"?0:1) || (b[1].at||0) - (a[1].at||0)));
   return Object.values(g).sort((a,b) => (b.nuevos?1:0) - (a.nuevos?1:0) || b.last - a.last); }
 /* ===== Resultados de los anuncios (Meta): de cada link, cuántos entraron, jugaron, dejaron datos, citas, demos, ventas y referidos ===== */
-function anunciosResCard(ads){ if (!ads.length || !(role()==="admin" || (window.esAsist && esAsist()) || S.me?.anuncios)) return "";
+/* Distribuidores y emprendedores pueden hacer sus anuncios en Meta (Katerine se lo puede quitar a alguien en su perfil) */
+const puedeAds = () => role()==="socio" && S.me?.anuncios !== false;
+function anunciosResCard(ads){ if (!ads.length || !(role()==="admin" || (window.esAsist && esAsist()) || puedeAds())) return "";
   const p = ["semana","mes","mesant","todo"].includes(S.f.adp) ? S.f.adp : "todo"; const rg = p==="todo" ? [0, Infinity] : range(p); const enR = t => t >= rg[0] && t < rg[1];
   const rows = ads.map(([c,j]) => { const ls = Object.values(S.leads||{}).filter(l => l.code===c && l.kind==="jugador" && enR(l.at||0));
     const ap = ls.map(l => l.apptId && S.appts[l.apptId]).filter(Boolean);
@@ -799,7 +801,7 @@ const KIT = {tiro:[["🎬 Video para Feed (4:5)","kit/pajarito-video-feed.mp4"],
   quiz:[["🖼️ Imagen Feed","kit/test-cocina-feed.jpg"],["🖼️ Imagen Historias","kit/test-cocina-historias.jpg"],["🖼️ Imagen cuadrada","kit/test-cocina-cuadrada.jpg"]],
   ruleta:[["🖼️ Imagen","kit/ruleta-imagen.jpg"]]};
 const TXT_AD = {tiro:"🎯 ¿Le atinas al pajarito? Dispárale y gana un regalo para tu cocina. ¡Totalmente gratis! Toca aquí y juega ya.", rasca:"🎁 ¡Raspa y descubre tu regalo! Participa y gana un producto de cocina totalmente gratis. ¡Toca aquí y raspa ya!", quiz:"🍳 ¿Qué tan saludable es tu cocina? Haz el test y gana un regalo para tu cocina. ¡Totalmente gratis!", ruleta:"🎡 ¡Gira la ruleta y gana un regalo para tu cocina! Totalmente gratis. Toca aquí y juega ya."};
-function plantillasCard(){ if (role()==="admin" || !S.me?.anuncios) return "";
+function plantillasCard(){ if (!puedeAds()) return "";
   const P = Object.entries(S.config?.plantillasAd || {}); const mios = Object.entries(S.juegos||{}).filter(([,j]) => j.plantilla && j.socioId===S.uid).sort((a,b) => (b[1].createdAt||0)-(a[1].createdAt||0));
   return `<div class="card" style="border:2px solid #be185d"><h2>📣 Mis anuncios en Meta</h2>
     <p class="note" style="margin-top:-6px">1) Crea aquí el link de tu juego. 2) Monta tu anuncio en <b>tu</b> Facebook y pega ese link. Los prospectos te llegan <b>solo a ti</b> aquí en Lunaya.</p>
