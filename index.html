@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611240911"></script>
-<script src="anuncios.js?v=202611240911"></script>
-<script src="juego.js?v=202611240911"></script>
+<script src="demo.js?v=202611240933"></script>
+<script src="anuncios.js?v=202611240933"></script>
+<script src="juego.js?v=202611240933"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611240911";
+const APP_VER = "202611240933";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -380,14 +380,20 @@ function arreglarDador(){ const pv = Object.assign({}, ...Object.values(S.privs|
   Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || dadorFix.has(id)) return;
     if (a.transferredFrom && a.socioId===S.uid && q.socioId===S.uid && !q.dador){ dadorFix.add(id); S.db.doc("apptp/"+id).update({dador:a.transferredFrom}).catch(()=>{}); } });
   /* Ciudad pública de la cita (para que Dirección vea dónde están las citas privadas de los distribuidores); la pone quien ve los datos */
-  Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || dadorFix.has("zn"+id) || (a.when||0) < Date.now()-7*864e5) return; const z = zonaDe(q.city);
+  Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || dadorFix.has("zn"+id) || (a.when||0) < Date.now()-7*864e5) return; const z = zonaDe(q.city, q.address);
     if (!z || a.zona===z || !(a.socioId===S.uid || a.teleId===S.uid || role()==="admin")) return; dadorFix.add("zn"+id); S.db.doc("appts/"+id).update({zona:z}).catch(e => console.log("zona", id, e)); });
   /* Ventas: el nombre del cliente queda visible para Dirección (solo el nombre, para la nómina de comisiones); lo pone quien ve los datos de la cita */
   Object.entries(S.apub||{}).forEach(([id,a]) => { const q = pv[id]; if (!q || !a.sale || dadorFix.has("nv"+id)) return; const nm = String(q.client||"").trim().slice(0,80);
     if (!nm || a.nomVenta===nm) return; dadorFix.add("nv"+id); S.db.doc("appts/"+id).update({nomVenta:nm}).catch(e => console.log("nomVenta", id, e)); }); }
 function mergeAppts(){ setTimeout(arreglarDador, 2000); const pv = Object.assign({}, ...Object.values(S.privs||{})); S.appts = {}; Object.entries(S.apub||{}).forEach(([id,a]) => { const x = {...a, agendo:a.teleId, teleId:a.teleCredit||a.teleId}; PRIV_KEYS.forEach(k => delete x[k]); const q = pv[id]; S.appts[id] = q ? {...x, client:q.client, phone:q.phone, city:q.city, address:q.address, notes:q.notes, chat:q.chat, seen:q.seen, resNote:q.resNote, notasLog:q.notasLog, dador:q.dador, refBy:q.refBy, _priv:true} : {...x, _priv:false}; }); }
 /* Ciudad de la cita visible para todos (solo la ciudad, sin nombre ni dirección): para saber dónde anda cada socio y darle citas cerca */
-const zonaDe = c => { const z = String(c||"").trim().replace(/\s+/g," ").slice(0,40); return z ? z.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase()) : ""; };
+const CIUDADES = ["Chula Vista","National City","Imperial Beach","Lemon Grove","Spring Valley","La Mesa","El Cajon","San Marcos","Solana Beach","Del Mar","Rancho Bernardo","Rancho Penasquitos","Mira Mesa","Otay Mesa","San Ysidro","Valley Center","La Jolla","Pacific Beach","Clairemont","City Heights","Logan Heights","Paradise Hills","Oceanside","Escondido","Carlsbad","Vista","Encinitas","Santee","Poway","Coronado","Ramona","Lakeside","Fallbrook","Bonita","Alpine","Jamul","Bonsall","Temecula","Murrieta","Tijuana","Staten Island","Bronx","Brooklyn","Queens","Manhattan","Yonkers","San Diego"];
+const ESTADOS = /^(ca|calif|california|ny|new york|nueva york|nj|new jersey|nueva jersey|usa|us|ee\.? ?uu\.?|estados unidos)$/i;
+const tit = z => z.toLowerCase().replace(/(^|\s)\S/g, m => m.toUpperCase());
+/* Solo la ciudad: si escribieron el estado o nada, la saca de la dirección */
+const zonaDe = (c, addr) => { let z = String(c||"").trim().replace(/\s+/g," ").replace(/[,.]+$/,"").slice(0,40); if (z && !ESTADOS.test(z) && !/\d{3}/.test(z)) return tit(z);
+  const A = String(addr||"") + " " + String(c||""); const k = CIUDADES.find(x => new RegExp("\\b"+x.replace(/ /g,"\\s+")+"\\b","i").test(A)); if (k) return k;
+  const m = /,\s*([A-Za-zÀ-ÿ .'-]{3,30}?),?\s+(?:CA|NY|NJ|California|New York|New Jersey)\b/i.exec(A); return m ? tit(m[1].trim()) : ""; };
 const cName = a => a._priv ? (a.client||"Cliente") : "Cliente privado" + (a.zona ? " · 📍 " + a.zona : "");
 /* Separar Dirección: cada director ve solo los clientes de sus propios emprendedores.
    Pasa una vez: a los emprendedores sin grupo les pone como grupo a quien los invitó, y ajusta sus citas. */
@@ -1708,7 +1714,7 @@ function openCitaForm(src, own, pre){
       const at = Date.now(); $("#c-save").disabled = true;
       try {
         const ref = S.db.collection("appts").doc(); const sm = S.members[socio] || {}; if ($("#c-src")) src = $("#c-src").value; const servV = $("#c-tv") && $("#c-tv").value==="servicio"; const refBy = servV ? "" : $("#c-refby").value.trim().slice(0,80); const cred = !servV && own && $("#c-cred") ? $("#c-cred").value : ""; if (servV) src = "Servicio";
-        const pub = {when:laToMs(d,t), ...(zonaDe($("#c-city").value) ? {zona:zonaDe($("#c-city").value)} : {}), vent:+($("#c-vent")?.value ?? VENT_DEF), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at, ...($("#c-tv") && $("#c-tv").value==="servicio" ? {tipoVisita:"servicio"} : {}), ...(pre && pre.leadMeta ? {lead:"meta"} : {})};
+        const pub = {when:laToMs(d,t), ...(zonaDe($("#c-city").value, $("#c-addr").value) ? {zona:zonaDe($("#c-city").value, $("#c-addr").value)} : {}), vent:+($("#c-vent")?.value ?? VENT_DEF), socioId:socio, teleId:S.uid, ...(cred?{teleCredit:cred}:{}), source:src, origen: cred ? "tm" : own ? "propia" : (role()==="tele" ? "tm" : "dir"), status:"agendada", sale:false, amount:0, createdAt:at, ...($("#c-tv") && $("#c-tv").value==="servicio" ? {tipoVisita:"servicio"} : {}), ...(pre && pre.leadMeta ? {lead:"meta"} : {})};
         const precal = $("#c-pre") ? $("#c-pre").value.trim() : ""; const priv = {client:name, phone:$("#c-phone").value.trim(), city:$("#c-city").value.trim(), address:$("#c-addr").value.trim(), notes:((precal ? "📝 Precalificación: " + precal + "\n" : "") + $("#c-notes").value.trim()).slice(0,3000), ...(refBy?{refBy}:{}),
           socioId:socio, teleId:S.uid, dir: sm.tipo !== DIST && !sm.upline, up: sm.upline || "", tv: S.members[pagadorDe(socio)]?.role==="admin", createdAt:at};
         /* Se guardan juntas: o quedan las dos partes o ninguna (así nunca queda una cita sin los datos del cliente) */
