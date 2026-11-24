@@ -36,6 +36,9 @@ service cloud.firestore {
     function teleDistDe(data) { return (isProgramTele() && (distOk(data.socioId) || distOk(data.get('up', ''))))
       || (myRole() == 'tele' && meData().get('upline', '') != '' && (data.socioId == meData().upline || data.get('up', '') == meData().upline)); }
 
+    // Socio que Dirección autoriza a ver los links y prospectos de otro (ej. Andrés ve los de Katerine): solo lectura
+    function veDe(d) { return isMember() && meData().get('verDe', '') != '' && d.socioId == meData().get('verDe', ''); }
+
     function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
     // Una invitación válida y sin usar que corresponde al rol que se está pidiendo
     function validInvite(data) {
@@ -241,7 +244,7 @@ service cloud.firestore {
       function lv() { return isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid
         || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)); }
       allow get: if true;
-      allow list: if lv();
+      allow list: if lv() || veDe(resource.data);
       // Un socio o telemarketer inscribe a un cliente o crea una campaña
       allow create: if isMember() && request.resource.data.by == request.auth.uid
          && request.resource.data.n == 0 && request.resource.data.kind in ['cliente', 'campana']
@@ -282,7 +285,7 @@ service cloud.firestore {
     match /leads/{id} {
       function lv() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.by == request.auth.uid
         || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)); }
-      allow read: if lv();
+      allow read: if lv() || veDe(resource.data);
       // La amiga que juega (sin cuenta): teléfono completo de 10 dígitos, un registro por número y por link
       allow create: if request.resource.data.keys().hasOnly(['code', 'pid', 'name', 'tel', 'prize', 'at', 'socioId', 'up', 'tv', 'by', 'ref', 'status', 'kind', 'acepta', 'quiz'])
          && (!('quiz' in request.resource.data) || (request.resource.data.quiz is string && request.resource.data.quiz.size() <= 120))

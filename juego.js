@@ -705,7 +705,7 @@ async function startJuego(code, avance){
 /* ================= DENTRO DE LUNAYA ================= */
 function subJuegos(){ if (window.subAnuncios) setTimeout(subAnuncios, 0);
   S.programs = {}; S.juegos = {}; S.leads = {}; S.jl = {}; S.ll = {}; S.leadsReady = false;
-  const r = S.me?.role; const q = [["by", S.uid], ["socioId", S.uid]]; if (S.isOwner || r==="admin" || isDist()) q.push(["up", S.uid]); if (r==="tele" && !S.me?.upline) q.push(["tv", true]);
+  const r = S.me?.role; const q = [["by", S.uid], ["socioId", S.uid]]; if (S.isOwner || r==="admin" || isDist()) q.push(["up", S.uid]); if (r==="tele" && !S.me?.upline) q.push(["tv", true]); if (S.me?.verDe && S.me.verDe !== S.uid) q.push(["socioId", S.me.verDe]);
   S.unsub.push(S.db.collection("programs").onSnapshot(s => { S.programs = {}; s.docs.forEach(d => S.programs[d.id] = d.data()); if (S.view==="juego") render(); }, e => console.log("programs", e)));
   q.forEach(([f,v]) => jgSub(f, v).forEach(u => S.unsub.push(u)));
   setTimeout(() => S.leadsReady = true, 5000);
