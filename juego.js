@@ -796,7 +796,7 @@ function anunciosResCard(ads){ if (!ads.length || !(role()==="admin" || (window.
 /* ===== Campañas de Meta listas para los distribuidores =====
    Katerine comparte sus campañas (raspa, ruleta, pajarito, test) como plantillas; cada distribuidor con permiso
    crea SU propio link con un toque: los prospectos le llegan solo a él y él paga su anuncio en su Meta. */
-const KIT = {tiro:[["🎬 Video para Feed (4:5)","kit/pajarito-video-feed.mp4"],["🎬 Video para Historias (9:16)","kit/pajarito-video-historias.mp4"],["🖼️ Imagen","kit/pajarito-imagen.jpg"]],
+const KIT = {tiro:[["🎬 Video para Feed (4:5)","kit/pajarito-video-feed.mp4"],["🎬 Video para Historias (9:16)","kit/pajarito-video-historias.mp4"],["🖼️ Imagen Feed (4:5)","kit/pajarito-imagen.jpg?v=2"],["🖼️ Imagen Historias (9:16)","kit/pajarito-imagen-historias.jpg"]],
   rasca:[["🖼️ Imagen Feed","kit/raspa9-feed.jpg"],["🖼️ Imagen Historias","kit/raspa9-historias.jpg"],["🖼️ Imagen cuadrada","kit/raspa9-cuadrada.jpg"]],
   quiz:[["🖼️ Imagen Feed","kit/test-cocina-feed.jpg"],["🖼️ Imagen Historias","kit/test-cocina-historias.jpg"],["🖼️ Imagen cuadrada","kit/test-cocina-cuadrada.jpg"]],
   ruleta:[["🖼️ Imagen","kit/ruleta-imagen.jpg"]]};
