@@ -15,7 +15,19 @@ service cloud.firestore {
     // Quien tiene el acceso suspendido (bloqueado) se trata como sin rol: no puede leer ni escribir hasta que Dirección se lo devuelva
     function myRole() { return hasDoc() ? (('bloqueado' in meData()) && meData().role != 'admin' ? 'bloqueado' : meData().role) : ''; }
     function isAdmin() { return isOwnerEmail() || myRole() == 'admin'; }
-    function isMember() { return isAdmin() || myRole() in ['tele', 'socio']; }
+    // ===== Bots (asistentes de IA de Katerine) =====
+    // Un solo usuario (correo y contraseña) con rol 'bot'. Solo la dueña (isOwnerEmail) se lo asigna desde Equipo.
+    // 'jefe' = uid de la dueña: el bot ve y trabaja los clientes, citas y prospectos de ella como si fuera Dirección.
+    // NO puede: borrar nada, cambiar roles, suspender o quitar gente, crear invitaciones ni cambiar la configuración.
+    // Si se le suspende el acceso (bloqueado), queda sin rol como cualquiera.
+    function isBot() { return myRole() == 'bot'; }
+    function jefeBot() { return meData().get('jefe', ''); }
+    function botVe(d) { return isBot() && jefeBot() != '' && (d.get('socioId', '') == jefeBot() || d.get('up', '') == jefeBot()
+      || d.get('teleId', '') == jefeBot() || d.get('by', '') == jefeBot() || d.get('dador', '') == jefeBot()
+      || d.get('dueno', '') == jefeBot() || d.get('fam', '') == jefeBot()); }
+    // Dirección o el bot: para leer y guardar (nunca para borrar ni para manejar personas)
+    function isStaff() { return isAdmin() || isBot(); }
+    function isMember() { return isAdmin() || myRole() in ['tele', 'socio', 'bot']; }
     function isLeader() { return myRole() == 'tele' && meData().get('lider', false) == true; }
     // Distribuidor: maneja su propio grupo (emprendedores y telemarketers que él invita)
     // Telemarketer del programa Lunaya (no externa de un distribuidor)
@@ -44,6 +56,7 @@ service cloud.firestore {
     function validInvite(data) {
       return data.get('inviteCode', '') is string
         && data.get('inviteCode', '').size() == 6
+        && data.role != 'bot'
         && exists(invitePath(data.inviteCode))
         && get(invitePath(data.inviteCode)).data.status == 'enviada'
         && get(invitePath(data.inviteCode)).data.memberRole == data.role
@@ -60,7 +73,8 @@ service cloud.firestore {
             (isOwnerEmail() && request.resource.data.role == 'admin')
          || request.resource.data.role == 'pendiente'
          || validInvite(request.resource.data));
-      allow update: if isAdmin()
+      allow update: if (isAdmin() && (isOwnerEmail()
+             || (request.resource.data.get('role', '') != 'bot' && resource.data.get('role', '') != 'bot')))
          // El distribuidor ajusta el plan de pago de SUS telemarketers
          || (isDist() && resource.data.get('upline', '') == request.auth.uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate', 'ruta']))
@@ -82,7 +96,7 @@ service cloud.firestore {
 
     match /invites/{code} {
       allow get: if signedIn();
-      allow list: if isAdmin() || isLeader() || (isDist() && resource.data.invitedBy == request.auth.uid);
+      allow list: if isStaff() || isLeader() || (isDist() && resource.data.invitedBy == request.auth.uid);
       allow create: if request.resource.data.status == 'enviada'
          && request.resource.data.invitedBy == request.auth.uid
          && ((isAdmin() && (request.resource.data.get('upline', '') == '' || (request.resource.data.role == 'emprendedor' && request.resource.data.upline == request.auth.uid)))
@@ -104,7 +118,7 @@ service cloud.firestore {
     match /appts/{id} {
       allow read: if isMember();
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid && noClientData();
-      allow update: if noClientData() && (isAdmin()
+      allow update: if noClientData() && (isStaff()
          || (isMember() && (resource.data.socioId == request.auth.uid || resource.data.teleId == request.auth.uid))
          // Las telemarketers del programa pueden pasar la cita de un socio a otro (ayudan cuando los socios están ocupados)
          || (isProgramTele() && teleApptOk(resource.data.socioId) && request.resource.data.teleId == resource.data.teleId
@@ -140,7 +154,8 @@ service cloud.firestore {
     // Lo ven las telemarketers, el dueño del territorio y los socios de su grupo.
     match /hist/{id} {
       allow read: if isMember() && (resource == null || myRole() == 'tele'
-         || resource.data.fam == request.auth.uid || meData().get('upline', '') == resource.data.fam);
+         || resource.data.fam == request.auth.uid || meData().get('upline', '') == resource.data.fam)
+         || botVe(resource.data);
       allow create, update: if isMember()
          && request.resource.data.keys().hasOnly(['fam', 'tel', 'name', 'v'])
          && id == request.resource.data.fam + '_' + request.resource.data.tel;
@@ -154,20 +169,20 @@ service cloud.firestore {
       function socioDoc() { return get(memberPath(request.resource.data.socioId)).data; }
       // tv = cita del territorio de Dirección: las telemarketers del programa la ven completa para darle seguimiento
       function teleVe() { return isProgramTele() && resource.data.get('tv', false) == true; }
-      allow read: if involved() || upline() || teleVe() || teleDistDe(resource.data) || liderDe(resource.data);
+      allow read: if involved() || upline() || teleVe() || teleDistDe(resource.data) || liderDe(resource.data) || botVe(resource.data);
       allow create: if isMember() && request.resource.data.teleId == request.auth.uid
          && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
          && request.resource.data.get('up', '') == socioDoc().get('upline', '');
       // Cambios normales: no se toca a quién pertenece la cita.
       // Transferencia: la hace el socio dueño, su distribuidor o Dirección; la privacidad se recalcula para el nuevo socio.
-      allow update: if ((involved() || upline())
+      allow update: if ((involved() || upline() || botVe(resource.data))
          && request.resource.data.teleId == resource.data.teleId
          && ((request.resource.data.socioId == resource.data.socioId
               && request.resource.data.dir == resource.data.dir
               && request.resource.data.get('up', '') == resource.data.get('up', '')
               && (request.resource.data.get('tv', false) == resource.data.get('tv', false) || !('tv' in resource.data)))
           || (request.resource.data.socioId != resource.data.socioId
-              && (resource.data.socioId == request.auth.uid || upline() || isAdmin()
+              && (resource.data.socioId == request.auth.uid || upline() || isStaff()
                   || (request.resource.data.socioId == request.auth.uid && (resource.data.get('dador', '') == request.auth.uid || resource.data.teleId == request.auth.uid)))
               && request.resource.data.dir == (socioDoc().get('tipo', '') != 'Socio distribuidor' && socioDoc().get('upline', '') == '')
               && request.resource.data.get('up', '') == socioDoc().get('upline', ''))))
@@ -205,7 +220,7 @@ service cloud.firestore {
          && id.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_' + request.auth.uid + '$')
          && request.resource.data.teleId == request.auth.uid;
       // Dirección y la líder corrigen el tipo de los referidos (nuevos o viejos) que anotó cualquier telemarketer
-      allow update: if (isAdmin() || isLeader())
+      allow update: if (isStaff() || isLeader())
          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['refs'])
          && request.resource.data.refs.size() == resource.data.refs.size();
       allow delete: if isAdmin();
@@ -213,7 +228,7 @@ service cloud.firestore {
 
     // Enlace al Drive de cada socio: lo ven y lo ponen el socio dueño y las telemarketers
     match /drives/{socioId} {
-      allow read: if signedIn() && (request.auth.uid == socioId || myRole() == 'tele');
+      allow read: if signedIn() && (request.auth.uid == socioId || myRole() == 'tele' || isBot());
       allow write: if signedIn() && (request.auth.uid == socioId || myRole() == 'tele')
          && request.resource.data.keys().hasOnly(['url', 'updatedAt', 'by'])
          && request.resource.data.url is string
@@ -242,7 +257,8 @@ service cloud.firestore {
     // Links: público solo el nombre que se muestra y el contador de amigas
     match /juegos/{code} {
       function lv() { return isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid
-        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)); }
+        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)
+        || botVe(resource.data)); }
       allow get: if true;
       allow list: if lv() || veDe(resource.data);
       // Un socio o telemarketer inscribe a un cliente o crea una campaña
@@ -284,7 +300,8 @@ service cloud.firestore {
     // y, en el territorio de Dirección, las telemarketers del programa.
     match /leads/{id} {
       function lv() { return signedIn() && (resource.data.socioId == request.auth.uid || resource.data.by == request.auth.uid
-        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)); }
+        || resource.data.get('up', '') == request.auth.uid || (isProgramTele() && resource.data.get('tv', false) == true) || teleDistDe(resource.data)
+        || botVe(resource.data)); }
       allow read: if lv() || veDe(resource.data);
       // La amiga que juega (sin cuenta): teléfono completo de 10 dígitos, un registro por número y por link
       allow create: if request.resource.data.keys().hasOnly(['code', 'pid', 'name', 'tel', 'prize', 'at', 'socioId', 'up', 'tv', 'by', 'ref', 'status', 'kind', 'acepta', 'quiz'])
@@ -312,7 +329,7 @@ service cloud.firestore {
          && get(juegoPath(request.resource.data.code)).data.get('tv', false) == request.resource.data.tv
          && get(juegoPath(request.resource.data.code)).data.by == request.resource.data.by
          && (request.resource.data.by == request.auth.uid || request.resource.data.socioId == request.auth.uid || request.resource.data.up == request.auth.uid
-             || (isProgramTele() && request.resource.data.tv == true) || teleDistDe(request.resource.data));
+             || (isProgramTele() && request.resource.data.tv == true) || teleDistDe(request.resource.data) || botVe(request.resource.data));
       // El cliente que refiere (o la lista de una campaña): lo guarda quien crea el link
       allow create: if isMember() && request.resource.data.by == request.auth.uid && request.resource.data.kind == 'ref'
          && id == request.resource.data.code + '_ref'
@@ -325,7 +342,7 @@ service cloud.firestore {
 
     // Anuncios de Meta que crea cada persona con su propia cuenta (aquí solo se guarda el registro y los resultados)
     match /anuncios/{id} {
-      allow read: if isAdmin() || (isMember() && resource.data.owner == request.auth.uid);
+      allow read: if isStaff() || (isMember() && resource.data.owner == request.auth.uid);
       allow create: if isMember() && request.resource.data.owner == request.auth.uid;
       allow update: if isMember() && resource.data.owner == request.auth.uid && request.resource.data.owner == request.auth.uid;
       allow delete: if isMember() && resource.data.owner == request.auth.uid;
@@ -333,12 +350,12 @@ service cloud.firestore {
 
     // Pagos de los distribuidores a Lunaya: el distribuidor marca que pagó, Dirección lo confirma
     match /pagosdist/{id} {
-      allow read: if isAdmin() || isAsist() || (isMember() && resource.data.payer == request.auth.uid);
+      allow read: if isStaff() || isAsist() || (isMember() && resource.data.payer == request.auth.uid);
       allow create: if isMember() && request.resource.data.payer == request.auth.uid && id.matches('^' + request.auth.uid + '_.*')
          && request.resource.data.ok == false;
       // Katerine registra el pago (el distribuidor solo lo ve)
-      allow create: if isAdmin() || isAsist();
-      allow update: if isAdmin() || isAsist();
+      allow create: if isStaff() || isAsist();
+      allow update: if isStaff() || isAsist();
       allow delete: if isAdmin();
     }
 

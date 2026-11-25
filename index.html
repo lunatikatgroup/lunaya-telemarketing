@@ -193,13 +193,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611251433"></script>
-<script src="anuncios.js?v=202611251433"></script>
-<script src="juego.js?v=202611251433"></script>
+<script src="demo.js?v=202611251445"></script>
+<script src="anuncios.js?v=202611251445"></script>
+<script src="juego.js?v=202611251445"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611251433";
+const APP_VER = "202611251445";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -211,7 +211,7 @@ const RESULTS = [
 const RLABEL = Object.fromEntries(RESULTS);
 const CONTACT = new Set(["volver","no_interesa","no_califica","ingles","colgo","cita"]);
 const APPT_ST = {agendada:"Agendada", hecha:"Demostración hecha", no_se_hizo:"No se hizo", cancelada:"Cancelada"};
-const ROLE = {admin:"Dirección", tele:"Telemarketer", socio:"Socio", pendiente:"Pendiente"};
+const ROLE = {admin:"Dirección", tele:"Telemarketer", socio:"Socio", pendiente:"Pendiente", bot:"Bots (asistentes de IA)"};
 const DEF_COM = {sueldo:200, pct:2, liderPct:1, distPct:5};
 const APP_URL = location.origin + location.pathname;
 const INV_ROLES = {tele:"Telemarketer", distribuidor:"Socio distribuidor", emprendedor:"Emprendedor"};
@@ -285,7 +285,11 @@ const distsDeTele = tid => Object.entries(S.members).filter(([id,m]) => m.role==
    las del programa, todos menos los distribuidores que las quitaron */
 const sociosPara = t => t && t.upline ? socios().filter(s => s.id===t.upline || s.upline===t.upline)
   : socios().filter(s => { const p = pagadorDe(s.id), pm = S.members[p]; return !(t && pm && pm.tipo===DIST && (pm.teleNo||[]).includes(t.id || S.uid)); });
-const role = () => S.isOwner ? "admin" : (S.me?.role === "baja" ? "pendiente" : (S.me?.role || "nuevo"));
+/* Bots (asistentes de IA de Katerine): un solo usuario con correo y contraseña. Ve las pantallas de Dirección y trabaja
+   los clientes de su jefa (S.me.jefe); las reglas no lo dejan borrar, cambiar roles, suspender ni invitar. */
+const esBot = () => !S.isOwner && S.me?.role === "bot";
+const jefeBot = () => esBot() ? (S.me?.jefe || "") : "";
+const role = () => S.isOwner ? "admin" : (S.me?.role === "baja" ? "pendiente" : esBot() ? "admin" : (S.me?.role || "nuevo"));
 const worldOk = () => !!(S.world && S.members[S.world] && ["socio","admin"].includes(S.members[S.world].role));
 function toast(msg, action){ document.querySelectorAll(".toast").forEach(t=>t.remove()); const t = document.createElement("div"); t.className="toast"; t.innerHTML = `<span>${esc(msg)}</span>`; if (action){ const b = document.createElement("button"); b.textContent = action.label; b.onclick = () => { t.remove(); action.fn(); }; t.appendChild(b); } document.body.appendChild(t); setTimeout(()=>t.remove(), action?6000:2600); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -297,7 +301,8 @@ const inR = (ms, [a,b]) => ms >= a && ms < b;
 function chain(key, fn){ const p = (writeChains[key] || Promise.resolve()).then(fn, fn); writeChains[key] = p.catch(()=>{}); return p; }
 function writeErr(e){
   console.log("db error", e);
-  if (e && e.code === "permission-denied") toast("No tienes permiso para hacer esto. Si crees que es un error, avísale a Katerine.");
+  if (e && e.code === "permission-denied" && esBot()) toast("El usuario de los bots no puede borrar, cambiar roles, suspender ni invitar. Eso lo hace Katerine.");
+  else if (e && e.code === "permission-denied") toast("No tienes permiso para hacer esto. Si crees que es un error, avísale a Katerine.");
   else if (e && e.code === "resource-exhausted") toast("La app llegó al límite diario del plan gratis. Se libera mañana; avísale a Katerine.");
   else toast("No se pudo guardar. Revisa tu conexión e intenta de nuevo.");
 }
@@ -365,7 +370,7 @@ function startData(){
     S.me = s.exists ? s.data() : null; if (S.me) S.members[S.uid] = S.me; S.loaded.me = true; if (S.me && (!S.me.ultimo || Date.now()-S.me.ultimo > 36e5)) S.db.doc("members/"+S.uid).update({ultimo:Date.now()}).catch(()=>{});
     /* Solo con la respuesta del servidor: si el teléfono todavía no tiene los datos guardados (arranque sin internet), no se toca el perfil */
     if (S.isOwner && !(s.metadata && s.metadata.fromCache) && (!S.me || S.me.role !== "admin")) ensureOwner();
-    const active = S.isOwner || (S.me && ["admin","tele","socio"].includes(S.me.role) && !S.me.bloqueado);
+    const active = S.isOwner || (S.me && ["admin","tele","socio","bot"].includes(S.me.role) && !S.me.bloqueado);
     if (active && !S.subscribed) subscribeAll(); else if (active) subInvites();
     if (!active && S.pendingCode && !inviteDone) acceptInvite(S.pendingCode).then(ok => { if (!ok && !inviteDone && S.pendingCode){ toast("Ese enlace de invitación ya se usó o no existe. Pide uno nuevo."); clearCode(); render(); } });
     render();
@@ -403,14 +408,14 @@ const cName = a => a._priv ? (a.client||"Cliente") : "Cliente privado" + (a.zona
    Pasa una vez: a los emprendedores sin grupo les pone como grupo a quien los invitó, y ajusta sus citas. */
 let migDone = false;
 async function migrarGrupos(){
-  if (migDone || role()!=="admin" || !S.loaded.members || !S.loaded.appts) return; migDone = true;
+  if (migDone || role()!=="admin" || esBot() || !S.loaded.members || !S.loaded.appts) return; migDone = true;
   const mine = Object.entries(S.members).filter(([,m]) => m.role==="socio" && m.tipo!==DIST && !m.upline && (m.invitedBy===S.uid || (!m.invitedBy && S.isOwner)));
   for (const [id] of mine){ try { await S.db.doc("members/"+id).update({upline:S.uid}); } catch(e){ console.log(e); } }
   const ids = new Set(Object.entries(S.members).filter(([id,m]) => m.upline===S.uid || mine.some(([x])=>x===id)).map(([id])=>id));
   for (const [aid,a] of Object.entries(S.apub||{})) if (ids.has(a.socioId)) { try { await S.db.doc("apptp/"+aid).update({up:S.uid, dir:false}); } catch(e){ /* ya estaba */ } }
 }
 /* Pagos de distribuidores: todos para dirección y la asistente; si el perfil carga después (asistente), se vuelve a suscribir con todo */
-function subPagosDist(){ const all = !!(S.isOwner || S.me?.role==="admin" || (["tele","socio"].includes(S.me?.role) && S.me?.asistente));
+function subPagosDist(){ const all = !!(S.isOwner || S.me?.role==="admin" || esBot() || (["tele","socio"].includes(S.me?.role) && S.me?.asistente));
   if (S.pdSub && S.pdAll === all) return; if (S.pdSub) { try { S.pdSub(); } catch {} } S.pdAll = all;
   const q = all ? S.db.collection("pagosdist") : S.db.collection("pagosdist").where("payer", "==", S.uid);
   S.pdSub = q.onSnapshot(s => { S.pagosDist = {}; s.docs.forEach(d => S.pagosDist[d.id] = d.data()); render(); }, e => console.log("pagosdist", e)); S.unsub.push(() => { try { S.pdSub && S.pdSub(); } catch {} }); }
@@ -423,11 +428,13 @@ function subscribeAll(){
   S.unsub.push(S.db.collection("appts").onSnapshot(s => { S.apub = {}; s.docs.forEach(d => S.apub[d.id] = d.data()); S.loaded.appts = true; clearTimeout(loadTimer); S.timedOut = false; mergeAppts(); render(); setTimeout(migrarGrupos, 1500); }, onErr));
   const privQ = [["teleId", S.uid], ["socioId", S.uid], ["dador", S.uid], ["dueno", S.uid]]; if (S.me?.role === "tele" && !S.me?.upline) privQ.push(["tv", true]); if (S.isOwner || S.me?.role === "admin") privQ.push(["up", S.uid]);
   privQ.forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f, "==", v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; (S.privLoaded = S.privLoaded||{})[f] = true; mergeAppts(); render(); }, e => console.log(e))));
+  /* Bot: ve completos los clientes de su jefa (los mismos que ella ve como socia, quien agendó, quien la dio o su grupo) */
+  if (jefeBot()) ["teleId","socioId","dador","dueno","up"].forEach(f => S.unsub.push(S.db.collection("apptp").where(f, "==", jefeBot()).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs["bot|"+f] = m; mergeAppts(); render(); }, e => console.log("bot", f, e))));
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; if (!(s.metadata && s.metadata.fromCache)) S.cfgLoaded = true; render(); }, onErr));
   subPagosDist();
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
-  if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
+  if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner || esBot()){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
   else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
   if (S.me?.role === "socio" && S.me?.tipo === "Socio distribuidor"){
@@ -461,7 +468,7 @@ function teleAccCard(did){ const d = S.members[did]; if (!d) return ""; const no
     ${tl.length?`<div class="list">${tl.map(t=>`<label class="item" style="cursor:pointer"><span class="nm-av">${av(t.id,30)}<b>${esc(t.name)}</b>${t.lider?' <span class="note">líder</span>':""}</span><input type="checkbox" data-tacc="${did}|${t.id}" ${no.includes(t.id)?"":"checked"} style="width:22px;height:22px"></label>`).join("")}</div>`:`<div class="empty">No hay telemarketers del programa todavía.</div>`}</div>`; }
 /* Invitaciones: Dirección y la líder (aunque la marquen líder después de entrar) */
 function subInvites(){
-  if (S.invSub || !(S.isOwner || S.me?.role === "admin" || (S.me?.role === "tele" && S.me?.lider))) return; S.invSub = true;
+  if (S.invSub || !(S.isOwner || S.me?.role === "admin" || esBot() || (S.me?.role === "tele" && S.me?.lider))) return; S.invSub = true;
     S.unsub.push(S.db.collection("invites").onSnapshot(s => { S.invites = {}; s.docs.forEach(d => S.invites[d.id] = d.data()); render(); }, e => console.log(e)));
 }
 const clearCode = () => { S.pendingCode = ""; try { localStorage.removeItem("ly-code"); } catch {} };
@@ -1199,7 +1206,7 @@ function render(){
   if (!S.authUser){ $("#nav").hidden = true; main.innerHTML = viewLogin(); bindLogin(); return; }
   if (!S.loaded.me){ $("#nav").hidden = true; main.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
   if (r==="nuevo" || r==="pendiente"){ $("#nav").hidden = true; main.innerHTML = viewJoin(); bindJoin(); return; }
-  if (S.me?.bloqueado && r!=="admin" && !S.isOwner){ $("#nav").hidden = true; main.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:54px">🔒</div><h2 style="justify-content:center">Acceso suspendido temporalmente</h2><p>Tu acceso a Lunaya está inhabilitado por el momento.</p>${S.me.bloqueado.motivo?`<p class="note"><b>Motivo:</b> ${esc(S.me.bloqueado.motivo)}</p>`:""}<p class="note">Comunícate con Katerine para reactivarlo.</p><button class="btn ghost" id="bq-out">Salir</button></div>`; const bo = $("#bq-out"); if (bo) bo.onclick = () => firebase.auth().signOut(); return; }
+  if (S.me?.bloqueado && (r!=="admin" || esBot()) && !S.isOwner){ $("#nav").hidden = true; main.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:54px">🔒</div><h2 style="justify-content:center">Acceso suspendido temporalmente</h2><p>Tu acceso a Lunaya está inhabilitado por el momento.</p>${S.me.bloqueado.motivo?`<p class="note"><b>Motivo:</b> ${esc(S.me.bloqueado.motivo)}</p>`:""}<p class="note">Comunícate con Katerine para reactivarlo.</p><button class="btn ghost" id="bq-out">Salir</button></div>`; const bo = $("#bq-out"); if (bo) bo.onclick = () => firebase.auth().signOut(); return; }
   /* Requisito para entrar: cada distribuidor (y el otro director) escribe el nombre de su distribución */
   if (S.me && r!=="baja" && !/^\d{2}-\d{2}$/.test(S.me.cumple||"") && !S.cuSkip){ $("#nav").hidden = true; const MES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     main.innerHTML = `<div class="card" style="max-width:520px;margin:20px auto"><div style="font-size:44px;text-align:center">🎂</div><h2 style="justify-content:center;text-align:center">¿Cuándo es tu cumpleaños?</h2><p class="note" style="text-align:center">Solo el día y el mes (no el año). Ese día todo el equipo lo va a celebrar contigo 🎉. Es necesario para entrar a la app.</p>
@@ -2538,9 +2545,9 @@ function viewEquipo(){
   const active = Object.entries(S.members).filter(([,m])=>m.role!=="pendiente" && m.role!=="baja").sort((a,b)=>(a[1].role||"").localeCompare(b[1].role||"")||(a[1].name||"").localeCompare(b[1].name||""));
   const c = com(); const sid = S.config.sheetId || "";
   let h = (window.demoCard ? demoCard() : "") + driveCard() + inviteCard();
-  h += `<div class="card"><h2>Solicitudes de acceso</h2>${pend.length?`<div class="list">${pend.map(([id,m])=>`<div class="item" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(m.name)}</div><div class="m">Pidió entrar como ${esc(INV_ROLES[m.wantedRole]||"socio")}${m.phone?" · "+esc(m.phone):""}</div></div><div class="row">${Object.entries(INV_ROLES).map(([k,l])=>`<button class="btn small ${k===(m.wantedRole||"tele")?"":"ghost"}" data-approve="${id}" data-role="${k}">${k===(m.wantedRole||"tele")?"Aprobar":"Como "+l.toLowerCase()}</button>`).join("")}</div></div>`).join("")}</div>`:`<div class="empty">No hay solicitudes pendientes. Quien entra con un enlace de invitación queda registrado solo.</div>`}</div>`;
+  h += `<div class="card"><h2>Solicitudes de acceso</h2>${pend.length?`<div class="list">${pend.map(([id,m])=>`<div class="item" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(m.name)}</div><div class="m">Pidió entrar como ${esc(INV_ROLES[m.wantedRole]||"socio")}${m.phone?" · "+esc(m.phone):""}</div></div><div class="row">${Object.entries(INV_ROLES).map(([k,l])=>`<button class="btn small ${k===(m.wantedRole||"tele")?"":"ghost"}" data-approve="${id}" data-role="${k}">${k===(m.wantedRole||"tele")?"Aprobar":"Como "+l.toLowerCase()}</button>`).join("")}${S.isOwner?`<button class="btn small ghost" data-approve="${id}" data-role="bot">🤖 Como bots (IA)</button>`:""}</div></div>`).join("")}</div>`:`<div class="empty">No hay solicitudes pendientes. Quien entra con un enlace de invitación queda registrado solo.</div>`}</div>`;
   h += dupCard(active);
-  h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td><span data-perfil="${id}" style="cursor:pointer">${who(id,30)}</span>${m.bloqueado?' <span class="tag tg-bad">🔒 suspendido</span>':""}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.upline?` <span class="tag tg-warn">${m.role==="tele"?"externa · ":""}grupo de ${esc(memberName(m.upline))}</span>`:(m.role==="tele"?` <span class="tag tg-good">programa Lunaya</span>`:"")}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}${m.role==="socio" && m.tipo!==DIST && id!==S.uid ? `<label class="note" style="display:block;margin-top:4px">Grupo de<select class="i" data-setup="${id}" style="padding:4px 6px;max-width:230px">${Object.entries(S.members).filter(([x,y]) => x!==id && (y.role==="admin" || (y.role==="socio" && y.tipo===DIST))).map(([x,y]) => `<option value="${x}" ${m.upline===x?"selected":""}>${esc(y.name||"")}${y.role==="admin"?" (Dirección)":""}</option>`).join("")}${m.upline?"":`<option value="" selected>Sin grupo</option>`}</select></label>` : ""}</td><td>${id===S.uid?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label>${S.uid===ownerUid() && id!==S.uid ? `<label class="note" style="display:block;margin-top:4px"><input type="checkbox" data-asist="${id}" ${m.asistente?"checked":""}> 💼 Asistente de pagos</label>` : ""}<label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label><div class="row" style="gap:4px;margin-top:4px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" data-plan="${id}|sueldo" value="${m.sueldo??""}" placeholder="${com().sueldo}" style="padding:4px 6px;width:80px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" data-plan="${id}|pct" value="${m.pct??""}" placeholder="${com().pct}" style="padding:4px 6px;width:60px"></label></div>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
+  h += `<div class="card"><h2>Personas</h2><div class="tbl-wrap"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Líder</th><th></th></tr></thead><tbody>${active.map(([id,m])=>`<tr><td><span data-perfil="${id}" style="cursor:pointer">${who(id,30)}</span>${m.bloqueado?' <span class="tag tg-bad">🔒 suspendido</span>':""}${id===S.uid?' <span class="note">(tú)</span>':""}${m.tipo?` <span class="tag tg-mute">${esc(m.tipo)}</span>`:""}${m.upline?` <span class="tag tg-warn">${m.role==="tele"?"externa · ":""}grupo de ${esc(memberName(m.upline))}</span>`:(m.role==="tele"?` <span class="tag tg-good">programa Lunaya</span>`:"")}${m.phone||m.email?`<div class="note">${esc([m.phone,m.email].filter(Boolean).join(" · "))}</div>`:""}${m.role==="socio" && m.tipo!==DIST && id!==S.uid ? `<label class="note" style="display:block;margin-top:4px">Grupo de<select class="i" data-setup="${id}" style="padding:4px 6px;max-width:230px">${Object.entries(S.members).filter(([x,y]) => x!==id && (y.role==="admin" || (y.role==="socio" && y.tipo===DIST))).map(([x,y]) => `<option value="${x}" ${m.upline===x?"selected":""}>${esc(y.name||"")}${y.role==="admin"?" (Dirección)":""}</option>`).join("")}${m.upline?"":`<option value="" selected>Sin grupo</option>`}</select></label>` : ""}</td><td>${id===S.uid || esBot() || (m.role==="bot" && !S.isOwner)?ROLE[m.role]:`<select class="i" data-setrole="${id}" style="padding:6px 8px" aria-label="Rol">${["tele","socio","admin"].concat(S.isOwner?["bot"]:[]).map(x=>`<option value="${x}" ${m.role===x?"selected":""}>${ROLE[x]}</option>`).join("")}<option value="fuera">Quitar acceso</option></select>`}</td><td>${m.role==="tele"?`<label class="row" style="gap:6px"><input type="checkbox" data-lider="${id}" ${m.lider?"checked":""}> Líder</label>${S.uid===ownerUid() && id!==S.uid ? `<label class="note" style="display:block;margin-top:4px"><input type="checkbox" data-asist="${id}" ${m.asistente?"checked":""}> 💼 Asistente de pagos</label>` : ""}<label class="note" style="display:block;margin-top:4px">Inicio<input class="i" type="date" data-start="${id}" value="${startOf(m)}" style="padding:4px 6px"></label><div class="row" style="gap:4px;margin-top:4px;flex-wrap:nowrap"><label class="note">Sueldo $<input class="i" type="number" min="0" data-plan="${id}|sueldo" value="${m.sueldo??""}" placeholder="${com().sueldo}" style="padding:4px 6px;width:80px"></label><label class="note">%<input class="i" type="number" min="0" step="0.5" data-plan="${id}|pct" value="${m.pct??""}" placeholder="${com().pct}" style="padding:4px 6px;width:60px"></label></div>`:""}</td><td>${id!==S.uid?`<button class="btn small ghost" data-rename="${id}">Renombrar</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`;
   const dists = active.filter(([,m]) => m.role==="socio" && m.tipo===DIST);
   if (dists.length) h += `<div class="card"><h2>Lo que paga cada distribuidor por telemarketing</h2><p class="note" style="margin-top:-6px">Vacío = ${com().distPct}% general. Se aplica a sus ventas aprobadas de telemarketing (suyas y de su grupo).</p>
     <div class="tbl-wrap"><table><tbody>${dists.map(([id,m]) => `<tr><td><b>${esc(m.name)}</b></td><td class="n"><label class="note" style="display:inline-flex;gap:4px;align-items:center"><input class="i" type="number" min="0" step="0.5" data-plan="${id}|aporte" value="${m.aporte ?? ""}" placeholder="${com().distPct}" style="width:76px;padding:6px">%</label></td></tr>`).join("")}</tbody></table></div></div>`;
@@ -2634,7 +2641,7 @@ async function doBackupAll(){
     add("Llamadas", BK_CALLS_HEAD, calls); add("Personas", ["Nombre","Correo","Teléfono","Rol","Tipo","Sponsor / líder","Líder","Acceso","ID"], gente);
     add("Prospectos (juegos)", ["Fecha","Nombre","Teléfono","Regalo","Resultado del juego","Amiga de","Socio","Estado","ID"], pros); add("Pagos registrados", ["Distribuidor","Desde","Hasta","Monto","Estado","Fecha","ID"], pagos);
     XLSX.writeFile(wb, `Lunaya-respaldo-${today()}.xlsx`);
-    if (role()==="admin") await S.db.doc("config/main").set({lastBackup:Date.now()}, {merge:true});
+    if (role()==="admin" && !esBot()) await S.db.doc("config/main").set({lastBackup:Date.now()}, {merge:true});
     else { try { localStorage.setItem("ly-bk-"+S.uid, String(Date.now())); } catch {} try { await S.db.doc("members/"+S.uid).update({lastBackup:Date.now()}); } catch(e){ console.log(e); } }
     gStatus(`Listo: ${citas.length} citas, ${calls.length} filas de llamadas, ${gente.length} personas, ${pros.length} prospectos. Guárdalo en tu Drive.`, "good"); toast("Respaldo descargado");
   } catch(e){ console.log(e); gStatus("No se pudo preparar el respaldo. Revisa tu internet e intenta de nuevo.", "bad"); toast("No se pudo preparar el respaldo"); }
@@ -2920,7 +2927,7 @@ function bindCommon(){
     else if (a==="backup") doBackup("citas");
     else if (a==="backup-calls") doBackup("calls");
   });
-  all("[data-approve]", b => b.onclick = async () => { const k = b.dataset.role; try { await S.db.doc("members/"+b.dataset.approve).update({role: k==="tele"?"tele":"socio", tipo: k==="tele"?"":INV_ROLES[k], upline: k==="emprendedor" ? S.uid : "", approvedAt:Date.now()}); toast("Acceso aprobado"); } catch(e){ writeErr(e); } });
+  all("[data-approve]", b => b.onclick = async () => { const k = b.dataset.role; try { if (k==="bot"){ if (!confirm("¿Aprobar esta cuenta como el usuario de los bots? Verá y trabajará todo lo de Dirección y tus clientes, pero no podrá borrar ni manejar personas.")) return; await S.db.doc("members/"+b.dataset.approve).update({role:"bot", jefe:S.uid, tipo:"", upline:"", approvedAt:Date.now()}); toast("Usuario de bots aprobado"); return; } await S.db.doc("members/"+b.dataset.approve).update({role: k==="tele"?"tele":"socio", tipo: k==="tele"?"":INV_ROLES[k], upline: k==="emprendedor" ? S.uid : "", approvedAt:Date.now()}); toast("Acceso aprobado"); } catch(e){ writeErr(e); } });
   all("[data-inv-edit]", b => b.onclick = () => openInviteEdit(b.dataset.invEdit));
   all("[data-inv-send]", b => b.onclick = () => openInviteMsg(b.dataset.invSend));
   all("[data-inv-del]", b => b.onclick = function(){ if (this.dataset.sure){ S.db.doc("invites/"+this.dataset.invDel).delete().then(()=>toast("Invitación borrada"), writeErr); } else { this.dataset.sure="1"; this.textContent="¿Seguro?"; this.classList.add("danger"); } });
@@ -3004,7 +3011,8 @@ function bindCommon(){
       const up = S.members[to] || {}; const tv = up.role==="admin"; const pv = Object.assign({}, ...Object.values(S.privs||{})); let n = 0, f = 0;
       for (const [aid,q] of Object.entries(pv)) if (q.socioId===id){ try { await S.db.doc("apptp/"+aid).update({up:to, dir:false, tv}); n++; } catch(e){ f++; console.log("grupo", aid, e); } }
       toast(`${m.name} ahora es del grupo de ${memberName(to)}${n?` · ${n} cita(s) pasadas`:""}${f?` · ${f} cita(s) no se pudieron pasar (pega las reglas nuevas)`:""}`); render(); } catch(e){ writeErr(e); } });
-  all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
+  all("[data-setrole]", s => s.onchange = async () => { const id = s.dataset.setrole; try { if (s.value==="fuera"){ const m = S.members[id]||{}; if (m.role==="tele") await S.db.doc("members/"+id).update({role:"baja", prevRole:"tele", lider:false, leftAt:Date.now()}); else await S.db.doc("members/"+id).delete(); } else if (s.value==="bot"){ if (!confirm(`¿Hacer a ${memberName(id)} el usuario de los bots? Verá y trabajará todo lo de Dirección y tus clientes, pero no podrá borrar ni manejar personas.`)){ s.value = S.members[id]?.role || ""; return; } await S.db.doc("members/"+id).update({role:"bot", jefe:S.uid, lider:false}); }
+    else await S.db.doc("members/"+id).update({role:s.value}); toast(s.value==="fuera"?"Acceso quitado":"Rol actualizado"); } catch(e){ writeErr(e); } });
   all("[data-dupq]", b => b.onclick = async () => { const id = b.dataset.dupq, m = S.members[id] || {}; if (!confirm(`¿Quitar la cuenta repetida de ${m.name} (${m.email||"sin correo"})? No se borra nada.`)) return;
     try { await S.db.doc("members/"+id).update({role:"baja", prevRole:m.role||"socio", leftAt:Date.now(), leftBy:S.uid, dupDe:b.dataset.dupk}); toast("Listo: ya sale una sola vez"); } catch(e){ writeErr(e); } });
   all("[data-asist]", c => c.onchange = async () => { try { await S.db.doc("members/"+c.dataset.asist).update({asistente:c.checked}); toast(c.checked?"Ahora es asistente de pagos: le sale la pestaña Cobros":"Ya no es asistente de pagos"); } catch(e){ writeErr(e); } });
