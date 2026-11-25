@@ -157,6 +157,7 @@ nav.bottom button{background:none;border:0;color:var(--muted);display:grid;justi
 nav.bottom button.on{color:var(--accent);background:var(--accent-soft)}
 nav.bottom svg{width:22px;height:22px}
 nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing:-.01em}
+nav.bottom.mas{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}nav.bottom.mas::-webkit-scrollbar{display:none}nav.bottom.mas button{flex:0 0 auto;min-width:52px;max-width:none;padding:6px 3px}
 .modal-bg{position:fixed;inset:0;background:rgba(31,30,29,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
 .modal{background:var(--card);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));display:grid;gap:12px}
 @media (min-width:700px){.modal-bg{align-items:center}.modal{border-radius:20px}}
@@ -192,13 +193,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611251428"></script>
-<script src="anuncios.js?v=202611251428"></script>
-<script src="juego.js?v=202611251428"></script>
+<script src="demo.js?v=202611251433"></script>
+<script src="anuncios.js?v=202611251433"></script>
+<script src="juego.js?v=202611251433"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611251428";
+const APP_VER = "202611251433";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -518,6 +519,8 @@ function bindLogin(){
 /* ===== Navegación ===== */
 const ICONS_LIDER = '<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM1 20c0-3.3 3.6-6 8-6s8 2.7 8 6v1H1zm16.5-5.9c3 .4 5.5 2.2 5.5 4.9v1h-4.5v-1c0-1.9-.4-3.5-1-4.9z" fill="currentColor"/>';
 const ICONS = {
+  reclut:'<path fill="currentColor" d="M10 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5zm9-6V5h-2v3h-3v2h3v3h2v-3h3V8z"/>',
+  cobra:'<path fill="currentColor" d="M2 5h20v14H2zm2 3v2h16V8zm0 6v3h7v-3z"/>',
   hoy:'<path d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z" fill="currentColor"/>',
   registrar:'<path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" fill="currentColor"/>',
   citas:'<path d="M7 2v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2zm-2 7h14v10H5z" fill="currentColor"/>',
@@ -530,7 +533,7 @@ const ICONS = {
   equipo:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>'
 };
 function tabsFor(r){
-  if (r==="admin") return [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"]];
+  if (r==="admin") return [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"],["reclut","Reclutar"], ...(S.isOwner ? [["cobra","Cobranza"]] : [])];
   if (r==="tele" && S.me?.asistente) return [["hoy","Hoy"],["cobros","Cobros"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"], ...(S.me?.lider ? [["lider","Mi equipo"]] : [])];
   if (r==="socio" && S.me?.asistente && !isDist()) return [["hoy","Hoy"],["cobros","Cobros"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
   if (r==="tele") return S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"]];
@@ -1214,9 +1217,14 @@ function render(){
   if (!S.loaded.members || !S.loaded.appts){ main.innerHTML = S.timedOut ? `<div class="card"><div class="banner warn">La app está tardando en responder. Revisa tu conexión; se actualiza sola cuando conecte.</div></div>` : `<div class="card empty">Cargando…</div>`; return; }
   const tabs = tabsFor(r); if (!tabs.some(t => t[0]===S.view)) S.view = "hoy";
   $("#nav").hidden = false;
-  $("#nav").classList.toggle("many", tabs.length > 5);
+  $("#nav").classList.toggle("many", tabs.length > 5); $("#nav").classList.toggle("mas", tabs.length > 7);
   $("#nav").innerHTML = tabs.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>${l}${k==="citas"&&(unreadTotal()+sinReporte().length)?` <span class="nbadge">${unreadTotal()+sinReporte().length}</span>`:""}${k==="juego"&&window.nuevosLeads&&nuevosLeads()?` <span class="nbadge">${nuevosLeads()}</span>`:""}</button>`).join("");
   $("#nav").querySelectorAll("[data-go]").forEach(b => b.onclick = () => go(b.dataset.go));
+  if (tabs.length > 7){ const on = $("#nav").querySelector("button.on"); if (on) try { on.scrollIntoView({inline:"nearest", block:"nearest"}); } catch {} }
+  /* Reclutamiento y Cobranza: sus páginas se abren aquí adentro (mismo inicio de sesión). No se recargan con cada cambio de Lunaya. */
+  if (S.view==="reclut" || S.view==="cobra"){ const src = S.view==="reclut" ? "reclutamiento/" : "cobranza/"; const f = main.querySelector("iframe.area");
+    if (!f || f.dataset.src !== src) main.innerHTML = `<iframe class="area" data-src="${src}" src="${src}" title="${S.view==="reclut"?"Reclutamiento":"Cobranza"}" style="width:100%;height:calc(100svh - 190px);min-height:420px;border:1px solid var(--line);border-radius:16px;background:#e8dcc6;display:block"></iframe>`;
+    return; }
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
   if (window.demoBar) html += demoBar();
   html += mesBar() + relojBar() + cumpleCard() + motivaCard() + codigosBtn() + pagoBanner() + (S.view==="hoy" ? backupBanner() : "") + transfBanner();
@@ -1525,7 +1533,7 @@ function avisoReporteDia(){ const r = role(); if (r!=="socio" && r!=="admin") re
 function areasCard(){ const rec = S.isOwner || role()==="admin", cob = S.isOwner; if (!rec && !cob) return "";
   return `<div class="card" style="padding:12px 14px"><div class="row" style="gap:8px">${rec ? `<a class="btn" href="reclutamiento/" target="_blank" rel="noopener">👥 Reclutamiento</a>` : ""}${cob ? `<a class="btn dark" href="cobranza/" target="_blank" rel="noopener">💳 Cobranza y postventa</a>` : ""}</div></div>`; }
 function viewHoy(r){
-  const rg = range(S.f.period); const top = areasCard() + reporteDiaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? preCitasCard() + pendLlamarCard() : "") + recCard();
+  const rg = range(S.f.period); const top = reporteDiaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? preCitasCard() + pendLlamarCard() : "") + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
