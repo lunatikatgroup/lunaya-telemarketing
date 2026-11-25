@@ -193,13 +193,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611251506"></script>
-<script src="anuncios.js?v=202611251506"></script>
-<script src="juego.js?v=202611251506"></script>
+<script src="demo.js?v=202611251514"></script>
+<script src="anuncios.js?v=202611251514"></script>
+<script src="juego.js?v=202611251514"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611251506";
+const APP_VER = "202611251514";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -540,7 +540,7 @@ const ICONS = {
   equipo:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>'
 };
 function tabsFor(r){
-  if (r==="admin") return [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"],["reclut","Reclutar"], ...(S.isOwner ? [["cobra","Cobranza"]] : [])];
+  if (r==="admin") return [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"],["reclut","Reclutar"], ...(S.isOwner || esBot() ? [["cobra","Cobranza"]] : [])];
   if (r==="tele" && S.me?.asistente) return [["hoy","Hoy"],["cobros","Cobros"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"], ...(S.me?.lider ? [["lider","Mi equipo"]] : [])];
   if (r==="socio" && S.me?.asistente && !isDist()) return [["hoy","Hoy"],["cobros","Cobros"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
   if (r==="tele") return S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"]];
@@ -1208,14 +1208,14 @@ function render(){
   if (r==="nuevo" || r==="pendiente"){ $("#nav").hidden = true; main.innerHTML = viewJoin(); bindJoin(); return; }
   if (S.me?.bloqueado && (r!=="admin" || esBot()) && !S.isOwner){ $("#nav").hidden = true; main.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:54px">🔒</div><h2 style="justify-content:center">Acceso suspendido temporalmente</h2><p>Tu acceso a Lunaya está inhabilitado por el momento.</p>${S.me.bloqueado.motivo?`<p class="note"><b>Motivo:</b> ${esc(S.me.bloqueado.motivo)}</p>`:""}<p class="note">Comunícate con Katerine para reactivarlo.</p><button class="btn ghost" id="bq-out">Salir</button></div>`; const bo = $("#bq-out"); if (bo) bo.onclick = () => firebase.auth().signOut(); return; }
   /* Requisito para entrar: cada distribuidor (y el otro director) escribe el nombre de su distribución */
-  if (S.me && r!=="baja" && !/^\d{2}-\d{2}$/.test(S.me.cumple||"") && !S.cuSkip){ $("#nav").hidden = true; const MES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  if (S.me && r!=="baja" && !esBot() && !/^\d{2}-\d{2}$/.test(S.me.cumple||"") && !S.cuSkip){ $("#nav").hidden = true; const MES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     main.innerHTML = `<div class="card" style="max-width:520px;margin:20px auto"><div style="font-size:44px;text-align:center">🎂</div><h2 style="justify-content:center;text-align:center">¿Cuándo es tu cumpleaños?</h2><p class="note" style="text-align:center">Solo el día y el mes (no el año). Ese día todo el equipo lo va a celebrar contigo 🎉. Es necesario para entrar a la app.</p>
       <form id="cu-form"><div class="grid2"><label class="f">Día<select class="i" id="cu-d" required><option value="">—</option>${Array.from({length:31},(x,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}</option>`).join("")}</select></label><label class="f">Mes<select class="i" id="cu-m" required><option value="">—</option>${MES.map((m,i)=>`<option value="${String(i+1).padStart(2,"0")}">${m}</option>`).join("")}</select></label></div><button class="btn" type="submit" style="width:100%;margin-top:8px">Guardar y entrar</button></form></div>`;
     $("#cu-form").onsubmit = async e => { e.preventDefault(); const d = $("#cu-d").value, m = $("#cu-m").value; if (!d || !m){ toast("Escoge el día y el mes"); return; }
       const dim = [31,29,31,30,31,30,31,31,30,31,30,31][+m-1]; if (+d > dim){ toast("Ese día no existe en ese mes"); return; } const v = m+"-"+d;
       try { await S.db.doc("members/"+S.uid).update({cumple:v}); S.me = {...S.me, cumple:v}; if (S.members[S.uid]) S.members[S.uid].cumple = v; toast("¡Gracias! 🎂"); render(); } catch(err){ console.log(err); S.cuSkip = true; toast("No se pudo guardar todavía; avísale a Katerine"); render(); } };
     return; }
-  if (((r==="socio" && S.me?.tipo===DIST) || (r==="admin" && !S.isOwner)) && !String(S.me?.distNombre||"").trim() && !S.dnSkip){ $("#nav").hidden = true;
+  if (((r==="socio" && S.me?.tipo===DIST) || (r==="admin" && !S.isOwner && !esBot())) && !String(S.me?.distNombre||"").trim() && !S.dnSkip){ $("#nav").hidden = true;
     main.innerHTML = `<div class="card" style="max-width:520px;margin:20px auto"><div style="font-size:44px;text-align:center">🏢</div><h2 style="justify-content:center;text-align:center">¿Cómo se llama tu distribución?</h2><p class="note" style="text-align:center">Escribe el nombre de tu distribución tal como quieres que salga en los reportes de ventas. Es necesario para entrar a la app.</p>
       <form id="dn-form"><input class="i" id="dn-v" maxlength="60" required placeholder="Ej.: Lunatikat Group" style="width:100%;font-size:18px;margin:8px 0"><button class="btn" type="submit" style="width:100%">Guardar y entrar</button></form></div>`;
     $("#dn-form").onsubmit = async e => { e.preventDefault(); const v = $("#dn-v").value.trim().slice(0,60); if (v.length < 2){ toast("Escribe el nombre de tu distribución"); return; }
@@ -1253,7 +1253,7 @@ function bindHeader(){
   const b = document.getElementById("me-btn"); if (b) b.onclick = openProfile; }
 function renderHeader(r){
   const first = (S.me?.name||"").split(" ")[0];
-  const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", cobros:"Cobros a distribuidores", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing", juego:"Ruleta y prospectos"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla.", juego:"Regalos para tus clientes y los prospectos que llegan solos."};
+  const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", cobros:"Cobros a distribuidores", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing", juego:"Ruleta y prospectos", cobra:"Cobranza y postventa", reclut:"Reclutamiento"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla.", juego:"Regalos para tus clientes y los prospectos que llegan solos.", cobra:"Cuentas, entregas y pagos.", reclut:"Candidatas del equipo."};
   if (!S.authUser){ $("#title").textContent = "Bienvenidos"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunaya."; $("#who").innerHTML = ""; return; }
   if (r==="nuevo"||r==="pendiente"){ $("#title").textContent = "Te damos la bienvenida a Lunaya"; $("#subtitle").textContent = "Registra tu nombre para entrar."; }
   else { $("#title").textContent = T[S.view] || ""; $("#subtitle").textContent = Sb[S.view] || ""; }
