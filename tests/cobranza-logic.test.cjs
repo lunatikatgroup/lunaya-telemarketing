@@ -67,6 +67,15 @@ test("la actividad reconoce el resultado", () => {
   assert.equal(out.rows[0].at, null);
 });
 
+test("la pestaña de Cobranza sale si el correo está en el equipo", () => {
+  const staff = { "arisbel@example.com": { name: "Arisbel" }, "milady@example.com": { name: "Milady" } };
+  assert.equal(C.enStaffCobranza("arisbel@example.com", staff), true);
+  assert.equal(C.enStaffCobranza("Arisbel@Example.com", staff), true);
+  assert.equal(C.enStaffCobranza("otra@example.com", staff), false);
+  assert.equal(C.enStaffCobranza("milady@example.com", null), false);
+  assert.equal(C.enStaffCobranza("", staff), false);
+});
+
 test("Arisbel y Milady se marcan si hay una sola de cada una", () => {
   const both = C.sugerirTarjetas({
     a1: { name: "Arisbel Ruiz", email: "a@example.com", role: "tele" },

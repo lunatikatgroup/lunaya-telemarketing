@@ -79,6 +79,31 @@ test.beforeEach(async () => {
   });
 });
 
+test("quien está en el equipo puede leer la configuración de cobranza", async () => {
+  await assertSucceeds(getDoc(doc(db(aris), "cconfig/main")));
+  await assertSucceeds(getDoc(doc(db(milady), "cconfig/main")));
+  await assertFails(getDoc(doc(db(env.unauthenticatedContext()), "cconfig/main")));
+});
+
+test("solo cobranza no lee telemarketing y solo la dueña quita el área", async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = db(ctx);
+    await setDoc(doc(d, "members/solo"), { role: "tele", sinTele: true, email: "solo@example.com" });
+    await setDoc(doc(d, "members/andres"), { role: "admin", email: "andres@example.com" });
+    await setDoc(doc(d, "appts/a1"), { teleId: "aris", socioId: "kat" });
+    await setDoc(doc(d, "cconfig/main"), { staff: { "solo@example.com": { name: "Solo", roles: [] } } }, { merge: true });
+  });
+  const solo = env.authenticatedContext("solo", { email: "solo@example.com" });
+  const andres = env.authenticatedContext("andres", { email: "andres@example.com" });
+  await assertSucceeds(getDoc(doc(db(solo), "ccli/ana")));
+  await assertSucceeds(getDoc(doc(db(solo), "cconfig/main")));
+  await assertFails(getDoc(doc(db(solo), "appts/a1")));
+  await assertSucceeds(getDoc(doc(db(aris), "appts/a1")));
+  await assertFails(updateDoc(doc(db(bot), "members/aris"), { sinTele: true }));
+  await assertFails(updateDoc(doc(db(andres), "members/aris"), { sinTele: true }));
+  await assertSucceeds(updateDoc(doc(db(owner), "members/solo"), { sinTele: false }));
+});
+
 test("quien no está en el equipo no lee cuentas", async () => {
   await assertFails(getDoc(doc(db(stranger), "ccli/ana")));
   await assertFails(getDocs(collection(db(stranger), "ccli")));
