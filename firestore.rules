@@ -420,15 +420,7 @@ service cloud.firestore {
     function noCvv() {
       return !request.resource.data.keys().hasAny(['cvv', 'cvc', 'cvv2', 'cid', 'securityCode']);
     }
-    function noNuevoLinkEnSkip() {
-      let link = request.resource.data.get('payLink', '');
-      let skip = request.resource.data.get('skip', false) == true;
-      return !skip || !(link is string) || link.size() == 0
-        || (resource != null && link == resource.data.get('payLink', ''));
-    }
-    function clientAbierto(cid) {
-      return exists(ccliPath(cid)) && get(ccliPath(cid)).data.get('skip', false) != true;
-    }
+    function clienteExiste(cid) { return exists(ccliPath(cid)); }
     function mismoAutor() {
       return request.resource.data.by is string
         && (resource == null
@@ -449,8 +441,7 @@ service cloud.firestore {
         && (!('quien' in request.resource.data) || (request.resource.data.quien is string && request.resource.data.quien.size() <= 80))
         && (!('byName' in request.resource.data) || (request.resource.data.byName is string && request.resource.data.byName.size() <= 80))
         && (!('promesaFecha' in request.resource.data) || (request.resource.data.promesaFecha is string && request.resource.data.promesaFecha.size() <= 20))
-        && (!('promesaMonto' in request.resource.data) || request.resource.data.promesaMonto is number)
-        && (request.resource.data.resultado != 'pago' || clientAbierto(cid));
+        && (!('promesaMonto' in request.resource.data) || request.resource.data.promesaMonto is number);
     }
     function pagoOk() {
       return noSecrets()
@@ -470,7 +461,7 @@ service cloud.firestore {
         && request.resource.data.nota is string
         && request.resource.data.nota.size() <= 800
         && (!('quien' in request.resource.data) || (request.resource.data.quien is string && request.resource.data.quien.size() <= 80))
-        && clientAbierto(request.resource.data.clientId);
+        && clienteExiste(request.resource.data.clientId);
     }
     function postOk() {
       return noSecrets()
@@ -511,7 +502,7 @@ service cloud.firestore {
         && (!('filledBy' in request.resource.data) || request.resource.data.filledBy is string)
         && (!('filledAt' in request.resource.data) || request.resource.data.filledAt is number)
         && (request.resource.data.status != 'lista' || (request.resource.data.url.matches('^https://.+') && request.resource.data.filledBy == request.auth.token.email.lower()))
-        && clientAbierto(request.resource.data.clientId)
+        && clienteExiste(request.resource.data.clientId)
         && (resource == null
           ? (request.resource.data.status == 'pendiente' && request.resource.data.askedBy == request.auth.token.email.lower())
           : request.resource.data.askedBy == resource.data.askedBy);
@@ -543,7 +534,7 @@ service cloud.firestore {
     }
     match /ccli/{id} {
       allow read: if cAccess();
-      allow create, update: if cAccess() && noSecrets() && noNuevoLinkEnSkip() && request.resource.data.keys().size() < 80;
+      allow create, update: if cAccess() && noSecrets() && request.resource.data.keys().size() < 80;
       allow delete: if isOwnerEmail();
       match /act/{aid} {
         allow read: if cAccess();

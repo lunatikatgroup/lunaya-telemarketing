@@ -92,7 +92,7 @@
     if (c.etapa === "cerrado" || (+c.atraso || 0) <= 0) return "verde";
     return "normal";
   }
-  function canPay(c) { return !esSkip(c); }
+  function canPay() { return true; }
   function digitsCard(n) { return String(n ?? "").replace(/\D/g, ""); }
   function maskCard(n) {
     const d = digitsCard(n);
@@ -125,8 +125,8 @@
     if (+c.vencido || +c.atraso) lines.push("Monto vencido: " + money(c.vencido) + " · " + (+c.atraso || 0) + " días · " + (+c.pagosAtras || 0) + " pagos atrás");
     if (c.proxVence) lines.push("Próximo vencimiento: " + c.proxVence);
     if (esUpdate(c) && !updateAprobado(c)) lines.push("Hy Cite puede ofrecerle pagar " + money(c.updateMonto) + " para poner la cuenta al día. Tiene que aprobarlo por llamada o por correo.");
-    if (canPay(c) && safeHttps(c.payLink)) lines.push("Link de pago: " + safeHttps(c.payLink));
-    if (!canPay(c)) lines.push("Por ahora no podemos tomar un pago por aquí: hay que esperar a que usted llame a Hy Cite.");
+    if (safeHttps(c.payLink)) lines.push("Link de pago: " + safeHttps(c.payLink));
+    if (esSkip(c)) lines.push("Hy Cite tiene esta cuenta en skip. Hay que llamar a Hy Cite para que lo quiten.");
     return lines.join("\n");
   }
   function asNum(v) {
@@ -243,10 +243,7 @@
     set("updateNotas", clip(src.updateNotas, 500));
     set("carolinaNota", clip(src.carolinaNota, 500));
     set("cobrador", clip(src.cobrador, 80));
-    if (o.skip) {
-      o.payLink = "";
-      if (src._keys.indexOf("payLink") !== -1 && safeHttps(src.payLink)) warnings.push("SKIP: no se guardó el link de pago. No se puede cobrar hasta que el cliente llame a Hy Cite.");
-    } else if (src._keys.indexOf("payLink") !== -1) {
+    if (src._keys.indexOf("payLink") !== -1) {
       const link = safeHttps(src.payLink);
       if (src.payLink && !link) warnings.push("El link de pago tiene que empezar con https://");
       o.payLink = link;

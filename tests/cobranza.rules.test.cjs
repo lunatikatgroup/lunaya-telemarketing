@@ -93,15 +93,11 @@ test("el equipo y el bot leen y escriben cuentas, y solo la dueña borra", async
   await assertSucceeds(deleteDoc(doc(db(owner), "ccli/ana")));
 });
 
-test("en skip no entra un link nuevo ni un pago", async () => {
-  await assertFails(updateDoc(doc(db(bot), "ccli/skipme"), { payLink: "https://pay.example/a" }));
-  await assertSucceeds(addDoc(collection(db(milady), "cpagos"), pago("milady@example.com")));
-  await assertFails(addDoc(collection(db(milady), "cpagos"), pago("milady@example.com", { clientId: "skipme" })));
-  await assertSucceeds(addDoc(collection(db(aris), "clinkreq"), pedido("arisbel@example.com")));
-  await assertFails(addDoc(collection(db(aris), "clinkreq"), pedido("arisbel@example.com", { clientId: "skipme" })));
-  await assertSucceeds(updateDoc(doc(db(bot), "ccli/ana"), { skip: true, payLink: "" }));
-  await assertFails(addDoc(collection(db(bot), "ccli/skipme/act"), act("bot@example.com", { clientId: "skipme", resultado: "pago" })));
-  await assertSucceeds(addDoc(collection(db(bot), "ccli/ana/act"), act("bot@example.com")));
+test("en skip igual se puede guardar el link y el pago", async () => {
+  await assertSucceeds(updateDoc(doc(db(bot), "ccli/skipme"), { payLink: "https://pay.example/a" }));
+  await assertSucceeds(addDoc(collection(db(milady), "cpagos"), pago("milady@example.com", { clientId: "skipme" })));
+  await assertSucceeds(addDoc(collection(db(aris), "clinkreq"), pedido("arisbel@example.com", { clientId: "skipme" })));
+  await assertSucceeds(addDoc(collection(db(bot), "ccli/skipme/act"), act("bot@example.com", { clientId: "skipme", resultado: "pago" })));
 });
 
 test("la cuenta no acepta datos de tarjeta", async () => {

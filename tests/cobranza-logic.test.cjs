@@ -23,16 +23,13 @@ test("el color respeta el orden: skip, update, promesa, sin contestar, al día",
   assert.equal(C.toneOf({ skip: "sí", atraso: 0 }), "rojo");
 });
 
-test("en skip no se puede cobrar y el mensaje no lleva link", () => {
+test("en skip el mensaje sigue llevando el link y pide llamar a Hy Cite", () => {
   const c = { nombre: "Ana", cuenta: "9", saldo: 10, payLink: "https://pay.example/a", skip: true };
-  assert.equal(C.canPay(c), false);
-  assert.equal(C.canPay({ skip: false, payLink: "https://pay.example/a" }), true);
+  assert.equal(C.canPay(c), true);
   const msg = C.mensajeCliente(c, "Arisbel");
-  assert.equal(msg.includes("https://pay.example/a"), false);
-  assert.equal(msg.includes("llame a Hy Cite"), true);
+  assert.equal(msg.includes("https://pay.example/a"), true);
+  assert.equal(msg.includes("llamar a Hy Cite"), true);
   assert.equal(msg.includes("Hy Cite #29733"), true);
-  const libre = C.mensajeCliente({ nombre: "Ana", saldo: 10, payLink: "https://pay.example/a", skip: false }, "Milady");
-  assert.equal(libre.includes("https://pay.example/a"), true);
   assert.equal(C.mensajeCliente({ payLink: "javascript:alert(1)" }).includes("javascript:"), false);
 });
 
@@ -51,8 +48,7 @@ test("el CSV y el JSON arman la cuenta y tiran la tarjeta", () => {
   assert.equal(csv.rows[0].atraso, 40);
   assert.equal(csv.rows[0].saldo, 320.5);
   assert.equal(csv.rows[0].skip, true);
-  assert.equal(csv.rows[0].payLink, "");
-  assert.equal(csv.warnings.some(w => w.includes("SKIP")), true);
+  assert.equal(csv.rows[0].payLink, "https://pay.example/x");
 
   const json = C.parseTable(JSON.stringify([{ nombre: "Bo", cuenta: "2", numero: "4111111111111111", cvv: "123", dias: 5 }]), "clientes");
   assert.equal(json.rows[0].cuenta, "2");

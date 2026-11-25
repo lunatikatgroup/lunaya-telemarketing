@@ -24,7 +24,7 @@ h1{font-family:var(--serif);font-size:23px;margin:6px 0 2px;text-transform:upper
 .tabs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .tabs button small{font-weight:700;opacity:.75}
 html.framed header{padding-top:8px}html.framed .brand{display:none}
-main{max-width:980px;margin:0 auto;padding:4px 16px 110px;display:grid;gap:14px}main>*{min-width:0}
+main{max-width:980px;margin:0 auto;padding:4px 16px 28px;display:grid;gap:14px}main>*{min-width:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
 .card h2{font-family:var(--serif);font-size:18px;text-transform:uppercase;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
@@ -50,9 +50,7 @@ textarea.i{min-height:70px}
 .tile{background:var(--soft);border-radius:12px;padding:12px}.tile b{display:block;font-family:var(--serif);font-size:26px;line-height:1.05}.tile span{font-size:12px;color:var(--muted);font-weight:700}.tile small{display:block;font-size:12px;color:var(--muted)}
 table{border-collapse:collapse;width:100%;font-size:14px}th{font-size:11.5px;text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}td.n,th.n{text-align:right}
 .tbl{overflow-x:auto}
-nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
-nav button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:700;padding:6px;border-radius:10px;cursor:pointer;flex:1;max-width:120px}
-nav button.on{color:var(--accent);background:var(--accent-soft)}
+.linkish{background:none;border:0;padding:0;color:var(--accent);font-weight:800;text-decoration:underline;cursor:pointer;text-align:left}
 .nb{display:inline-block;background:#c0392b;color:#fff;border-radius:9px;font-size:10px;padding:0 5px;margin-left:2px}
 .mbg{position:fixed;inset:0;background:rgba(31,30,29,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
 .modal{background:var(--card);width:100%;max-width:680px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));display:grid;gap:12px}
@@ -60,7 +58,7 @@ nav button.on{color:var(--accent);background:var(--accent-soft)}
 .modal h3{font-family:var(--serif);font-size:21px;margin:0;text-transform:uppercase}
 .eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800}
 .tl{display:grid;gap:6px;max-height:240px;overflow:auto}.tl div{background:var(--soft);border-radius:10px;padding:7px 10px;font-size:14px}.tl small{display:block;color:var(--muted);font-size:11.5px;font-weight:700}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:90%}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:90%}
 .secret{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.03em}
 .scroll{max-height:280px;overflow:auto;display:grid;gap:6px}
 </style>
@@ -72,7 +70,6 @@ nav button.on{color:var(--accent);background:var(--accent-soft)}
 <div id="tabs" class="tabs" hidden></div>
 </header>
 <main id="main"><div class="card empty">Cargando…</div></main>
-<nav id="nav" hidden></nav>
 <div id="modal"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -95,6 +92,7 @@ const OUTS = {contesto:"Contestó", no:"No contestó", buzon:"Buzón", promesa:"
 const RES_OLD = {nc:"No contestó", promesa:"Promesa de pago", pago:"Pagó", otro_dia:"Que llame otro día", solo_kat:"Solo habla con Katerine", mal:"Número equivocado", nota:"Nota"};
 const METODOS = {cheque:"Cheque", sitio:"Sitio web", llamada:"Llamada", tarjeta:"Tarjeta en archivo", link:"Link de Hy Cite", otro:"Otro"};
 const METODO_AUTO = {cheque:"Cheque", sitio:"Sitio web", llamada:"Llamada", tarjeta:"Tarjeta en archivo"};
+const SKIP_TXT = "En skip: Hy Cite tiene bloqueados pagos y links. Objetivo: que el cliente llame a Hy Cite para quitar el skip.";
 const S = {db:null, auth:null, user:null, uid:"", email:"", owners:[], cfg:{}, me:null, meLoaded:false, cfgLoaded:false, cli:{}, acts:{}, actsReady:false, pagos:{}, post:{}, links:{}, cards:{}, members:{}, membersLoaded:false, ventas:{}, privs:{}, view:"g30", f:{q:"", cob:"", tono:"", mios:false}, per:"hoy", loaded:false, unsub:[], tarDraft:null, reveal:{}};
 
 const $ = s => document.querySelector(s);
@@ -206,21 +204,18 @@ function enBucket(c,g){ return c.etapa!=="cerrado" && bucketOf(c)===g; }
 const countB = g => Object.values(S.cli).filter(c => enBucket(c,g)).length;
 
 function render(){
-  const m = $("#main"), tabs = $("#tabs"), nav = $("#nav");
+  const m = $("#main"), tabs = $("#tabs");
   if (!S.auth){ m.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
-  if (!S.user){ tabs.hidden = true; nav.hidden = true; $("#title").textContent = "Entrar"; $("#subtitle").textContent = "Usa la misma cuenta de Lunaya."; m.innerHTML = loginHtml(); bindLogin(); return; }
+  if (!S.user){ tabs.hidden = true; $("#title").textContent = "Entrar"; $("#subtitle").textContent = "Usa la misma cuenta de Lunaya."; m.innerHTML = loginHtml(); bindLogin(); return; }
   if (!S.cfgLoaded || !S.meLoaded){ m.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
-  if (S.me?.bloqueado && !isOwner()){ tabs.hidden = true; nav.hidden = true; $("#title").textContent = "Acceso suspendido"; $("#subtitle").textContent = ""; m.innerHTML = `<div class="card"><h2>Acceso suspendido</h2><p>Pídele a Katerine que te lo devuelva.</p><button class="btn ghost small" id="out">Salir</button></div>`; $("#out").onclick = () => S.auth.signOut(); return; }
-  if (!canEnter()){ tabs.hidden = true; nav.hidden = true; $("#title").textContent = "Sin acceso"; $("#subtitle").textContent = "";
+  if (S.me?.bloqueado && !isOwner()){ tabs.hidden = true; $("#title").textContent = "Acceso suspendido"; $("#subtitle").textContent = ""; m.innerHTML = `<div class="card"><h2>Acceso suspendido</h2><p>Pídele a Katerine que te lo devuelva.</p><button class="btn ghost small" id="out">Salir</button></div>`; $("#out").onclick = () => S.auth.signOut(); return; }
+  if (!canEnter()){ tabs.hidden = true; $("#title").textContent = "Sin acceso"; $("#subtitle").textContent = "";
     m.innerHTML = `<div class="card"><h2>Todavía no tienes acceso</h2><p>Pídele a Katerine que te agregue al equipo de cobranza con este correo:</p><p><b>${esc(S.email)}</b></p><button class="btn ghost small" id="out">Salir</button></div>`; $("#out").onclick = () => S.auth.signOut(); return; }
-  const tops = TOP.slice(); if (!tops.some(t => t[0]===S.view) && S.view!=="hoy" && S.view!=="ajustes") S.view = "g30";
+  const tops = TOP.concat([["hoy","Hoy"]]); if (isOwner()) tops.push(["ajustes","Equipo"]);
+  if (!tops.some(t => t[0]===S.view)) S.view = "g30";
   tabs.hidden = false;
-  tabs.innerHTML = tops.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}">${l}${k!=="post"&&k!=="pagos"?` <small>${countB(k)}</small>`:""}</button>`).join("");
+  tabs.innerHTML = tops.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}">${l}${k==="g30"||k==="g60"||k==="g90"?` <small>${countB(k)}</small>`:""}</button>`).join("");
   tabs.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { S.view = b.dataset.go; render(); scrollTo(0,0); });
-  const bottom = [["hoy","Hoy"]]; if (isOwner()) bottom.push(["ajustes","Equipo"]);
-  nav.hidden = false;
-  nav.innerHTML = bottom.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}">${l}</button>`).join("");
-  nav.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { S.view = b.dataset.go; render(); scrollTo(0,0); });
   const T = {g30:["0-30 días","De 1 a 30 días de atraso. Al día (0) se ve en verde, en la búsqueda."], g60:["31-60 días","Cuentas con 31 a 60 días de atraso."], g90:["61+","61 días o más. Recompra."], post:["Postventa","Entregas, rastreo y pago programado."], pagos:["Pagos y actividad","Llamadas del equipo, promesas y pagos anotados."], hoy:["Hola, "+first(nameOf(S.email)),"Pagos automáticos de hoy y ventas nuevas."], ajustes:["Equipo","Quién cobra y quién puede ver las tarjetas."]};
   const tit = T[S.view] || ["Cobranza",""]; $("#title").textContent = tit[0]; $("#subtitle").textContent = tit[1];
   if (!S.loaded){ m.innerHTML = `<div class="card empty">Cargando clientes…</div>`; return; }
@@ -241,32 +236,20 @@ function filtros(){
 }
 function cItem(id, c, extra){
   const t = tono(id, c); const g = bucketOf(c);
-  const sub = [c.cuenta ? "Cta "+esc(c.cuenta) : "", c.tel ? telFmt(c.tel) : "", c.producto ? esc(c.producto) : "", `<b>${+c.atraso||0} días</b>`, "vence "+money(vencidoDe(c)), mensualDe(c) ? "mensual "+money(mensualDe(c)) : ""].filter(Boolean).join(" · ");
+  const sub = [c.cuenta ? "Cta "+esc(c.cuenta) : "", c.producto ? esc(c.producto) : "", `<b>${+c.atraso||0} días</b>`, "vence "+money(vencidoDe(c)), mensualDe(c) ? "mensual "+money(mensualDe(c)) : ""].filter(Boolean).join(" · ");
   const calls = llamadasDe(id,c); const ult = ultimoDe(id,c);
   const tags = [c.etapa==="postventa"?`<span class="tag tg-acc">Postventa</span>`:`<span class="tag ${g==="aldia"?"tg-good":g==="g30"?"tg-warn":"tg-bad"}">${GRUPOS[g]}</span>`,
-    L.esSkip(c)?`<span class="tag tg-bad">SKIP</span>`:"", L.esUpdate(c)?`<span class="tag tg-blue">UPDATE ${L.updateAprobado(c)?"aprobado":"por aprobar"}${c.updateMonto?" · "+money(c.updateMonto):""}</span>`:"",
+    L.esSkip(c)?`<span class="tag tg-bad">SKIP</span>`:"", c.skipLlamo?`<span class="tag tg-mute">Ya llamó a Hy Cite</span>`:"", L.esUpdate(c)?`<span class="tag tg-blue">UPDATE ${L.updateAprobado(c)?"aprobado":"por aprobar"}${c.updateMonto?" · "+money(c.updateMonto):""}</span>`:"",
     c.promesa?.fecha && !c.promesa.ok ? `<span class="tag tg-yellow">Promesa ${esc(String(c.promesa.fecha).slice(5))}${c.promesa.monto?" · "+money(c.promesa.monto):""}</span>`:"",
     c.carolina?`<span class="tag tg-mute">Avisada Carolina</span>`:"",
     encargada(c)?`<span class="tag tg-mute">${esc(first(nameOf(encargada(c))))}</span>`:""].join(" ");
-  const link = !L.canPay(c) ? "" : (L.safeHttps(c.payLink) ? `<span class="tag tg-good">Link listo</span>` : (Object.values(S.links).some(x => x.clientId===id && x.status==="pendiente") ? `<span class="tag tg-warn">Link pedido</span>` : ""));
-  return `<div class="item ${t}" data-c="${esc(id)}"><div style="flex:1;min-width:0"><div class="t">${esc(c.nombre||"Sin nombre")}</div><div class="m">${sub}</div><div class="m">${calls} llamada${calls===1?"":"s"} · último contacto ${ult?fmtWhen(ult):"nunca"}</div><div style="margin-top:4px">${tags} ${link}</div>
-    ${L.esSkip(c)?`<div class="banner bad" style="margin-top:8px">SKIP. Hy Cite ya intentó hablarle y no contestó. No se puede tomar ningún pago ni mandar link hasta que el cliente llame a Hy Cite.${c.skipNota?" "+esc(c.skipNota):""}</div>`:""}
-    <div class="row" style="margin-top:8px">${sendBtns(id,c)}</div>${extra||""}</div></div>`;
+  const link = L.safeHttps(c.payLink) ? `<span class="tag tg-good">Link listo</span>` : (Object.values(S.links).some(x => x.clientId===id && x.status==="pendiente") ? `<span class="tag tg-warn">Link pedido</span>` : "");
+  const fono = tel10(c.tel).length===10 ? `<button type="button" class="linkish" data-phone="${esc(id)}">${esc(telFmt(c.tel))}</button>` : "";
+  return `<div class="item ${t}" data-c="${esc(id)}"><div style="flex:1;min-width:0"><div class="t">${esc(c.nombre||"Sin nombre")}</div>${fono?`<div style="margin-top:2px">${fono}</div>`:""}<div class="m">${sub}</div><div class="m">${calls} llamada${calls===1?"":"s"} · último contacto ${ult?fmtWhen(ult):"nunca"}</div><div style="margin-top:4px">${tags} ${link}</div>
+    ${L.esSkip(c)?`<div class="banner bad" style="margin-top:8px">${esc(SKIP_TXT)}${c.skipNota?" "+esc(c.skipNota):""}</div>`:""}
+    ${extra||""}</div></div>`;
 }
-function sendBtns(id, c){
-  const dis = k => !datoEnvio(k,c);
-  return `<button class="btn small wa" data-send="whatsapp" data-id="${esc(id)}" ${dis("whatsapp")?"disabled":""}>WhatsApp</button>
-    <button class="btn small ghost" data-send="sms" data-id="${esc(id)}" ${dis("sms")?"disabled":""}>SMS</button>
-    <button class="btn small ghost" data-send="correo" data-id="${esc(id)}" ${dis("correo")?"disabled":""}>Correo</button>`;
-}
-function datoEnvio(tipo,c){ if (tipo==="correo") return !!L.safeMail(c.email); return tel10(c.tel).length===10; }
 function textoDe(c){ return L.mensajeCliente({nombre:c.nombre, cuenta:c.cuenta, producto:c.producto||c.pedido, saldo:c.saldo, mensual:mensualDe(c), vencido:vencidoDe(c), atraso:c.atraso, pagosAtras:c.pagosAtras, proxVence:c.proxVence, updateOn:c.updateOn, updateMonto:c.updateMonto, updateAprobado:c.updateAprobado, payLink:c.payLink, skip:c.skip}, first(nameOf(S.email))||"Cobranza"); }
-function urlEnvio(tipo,c){
-  const body = encodeURIComponent(textoDe(c));
-  if (tipo==="whatsapp") return "https://wa.me/1"+tel10(c.tel)+"?text="+body;
-  if (tipo==="sms") return "sms:+1"+tel10(c.tel)+"?&body="+body;
-  const mail = L.safeMail(c.email); return "mailto:"+encodeURIComponent(mail)+"?subject="+encodeURIComponent("Su cuenta Royal Prestige")+"&body="+body;
-}
 
 function vBucket(){
   const g = S.view;
@@ -324,8 +307,8 @@ function vPagos(){
   const puedeLlenar = isOwner() || isBot() || isDir();
   return `<div class="card"><div class="row"><div class="chips">${[["hoy","Hoy"],["semana","Esta semana"],["mes","Este mes"]].map(([k,l]) => `<button class="chip ${S.per===k?"on":""}" data-per="${k}">${l}</button>`).join("")}</div>${isOwner()||isBot()?`<button class="btn small" id="imp-act">Importar actividad</button>`:""}</div>
     <div class="tiles" style="margin-top:10px"><div class="tile"><b>${acts.filter(a=>a.tipo==="llamada").length}</b><span>Llamadas</span></div><div class="tile"><b>${new Set(acts.map(a=>a.clientId)).size}</b><span>Clientes trabajados</span></div><div class="tile"><b>${acts.filter(a=>a.resultado==="promesa").length}</b><span>Promesas</span></div><div class="tile"><b>${money(pays.reduce((t,p)=>t+(+p.monto||0),0))}</b><span>Pagos anotados</span></div></div></div>
-    <div class="card"><h2>Links que hay que pedir a Hy Cite <span class="note">${pend.length}</span></h2><p class="note" style="margin-top:-6px">El botón «Pedir link» de la cuenta crea el pedido. El bot (o Katerine) pega el link de Hy Cite y lo marca listo. En skip no se puede.</p>
-      ${pend.length?`<div class="list">${pend.map(x => { const c = S.cli[x.clientId]||{}; const bloque = L.esSkip(c); return `<div class="item ${bloque?"rojo":"normal"}" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(c.nombre||x.nombre||"Cliente")}</div><div class="m">Pedido ${x.askedAt?fmtWhen(x.askedAt):""} · ${esc(nameOf(x.askedBy))}${bloque?" · SKIP, no se puede llenar":""}</div></div>${puedeLlenar&&!bloque?`<div class="row"><input class="i" data-url="${esc(x.id)}" placeholder="https://…" style="min-width:180px"><button class="btn small" data-lista="${esc(x.id)}">Marcar lista</button></div>`:`<span class="tag tg-warn">Pendiente</span>`}</div>`; }).join("")}</div>`:`<div class="empty">No hay pedidos de link.</div>`}</div>
+    <div class="card"><h2>Links que hay que pedir a Hy Cite <span class="note">${pend.length}</span></h2><p class="note" style="margin-top:-6px">El botón «Pedir link» de la cuenta crea el pedido. El bot o Katerine pegan el link de Hy Cite y lo marcan listo. Si está en skip, quien bloquea el pago es Hy Cite, no esta pantalla.</p>
+      ${pend.length?`<div class="list">${pend.map(x => { const c = S.cli[x.clientId]||{}; return `<div class="item ${L.esSkip(c)?"rojo":"normal"}" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(c.nombre||x.nombre||"Cliente")}</div><div class="m">Pedido ${x.askedAt?fmtWhen(x.askedAt):""} · ${esc(nameOf(x.askedBy))}${L.esSkip(c)?" · en skip":""}</div></div>${puedeLlenar?`<div class="row"><input class="i" data-url="${esc(x.id)}" placeholder="https://…" style="min-width:180px"><button class="btn small" data-lista="${esc(x.id)}">Marcar lista</button></div>`:`<span class="tag tg-warn">Pendiente</span>`}</div>`; }).join("")}</div>`:`<div class="empty">No hay pedidos de link.</div>`}</div>
     <div class="card"><h2>Cobradoras</h2><p class="note" style="margin-top:-6px">Arisbel y Milady salen aquí cuando Katerine las agrega en Equipo, con el correo con el que entran a Lunaya. Las llamadas del bot se cuentan para la cobradora si el registro trae su nombre o su correo.</p>
       ${filas.length?`<div class="tbl"><table><tr><th>Quién</th><th class="n">Llamadas</th><th class="n">Clientes</th><th class="n">Promesas</th><th class="n">Pagos</th><th>Por día</th></tr>${filas.map(f => `<tr><td><b>${esc(nameOf(f.em))}</b><div class="note">${esc(f.em)}</div></td><td class="n">${f.llam}</td><td class="n">${f.cl}</td><td class="n">${f.prom}</td><td class="n">${f.np}<div class="note">${money(f.monto)}</div></td><td class="note">${f.porDia.map((n,i)=>dias[i].slice(8)+"·"+n).join(" ")}</td></tr>`).join("")}</table></div>`:`<div class="empty">Agrega a Arisbel y a Milady en Equipo para ver su tablero.</div>`}</div>
     <div class="card"><h2>Pagos anotados <span class="note">${pays.length}</span></h2><div class="tbl">${pays.length?`<table><tr><th>Fecha</th><th>Cliente</th><th class="n">Monto</th><th>Método</th><th>Quién lo anotó</th></tr>${pays.map(p => `<tr><td>${esc(p.fecha||laDate(p.at||0))}</td><td>${esc(p.nombre||"")}</td><td class="n">${money(p.monto)}</td><td>${esc(METODOS[p.metodo]||p.metodo||"")}</td><td>${esc(nameOf(p.by))}</td></tr>`).join("")}</table>`:`<p class="empty">Todavía no hay pagos en este periodo.</p>`}</div></div>`;
@@ -376,12 +359,14 @@ function openCli(id){
   const log = (c.log||[]).slice().sort((a,b) => (b.at||0)-(a.at||0));
   const cards = Object.entries(S.cards).filter(([,x]) => x.clientId===id);
   const pend = Object.values(S.links).find(x => x.clientId===id && x.status==="pendiente");
+  const fono = tel10(c.tel).length===10 ? `<button type="button" class="linkish" data-phone="${esc(id)}" style="font-size:18px">${esc(telFmt(c.tel))}</button>` : `<span class="note">${c.tel?esc(telFmt(c.tel)):"Sin teléfono"}</span>`;
   openModal(`<h3>${esc(c.nombre||"Cliente")}</h3>
     <div class="row"><span class="tag ${t==="rojo"?"tg-bad":t==="azul"?"tg-blue":t==="amarillo"?"tg-yellow":t==="naranja"?"tg-orange":t==="verde"?"tg-good":"tg-acc"}">${esc(GRUPOS[bucketOf(c)]||"")}</span>${encargada(c)?`<span class="note">La lleva ${esc(nameOf(encargada(c)))}</span>`:""}${c.lastSyncAt?`<span class="note">Sync ${fmtWhen(c.lastSyncAt)} · ${esc(c.syncedBy||"")}</span>`:""}</div>
-    ${skip?`<div class="banner bad">SKIP. Hy Cite intentó hablarle muchas veces y no contestó. Mientras esté en skip no se toma ningún pago: ni link, ni registro, ni nada, hasta que el cliente llame a Hy Cite.${c.skipNota?" "+esc(c.skipNota):""}</div>`:""}
+    ${skip?`<div class="banner bad">${esc(SKIP_TXT)}${c.skipNota?" "+esc(c.skipNota):""}${c.skipLlamo?" Ya llamó a Hy Cite"+(c.skipLlamoFecha?" el "+esc(c.skipLlamoFecha):"")+".":""}</div>`:""}
     ${L.esUpdate(c)?`<div class="banner blue">UPDATE. Va ${c.pagosAtras||"varios"} pagos atrás. Hy Cite puede ofrecerle pagar ${money(c.updateMonto)} para ponerse al día. El cliente tiene que aprobarlo por llamada o correo. ${L.updateAprobado(c)?"Aprobado"+ (c.updateFecha?" el "+esc(c.updateFecha):"")+".":"Todavía no lo aprueba."} ${c.updateNotas?esc(c.updateNotas):""}</div>`:""}
-    <div class="row">${sendBtns(id,c)}</div>
-    <div class="note">${[c.tel?telFmt(c.tel):"", c.email?esc(c.email):"", c.direccion?esc(c.direccion):"", c.ciudad?esc(c.ciudad):""].filter(Boolean).join(" · ")}</div>
+    <div class="row">${fono}</div>
+    <div>${c.direccion?esc(c.direccion):"Sin dirección"}${c.ciudad?" · "+esc(c.ciudad):""}</div>
+    <label class="f">Notas<textarea class="i" id="e-notas">${esc(c.notasHy||"")}</textarea></label>
     <div class="eyebrow">Cuenta</div>
     <div class="grid2">
       <label class="f">Nombre<input class="i" id="e-nombre" value="${esc(c.nombre||"")}"></label>
@@ -401,10 +386,11 @@ function openCli(id){
       <label class="f">Día del pago automático<input class="i" type="number" min="1" max="31" id="e-pd" value="${c.pago?.dia||""}"></label>
       <label class="f">La cobra<select class="i" id="e-as"><option value="">Según el grupo</option>${Object.entries(staff()).map(([em,v]) => `<option value="${esc(em)}" ${c.asignada===em?"selected":""}>${esc(v.name||em)}</option>`).join("")}</select></label>
     </div>
-    <label class="f">Notas de Hy Cite<textarea class="i" id="e-notas">${esc(c.notasHy||"")}</textarea></label>
     <div class="eyebrow">Banderas</div>
-    <label class="chip ${skip?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-skip" ${skip?"checked":""} hidden> SKIP (no contestó; no se cobra)</label>
+    <label class="chip ${skip?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-skip" ${skip?"checked":""} hidden> En skip</label>
     <label class="f">Nota del skip<input class="i" id="e-skipn" value="${esc(c.skipNota||"")}"></label>
+    <label class="chip ${c.skipLlamo?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-skipl" ${c.skipLlamo?"checked":""} hidden> El cliente ya llamó a Hy Cite</label>
+    <label class="f">Fecha en que llamó<input class="i" type="date" id="e-skiplf" value="${esc(c.skipLlamoFecha||"")}"></label>
     <label class="chip ${L.esUpdate(c)?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-upd" ${L.esUpdate(c)?"checked":""} hidden> Califica para update</label>
     <div class="grid2"><label class="f">Monto del update<input class="i" type="number" min="0" step="0.01" id="e-updm" value="${c.updateMonto||""}"></label>
       <label class="f">Aprobado por el cliente<select class="i" id="e-upda"><option value="no" ${L.updateAprobado(c)?"":"selected"}>No</option><option value="si" ${L.updateAprobado(c)?"selected":""}>Sí</option></select></label>
@@ -414,11 +400,10 @@ function openCli(id){
     <div class="grid2"><label class="f">Fecha<input class="i" type="date" id="e-carf" value="${esc(c.carolinaFecha||"")}"></label><label class="f">Nota<input class="i" id="e-carn" value="${esc(c.carolinaNota||"")}"></label></div>
     <div class="row"><label class="chip ${c.beneficio?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-be" ${c.beneficio?"checked":""} hidden> Califica a beneficio</label><label class="chip ${c.soloKat?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-sk" ${c.soloKat?"checked":""} hidden> Solo le contesta a Katerine</label></div>
     <div class="eyebrow">Link de pago (lo genera Hy Cite)</div>
-    ${skip?`<p class="note">Los botones de pago están apagados por el skip.</p>`:""}
-    <label class="f">Link actual<input class="i" id="e-link" value="${esc(c.payLink||"")}" placeholder="https://…" ${skip?"disabled":""}></label>
-    <div class="row"><button class="btn small" id="e-pedir" ${skip||pend?"disabled":""}>${pend?"Link pedido":"Pedir link"}</button>
-      <button class="btn small ghost" id="e-copy" ${skip||!L.safeHttps(c.payLink)?"disabled":""}>Copiar link</button>
-      <button class="btn small ghost" id="e-pago" ${skip?"disabled":""}>Anotar pago</button></div>
+    <label class="f">Link actual<input class="i" id="e-link" value="${esc(c.payLink||"")}" placeholder="https://…"></label>
+    <div class="row"><button class="btn small" id="e-pedir" ${pend?"disabled":""}>${pend?"Link pedido":"Pedir link"}</button>
+      <button class="btn small ghost" id="e-copy" ${L.safeHttps(c.payLink)?"":"disabled"}>Copiar link</button>
+      <button class="btn small ghost" id="e-pago">Anotar pago</button></div>
     ${c.etapa==="postventa"?`<div class="eyebrow">Postventa de esta cuenta</div>
       <div class="note">${c.post?.llamada?(c.post.llamada.ok?"Bienvenida: le llegó bien.":"Bienvenida con problema. "+esc(c.post.llamada.nota||"")):"Falta la llamada de bienvenida."}</div>
       ${c.post?.llamada?"":`<div class="row"><button class="btn small" data-pl="ok">Llegó bien</button><button class="btn small ghost" data-pl="mal">Hubo un problema</button></div>`}
@@ -428,7 +413,7 @@ function openCli(id){
       ${postFalta(c).length?"":`<button class="btn small" id="post-fin">Terminar postventa</button>`}`:""}
     <div class="eyebrow">Anotar actividad</div>
     <div class="chips" id="tipos">${Object.entries(TIPOS).map(([k,l]) => `<button class="chip" data-tipo="${k}">${l}</button>`).join("")}</div>
-    <div class="chips" id="outs">${Object.entries(OUTS).filter(([k]) => !(skip&&k==="pago")).map(([k,l]) => `<button class="chip" data-out="${k}">${l}</button>`).join("")}</div>
+    <div class="chips" id="outs">${Object.entries(OUTS).map(([k,l]) => `<button class="chip" data-out="${k}">${l}</button>`).join("")}</div>
     <div class="grid2"><label class="f" id="pr-w">Fecha de la promesa<input class="i" type="date" id="pr-d"></label><label class="f">Monto de la promesa<input class="i" type="number" min="0" step="0.01" id="pr-m"></label>
       <label class="f" style="grid-column:1/-1">Mensaje que se dejó<textarea class="i" id="res-n"></textarea></label></div>
     <button class="btn" id="res-ok">Guardar actividad</button>
@@ -451,26 +436,26 @@ function bindCli(id){
   let tipo = "llamada", resultado = "";
   document.querySelectorAll("[data-tipo]").forEach(b => b.onclick = () => { tipo = b.dataset.tipo; document.querySelectorAll("[data-tipo]").forEach(z => z.classList.toggle("on", z===b)); });
   document.querySelectorAll("[data-out]").forEach(b => b.onclick = () => { resultado = b.dataset.out; document.querySelectorAll("[data-out]").forEach(z => z.classList.toggle("on", z===b)); });
-  const skipNow = () => document.getElementById("e-skip")?.checked;
   document.getElementById("res-ok").onclick = () => logAct(id, {tipo, resultado, mensaje:qv("res-n"), promesaFecha:qv("pr-d"), promesaMonto:+qv("pr-m")||0}).then(() => openCli(id)).catch(err);
   document.getElementById("e-ok").onclick = async () => {
     const skip = !!document.getElementById("e-skip").checked;
     const atraso = Math.max(0, +qv("e-atraso")||0);
+    const llamo = !!document.getElementById("e-skipl").checked;
     const up = touch({nombre:qv("e-nombre").trim().slice(0,80), cuenta:qv("e-cuenta").trim().slice(0,40), tel:qv("e-tel").trim().slice(0,30), email:qv("e-email").trim().slice(0,120), direccion:qv("e-dir").trim().slice(0,200), ciudad:qv("e-ciudad").trim().slice(0,60), producto:qv("e-prod").trim().slice(0,160), pedido:qv("e-pedido").trim().slice(0,40),
       saldo:+qv("e-saldo")||0, vencido:+qv("e-vencido")||0, mensual:+qv("e-mensual")||0, atraso, pagosAtras:Math.max(0,+qv("e-npagos")||0), proxVence:qv("e-prox"), notasHy:qv("e-notas").slice(0,4000),
-      skip, skipNota:qv("e-skipn").slice(0,500), updateOn:!!document.getElementById("e-upd").checked, updateMonto:+qv("e-updm")||0, updateNotas:qv("e-updn").slice(0,500), updateAprobado:qv("e-upda")==="si", updateFecha:qv("e-updf"),
+      skip, skipNota:qv("e-skipn").slice(0,500), skipLlamo:llamo, skipLlamoFecha:llamo?(qv("e-skiplf")||today()):"", updateOn:!!document.getElementById("e-upd").checked, updateMonto:+qv("e-updm")||0, updateNotas:qv("e-updn").slice(0,500), updateAprobado:qv("e-upda")==="si", updateFecha:qv("e-updf"),
       carolina:!!document.getElementById("e-car").checked, carolinaFecha:qv("e-carf"), carolinaNota:qv("e-carn").slice(0,500), carolinaAt: document.getElementById("e-car").checked ? (c.carolinaAt||Date.now()) : 0,
       beneficio:!!document.getElementById("e-be").checked, soloKat:!!document.getElementById("e-sk").checked, asignada:qv("e-as")});
     const pd = +qv("e-pd")||0; up.pago = pd ? {dia:Math.min(31,pd), monto:+qv("e-mensual")||+(c.pago&&c.pago.monto)||0} : firebase.firestore.FieldValue.delete();
-    up.payLink = skip ? "" : L.safeHttps(qv("e-link"));
-    if (!skip && qv("e-link") && !up.payLink) return toast("El link tiene que empezar con https://");
+    up.payLink = L.safeHttps(qv("e-link"));
+    if (qv("e-link") && !up.payLink) return toast("El link tiene que empezar con https://");
     up.bucket = L.bucketOf(atraso); up.tono = L.toneOf(Object.assign({}, c, up));
     try { await ref.update(up); toast("Guardado"); openCli(id); } catch(e){ err(e); }
   };
   const pedir = document.getElementById("e-pedir"); if (pedir) pedir.onclick = () => pedirLink(id);
   const copy = document.getElementById("e-copy"); if (copy) copy.onclick = () => copiarLink(c);
   const pago = document.getElementById("e-pago"); if (pago) pago.onclick = () => openPago(id);
-  document.querySelectorAll("[data-send]").forEach(b => b.onclick = ev => { ev.preventDefault(); contacto(b.dataset.send, id); });
+  document.querySelectorAll("#modal [data-phone]").forEach(b => b.onclick = ev => { ev.stopPropagation(); openMenu(b.dataset.phone); });
   document.querySelectorAll("[data-pl]").forEach(b => b.onclick = async () => { const ok = b.dataset.pl==="ok"; const nota = ok ? "" : String(prompt("¿Qué problema hubo?")||"").slice(0,300);
     try { await ref.update({"post.llamada":{ok, nota, at:Date.now(), by:S.email}}); openCli(id); } catch(e){ err(e); } });
   const viOk = document.getElementById("vi-ok"); if (viOk) viOk.onclick = () => ref.update({"post.visita":{when:laToMs(qv("vi-d")||today(),"12:00"), hecha:false}}).then(() => openCli(id), err);
@@ -486,11 +471,9 @@ function bindCli(id){
     b.textContent = S.reveal[cid] ? "Ocultar" : "Mostrar";
   });
   document.querySelectorAll("[data-cdel]").forEach(b => b.onclick = async () => { if (!confirm("¿Borrar esta tarjeta?")) return; try { await S.db.doc("ctarjetas/"+b.dataset.cdel).delete(); toast("Tarjeta borrada"); openCli(id); } catch(e){ err(e); } });
-  if (skipNow()) { /* el estado inicial ya deshabilita los botones */ }
 }
 async function logAct(clientId, partial){
   const c = S.cli[clientId]||{};
-  if (L.esSkip(c) && partial.resultado==="pago") throw Object.assign(new Error("skip"), {code:"permission-denied"});
   const act = {by:S.email, quien:partial.quien||S.email, byName:nameOf(partial.quien||S.email), at:partial.at||Date.now(), tipo:partial.tipo||"nota", resultado:partial.resultado||"", mensaje:String(partial.mensaje||"").slice(0,2000), clientId};
   if (partial.promesaFecha) act.promesaFecha = partial.promesaFecha;
   if (partial.promesaMonto) act.promesaMonto = +partial.promesaMonto||0;
@@ -508,23 +491,57 @@ async function logAct(clientId, partial){
   batch.update(S.db.doc("ccli/"+clientId), up);
   await batch.commit();
 }
+function openMenu(id){
+  const c = S.cli[id]; if (!c) return;
+  const tel = tel10(c.tel);
+  if (tel.length!==10) return toast("El teléfono no está completo.");
+  document.querySelectorAll(".cmenu").forEach(n => n.remove());
+  const mail = L.safeMail(c.email);
+  const box = document.createElement("div");
+  box.className = "mbg cmenu"; box.style.zIndex = "40";
+  box.innerHTML = `<div class="modal" style="max-width:420px"><h3>${esc(c.nombre||"Cliente")}</h3><p class="note" style="margin:0">${esc(telFmt(c.tel))}</p>
+    <button class="btn" data-go="llamada">Llamar</button>
+    <button class="btn ghost" data-go="sms">Mensaje de texto</button>
+    <button class="btn wa" data-go="whatsapp">WhatsApp</button>
+    <button class="btn ghost" data-go="correo" ${mail?"":"disabled"}>${mail?"Correo electrónico":"Correo electrónico · sin correo"}</button>
+    ${mail?"":`<label class="f">Agregar correo<input class="i" id="cmenu-mail" type="email" placeholder="correo@ejemplo.com" autocomplete="email"></label><button class="btn small" id="cmenu-save">Guardar correo</button>`}
+    <button class="btn ghost" data-x>Cancelar</button></div>`;
+  document.body.appendChild(box);
+  box.onclick = e => { if (e.target===box) box.remove(); };
+  box.querySelector("[data-x]").onclick = () => box.remove();
+  box.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { if (b.disabled) return; box.remove(); contacto(b.dataset.go, id); });
+  const save = box.querySelector("#cmenu-save");
+  if (save) save.onclick = async () => {
+    const em = L.safeMail((box.querySelector("#cmenu-mail")||{}).value||"");
+    if (!em) return toast("Ese correo no es válido.");
+    try { await S.db.doc("ccli/"+id).update(touch({email:em})); S.cli[id] = Object.assign({}, c, {email:em}); box.remove(); toast("Correo guardado"); openMenu(id); }
+    catch(e){ err(e); }
+  };
+}
 async function contacto(tipo, id){
   const c = S.cli[id]; if (!c) return;
-  if (!datoEnvio(tipo,c)) return toast(tipo==="correo" ? "Esta cuenta no tiene correo." : "El teléfono no está completo.");
-  const url = urlEnvio(tipo, c);
-  try { await logAct(id, {tipo, resultado:"", mensaje:"Se abrió "+(TIPOS[tipo]||tipo)+" con el texto listo. La app no envió el mensaje."}); toast("Anotado. Se abre el mensaje; tú lo envías."); }
+  const tel = tel10(c.tel);
+  const body = encodeURIComponent(textoDe(c));
+  let url = "";
+  if (tipo==="correo"){ const mail = L.safeMail(c.email); if (!mail) return toast("Esta cuenta no tiene correo."); url = "mailto:"+encodeURIComponent(mail)+"?subject="+encodeURIComponent("Su cuenta Royal Prestige")+"&body="+body; }
+  else { if (tel.length!==10) return toast("El teléfono no está completo.");
+    if (tipo==="llamada") url = "tel:+1"+tel;
+    else if (tipo==="whatsapp") url = "https://wa.me/1"+tel+"?text="+body;
+    else url = "sms:+1"+tel+"?&body="+body; }
+  const nombre = {llamada:"Llamar", sms:"Mensaje de texto", whatsapp:"WhatsApp", correo:"Correo electrónico"}[tipo] || tipo;
+  const tipoAct = tipo==="llamada" ? "llamada" : tipo;
+  try { await logAct(id, {tipo:tipoAct, resultado:"", mensaje:"Se abrió "+nombre+". La app no envió el mensaje."}); toast("Anotado. Se abre "+nombre+"."); }
   catch(e){ err(e); }
   if (tipo==="whatsapp") window.open(url, "_blank", "noopener"); else location.href = url;
 }
 function copiarLink(c){
-  if (!L.canPay(c)) return toast("En skip no se copia el link.");
   const link = L.safeHttps(c.payLink); if (!link) return toast("No hay link todavía.");
   const done = () => toast("Link copiado");
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => { prompt("Copia el link:", link); });
   else prompt("Copia el link:", link);
 }
 async function pedirLink(id){
-  const c = S.cli[id]; if (!c || !L.canPay(c)) return toast("En skip no se pide link.");
+  const c = S.cli[id]; if (!c) return;
   if (Object.values(S.links).some(x => x.clientId===id && x.status==="pendiente")) return toast("Ya hay un pedido pendiente.");
   try {
     await S.db.collection("clinkreq").add({clientId:id, nombre:c.nombre||"", status:"pendiente", url:"", askedBy:S.email, askedAt:Date.now(), filledBy:"", filledAt:0, nota:""});
@@ -534,7 +551,6 @@ async function pedirLink(id){
 }
 async function llenarLink(reqId){
   const x = S.links[reqId]; if (!x) return;
-  const c = S.cli[x.clientId]||{}; if (L.esSkip(c)) return toast("Esa cuenta está en skip.");
   const url = L.safeHttps((document.querySelector(`[data-url="${reqId}"]`)||{}).value||"");
   if (!url) return toast("Pega un link que empiece con https://");
   try {
@@ -545,7 +561,7 @@ async function llenarLink(reqId){
   } catch(e){ err(e); }
 }
 function openPago(id){
-  const c = S.cli[id]; if (!c || !L.canPay(c)) return toast("En skip no se anota el pago.");
+  const c = S.cli[id]; if (!c) return;
   openModal(`<h3>Anotar pago</h3><p class="note">Esto no cobra. Solo deja constancia. El saldo lo actualiza el portal.</p>
     <div class="grid2"><label class="f">Monto<input class="i" type="number" min="0.01" step="0.01" id="p-m"></label><label class="f">Fecha<input class="i" type="date" id="p-f" value="${today()}"></label>
       <label class="f">Método<select class="i" id="p-met">${Object.entries(METODOS).map(([k,l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
@@ -626,7 +642,7 @@ function openOrden(id){
 }
 function openImport(kind){
   const tit = kind==="ordenes" ? "Importar órdenes" : kind==="actividad" ? "Importar actividad" : "Importar cuentas";
-  openModal(`<h3>${tit}</h3><p class="note">Pega CSV (con títulos) o JSON. Lo usan Katerine y el bot. No se importa número de tarjeta ni CVV. En skip se borra el link de pago.</p>
+  openModal(`<h3>${tit}</h3><p class="note">Pega CSV (con títulos) o JSON. Lo usan Katerine y el bot. No se importa número de tarjeta ni CVV.</p>
     <textarea class="i" id="im-t" style="min-height:160px" placeholder='nombre,cuenta,telefono,dias,saldo,skip&#10;Ana López,12345,6195550101,40,320.50,no'></textarea>
     <div id="im-p"></div><div class="row"><button class="btn ghost" id="im-v">Revisar</button><button class="btn" id="im-ok" disabled>Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
     let parsed = {rows:[]};
@@ -684,9 +700,6 @@ async function guardarImport(kind, rows){
     (r._keys||[]).forEach(k => { if (k==="cobrador"||k==="cuenta"&&!r.cuenta) return; if (r[k]!==undefined && k!=="_keys") patch[k] = r[k]; });
     if (r.cobrador){ const em = resolverCobrador(r.cobrador); if (em) patch.asignada = em; }
     delete patch.cobrador; delete patch._keys;
-    const wasSkip = !!(hit && hit[1].skip === true);
-    const nowSkip = patch.skip != null ? !!patch.skip : wasSkip;
-    if (patch.skip === true || (nowSkip && patch.payLink)) patch.payLink = "";
     patch.bucket = L.bucketOf(patch.atraso!=null?patch.atraso:(hit?hit[1].atraso:0));
     Object.assign(patch, {tono:L.toneOf(Object.assign({}, hit?hit[1]:{}, patch))});
     touch(patch);
@@ -719,8 +732,8 @@ function openPortal(){
 }
 function bind(){
   const all = (q,f) => document.querySelectorAll(q).forEach(f);
-  all("[data-c]", b => b.onclick = ev => { if (ev.target.closest("button")) return; openCli(b.dataset.c); });
-  all("[data-send]", b => b.onclick = ev => { ev.stopPropagation(); contacto(b.dataset.send, b.dataset.id); });
+  all("[data-c]", b => b.onclick = ev => { if (ev.target.closest("button, .linkish")) return; openCli(b.dataset.c); });
+  all("[data-phone]", b => b.onclick = ev => { ev.stopPropagation(); openMenu(b.dataset.phone); });
   all("[data-ord]", b => b.onclick = () => openOrden(b.dataset.ord));
   const q = $("#q"); if (q) q.oninput = () => { S.f.q = q.value; clearTimeout(S.qt); S.qt = setTimeout(() => { const pos = q.selectionStart; render(); const e = $("#q"); if (e){ e.focus(); try { e.setSelectionRange(pos,pos); } catch(err){} } }, 280); };
   const fc = $("#f-cob"); if (fc) fc.onchange = () => { S.f.cob = fc.value; render(); };
