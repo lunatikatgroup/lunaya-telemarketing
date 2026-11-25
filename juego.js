@@ -1189,10 +1189,10 @@ async function promoImg(j, p, link){
     /* Los demás juegos: círculo dorado con el dibujo del juego en el centro y los regalos alrededor */
     x.save(); x.shadowColor = "rgba(120,90,20,.4)"; x.shadowBlur = 44; x.shadowOffsetY = 18; x.beginPath(); x.arc(cx, cy, R+32, 0, 7); x.fillStyle = goldGrad(x, cx-R, cy-R, cx+R, cy+R); x.fill(); x.restore();
     const fg = x.createRadialGradient(cx, cy-R*0.3, 20, cx, cy, R); fg.addColorStop(0, "#ffffff"); fg.addColorStop(1, JGT.sl[1]); x.beginPath(); x.arc(cx, cy, R, 0, 7); x.fillStyle = fg; x.fill();
-    x.textAlign = "center"; x.font = `${Math.round(R*0.62)}px serif`; x.fillText(TI(p.tipo).e, cx, cy + R*0.04);
+    x.textAlign = "center"; drawGift(x, cx - R*0.3, cy - R*0.66, R*0.6);
     const ttl = TI(p.tipo).n; x.font = `800 40px ${SANS}`; const tw0 = x.measureText(ttl).width + 50; x.fillStyle = JGT.ink; rr(x, cx-tw0/2, cy + R*0.18, tw0, 64, 32); x.fill(); x.fillStyle = "#fff"; x.fillText(ttl, cx, cy + R*0.18 + 45);
-    const show = prizes.slice(0, 8), m = show.length, sz = m > 5 ? 120 : 150;
-    const ANG = m === 1 ? [35] : [-145,-35,145,35,180,0,-108,-72]; show.forEach((pr, k) => { const ang = ANG[k] * Math.PI/180;
+    const show = prizes.slice(0, 8), m = show.length, sz = m > 5 ? 104 : m > 4 ? 120 : 150;
+    const ANG = m === 1 ? [35] : m > 4 ? [-140,-40,180,0,140,40,-112,-68] : [-145,-35,145,35]; show.forEach((pr, k) => { const ang = ANG[k] * Math.PI/180;
       const ix = cx + (R+20)*Math.cos(ang), iy = cy + (R+20)*Math.sin(ang);
       x.save(); x.shadowColor = "rgba(0,0,0,.2)"; x.shadowBlur = 14; x.beginPath(); x.arc(ix, iy, sz/2+8, 0, 7); x.fillStyle = "#fff"; x.fill(); x.restore();
       x.beginPath(); x.arc(ix, iy, sz/2+8, 0, 7); x.strokeStyle = JGT.g[1]; x.lineWidth = 5; x.stroke();
