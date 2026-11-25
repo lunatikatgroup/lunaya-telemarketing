@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cobranza · Lunaya</title>
+<link rel="icon" href="../favicon.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Cobranza">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#e8dcc6">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e8dcc6;--card:#fffdf8;--ink:#1f1e1d;--muted:#6f6a5e;--line:#dfd3bc;--soft:#f4ecdd;--accent:#2f6f73;--accent-soft:#dcecea;--good:#3f7d4e;--good-bg:#e5efe2;--warn:#a3651a;--warn-bg:#f8ecd6;--bad:#b4442f;--bad-bg:#f7e1db;--serif:"Source Serif 4",Georgia,serif;--body:"Manrope",system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+header{padding:18px 16px 4px;max-width:980px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--line);padding-bottom:12px;margin-bottom:10px}
+.brand b{font-family:var(--serif);font-size:30px;letter-spacing:.06em}.brand small{display:block;font-size:11.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--serif);font-size:23px;margin:6px 0 2px;text-transform:uppercase}.sub{color:var(--muted);margin:0;font-size:14px}
+main{max-width:980px;margin:0 auto;padding:12px 16px 110px;display:grid;gap:14px}main>*{min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h2{font-family:var(--serif);font-size:18px;text-transform:uppercase;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.dark{background:var(--ink)}.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}.btn.small{padding:7px 12px;font-size:13.5px}.btn.danger{background:var(--bad)}.btn.wa{background:#25d366}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:600;cursor:pointer}.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+label.f{display:grid;gap:5px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.i{width:100%;border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:10px 12px;font-size:15px}
+textarea.i{min-height:70px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.list{display:grid;gap:8px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;background:var(--card);cursor:pointer;text-align:left;width:100%}
+.item .t{font-weight:800;font-size:16px}.item .m{color:var(--muted);font-size:13px}
+.item.warn{border-left-color:var(--warn)}.item.bad{border-left-color:var(--bad)}.item.good{border-left-color:var(--good)}.item.mute{border-left-color:var(--line)}
+.tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;white-space:nowrap}
+.tg-good{background:var(--good-bg);color:var(--good)}.tg-warn{background:var(--warn-bg);color:var(--warn)}.tg-bad{background:var(--bad-bg);color:var(--bad)}.tg-mute{background:var(--soft);color:var(--muted)}.tg-acc{background:var(--accent-soft);color:var(--accent)}
+.note{font-size:13px;color:var(--muted)}.empty{color:var(--muted);text-align:center;padding:16px}
+.banner{border-radius:12px;padding:12px 14px;font-weight:600}.banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.banner.good{background:var(--good-bg);color:var(--good)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
+.tile{background:var(--soft);border-radius:12px;padding:12px}.tile b{display:block;font-family:var(--serif);font-size:28px;line-height:1.05}.tile span{font-size:12px;color:var(--muted);font-weight:700}.tile small{display:block;font-size:12px;color:var(--muted)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:14px}th{font-size:11.5px;text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}td{padding:8px;border-bottom:1px solid var(--line)}td.n,th.n{text-align:right}
+.tbl{overflow-x:auto}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:700;padding:6px;border-radius:10px;cursor:pointer;flex:1;max-width:96px}
+nav button.on{color:var(--accent);background:var(--accent-soft)}nav svg{width:22px;height:22px}
+.nb{display:inline-block;background:#c0392b;color:#fff;border-radius:9px;font-size:10px;padding:0 5px;margin-left:2px}
+.mbg{position:fixed;inset:0;background:rgba(31,30,29,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.modal{background:var(--card);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));display:grid;gap:12px}
+@media (min-width:700px){.mbg{align-items:center}.modal{border-radius:20px}}
+.modal h3{font-family:var(--serif);font-size:21px;margin:0;text-transform:uppercase}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.opt{border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:11px;font-weight:700;cursor:pointer;text-align:left}.opt.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.tl{display:grid;gap:6px;max-height:220px;overflow:auto}.tl div{background:var(--soft);border-radius:10px;padding:7px 10px;font-size:14px}.tl small{display:block;color:var(--muted);font-size:11.5px;font-weight:700}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
+</style>
+</head>
+<body>
+<header><div class="brand"><svg viewBox="0 0 24 24" width="34" height="34" style="color:var(--accent)"><path fill="currentColor" d="M3 6h18v12H3zm2 2v2h14V8zm0 5v3h6v-3z"/></svg><div><b>LUNAYA</b><small>Cobranza y postventa</small></div></div>
+<h1 id="title">Cargando…</h1><p class="sub" id="subtitle"></p></header>
+<main id="main"><div class="card empty">Cargando…</div></main>
+<nav id="nav" hidden></nav>
+<div id="modal"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="../config.js"></script>
+<script>
+/* ===== Lunaya Cobranza =====
+   ccli/{id}: clientes con venta (postventa, pagos automáticos, atrasos y llamadas).
+   cconfig/main: equipo de cobranza (por correo) y qué grupo lleva cada una.
+   Lunaya NO guarda números de tarjeta ni de banco: solo nombre, teléfono, saldo, días de atraso y el día del pago. */
+const TZ = "America/Los_Angeles";
+const GRUPOS = {aldia:"Al día", g30:"0–30 días", g60:"31–60 días", g90:"61+ · recompra"};
+const GCLS = {aldia:"tg-good", g30:"tg-warn", g60:"tg-bad", g90:"tg-bad"};
+const ROLES = {g30:"Cobra 0–30", g60:"Cobra 31–60", g90:"Recompra (61+)", post:"Postventa", direccion:"Dirección"};
+const RES = {nc:"📵 No contestó", promesa:"🤝 Promesa de pago", pago:"✅ Pagó", otro_dia:"📅 Que llame otro día", solo_kat:"👑 Solo habla con Katerine", mal:"❌ Número equivocado", nota:"📝 Nota"};
+const S = {db:null, auth:null, user:null, email:"", owners:[], cfg:{}, cli:{}, ventas:{}, privs:{}, view:"hoy", f:{g:"todos", q:"", mios:true}, loaded:false, unsub:[]};
+
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const tel10 = t => { const d = String(t||"").replace(/\D/g,""); return d.length===11 && d[0]==="1" ? d.slice(1) : d.slice(-10); };
+const telFmt = t => { const d = tel10(t); return d.length===10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : (t||""); };
+function partsLA(ms){ const o = {}; new Intl.DateTimeFormat("en-US",{timeZone:TZ,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date(ms)).forEach(p => o[p.type] = p.value); return o; }
+function tzOff(ms){ const p = partsLA(ms); return Date.UTC(+p.year, +p.month-1, +p.day, +p.hour%24, +p.minute, +p.second) - Math.floor(ms/1000)*1000; }
+function laToMs(d, t){ const [y,m,da] = d.split("-").map(Number); const [h,mi] = (t||"00:00").split(":").map(Number); const g = Date.UTC(y,m-1,da,h,mi); return g - tzOff(g - tzOff(g)); }
+const laDate = ms => { const p = partsLA(ms); return `${p.year}-${p.month}-${p.day}`; };
+const laTime = ms => { const p = partsLA(ms); return `${p.hour}:${p.minute}`; };
+const today = () => laDate(Date.now());
+function addDays(d, n){ const [y,m,da] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1,da+n,12)).toISOString().slice(0,10); }
+const fmt = (ms, o) => new Intl.DateTimeFormat("es-US",{timeZone:TZ,...o}).format(new Date(ms));
+const fmtWhen = ms => fmt(ms,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+const fmtDia = ms => fmt(ms,{weekday:"long",day:"numeric",month:"long"});
+const fmtHora = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
+function mondayOf(d){ const [y,m,da] = d.split("-").map(Number); const dow = (new Date(Date.UTC(y,m-1,da,12)).getUTCDay()+6)%7; return addDays(d,-dow); }
+function rango(p){ const t = today(); if (p==="hoy") return [laToMs(t,"00:00"), laToMs(addDays(t,1),"00:00")];
+  if (p==="semana"){ const mo = mondayOf(t); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
+  if (p==="semant"){ const mo = addDays(mondayOf(t),-7); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
+  const f = t.slice(0,8)+"01"; const [y,m] = f.split("-").map(Number); const nx = new Date(Date.UTC(y,m,1,12)).toISOString().slice(0,10);
+  if (p==="mesant"){ const pv = new Date(Date.UTC(y,m-2,1,12)).toISOString().slice(0,10); return [laToMs(pv,"00:00"), laToMs(f,"00:00")]; }
+  return [laToMs(f,"00:00"), laToMs(nx,"00:00")]; }
+const PER = {hoy:"Hoy", semana:"Esta semana", semant:"Semana pasada", mes:"Este mes", mesant:"Mes anterior"};
+const inR = (ms, [a,b]) => ms >= a && ms < b;
+function toast(m){ document.querySelectorAll(".toast").forEach(t => t.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2800); }
+function err(e){ console.log(e); toast(e && e.code==="permission-denied" ? "No tienes permiso. Pídele a Katerine que te agregue al equipo de cobranza." : "No se pudo guardar. Revisa tu conexión."); }
+function openModal(html, bind){ $("#modal").innerHTML = `<div class="mbg" id="mbg"><div class="modal">${html}</div></div>`; $("#mbg").onclick = e => { if (e.target.id==="mbg") closeModal(); }; $("#modal").querySelectorAll("[data-close]").forEach(b => b.onclick = closeModal); bind && bind(); }
+function closeModal(){ $("#modal").innerHTML = ""; S.open = null; }
+
+/* ===== Equipo y permisos ===== */
+const staff = () => S.cfg.staff || {};
+const isOwner = () => S.owners.includes(S.email);
+const isDir = () => isOwner() || (staff()[S.email]?.roles||[]).includes("direccion");
+const myRoles = () => isOwner() ? Object.keys(ROLES) : (staff()[S.email]?.roles || []);
+const nameOf = em => em ? (staff()[em]?.name || (S.owners.includes(em) ? "Katerine" : em.split("@")[0])) : "—";
+const first = n => String(n||"").trim().split(/\s+/)[0];
+const money = n => "$" + (+n||0).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2});
+const conRol = r => Object.entries(staff()).filter(([,v]) => (v.roles||[]).includes(r)).map(([em]) => em);
+
+/* ===== Reglas del negocio ===== */
+const grupoDe = c => { const d = +c.atraso || 0; return d <= 0 ? "aldia" : d <= 30 ? "g30" : d <= 60 ? "g60" : "g90"; };
+const encargada = c => c.asignada || (conRol(grupoDe(c))[0] || "");
+const finDia = () => laToMs(addDays(today(),1), "00:00");
+const ym = () => today().slice(0,7);
+const diaHoy = () => +today().slice(8,10);
+const ultimoDia = () => { const [y,m] = today().split("-").map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
+/* Pago automático de hoy: su día del mes (si el mes es más corto, el último día) y todavía no se revisó este mes */
+const pagaHoy = c => c.pago?.dia && c.etapa!=="cerrado" && (Math.min(+c.pago.dia, ultimoDia()) === diaHoy()) && !(c.revis||{})[ym()];
+const llamarHoy = c => c.etapa!=="cerrado" && ((c.prox && c.prox < finDia()) || (c.promesa?.fecha && !c.promesa.ok && c.promesa.fecha <= today()));
+const esMio = c => isDir() ? true : (encargada(c)===S.email || (c.etapa==="postventa" && myRoles().includes("post")));
+const postFalta = c => [!c.post?.llamada && "Llamada de bienvenida", !c.post?.visita?.hecha && "Visita de entrega", !c.pago?.dia && "Pagos automáticos"].filter(Boolean);
+
+/* ===== Arranque ===== */
+function boot(){ const cfg = window.LUNAYA_CONFIG || {}; firebase.initializeApp(cfg.firebase); S.auth = firebase.auth(); S.db = firebase.firestore();
+  S.owners = (cfg.owners||[]).map(x => x.toLowerCase());
+  S.auth.onAuthStateChanged(u => { S.unsub.forEach(f => { try { f(); } catch {} }); S.unsub = []; S.user = u; S.email = (u?.email||"").toLowerCase(); S.loaded = false; S.cfg = {}; S.cli = {}; S.subC = false;
+    if (!u) return render();
+    S.unsub.push(S.db.doc("cconfig/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : {}; S.cfgLoaded = true; if (!S.subC && (isOwner() || staff()[S.email])) subCli(); render(); }, e => { S.cfgLoaded = true; render(); }));
+    render(); });
+}
+function subCli(){ S.subC = true;
+  S.unsub.push(S.db.collection("ccli").onSnapshot(s => { S.cli = {}; s.docs.forEach(d => S.cli[d.id] = d.data()); S.loaded = true; render(); }, e => { console.log(e); S.loaded = true; S.loadErr = true; render(); }));
+  /* Solo Dirección: las ventas aprobadas de Lunaya, para pasarlas a postventa sin volver a escribirlas */
+  if (isOwner()){ const uid = S.user.uid;
+    S.unsub.push(S.db.collection("appts").where("saleStatus","==","aprobada").onSnapshot(s => { S.ventas = {}; s.docs.forEach(d => S.ventas[d.id] = d.data()); render(); }, e => console.log("ventas", e)));
+    [["socioId",uid],["up",uid],["dueno",uid],["dador",uid],["teleId",uid]].forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f,"==",v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; render(); }, e => console.log("apptp", f, e)))); }
+}
+const priv = id => { for (const k in S.privs){ if (S.privs[k][id]) return S.privs[k][id]; } return null; };
+const ventasNuevas = () => { const ya = new Set(Object.values(S.cli).map(c => c.apptId).filter(Boolean)); const desde = Date.now() - 120*864e5;
+  return Object.entries(S.ventas).filter(([id,a]) => a.sale && !ya.has(id) && !a.cobOff && (a.saleStatusAt || a.when || 0) >= desde).sort((x,y) => (y[1].saleStatusAt||y[1].when||0) - (x[1].saleStatusAt||x[1].when||0)); };
+
+/* ===== Render ===== */
+const IC = {hoy:'<path fill="currentColor" d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z"/>', post:'<path fill="currentColor" d="M20 8h-3V4H3v13h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-5zM8 18.5A1.5 1.5 0 1 1 8 15.5a1.5 1.5 0 0 1 0 3zm10 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM17 12V9.5h2.5L21 12z"/>', atr:'<path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h-2V6h2zm0 4h-2v-2h2z"/>', cli:'<path fill="currentColor" d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.4-3.2-4-6-4z"/>', ajustes:'<path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4L10.7 6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/>'};
+const TABS = [["hoy","Hoy"],["post","Postventa"],["atr","Atrasados"],["cli","Clientes"],["ajustes","Equipo"]];
+function render(){ const m = $("#main");
+  if (!S.auth){ m.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
+  if (!S.user){ $("#nav").hidden = true; $("#title").textContent = "Entrar"; $("#subtitle").textContent = "Usa la misma cuenta de Lunaya."; m.innerHTML = loginHtml(); bindLogin(); return; }
+  if (!S.cfgLoaded){ m.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
+  if (!isOwner() && !staff()[S.email]){ $("#nav").hidden = true; $("#title").textContent = "Sin acceso"; $("#subtitle").textContent = "";
+    m.innerHTML = `<div class="card"><h2>Todavía no tienes acceso</h2><p>Pídele a Katerine que te agregue al equipo de cobranza con este correo:</p><p><b>${esc(S.email)}</b></p><button class="btn ghost small" id="out">Salir</button></div>`; $("#out").onclick = () => S.auth.signOut(); return; }
+  const tabs = TABS.filter(t => t[0]!=="ajustes" || isOwner()); if (!tabs.some(t => t[0]===S.view)) S.view = "hoy";
+  const L = Object.values(S.cli); const nh = L.filter(c => esMio(c) && (pagaHoy(c) || llamarHoy(c))).length; const np = L.filter(c => c.etapa==="postventa" && esMio(c)).length;
+  const nav = $("#nav"); nav.hidden = false;
+  nav.innerHTML = tabs.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}${k==="hoy"&&nh?`<span class="nb">${nh}</span>`:k==="post"&&np?`<span class="nb">${np}</span>`:""}</button>`).join("");
+  nav.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { S.view = b.dataset.go; render(); scrollTo(0,0); });
+  const T = {hoy:["Hola, "+first(nameOf(S.email)), "Pagos automáticos para revisar y llamadas de hoy."], post:["Postventa","Bienvenida, visita de entrega y pagos automáticos."], atr:["Atrasados","Por grupo: 0–30, 31–60 y recompra."], cli:["Clientes","Todos los clientes, agregar y actualizar desde el portal."], ajustes:["Equipo","Quién trabaja la cobranza y qué lleva cada una."]}[S.view];
+  $("#title").textContent = T[0]; $("#subtitle").textContent = T[1];
+  if (!S.loaded){ m.innerHTML = `<div class="card empty">Cargando clientes…</div>`; return; }
+  if (S.loadErr){ m.innerHTML = `<div class="card"><h2>Falta un paso</h2><p class="note">Pega las reglas nuevas de Firebase (Firestore → Reglas → Publicar) y vuelve a abrir esta página.</p></div>`; return; }
+  m.innerHTML = ({hoy:vHoy, post:vPost, atr:vAtr, cli:vCli, ajustes:vAjustes})[S.view]();
+  bind(); }
+
+const telA = c => { const t = tel10(c.tel); return t.length===10 ? `<a class="btn small ghost" href="tel:+1${t}" onclick="event.stopPropagation()">📞</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}" onclick="event.stopPropagation()">WhatsApp</a>` : ""; };
+function cItem([id,c], extra=""){ const g = grupoDe(c);
+  const sub = [c.tel ? telFmt(c.tel) : "", c.ciudad ? "📍 "+esc(c.ciudad) : "", c.atraso > 0 ? `<b>${c.atraso} días</b>` : "", c.saldo ? "saldo "+money(c.saldo) : "", c.pago?.dia ? `💳 paga el ${c.pago.dia}` : ""].filter(Boolean).join(" · ");
+  const tags = [c.etapa==="postventa" ? `<span class="tag tg-acc">Postventa</span>` : `<span class="tag ${GCLS[g]}">${GRUPOS[g]}</span>`, c.soloKat ? `<span class="tag tg-bad">👑 Solo Katerine</span>` : "", c.beneficio ? `<span class="tag tg-good">⭐ Califica a beneficio</span>` : "",
+    c.promesa?.fecha && !c.promesa.ok ? `<span class="tag tg-warn">🤝 Prometió ${esc(c.promesa.fecha.slice(5).split("-").reverse().join("/"))}${c.promesa.monto?" · "+money(c.promesa.monto):""}</span>` : "", c.prox ? `<span class="tag tg-mute">📅 llamar ${fmt(c.prox,{day:"numeric",month:"short"})}</span>` : ""].join(" ");
+  return `<div class="item ${c.etapa==="postventa"?"":g==="aldia"?"good":g==="g30"?"warn":"bad"}" data-c="${id}" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(c.nombre||"Sin nombre")}</div><div class="m">${sub}</div><div style="margin-top:4px">${tags}</div>${extra}</div><div class="row" style="gap:6px">${telA(c)}</div></div>`; }
+
+function vHoy(){ const L = Object.entries(S.cli).filter(([,c]) => esMio(c));
+  const pagos = L.filter(([,c]) => pagaHoy(c)), llamar = L.filter(([,c]) => llamarHoy(c)).sort((a,b) => (a[1].prox||0) - (b[1].prox||0));
+  const kat = isOwner() ? Object.entries(S.cli).filter(([,c]) => c.soloKat && c.etapa!=="cerrado") : [];
+  const nv = isOwner() ? ventasNuevas() : [];
+  const atr = L.filter(([,c]) => c.etapa!=="cerrado" && c.etapa!=="postventa" && grupoDe(c)!=="aldia");
+  let h = `<div class="card"><div class="tiles"><div class="tile"><b>${pagos.length}</b><span>Pagos automáticos hoy</span><small>revisa si pasaron</small></div><div class="tile"><b>${llamar.length}</b><span>Para llamar hoy</span></div><div class="tile"><b>${atr.length}</b><span>Atrasados</span><small>${money(atr.reduce((t,[,c]) => t+(+c.saldo||0),0))} en saldo</small></div><div class="tile"><b>${L.filter(([,c]) => c.etapa==="postventa").length}</b><span>En postventa</span></div></div></div>`;
+  h += `<div class="card"><h2>💳 Pagos automáticos de hoy</h2><p class="note" style="margin-top:-6px">Revisa en el portal si el pago pasó. Si no pasó, llama hoy mismo para que no se atrase.</p>${pagos.length ? `<div class="list">${pagos.map(e => cItem(e, `<div class="row" style="margin-top:8px"><button class="btn small" data-rv="${e[0]}|paso">✅ Pasó</button><button class="btn small danger" data-rv="${e[0]}|no">❌ No pasó</button></div>`)).join("")}</div>` : `<div class="empty">Nadie tiene pago automático hoy (o ya se revisaron).</div>`}</div>`;
+  h += `<div class="card"><h2>📞 Llamar hoy</h2>${llamar.length ? `<div class="list">${llamar.map(e => cItem(e)).join("")}</div>` : `<div class="empty">No hay llamadas pendientes para hoy.</div>`}</div>`;
+  if (isOwner()) h += `<div class="card"><h2>👑 Solo te contestan a ti <span class="note">${kat.length}</span></h2>${kat.length ? `<div class="list">${kat.map(e => cItem(e)).join("")}</div>` : `<div class="empty">Ninguno por ahora.</div>`}</div>`;
+  if (isOwner()) h += `<div class="card"><h2>🆕 Ventas aprobadas de Lunaya <span class="note">${nv.length}</span></h2><p class="note" style="margin-top:-6px">Pásalas a postventa para la llamada de bienvenida, la visita y los pagos automáticos.</p>${nv.length ? `<div class="list">${nv.slice(0,30).map(([id,a]) => { const p = priv(id) || {}; return `<div class="item" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(p.client || a.nomVenta || "Cliente")}</div><div class="m">${money(a.amount)} · ${fmt(a.when||Date.now(),{day:"numeric",month:"short"})}${p.city||a.zona ? " · 📍 "+esc(p.city||a.zona) : ""}${p.phone ? " · "+telFmt(p.phone) : ""}</div></div><div class="row" style="gap:6px"><button class="btn small" data-pv="${id}">➕ A postventa</button><button class="btn small ghost" data-pvx="${id}" title="No pasar">✕</button></div></div>`; }).join("")}</div>` : `<div class="empty">No hay ventas aprobadas nuevas.</div>`}</div>`;
+  return h; }
+
+function vPost(){ const L = Object.entries(S.cli).filter(([,c]) => c.etapa==="postventa" && esMio(c)).sort((a,b) => (a[1].createdAt||0) - (b[1].createdAt||0));
+  return `<div class="card"><h2>🚚 Postventa <span class="note">${L.length}</span></h2><p class="note" style="margin-top:-6px">Cuando llega el producto: 1) llamada de bienvenida (¿le llegó todo bien?), 2) visita para enseñarle a usarlo, 3) programar sus pagos automáticos. Al terminar los 3 pasa a cobranza al día.</p>
+    ${L.length ? `<div class="list">${L.map(e => cItem(e, `<div class="m" style="margin-top:4px">Falta: ${postFalta(e[1]).join(" · ") || "nada"}</div>`)).join("")}</div>` : `<div class="empty">No hay clientes en postventa.</div>`}
+    <div class="row" style="margin-top:10px"><button class="btn small ghost" id="add-c">➕ Agregar cliente</button></div></div>`; }
+
+function vAtr(){ const g = ["todos","g30","g60","g90"].includes(S.f.g) ? S.f.g : "todos";
+  const L = Object.entries(S.cli).filter(([,c]) => c.etapa!=="cerrado" && c.etapa!=="postventa" && grupoDe(c)!=="aldia" && (g==="todos" || grupoDe(c)===g) && (!S.f.mios || esMio(c))).sort((a,b) => (b[1].atraso||0) - (a[1].atraso||0));
+  const cnt = k => Object.values(S.cli).filter(c => c.etapa!=="cerrado" && c.etapa!=="postventa" && (k==="todos" ? grupoDe(c)!=="aldia" : grupoDe(c)===k)).length;
+  return `<div class="card"><div class="chips">${[["todos","Todos"],["g30","0–30"],["g60","31–60"],["g90","61+ · recompra"]].map(([k,l]) => `<button class="chip ${g===k?"on":""}" data-g="${k}">${l} (${cnt(k)})</button>`).join("")}</div>
+    ${isDir() ? "" : `<label class="note" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="mios" ${S.f.mios?"checked":""}> Solo los míos</label>`}
+    <div class="tiles" style="margin-top:10px"><div class="tile"><b>${L.length}</b><span>Clientes</span></div><div class="tile"><b>${money(L.reduce((t,[,c]) => t+(+c.saldo||0),0))}</b><span>Saldo</span></div><div class="tile"><b>${L.filter(([,c]) => c.promesa?.fecha && !c.promesa.ok).length}</b><span>Con promesa</span></div></div></div>
+    <div class="card">${L.length ? `<div class="list">${L.map(e => cItem(e, isDir() && encargada(e[1]) ? `<div class="m">Lo lleva ${esc(first(nameOf(encargada(e[1]))))}</div>` : "")).join("")}</div>` : `<div class="empty">No hay atrasados en este grupo.</div>`}</div>`; }
+
+function vCli(){ const q = (S.f.q||"").toLowerCase().trim(); const qd = q.replace(/\D/g,"");
+  const L = Object.entries(S.cli).filter(([,c]) => !q || String(c.nombre||"").toLowerCase().includes(q) || (qd.length >= 4 && tel10(c.tel).includes(qd)) || String(c.cuenta||"").toLowerCase().includes(q)).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||"")));
+  return `<div class="card"><div class="row"><button class="btn" id="add-c">➕ Agregar cliente</button><button class="btn dark" id="imp">📋 Pegar lista del portal</button></div>
+    <input class="i" id="q" type="search" placeholder="🔍 Buscar por nombre, teléfono o número de cuenta" value="${esc(S.f.q||"")}" style="margin-top:10px"></div>
+    <div class="card"><h2>Clientes <span class="note">${L.length}</span></h2>${L.length ? `<div class="list">${L.slice(0,200).map(e => cItem(e)).join("")}</div>` : `<div class="empty">Todavía no hay clientes. Agrégalos o pásalos desde las ventas aprobadas.</div>`}</div>`; }
+
+function vAjustes(){ const st = Object.entries(staff());
+  return `<div class="card"><h2>Equipo de cobranza</h2><p class="note" style="margin-top:-6px">Agrega a cada chica con el correo con el que entra a Lunaya. Lo que marques es lo que le toca: los clientes de ese grupo le salen solos.</p>
+    ${st.length ? `<div class="list">${st.map(([em,v]) => `<div class="item" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(v.name||em)}</div><div class="m">${esc(em)}</div><div class="chips" style="margin-top:6px">${Object.entries(ROLES).map(([k,l]) => `<label class="chip ${(v.roles||[]).includes(k)?"on":""}" style="cursor:pointer"><input type="checkbox" data-rol="${esc(em)}|${k}" ${(v.roles||[]).includes(k)?"checked":""} hidden>${l}</label>`).join("")}</div></div><button class="btn small ghost" data-stdel="${esc(em)}">Quitar</button></div>`).join("")}</div>` : `<div class="empty">Solo tú tienes acceso por ahora.</div>`}
+    <form id="st-f" class="grid2" style="margin-top:10px"><label class="f">Nombre<input class="i" id="st-n" required></label><label class="f">Correo<input class="i" id="st-e" type="email" required></label><div><button class="btn" type="submit">Agregar</button></div></form>
+    <p class="note">Ellas entran por: <b>${esc(location.href.split("#")[0])}</b></p></div>`; }
+
+/* ===== Ficha del cliente ===== */
+function openCli(id){ const c = S.cli[id]; if (!c) return; S.open = id; const g = grupoDe(c);
+  const log = (c.log||[]).slice().sort((a,b) => b.at - a.at);
+  openModal(`<h3>${esc(c.nombre)}</h3>
+    <div class="row">${telA(c)}<span class="tag ${c.etapa==="postventa"?"tg-acc":GCLS[g]}">${c.etapa==="postventa"?"Postventa":GRUPOS[g]}</span>${c.socio?`<span class="note">Vendió ${esc(c.socio)}</span>`:""}</div>
+    <div class="note">${[c.ciudad?"📍 "+esc(c.ciudad):"", c.cuenta?"Cuenta "+esc(c.cuenta):"", c.monto?"Venta "+money(c.monto):"", c.fechaVenta?"del "+esc(c.fechaVenta):""].filter(Boolean).join(" · ")}</div>
+    ${c.etapa==="postventa" ? `<div class="eyebrow">Postventa</div><div class="list">
+      <div class="item ${c.post?.llamada?"good":"warn"}" style="cursor:default"><div><div class="t">1. Llamada de bienvenida</div><div class="m">${c.post?.llamada ? (c.post.llamada.ok ? "✅ Le llegó todo bien" : "⚠️ "+esc(c.post.llamada.nota||"Hubo un problema")) + " · " + fmt(c.post.llamada.at,{day:"numeric",month:"short"}) : "¿Le llegó todo bien?"}</div></div>${c.post?.llamada?"":`<div class="row"><button class="btn small" data-pl="ok">Llegó bien</button><button class="btn small ghost" data-pl="mal">Problema</button></div>`}</div>
+      <div class="item ${c.post?.visita?.hecha?"good":"warn"}" style="cursor:default;flex-wrap:wrap"><div><div class="t">2. Visita de entrega</div><div class="m">${c.post?.visita?.hecha ? "✅ Hecha" : c.post?.visita?.when ? "📅 "+fmtWhen(c.post.visita.when) : "Enseñarle a usar su producto"}</div></div>${c.post?.visita?.hecha?"":`<div class="row"><input class="i" type="date" id="vi-d" value="${c.post?.visita?.when ? laDate(c.post.visita.when) : addDays(today(),2)}" style="width:auto;padding:6px"><button class="btn small ghost" id="vi-ok">Agendar</button><button class="btn small" id="vi-h">✅ Hecha</button></div>`}</div>
+      <div class="item ${c.pago?.dia?"good":"warn"}" style="cursor:default"><div><div class="t">3. Pagos automáticos</div><div class="m">${c.pago?.dia ? `✅ El día ${c.pago.dia} de cada mes${c.pago.monto?" · "+money(c.pago.monto):""}` : "Ponlos abajo en «Pago automático»"}</div></div></div></div>
+      ${postFalta(c).length ? "" : `<button class="btn" id="post-fin">Terminar postventa → pasa a cobranza al día</button>`}` : ""}
+    <div class="eyebrow">Registrar llamada</div>
+    <div class="chips">${Object.entries(RES).map(([k,l]) => `<button class="chip" data-res="${k}">${l}</button>`).join("")}</div>
+    <div class="grid2" id="res-x" hidden><label class="f" id="pr-w" hidden>Fecha que promete<input class="i" type="date" id="pr-d" min="${today()}"></label><label class="f" id="pr-mw" hidden>Monto que promete<input class="i" type="number" min="0" step="0.01" id="pr-m"></label>
+      <label class="f">Próxima llamada<input class="i" type="date" id="nx-d"></label><label class="f" style="grid-column:1/-1">Qué dijo<textarea class="i" id="res-n" placeholder="Ej.: le pagan el viernes, pidió que la llamen en la tarde…"></textarea></label><div><button class="btn" id="res-ok">Guardar llamada</button></div></div>
+    <div class="eyebrow">Cuenta</div>
+    <div class="grid2"><label class="f">Días de atraso<input class="i" type="number" min="0" id="e-at" value="${c.atraso||0}"></label><label class="f">Saldo vencido<input class="i" type="number" min="0" step="0.01" id="e-sa" value="${c.saldo||""}"></label>
+      <label class="f">Pago automático · día del mes<input class="i" type="number" min="1" max="31" id="e-pd" value="${c.pago?.dia||""}" placeholder="Ej.: 15"></label><label class="f">Monto del pago<input class="i" type="number" min="0" step="0.01" id="e-pm" value="${c.pago?.monto||""}"></label>
+      <label class="f">Teléfono<input class="i" id="e-t" value="${esc(c.tel||"")}" inputmode="tel"></label><label class="f">Número de cuenta (del portal)<input class="i" id="e-cu" value="${esc(c.cuenta||"")}"></label>
+      ${isDir() ? `<label class="f">Lo lleva<select class="i" id="e-as"><option value="">Automático (según el grupo)</option>${Object.entries(staff()).map(([em,v]) => `<option value="${esc(em)}" ${c.asignada===em?"selected":""}>${esc(v.name||em)}</option>`).join("")}</select></label>` : ""}</div>
+    <div class="row"><label class="chip ${c.beneficio?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-be" ${c.beneficio?"checked":""} hidden>⭐ Califica a beneficio</label><label class="chip ${c.soloKat?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-sk" ${c.soloKat?"checked":""} hidden>👑 Solo le contesta a Katerine</label></div>
+    <div class="row"><button class="btn dark" id="e-ok">Guardar cuenta</button>${c.etapa!=="cerrado" ? `<button class="btn small ghost" id="e-cl">Cerrar cuenta (pagó todo)</button>` : `<button class="btn small ghost" id="e-re">Volver a abrir</button>`}<button class="btn ghost" data-close>Cerrar</button></div>
+    <div class="eyebrow">Historial</div>${log.length ? `<div class="tl">${log.map(x => `<div><small>${fmtWhen(x.at)} · ${esc(first(nameOf(x.by)))}${x.res?" · "+RES[x.res]||"":""}</small>${esc(x.nota||"")}</div>`).join("")}</div>` : `<div class="note">Sin llamadas todavía.</div>`}`, () => {
+    const ref = S.db.doc("ccli/"+id); const q = x => document.getElementById(x);
+    document.querySelectorAll(".modal label.chip input").forEach(i => i.onchange = () => i.parentElement.classList.toggle("on", i.checked));
+    let res = ""; document.querySelectorAll("[data-res]").forEach(b => b.onclick = () => { res = b.dataset.res; document.querySelectorAll("[data-res]").forEach(z => z.classList.toggle("on", z===b)); q("res-x").hidden = false; q("pr-w").hidden = q("pr-mw").hidden = res!=="promesa";
+      q("nx-d").value = res==="nc" ? addDays(today(),1) : res==="otro_dia" ? addDays(today(),2) : res==="promesa" ? "" : res==="pago" ? "" : q("nx-d").value; });
+    q("res-ok").onclick = async () => { const nota = q("res-n").value.trim(); const nx = q("nx-d").value; const up = {log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res, nota:nota.slice(0,800)}), updatedAt:Date.now(), ultLlamada:Date.now()};
+      if (res==="promesa"){ const d = q("pr-d").value; if (!d) return toast("Pon la fecha que promete"); up.promesa = {fecha:d, monto:+q("pr-m").value||0, at:Date.now()}; up.prox = laToMs(d,"10:00"); }
+      if (res==="pago"){ up.promesa = firebase.firestore.FieldValue.delete(); up.prox = firebase.firestore.FieldValue.delete(); }
+      if (res==="solo_kat") up.soloKat = true;
+      if (nx) up.prox = laToMs(nx, "09:00"); else if (res!=="promesa" && res!=="pago" && res!=="nota") up.prox = firebase.firestore.FieldValue.delete();
+      try { await ref.update(up); toast("Llamada guardada"); openCli(id); } catch(e){ err(e); } };
+    document.querySelectorAll("[data-pl]").forEach(b => b.onclick = async () => { const ok = b.dataset.pl==="ok"; const nota = ok ? "" : (prompt("¿Qué problema hubo?") || "").slice(0,300);
+      try { await ref.update({"post.llamada":{ok, nota, at:Date.now(), by:S.email}, log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res:"nota", nota: ok ? "Bienvenida: le llegó todo bien" : "Bienvenida: "+nota})}); openCli(id); } catch(e){ err(e); } });
+    if (q("vi-ok")) q("vi-ok").onclick = () => ref.update({"post.visita":{when:laToMs(q("vi-d").value,"12:00"), hecha:false}}).then(() => openCli(id), err);
+    if (q("vi-h")) q("vi-h").onclick = () => ref.update({"post.visita":{when:c.post?.visita?.when || Date.now(), hecha:true, at:Date.now()}, log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res:"nota", nota:"Visita de entrega hecha"})}).then(() => openCli(id), err);
+    if (q("post-fin")) q("post-fin").onclick = () => ref.update({etapa:"activo", postFin:Date.now()}).then(() => { closeModal(); toast("Pasó a cobranza al día"); }, err);
+    q("e-ok").onclick = async () => { const at = Math.max(0, +q("e-at").value||0); const pd = +q("e-pd").value||0;
+      const up = {atraso:at, saldo:+q("e-sa").value||0, tel:q("e-t").value.trim(), cuenta:q("e-cu").value.trim().slice(0,40), beneficio:q("e-be").checked, soloKat:q("e-sk").checked, updatedAt:Date.now(), ...(at !== (c.atraso||0) ? {atrasoAt:Date.now()} : {})};
+      up.pago = pd ? {dia:Math.min(31,pd), monto:+q("e-pm").value||0} : firebase.firestore.FieldValue.delete(); if (q("e-as")) up.asignada = q("e-as").value;
+      try { await ref.update(up); toast("Guardado"); openCli(id); } catch(e){ err(e); } };
+    if (q("e-cl")) q("e-cl").onclick = () => ref.update({etapa:"cerrado", atraso:0, saldo:0, cerradoAt:Date.now()}).then(() => { closeModal(); toast("Cuenta cerrada"); }, err);
+    if (q("e-re")) q("e-re").onclick = () => ref.update({etapa:"activo"}).then(() => openCli(id), err);
+  }); }
+
+function openNuevo(pre={}){ openModal(`<h3>Nuevo cliente</h3><div class="grid2">
+    <label class="f">Nombre<input class="i" id="n-n" value="${esc(pre.nombre||"")}"></label><label class="f">Teléfono<input class="i" id="n-t" inputmode="tel" value="${esc(pre.tel||"")}"></label>
+    <label class="f">Ciudad<input class="i" id="n-c" value="${esc(pre.ciudad||"")}"></label><label class="f">Número de cuenta (opcional)<input class="i" id="n-cu"></label>
+    <label class="f">Monto de la venta<input class="i" type="number" min="0" step="0.01" id="n-m" value="${pre.monto||""}"></label><label class="f">Vendió<input class="i" id="n-s" value="${esc(pre.socio||"")}"></label>
+    <label class="f">¿Dónde empieza?<select class="i" id="n-e"><option value="postventa">🚚 Postventa (venta nueva)</option><option value="activo">Cobranza (cliente que ya tenía)</option></select></label><label class="f">Días de atraso<input class="i" type="number" min="0" id="n-a" value="0"></label></div>
+    <div class="row"><button class="btn" id="n-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#n-ok").onclick = async () => { const nombre = $("#n-n").value.trim(); if (!nombre) return toast("Escribe el nombre");
+      const d = {nombre:nombre.slice(0,80), tel:$("#n-t").value.trim(), ciudad:$("#n-c").value.trim().slice(0,60), cuenta:$("#n-cu").value.trim().slice(0,40), monto:+$("#n-m").value||0, socio:$("#n-s").value.trim().slice(0,60), etapa:$("#n-e").value, atraso:+$("#n-a").value||0, saldo:0, createdAt:Date.now(), by:S.email, log:[], ...(pre.apptId ? {apptId:pre.apptId, fechaVenta:pre.fechaVenta||""} : {})};
+      try { await S.db.collection("ccli").add(d); closeModal(); toast("Cliente guardado"); } catch(e){ err(e); } }; }); }
+
+/* Pegar la lista del portal: una línea por cliente; se reconoce teléfono, días de atraso y saldo ($) */
+function openImport(){ openModal(`<h3>📋 Pegar lista del portal</h3><p class="note" style="margin:0">Copia del portal la lista de atrasados y pégala aquí, un cliente por línea. Lunaya reconoce el <b>nombre</b>, el <b>teléfono</b>, los <b>días</b> de atraso y el <b>saldo</b> ($). Si el cliente ya está, se actualiza; si no, se agrega.</p>
+    <textarea class="i" id="im-t" style="min-height:180px" placeholder="María López  619-555-1234  45 días  $320.50&#10;Rosa Pérez, (858) 555-9876, 12, $89"></textarea><div id="im-p"></div>
+    <div class="row"><button class="btn ghost" id="im-v">Revisar</button><button class="btn" id="im-ok" disabled>Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    let filas = [];
+    const parse = () => { filas = $("#im-t").value.split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => { const telm = l.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/); const tel = telm ? tel10(telm[0]) : "";
+        let rest = telm ? l.replace(telm[0], " ") : l; const sm = rest.match(/\$\s?[\d,]+(?:\.\d{1,2})?/); const saldo = sm ? +sm[0].replace(/[$,\s]/g,"") : 0; if (sm) rest = rest.replace(sm[0]," ");
+        const dm = rest.match(/(\d{1,3})\s*(?:d[ií]as?|days?)?/i); const atraso = dm ? +dm[1] : 0; if (dm) rest = rest.replace(dm[0]," ");
+        const nombre = rest.replace(/[,;|\t]+/g," ").replace(/\s+/g," ").trim().slice(0,80);
+        const ya = Object.entries(S.cli).find(([,c]) => (tel && tel10(c.tel)===tel) || (nombre && String(c.nombre||"").toLowerCase()===nombre.toLowerCase()));
+        return {nombre, tel, atraso, saldo, id: ya ? ya[0] : ""}; }).filter(x => x.nombre || x.tel);
+      $("#im-p").innerHTML = filas.length ? `<div class="tbl"><table><tr><th>Nombre</th><th>Teléfono</th><th class="n">Días</th><th class="n">Saldo</th><th></th></tr>${filas.map(x => `<tr><td>${esc(x.nombre)}</td><td>${telFmt(x.tel)}</td><td class="n">${x.atraso}</td><td class="n">${money(x.saldo)}</td><td>${x.id?"actualiza":"<b>nuevo</b>"}</td></tr>`).join("")}</table></div>` : `<p class="note">No se reconoció ninguna línea.</p>`;
+      $("#im-ok").disabled = !filas.length; };
+    $("#im-v").onclick = parse;
+    $("#im-ok").onclick = async () => { $("#im-ok").disabled = true; try { const bt = S.db.batch(); filas.forEach(x => { if (x.id) bt.update(S.db.doc("ccli/"+x.id), {atraso:x.atraso, saldo:x.saldo, atrasoAt:Date.now(), updatedAt:Date.now(), ...(S.cli[x.id].etapa==="cerrado" && x.atraso>0 ? {etapa:"activo"} : {})});
+        else bt.set(S.db.collection("ccli").doc(), {nombre:x.nombre, tel:x.tel, atraso:x.atraso, saldo:x.saldo, etapa:"activo", createdAt:Date.now(), atrasoAt:Date.now(), by:S.email, log:[]}); });
+        await bt.commit(); closeModal(); toast(`Listo: ${filas.length} cliente(s)`); } catch(e){ $("#im-ok").disabled = false; err(e); } }; }); }
+
+function bind(){ const all = (q, f) => document.querySelectorAll(q).forEach(f);
+  all("[data-c]", b => b.onclick = () => openCli(b.dataset.c));
+  all("[data-g]", b => b.onclick = () => { S.f.g = b.dataset.g; render(); });
+  const mi = $("#mios"); if (mi) mi.onchange = () => { S.f.mios = mi.checked; render(); };
+  const ac = $("#add-c"); if (ac) ac.onclick = () => openNuevo();
+  const im = $("#imp"); if (im) im.onclick = openImport;
+  const qs = $("#q"); if (qs) qs.oninput = () => { S.f.q = qs.value; clearTimeout(S.qt); S.qt = setTimeout(() => { render(); const e = $("#q"); if (e){ e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }, 350); };
+  all("[data-rv]", b => b.onclick = async ev => { ev.stopPropagation(); const [id, r] = b.dataset.rv.split("|"); const up = {["revis."+ym()]: r, log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res:"nota", nota: r==="paso" ? "💳 Pago automático: pasó" : "💳 Pago automático: NO pasó"})};
+    if (r==="no") up.prox = Date.now(); try { await S.db.doc("ccli/"+id).update(up); toast(r==="paso" ? "Anotado: pasó" : "Anotado: llámala hoy"); if (r==="no") openCli(id); } catch(e){ err(e); } });
+  all("[data-pv]", b => b.onclick = () => { const id = b.dataset.pv, a = S.ventas[id] || {}, p = priv(id) || {}; openNuevo({nombre:p.client || a.nomVenta || "", tel:p.phone||"", ciudad:p.city || a.zona || "", monto:a.amount||0, socio:"", apptId:id, fechaVenta: a.when ? laDate(a.when) : ""}); });
+  all("[data-pvx]", b => b.onclick = () => { S.ventas[b.dataset.pvx].cobOff = true; render(); });
+  const sf = $("#st-f"); if (sf) sf.onsubmit = async e => { e.preventDefault(); const em = $("#st-e").value.trim().toLowerCase(); if (!em) return;
+    try { await S.db.doc("cconfig/main").set({staff:{[em]:{name:$("#st-n").value.trim().slice(0,60), roles:[]}}}, {merge:true}); toast("Agregada. Ahora marca qué le toca."); } catch(x){ err(x); } };
+  all("[data-rol]", i => i.onchange = async () => { const [em, k] = i.dataset.rol.split("|"); const roles = new Set(staff()[em]?.roles||[]); i.checked ? roles.add(k) : roles.delete(k);
+    try { await S.db.doc("cconfig/main").set({staff:{[em]:{...staff()[em], roles:[...roles]}}}, {merge:true}); } catch(x){ err(x); } });
+  all("[data-stdel]", b => b.onclick = async () => { if (!confirm("¿Quitarle el acceso a "+b.dataset.stdel+"?")) return; try { await S.db.doc("cconfig/main").update(new firebase.firestore.FieldPath("staff", b.dataset.stdel), firebase.firestore.FieldValue.delete()); } catch(x){ err(x); } });
+}
+
+function loginHtml(){ return `<div class="card" style="max-width:440px;margin:0 auto;width:100%"><h2>Entrar</h2><button class="btn dark" id="lg-g" style="width:100%">Entrar con Google</button>
+  <p class="note" style="text-align:center">o con tu correo</p><form id="lg-f" style="display:grid;gap:10px"><input class="i" id="lg-e" type="email" placeholder="Correo" required><input class="i" id="lg-p" type="password" placeholder="Contraseña" minlength="6" required>
+  <div class="row"><button class="btn" data-m="in">Entrar</button><button class="btn ghost" data-m="up">Crear cuenta</button></div></form><div id="lg-msg" class="note"></div></div>`; }
+function bindLogin(){ $("#lg-g").onclick = () => { const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"}); S.auth.signInWithPopup(p).catch(e => $("#lg-msg").textContent = "No se pudo entrar con Google. Prueba con tu correo."); };
+  let mode = "in"; document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => mode = b.dataset.m);
+  $("#lg-f").onsubmit = e => { e.preventDefault(); const em = $("#lg-e").value.trim(), pw = $("#lg-p").value; (mode==="up" ? S.auth.createUserWithEmailAndPassword(em, pw) : S.auth.signInWithEmailAndPassword(em, pw)).catch(x => $("#lg-msg").textContent = "Correo o contraseña incorrectos."); }; }
+boot();
+</script>
+</body>
+</html>

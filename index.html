@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611251218"></script>
-<script src="anuncios.js?v=202611251218"></script>
-<script src="juego.js?v=202611251218"></script>
+<script src="demo.js?v=202611251419"></script>
+<script src="anuncios.js?v=202611251419"></script>
+<script src="juego.js?v=202611251419"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611251218";
+const APP_VER = "202611251419";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1521,8 +1521,11 @@ function reporteDiaCard(){ const r = role(); if (r!=="socio" && r!=="admin") ret
 function avisoReporteDia(){ const r = role(); if (r!=="socio" && r!=="admin") return; const h = Number(new Intl.DateTimeFormat("en-US",{hour:"numeric",hour12:false,timeZone:"America/Los_Angeles"}).format(Date.now())); if (h < 19) return;
   const k = "ly-rep-"+S.uid+"-"+today(); try { if (localStorage.getItem(k)) return; localStorage.setItem(k, "1"); } catch { return; }
   const d = reporteDiaDatos(S.uid); avisar("📋 Tu reporte del día", `${d.casas} casa(s) · ${d.refs} referidos · ${d.ventas} venta(s). Toca para ver qué mejorar mañana.`, () => go("hoy")); }
+/* Accesos a las otras áreas (páginas aparte, mismo login): Reclutamiento para Dirección (Katerine y Andrés), Cobranza solo Katerine */
+function areasCard(){ const rec = S.isOwner || role()==="admin", cob = S.isOwner; if (!rec && !cob) return "";
+  return `<div class="card" style="padding:12px 14px"><div class="row" style="gap:8px">${rec ? `<a class="btn" href="reclutamiento/" target="_blank" rel="noopener">👥 Reclutamiento</a>` : ""}${cob ? `<a class="btn dark" href="cobranza/" target="_blank" rel="noopener">💳 Cobranza y postventa</a>` : ""}</div></div>`; }
 function viewHoy(r){
-  const rg = range(S.f.period); const top = reporteDiaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? preCitasCard() + pendLlamarCard() : "") + recCard();
+  const rg = range(S.f.period); const top = areasCard() + reporteDiaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? preCitasCard() + pendLlamarCard() : "") + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">

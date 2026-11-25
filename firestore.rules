@@ -378,5 +378,21 @@ service cloud.firestore {
       allow read, create, update: if isOwnerEmail() || rStaff();
       allow delete: if rDir();
     }
+
+    // ===== Cobranza y postventa (página aparte: /cobranza) =====
+    // Entra la dueña y las personas que ella agrega por correo en cconfig/main.staff
+    function cStaff() {
+      return signedIn() && request.auth.token.email != null
+        && exists(/databases/$(database)/documents/cconfig/main)
+        && request.auth.token.email.lower() in get(/databases/$(database)/documents/cconfig/main).data.get('staff', {});
+    }
+    match /cconfig/{id} {
+      allow read: if signedIn();
+      allow write: if isOwnerEmail();
+    }
+    match /ccli/{id} {
+      allow read, create, update: if isOwnerEmail() || cStaff();
+      allow delete: if isOwnerEmail();
+    }
   }
 }
