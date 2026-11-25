@@ -1,0 +1,13 @@
+{
+  "name": "lunaya-telemarketing",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/cobranza-logic.test.cjs",
+    "test:rules": "firebase emulators:exec --only firestore --project lunaya-demo \"node --test tests/cobranza.rules.test.cjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^13.4.0",
+    "firebase-tools": "^15.37.0"
+  }
+}

@@ -397,18 +397,182 @@ service cloud.firestore {
     }
 
     // ===== Cobranza y postventa (página aparte: /cobranza) =====
-    // Entra la dueña y las personas que ella agrega por correo en cconfig/main.staff
+    // Entra la dueña, el usuario bot (crear y actualizar, nunca borrar) y las personas
+    // que ella agrega por correo en cconfig/main.staff.
+    // Tarjetas en archivo (ctarjetas): las ve la dueña y los uid que ella marcó en
+    // cconfig/main.tarjetas («Pueden ver tarjetas»). El bot nunca, aunque su uid esté en la lista.
+    // No se guarda el CVV. Estas reglas se pegan a mano en Firebase; la app no las publica.
     function cStaff() {
       return signedIn() && request.auth.token.email != null
         && exists(/databases/$(database)/documents/cconfig/main)
         && request.auth.token.email.lower() in get(/databases/$(database)/documents/cconfig/main).data.get('staff', {});
+    }
+    function cAccess() { return isOwnerEmail() || cStaff() || isBot(); }
+    function cTarjetaOk() {
+      return isOwnerEmail() || (signedIn() && !isBot()
+        && exists(/databases/$(database)/documents/cconfig/main)
+        && request.auth.uid in get(/databases/$(database)/documents/cconfig/main).data.get('tarjetas', []));
+    }
+    function ccliPath(cid) { return /databases/$(database)/documents/ccli/$(cid); }
+    function noSecrets() {
+      return !request.resource.data.keys().hasAny(['cvv', 'cvc', 'cvv2', 'cid', 'securityCode', 'numero', 'pan', 'tarjeta', 'cardNumber']);
+    }
+    function noCvv() {
+      return !request.resource.data.keys().hasAny(['cvv', 'cvc', 'cvv2', 'cid', 'securityCode']);
+    }
+    function noNuevoLinkEnSkip() {
+      let link = request.resource.data.get('payLink', '');
+      let skip = request.resource.data.get('skip', false) == true;
+      return !skip || !(link is string) || link.size() == 0
+        || (resource != null && link == resource.data.get('payLink', ''));
+    }
+    function clientAbierto(cid) {
+      return exists(ccliPath(cid)) && get(ccliPath(cid)).data.get('skip', false) != true;
+    }
+    function mismoAutor() {
+      return request.resource.data.by is string
+        && (resource == null
+          ? request.resource.data.by == request.auth.token.email.lower()
+          : request.resource.data.by == resource.data.by);
+    }
+    function actOk(cid) {
+      return noSecrets()
+        && exists(ccliPath(cid))
+        && request.resource.data.keys().hasOnly(['by', 'quien', 'byName', 'at', 'tipo', 'resultado', 'mensaje', 'promesaFecha', 'promesaMonto', 'clientId'])
+        && request.resource.data.by == request.auth.token.email.lower()
+        && request.resource.data.tipo in ['llamada', 'whatsapp', 'sms', 'correo', 'nota']
+        && request.resource.data.resultado in ['contesto', 'no', 'buzon', 'promesa', 'pago', 'equivocado', '']
+        && request.resource.data.mensaje is string
+        && request.resource.data.mensaje.size() <= 2000
+        && request.resource.data.clientId == cid
+        && request.resource.data.at is number
+        && (!('quien' in request.resource.data) || (request.resource.data.quien is string && request.resource.data.quien.size() <= 80))
+        && (!('byName' in request.resource.data) || (request.resource.data.byName is string && request.resource.data.byName.size() <= 80))
+        && (!('promesaFecha' in request.resource.data) || (request.resource.data.promesaFecha is string && request.resource.data.promesaFecha.size() <= 20))
+        && (!('promesaMonto' in request.resource.data) || request.resource.data.promesaMonto is number)
+        && (request.resource.data.resultado != 'pago' || clientAbierto(cid));
+    }
+    function pagoOk() {
+      return noSecrets()
+        && request.resource.data.keys().hasOnly(['clientId', 'nombre', 'fecha', 'at', 'monto', 'metodo', 'by', 'nota', 'quien'])
+        && request.resource.data.clientId is string
+        && request.resource.data.clientId.size() > 0
+        && request.resource.data.clientId.size() <= 80
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() <= 120
+        && request.resource.data.fecha is string
+        && request.resource.data.fecha.size() <= 20
+        && request.resource.data.at is number
+        && request.resource.data.monto is number
+        && request.resource.data.monto > 0
+        && request.resource.data.metodo in ['cheque', 'sitio', 'llamada', 'tarjeta', 'link', 'otro']
+        && request.resource.data.by == request.auth.token.email.lower()
+        && request.resource.data.nota is string
+        && request.resource.data.nota.size() <= 800
+        && (!('quien' in request.resource.data) || (request.resource.data.quien is string && request.resource.data.quien.size() <= 80))
+        && clientAbierto(request.resource.data.clientId);
+    }
+    function postOk() {
+      return noSecrets()
+        && request.resource.data.keys().hasOnly(['clientId', 'nombre', 'tel', 'email', 'producto', 'pedido', 'carrier', 'tracking', 'entrega', 'entregado', 'recibio', 'recibioAt', 'recibioBy', 'autopay', 'autopayFecha', 'autopayMetodo', 'notas', 'createdAt', 'updatedAt', 'lastSyncAt', 'syncedBy', 'by'])
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() > 0
+        && request.resource.data.nombre.size() <= 120
+        && request.resource.data.notas is string
+        && request.resource.data.notas.size() <= 2000
+        && request.resource.data.entregado is bool
+        && request.resource.data.recibio is bool
+        && request.resource.data.autopay is bool
+        && request.resource.data.autopayMetodo in ['', 'cheque', 'sitio', 'llamada', 'tarjeta']
+        && (!('clientId' in request.resource.data) || (request.resource.data.clientId is string && request.resource.data.clientId.size() <= 80))
+        && (!('tracking' in request.resource.data) || (request.resource.data.tracking is string && request.resource.data.tracking.size() <= 80))
+        && (!('carrier' in request.resource.data) || (request.resource.data.carrier is string && request.resource.data.carrier.size() <= 40))
+        && (!('email' in request.resource.data) || (request.resource.data.email is string && request.resource.data.email.size() <= 120))
+        && (!('tel' in request.resource.data) || (request.resource.data.tel is string && request.resource.data.tel.size() <= 30))
+        && (!('producto' in request.resource.data) || (request.resource.data.producto is string && request.resource.data.producto.size() <= 160))
+        && (!('entrega' in request.resource.data) || (request.resource.data.entrega is string && request.resource.data.entrega.size() <= 20))
+        && (!('recibioBy' in request.resource.data) || (request.resource.data.recibioBy is string && request.resource.data.recibioBy.size() <= 80))
+        && mismoAutor();
+    }
+    function linkOk() {
+      return noSecrets()
+        && request.resource.data.keys().hasOnly(['clientId', 'nombre', 'status', 'url', 'askedBy', 'askedAt', 'filledBy', 'filledAt', 'nota'])
+        && request.resource.data.clientId is string
+        && request.resource.data.clientId.size() > 0
+        && request.resource.data.nombre is string
+        && request.resource.data.status in ['pendiente', 'lista']
+        && request.resource.data.url is string
+        && request.resource.data.url.size() <= 500
+        && (request.resource.data.url == '' || request.resource.data.url.matches('^https://.+'))
+        && request.resource.data.askedBy is string
+        && request.resource.data.nota is string
+        && request.resource.data.nota.size() <= 500
+        && request.resource.data.askedAt is number
+        && (!('filledBy' in request.resource.data) || request.resource.data.filledBy is string)
+        && (!('filledAt' in request.resource.data) || request.resource.data.filledAt is number)
+        && (request.resource.data.status != 'lista' || (request.resource.data.url.matches('^https://.+') && request.resource.data.filledBy == request.auth.token.email.lower()))
+        && clientAbierto(request.resource.data.clientId)
+        && (resource == null
+          ? (request.resource.data.status == 'pendiente' && request.resource.data.askedBy == request.auth.token.email.lower())
+          : request.resource.data.askedBy == resource.data.askedBy);
+    }
+    function tarjetaOk() {
+      return noCvv()
+        && request.resource.data.keys().hasOnly(['clientId', 'cliente', 'titular', 'numero', 'exp', 'zip', 'notas', 'updatedAt', 'by'])
+        && request.resource.data.clientId is string
+        && request.resource.data.clientId.size() <= 80
+        && request.resource.data.cliente is string
+        && request.resource.data.cliente.size() <= 120
+        && request.resource.data.titular is string
+        && request.resource.data.titular.size() > 0
+        && request.resource.data.titular.size() <= 80
+        && request.resource.data.numero is string
+        && request.resource.data.numero.matches('^[0-9]{13,19}$')
+        && request.resource.data.exp is string
+        && request.resource.data.exp.matches('^(0[1-9]|1[0-2])/[0-9]{2}$')
+        && request.resource.data.zip is string
+        && request.resource.data.zip.matches('^[0-9A-Za-z \\-]{3,12}$')
+        && request.resource.data.notas is string
+        && request.resource.data.notas.size() <= 500
+        && request.resource.data.updatedAt is number
+        && mismoAutor();
     }
     match /cconfig/{id} {
       allow read: if signedIn();
       allow write: if isOwnerEmail();
     }
     match /ccli/{id} {
-      allow read, create, update: if isOwnerEmail() || cStaff();
+      allow read: if cAccess();
+      allow create, update: if cAccess() && noSecrets() && noNuevoLinkEnSkip() && request.resource.data.keys().size() < 80;
+      allow delete: if isOwnerEmail();
+      match /act/{aid} {
+        allow read: if cAccess();
+        allow create, update: if cAccess() && actOk(id);
+        allow delete: if isOwnerEmail();
+      }
+    }
+    // El tablero junta la actividad de todas las cuentas. Esa consulta solo engancha con esta ruta.
+    match /{path=**}/act/{aid} {
+      allow read: if cAccess();
+    }
+    match /cpagos/{id} {
+      allow read: if cAccess();
+      allow create, update: if cAccess() && pagoOk();
+      allow delete: if isOwnerEmail();
+    }
+    match /cpost/{id} {
+      allow read: if cAccess();
+      allow create, update: if cAccess() && postOk();
+      allow delete: if isOwnerEmail();
+    }
+    match /clinkreq/{id} {
+      allow read: if cAccess();
+      allow create, update: if cAccess() && linkOk();
+      allow delete: if isOwnerEmail();
+    }
+    match /ctarjetas/{id} {
+      allow read: if cTarjetaOk();
+      allow create, update: if cTarjetaOk() && tarjetaOk();
       allow delete: if isOwnerEmail();
     }
   }

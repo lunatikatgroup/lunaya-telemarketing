@@ -11,19 +11,25 @@
 <meta name="theme-color" content="#e8dcc6">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#e8dcc6;--card:#fffdf8;--ink:#1f1e1d;--muted:#6f6a5e;--line:#dfd3bc;--soft:#f4ecdd;--accent:#2f6f73;--accent-soft:#dcecea;--good:#3f7d4e;--good-bg:#e5efe2;--warn:#a3651a;--warn-bg:#f8ecd6;--bad:#b4442f;--bad-bg:#f7e1db;--serif:"Source Serif 4",Georgia,serif;--body:"Manrope",system-ui,-apple-system,sans-serif}
+:root{--bg:#e8dcc6;--card:#fffdf8;--ink:#1f1e1d;--muted:#6f6a5e;--line:#dfd3bc;--soft:#f4ecdd;--accent:#2f6f73;--accent-soft:#dcecea;--good:#3f7d4e;--good-bg:#e5efe2;--warn:#a3651a;--warn-bg:#f8ecd6;--bad:#b4442f;--bad-bg:#f7e1db;--blue:#1d5f99;--blue-bg:#e3eef6;--serif:"Source Serif 4",Georgia,serif;--body:"Manrope",system-ui,-apple-system,sans-serif}
 *{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
 button,input,select,textarea{font:inherit;color:inherit}
-header{padding:18px 16px 4px;max-width:980px;margin:0 auto}
+header{padding:18px 16px 0;max-width:980px;margin:0 auto}
 .brand{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--line);padding-bottom:12px;margin-bottom:10px}
 .brand b{font-family:var(--serif);font-size:30px;letter-spacing:.06em}.brand small{display:block;font-size:11.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
-h1{font-family:var(--serif);font-size:23px;margin:6px 0 2px;text-transform:uppercase}.sub{color:var(--muted);margin:0;font-size:14px}
-main{max-width:980px;margin:0 auto;padding:12px 16px 110px;display:grid;gap:14px}main>*{min-width:0}
+h1{font-family:var(--serif);font-size:23px;margin:6px 0 2px;text-transform:uppercase}.sub{color:var(--muted);margin:0 0 4px;font-size:14px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:8px 0 10px;position:sticky;top:0;z-index:6;background:var(--bg);scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:0 0 auto;border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:8px 12px;font-weight:800;font-size:13.5px;cursor:pointer}
+.tabs button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tabs button small{font-weight:700;opacity:.75}
+html.framed header{padding-top:8px}html.framed .brand{display:none}
+main{max-width:980px;margin:0 auto;padding:4px 16px 110px;display:grid;gap:14px}main>*{min-width:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
 .card h2{font-family:var(--serif);font-size:18px;text-transform:uppercase;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.btn.dark{background:var(--ink)}.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}.btn.small{padding:7px 12px;font-size:13.5px}.btn.danger{background:var(--bad)}.btn.wa{background:#25d366}
-.btn:disabled{opacity:.5}
+.btn.dark{background:var(--ink)}.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}.btn.small{padding:7px 12px;font-size:13.5px}.btn.danger{background:var(--bad)}.btn.wa{background:#25d366;color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .chips{display:flex;gap:6px;flex-wrap:wrap}.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:600;cursor:pointer}.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 label.f{display:grid;gap:5px;font-size:12.5px;font-weight:700;color:var(--muted)}
@@ -31,35 +37,40 @@ label.f{display:grid;gap:5px;font-size:12.5px;font-weight:700;color:var(--muted)
 textarea.i{min-height:70px}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
 .list{display:grid;gap:8px}
-.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;background:var(--card);cursor:pointer;text-align:left;width:100%}
+.item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:12px;background:var(--card);cursor:pointer;text-align:left;width:100%}
 .item .t{font-weight:800;font-size:16px}.item .m{color:var(--muted);font-size:13px}
-.item.warn{border-left-color:var(--warn)}.item.bad{border-left-color:var(--bad)}.item.good{border-left-color:var(--good)}.item.mute{border-left-color:var(--line)}
+.item.normal{border-left-color:var(--accent)}.item.verde{border-left-color:var(--good)}.item.amarillo{border-left-color:#d4a017}.item.naranja{border-left-color:#e07a1f}.item.rojo{border-left-color:var(--bad)}.item.azul{border-left-color:var(--blue)}
+.item.hoy{box-shadow:inset 0 0 0 2px var(--bad)}.item.semana{box-shadow:inset 0 0 0 2px var(--warn)}
 .tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;white-space:nowrap}
 .tg-good{background:var(--good-bg);color:var(--good)}.tg-warn{background:var(--warn-bg);color:var(--warn)}.tg-bad{background:var(--bad-bg);color:var(--bad)}.tg-mute{background:var(--soft);color:var(--muted)}.tg-acc{background:var(--accent-soft);color:var(--accent)}
+.tg-blue{background:var(--blue-bg);color:var(--blue)}.tg-orange{background:#fde6d2;color:#b85a10}.tg-yellow{background:#f8efc4;color:#7a5b10}
 .note{font-size:13px;color:var(--muted)}.empty{color:var(--muted);text-align:center;padding:16px}
-.banner{border-radius:12px;padding:12px 14px;font-weight:600}.banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.banner.good{background:var(--good-bg);color:var(--good)}
+.banner{border-radius:12px;padding:12px 14px;font-weight:600}.banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.banner.good{background:var(--good-bg);color:var(--good)}.banner.blue{background:var(--blue-bg);color:var(--blue)}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
-.tile{background:var(--soft);border-radius:12px;padding:12px}.tile b{display:block;font-family:var(--serif);font-size:28px;line-height:1.05}.tile span{font-size:12px;color:var(--muted);font-weight:700}.tile small{display:block;font-size:12px;color:var(--muted)}
-.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent)}
-table{border-collapse:collapse;width:100%;font-size:14px}th{font-size:11.5px;text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}td{padding:8px;border-bottom:1px solid var(--line)}td.n,th.n{text-align:right}
+.tile{background:var(--soft);border-radius:12px;padding:12px}.tile b{display:block;font-family:var(--serif);font-size:26px;line-height:1.05}.tile span{font-size:12px;color:var(--muted);font-weight:700}.tile small{display:block;font-size:12px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:14px}th{font-size:11.5px;text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}td.n,th.n{text-align:right}
 .tbl{overflow-x:auto}
 nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
-nav button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:700;padding:6px;border-radius:10px;cursor:pointer;flex:1;max-width:96px}
-nav button.on{color:var(--accent);background:var(--accent-soft)}nav svg{width:22px;height:22px}
+nav button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:700;padding:6px;border-radius:10px;cursor:pointer;flex:1;max-width:120px}
+nav button.on{color:var(--accent);background:var(--accent-soft)}
 .nb{display:inline-block;background:#c0392b;color:#fff;border-radius:9px;font-size:10px;padding:0 5px;margin-left:2px}
-.mbg{position:fixed;inset:0;background:rgba(31,30,29,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
-.modal{background:var(--card);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));display:grid;gap:12px}
+.mbg{position:fixed;inset:0;background:rgba(31,30,29,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.modal{background:var(--card);width:100%;max-width:680px;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));display:grid;gap:12px}
 @media (min-width:700px){.mbg{align-items:center}.modal{border-radius:20px}}
 .modal h3{font-family:var(--serif);font-size:21px;margin:0;text-transform:uppercase}
-.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}.opt{border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:11px;font-weight:700;cursor:pointer;text-align:left}.opt.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800}
-.tl{display:grid;gap:6px;max-height:220px;overflow:auto}.tl div{background:var(--soft);border-radius:10px;padding:7px 10px;font-size:14px}.tl small{display:block;color:var(--muted);font-size:11.5px;font-weight:700}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
+.tl{display:grid;gap:6px;max-height:240px;overflow:auto}.tl div{background:var(--soft);border-radius:10px;padding:7px 10px;font-size:14px}.tl small{display:block;color:var(--muted);font-size:11.5px;font-weight:700}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;max-width:90%}
+.secret{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.03em}
+.scroll{max-height:280px;overflow:auto;display:grid;gap:6px}
 </style>
 </head>
 <body>
-<header><div class="brand"><svg viewBox="0 0 24 24" width="34" height="34" style="color:var(--accent)"><path fill="currentColor" d="M3 6h18v12H3zm2 2v2h14V8zm0 5v3h6v-3z"/></svg><div><b>LUNAYA</b><small>Cobranza y postventa</small></div></div>
-<h1 id="title">Cargando…</h1><p class="sub" id="subtitle"></p></header>
+<header>
+<div class="brand"><svg viewBox="0 0 24 24" width="34" height="34" style="color:var(--accent)"><path fill="currentColor" d="M3 6h18v12H3zm2 2v2h14V8zm0 5v3h6v-3z"/></svg><div><b>LUNAYA</b><small>Cobranza y postventa</small></div></div>
+<h1 id="title">Cargando…</h1><p class="sub" id="subtitle"></p>
+<div id="tabs" class="tabs" hidden></div>
+</header>
 <main id="main"><div class="card empty">Cargando…</div></main>
 <nav id="nav" hidden></nav>
 <div id="modal"></div>
@@ -67,81 +78,107 @@ nav button.on{color:var(--accent);background:var(--accent-soft)}nav svg{width:22
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
+<script src="logic.js"></script>
 <script>
-/* ===== Lunaya Cobranza =====
-   ccli/{id}: clientes con venta (postventa, pagos automáticos, atrasos y llamadas).
-   cconfig/main: equipo de cobranza (por correo) y qué grupo lleva cada una.
-   Lunaya NO guarda números de tarjeta ni de banco: solo nombre, teléfono, saldo, días de atraso y el día del pago. */
+if (window.top !== window.self) document.documentElement.classList.add("framed");
+/* Cobranza v2. Cuentas en ccli (lo que ya había). Actividad en ccli/{id}/act.
+   Órdenes de postventa en cpost. Pedidos de link en clinkreq. Pagos anotados en cpagos.
+   Tarjetas en ctarjetas: solo Katerine y quien ella marque en cconfig/main.tarjetas.
+   El bot crea y actualiza; no borra y no ve tarjetas. No se guarda el CVV. */
+const L = window.Cobranza;
 const TZ = "America/Los_Angeles";
-const GRUPOS = {aldia:"Al día", g30:"0–30 días", g60:"31–60 días", g90:"61+ · recompra"};
-const GCLS = {aldia:"tg-good", g30:"tg-warn", g60:"tg-bad", g90:"tg-bad"};
+const GRUPOS = {aldia:"Al día", g30:"0–30", g60:"31–60", g90:"61+"};
 const ROLES = {g30:"Cobra 0–30", g60:"Cobra 31–60", g90:"Recompra (61+)", post:"Postventa", direccion:"Dirección"};
-const RES = {nc:"📵 No contestó", promesa:"🤝 Promesa de pago", pago:"✅ Pagó", otro_dia:"📅 Que llame otro día", solo_kat:"👑 Solo habla con Katerine", mal:"❌ Número equivocado", nota:"📝 Nota"};
-const S = {db:null, auth:null, user:null, email:"", owners:[], cfg:{}, cli:{}, ventas:{}, privs:{}, view:"hoy", f:{g:"todos", q:"", mios:true}, loaded:false, unsub:[]};
+const TOP = [["g30","0-30"],["g60","31-60"],["g90","61+"],["post","Postventa"],["pagos","Pagos/Actividad"]];
+const TIPOS = {llamada:"Llamada", whatsapp:"WhatsApp", sms:"SMS", correo:"Correo", nota:"Nota"};
+const OUTS = {contesto:"Contestó", no:"No contestó", buzon:"Buzón", promesa:"Promesa de pago", pago:"Pagó", equivocado:"Número equivocado"};
+const RES_OLD = {nc:"No contestó", promesa:"Promesa de pago", pago:"Pagó", otro_dia:"Que llame otro día", solo_kat:"Solo habla con Katerine", mal:"Número equivocado", nota:"Nota"};
+const METODOS = {cheque:"Cheque", sitio:"Sitio web", llamada:"Llamada", tarjeta:"Tarjeta en archivo", link:"Link de Hy Cite", otro:"Otro"};
+const METODO_AUTO = {cheque:"Cheque", sitio:"Sitio web", llamada:"Llamada", tarjeta:"Tarjeta en archivo"};
+const S = {db:null, auth:null, user:null, uid:"", email:"", owners:[], cfg:{}, me:null, meLoaded:false, cfgLoaded:false, cli:{}, acts:{}, actsReady:false, pagos:{}, post:{}, links:{}, cards:{}, members:{}, membersLoaded:false, ventas:{}, privs:{}, view:"g30", f:{q:"", cob:"", tono:"", mios:false}, per:"hoy", loaded:false, unsub:[], tarDraft:null, reveal:{}};
 
 const $ = s => document.querySelector(s);
 const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const tel10 = t => { const d = String(t||"").replace(/\D/g,""); return d.length===11 && d[0]==="1" ? d.slice(1) : d.slice(-10); };
+const tel10 = t => { const d = String(t||"").replace(/\D/g,""); return d.length===11 && d[0]==="1" ? d.slice(1) : (d.length>=10 ? d.slice(-10) : d); };
 const telFmt = t => { const d = tel10(t); return d.length===10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : (t||""); };
 function partsLA(ms){ const o = {}; new Intl.DateTimeFormat("en-US",{timeZone:TZ,hourCycle:"h23",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date(ms)).forEach(p => o[p.type] = p.value); return o; }
 function tzOff(ms){ const p = partsLA(ms); return Date.UTC(+p.year, +p.month-1, +p.day, +p.hour%24, +p.minute, +p.second) - Math.floor(ms/1000)*1000; }
-function laToMs(d, t){ const [y,m,da] = d.split("-").map(Number); const [h,mi] = (t||"00:00").split(":").map(Number); const g = Date.UTC(y,m-1,da,h,mi); return g - tzOff(g - tzOff(g)); }
+function laToMs(d, t){ const [y,m,da] = String(d||"").split("-").map(Number); if (!y) return 0; const [h,mi] = (t||"00:00").split(":").map(Number); const g = Date.UTC(y,m-1,da,h||0,mi||0); return g - tzOff(g - tzOff(g)); }
 const laDate = ms => { const p = partsLA(ms); return `${p.year}-${p.month}-${p.day}`; };
-const laTime = ms => { const p = partsLA(ms); return `${p.hour}:${p.minute}`; };
 const today = () => laDate(Date.now());
 function addDays(d, n){ const [y,m,da] = d.split("-").map(Number); return new Date(Date.UTC(y,m-1,da+n,12)).toISOString().slice(0,10); }
-const fmt = (ms, o) => new Intl.DateTimeFormat("es-US",{timeZone:TZ,...o}).format(new Date(ms));
+const fmt = (ms, o) => ms ? new Intl.DateTimeFormat("es-US",{timeZone:TZ,...o}).format(new Date(ms)) : "";
 const fmtWhen = ms => fmt(ms,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
-const fmtDia = ms => fmt(ms,{weekday:"long",day:"numeric",month:"long"});
-const fmtHora = ms => fmt(ms,{hour:"numeric",minute:"2-digit"});
 function mondayOf(d){ const [y,m,da] = d.split("-").map(Number); const dow = (new Date(Date.UTC(y,m-1,da,12)).getUTCDay()+6)%7; return addDays(d,-dow); }
 function rango(p){ const t = today(); if (p==="hoy") return [laToMs(t,"00:00"), laToMs(addDays(t,1),"00:00")];
   if (p==="semana"){ const mo = mondayOf(t); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
-  if (p==="semant"){ const mo = addDays(mondayOf(t),-7); return [laToMs(mo,"00:00"), laToMs(addDays(mo,7),"00:00")]; }
-  const f = t.slice(0,8)+"01"; const [y,m] = f.split("-").map(Number); const nx = new Date(Date.UTC(y,m,1,12)).toISOString().slice(0,10);
-  if (p==="mesant"){ const pv = new Date(Date.UTC(y,m-2,1,12)).toISOString().slice(0,10); return [laToMs(pv,"00:00"), laToMs(f,"00:00")]; }
-  return [laToMs(f,"00:00"), laToMs(nx,"00:00")]; }
-const PER = {hoy:"Hoy", semana:"Esta semana", semant:"Semana pasada", mes:"Este mes", mesant:"Mes anterior"};
-const inR = (ms, [a,b]) => ms >= a && ms < b;
-function toast(m){ document.querySelectorAll(".toast").forEach(t => t.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 2800); }
-function err(e){ console.log(e); toast(e && e.code==="permission-denied" ? "No tienes permiso. Pídele a Katerine que te agregue al equipo de cobranza." : "No se pudo guardar. Revisa tu conexión."); }
+  const f = t.slice(0,8)+"01"; const [y,m] = f.split("-").map(Number); const nx = new Date(Date.UTC(y,m,1,12)).toISOString().slice(0,10); return [laToMs(f,"00:00"), laToMs(nx,"00:00")]; }
+const inR = (ms, r) => ms >= r[0] && ms < r[1];
+function toast(m){ document.querySelectorAll(".toast").forEach(t => t.remove()); const t = document.createElement("div"); t.className = "toast"; t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 3200); }
+function err(e){ console.log(e); toast(e && e.code==="permission-denied" ? "Sin permiso. Si acabas de actualizar, Katerine todavía tiene que pegar las reglas nuevas en Firebase." : "No se pudo guardar. Revisa tu conexión."); }
 function openModal(html, bind){ $("#modal").innerHTML = `<div class="mbg" id="mbg"><div class="modal">${html}</div></div>`; $("#mbg").onclick = e => { if (e.target.id==="mbg") closeModal(); }; $("#modal").querySelectorAll("[data-close]").forEach(b => b.onclick = closeModal); bind && bind(); }
 function closeModal(){ $("#modal").innerHTML = ""; S.open = null; }
+const qv = id => { const n = document.getElementById(id); return n ? n.value : ""; };
 
-/* ===== Equipo y permisos ===== */
 const staff = () => S.cfg.staff || {};
 const isOwner = () => S.owners.includes(S.email);
-const isDir = () => isOwner() || (staff()[S.email]?.roles||[]).includes("direccion");
-const myRoles = () => isOwner() ? Object.keys(ROLES) : (staff()[S.email]?.roles || []);
-const nameOf = em => em ? (staff()[em]?.name || (S.owners.includes(em) ? "Katerine" : em.split("@")[0])) : "—";
+const isBot = () => S.me?.role === "bot" && !S.me?.bloqueado;
+const isDir = () => isOwner() || isBot() || (staff()[S.email]?.roles||[]).includes("direccion");
+const canEnter = () => isOwner() || isBot() || !!staff()[S.email];
+const veTarjetas = () => !isBot() && (isOwner() || (S.cfg.tarjetas||[]).includes(S.uid));
+const nameOf = em => em ? (staff()[em]?.name || (S.owners.includes(em) ? "Katerine" : String(em).split("@")[0])) : "—";
 const first = n => String(n||"").trim().split(/\s+/)[0];
 const money = n => "$" + (+n||0).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2});
 const conRol = r => Object.entries(staff()).filter(([,v]) => (v.roles||[]).includes(r)).map(([em]) => em);
-
-/* ===== Reglas del negocio ===== */
-const grupoDe = c => { const d = +c.atraso || 0; return d <= 0 ? "aldia" : d <= 30 ? "g30" : d <= 60 ? "g60" : "g90"; };
-const encargada = c => c.asignada || (conRol(grupoDe(c))[0] || "");
+const bucketOf = c => L.bucketOf(c.atraso);
+const vencidoDe = c => (c.vencido != null && c.vencido !== "") ? (+c.vencido||0) : (+c.saldo||0);
+const mensualDe = c => (c.mensual != null && c.mensual !== "") ? (+c.mensual||0) : (+(c.pago&&c.pago.monto)||0);
+const encargada = c => c.asignada || (conRol(bucketOf(c))[0] || "");
 const finDia = () => laToMs(addDays(today(),1), "00:00");
 const ym = () => today().slice(0,7);
 const diaHoy = () => +today().slice(8,10);
 const ultimoDia = () => { const [y,m] = today().split("-").map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
-/* Pago automático de hoy: su día del mes (si el mes es más corto, el último día) y todavía no se revisó este mes */
 const pagaHoy = c => c.pago?.dia && c.etapa!=="cerrado" && (Math.min(+c.pago.dia, ultimoDia()) === diaHoy()) && !(c.revis||{})[ym()];
-const llamarHoy = c => c.etapa!=="cerrado" && ((c.prox && c.prox < finDia()) || (c.promesa?.fecha && !c.promesa.ok && c.promesa.fecha <= today()));
-const esMio = c => isDir() ? true : (encargada(c)===S.email || (c.etapa==="postventa" && myRoles().includes("post")));
+const esMio = c => isDir() ? true : (encargada(c)===S.email || (c.etapa==="postventa" && (staff()[S.email]?.roles||[]).includes("post")));
 const postFalta = c => [!c.post?.llamada && "Llamada de bienvenida", !c.post?.visita?.hecha && "Visita de entrega", !c.pago?.dia && "Pagos automáticos"].filter(Boolean);
-
-/* ===== Arranque ===== */
-function boot(){ const cfg = window.LUNAYA_CONFIG || {}; firebase.initializeApp(cfg.firebase); S.auth = firebase.auth(); S.db = firebase.firestore();
-  S.owners = (cfg.owners||[]).map(x => x.toLowerCase());
-  S.auth.onAuthStateChanged(u => { S.unsub.forEach(f => { try { f(); } catch {} }); S.unsub = []; S.user = u; S.email = (u?.email||"").toLowerCase(); S.loaded = false; S.cfg = {}; S.cli = {}; S.subC = false;
-    if (!u) return render();
-    S.unsub.push(S.db.doc("cconfig/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : {}; S.cfgLoaded = true; if (!S.subC && (isOwner() || staff()[S.email])) subCli(); render(); }, e => { S.cfgLoaded = true; render(); }));
-    render(); });
+function streakNo(id, c){
+  const items = [];
+  (S.acts[id]||[]).forEach(a => items.push({at:a.at||0, no:a.resultado==="no"||a.resultado==="buzon", hit:["contesto","promesa","pago","equivocado"].includes(a.resultado)}));
+  (c.log||[]).forEach(x => items.push({at:x.at||0, no:x.res==="nc", hit:["promesa","pago","mal","contesto"].includes(x.res)}));
+  if (!items.length) return +c.sinContestar||0;
+  items.sort((a,b)=>a.at-b.at); let n = 0;
+  items.forEach(x => { if (x.hit) n = 0; else if (x.no) n++; });
+  return n;
 }
+const tono = (id,c) => L.toneOf({...c, sinContestar:streakNo(id,c)});
+function llamadasDe(id,c){ const legacy = (c.log||[]).filter(x => x.res && x.res!=="nota").length; if (S.actsReady) return (S.acts[id]||[]).filter(a => a.tipo==="llamada").length + legacy; return (+c.llamadas||0) + legacy; }
+function ultimoDe(id,c){ const t = [c.ultContacto||0, c.ultLlamada||0]; (S.acts[id]||[]).forEach(a => t.push(a.at||0)); (c.log||[]).forEach(x => t.push(x.at||0)); return Math.max(0,...t); }
+function touch(o){ o.updatedAt = Date.now(); if (isBot()){ o.lastSyncAt = Date.now(); o.syncedBy = S.email; } return o; }
+function semanaDe(fecha){ if (!fecha) return ""; const t = today(); if (fecha===t) return "hoy"; if (fecha<t) return "pasada"; const mo = mondayOf(t); if (fecha>=mo && fecha<=addDays(mo,6)) return "semana"; return "luego"; }
+
+function boot(){
+  const cfg = window.LUNAYA_CONFIG || {}; if (!window.firebase || !cfg.firebase){ $("#main").innerHTML = `<div class="card"><h2>Falta configurar</h2></div>`; return; }
+  firebase.initializeApp(cfg.firebase); S.auth = firebase.auth(); S.db = firebase.firestore(); S.owners = (cfg.owners||[]).map(x => String(x).toLowerCase());
+  S.auth.onAuthStateChanged(u => {
+    S.unsub.forEach(f => { try { f(); } catch(e){} }); S.unsub = [];
+    S.user = u; S.uid = u?.uid||""; S.email = (u?.email||"").toLowerCase();
+    S.me = null; S.meLoaded = !u; S.cfg = {}; S.cfgLoaded = !u; S.loaded = false; S.cli = {}; S.subC = false; S.subCards = false; S.subM = false; S.membersLoaded = false;
+    if (!u) return render();
+    S.unsub.push(S.db.doc("members/"+S.uid).onSnapshot(s => { S.me = s.exists ? s.data() : null; S.meLoaded = true; maybeSub(); render(); }, () => { S.meLoaded = true; render(); }));
+    S.unsub.push(S.db.doc("cconfig/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : {}; S.cfgLoaded = true; if (!S.fInit && canEnter() && !isDir()) S.f.mios = true; S.fInit = S.fInit || canEnter(); maybeSub(); render(); }, () => { S.cfgLoaded = true; render(); }));
+  });
+}
+function maybeSub(){ if (!S.meLoaded || !S.cfgLoaded || !canEnter()) return; if (!S.subC) subCli(); if (isOwner() && !S.subM) subMembers(); ensureCards(); }
+function subMembers(){ S.subM = true; S.unsub.push(S.db.collection("members").onSnapshot(s => { S.members = {}; s.docs.forEach(d => S.members[d.id] = d.data()); S.membersLoaded = true; render(); }, e => { console.log(e); S.membersLoaded = true; render(); })); }
+function ensureCards(){ if (S.subCards || !veTarjetas()) return; S.subCards = true;
+  S.unsub.push(S.db.collection("ctarjetas").onSnapshot(s => { S.cards = {}; s.docs.forEach(d => S.cards[d.id] = d.data()); render(); }, e => { console.log("tarjetas", e); S.cards = {}; S.extraErr = Object.assign(S.extraErr||{}, {tarjetas:true}); render(); })); }
 function subCli(){ S.subC = true;
-  S.unsub.push(S.db.collection("ccli").onSnapshot(s => { S.cli = {}; s.docs.forEach(d => S.cli[d.id] = d.data()); S.loaded = true; render(); }, e => { console.log(e); S.loaded = true; S.loadErr = true; render(); }));
-  /* Solo Dirección: las ventas aprobadas de Lunaya, para pasarlas a postventa sin volver a escribirlas */
+  const bad = name => e => { console.log(name, e); S.extraErr = Object.assign(S.extraErr||{}, {[name]:true}); render(); };
+  S.unsub.push(S.db.collection("ccli").onSnapshot(s => { S.cli = {}; s.docs.forEach(d => S.cli[d.id] = d.data()); S.loaded = true; S.loadErr = false; render(); }, e => { console.log(e); S.loaded = true; S.loadErr = true; render(); }));
+  S.unsub.push(S.db.collectionGroup("act").onSnapshot(s => { S.acts = {}; s.docs.forEach(d => { const cid = d.ref.parent.parent.id; (S.acts[cid] = S.acts[cid]||[]).push(Object.assign({id:d.id}, d.data())); }); S.actsReady = true; render(); }, bad("act")));
+  S.unsub.push(S.db.collection("cpagos").onSnapshot(s => { S.pagos = {}; s.docs.forEach(d => S.pagos[d.id] = Object.assign({id:d.id}, d.data())); render(); }, bad("pagos")));
+  S.unsub.push(S.db.collection("cpost").onSnapshot(s => { S.post = {}; s.docs.forEach(d => S.post[d.id] = Object.assign({id:d.id}, d.data())); render(); }, bad("post")));
+  S.unsub.push(S.db.collection("clinkreq").onSnapshot(s => { S.links = {}; s.docs.forEach(d => S.links[d.id] = Object.assign({id:d.id}, d.data())); render(); }, bad("links")));
   if (isOwner()){ const uid = S.user.uid;
     S.unsub.push(S.db.collection("appts").where("saleStatus","==","aprobada").onSnapshot(s => { S.ventas = {}; s.docs.forEach(d => S.ventas[d.id] = d.data()); render(); }, e => console.log("ventas", e)));
     [["socioId",uid],["up",uid],["dueno",uid],["dador",uid],["teleId",uid]].forEach(([f,v]) => S.unsub.push(S.db.collection("apptp").where(f,"==",v).onSnapshot(s => { const m = {}; s.docs.forEach(d => m[d.id] = d.data()); S.privs[f] = m; render(); }, e => console.log("apptp", f, e)))); }
@@ -150,169 +187,581 @@ const priv = id => { for (const k in S.privs){ if (S.privs[k][id]) return S.priv
 const ventasNuevas = () => { const ya = new Set(Object.values(S.cli).map(c => c.apptId).filter(Boolean)); const desde = Date.now() - 120*864e5;
   return Object.entries(S.ventas).filter(([id,a]) => a.sale && !ya.has(id) && !a.cobOff && (a.saleStatusAt || a.when || 0) >= desde).sort((x,y) => (y[1].saleStatusAt||y[1].when||0) - (x[1].saleStatusAt||x[1].when||0)); };
 
-/* ===== Render ===== */
-const IC = {hoy:'<path fill="currentColor" d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z"/>', post:'<path fill="currentColor" d="M20 8h-3V4H3v13h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-5zM8 18.5A1.5 1.5 0 1 1 8 15.5a1.5 1.5 0 0 1 0 3zm10 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM17 12V9.5h2.5L21 12z"/>', atr:'<path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 11h-2V6h2zm0 4h-2v-2h2z"/>', cli:'<path fill="currentColor" d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.4-3.2-4-6-4z"/>', ajustes:'<path fill="currentColor" d="M19.4 13a7.5 7.5 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-1.7-1L15 3.5h-4L10.7 6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/>'};
-const TABS = [["hoy","Hoy"],["post","Postventa"],["atr","Atrasados"],["cli","Clientes"],["ajustes","Equipo"]];
-function render(){ const m = $("#main");
+function pasaQuery(c){ const q = (S.f.q||"").trim().toLowerCase(); if (!q) return true; const qd = q.replace(/\D/g,"");
+  return String(c.nombre||"").toLowerCase().includes(q) || String(c.cuenta||"").toLowerCase().includes(q) || String(c.email||"").toLowerCase().includes(q) || String(c.producto||"").toLowerCase().includes(q) || (qd.length>=3 && tel10(c.tel).includes(qd)); }
+function pasaFiltro(id,c){
+  if (S.f.mios && !esMio(c)) return false;
+  const who = encargada(c);
+  if (S.f.cob==="sin" && who) return false;
+  if (S.f.cob && S.f.cob!=="sin" && who!==S.f.cob && c.asignada!==S.f.cob) return false;
+  const t = tono(id,c);
+  if (S.f.tono==="skip" && t!=="rojo") return false;
+  if (S.f.tono==="update" && !L.esUpdate(c)) return false;
+  if (S.f.tono==="promesa" && t!=="amarillo") return false;
+  if (S.f.tono==="no" && streakNo(id,c)<3) return false;
+  if (S.f.tono==="verde" && t!=="verde") return false;
+  return pasaQuery(c);
+}
+function enBucket(c,g){ return c.etapa!=="cerrado" && bucketOf(c)===g; }
+const countB = g => Object.values(S.cli).filter(c => enBucket(c,g)).length;
+
+function render(){
+  const m = $("#main"), tabs = $("#tabs"), nav = $("#nav");
   if (!S.auth){ m.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
-  if (!S.user){ $("#nav").hidden = true; $("#title").textContent = "Entrar"; $("#subtitle").textContent = "Usa la misma cuenta de Lunaya."; m.innerHTML = loginHtml(); bindLogin(); return; }
-  if (!S.cfgLoaded){ m.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
-  if (!isOwner() && !staff()[S.email]){ $("#nav").hidden = true; $("#title").textContent = "Sin acceso"; $("#subtitle").textContent = "";
+  if (!S.user){ tabs.hidden = true; nav.hidden = true; $("#title").textContent = "Entrar"; $("#subtitle").textContent = "Usa la misma cuenta de Lunaya."; m.innerHTML = loginHtml(); bindLogin(); return; }
+  if (!S.cfgLoaded || !S.meLoaded){ m.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
+  if (S.me?.bloqueado && !isOwner()){ tabs.hidden = true; nav.hidden = true; $("#title").textContent = "Acceso suspendido"; $("#subtitle").textContent = ""; m.innerHTML = `<div class="card"><h2>Acceso suspendido</h2><p>Pídele a Katerine que te lo devuelva.</p><button class="btn ghost small" id="out">Salir</button></div>`; $("#out").onclick = () => S.auth.signOut(); return; }
+  if (!canEnter()){ tabs.hidden = true; nav.hidden = true; $("#title").textContent = "Sin acceso"; $("#subtitle").textContent = "";
     m.innerHTML = `<div class="card"><h2>Todavía no tienes acceso</h2><p>Pídele a Katerine que te agregue al equipo de cobranza con este correo:</p><p><b>${esc(S.email)}</b></p><button class="btn ghost small" id="out">Salir</button></div>`; $("#out").onclick = () => S.auth.signOut(); return; }
-  const tabs = TABS.filter(t => t[0]!=="ajustes" || isOwner()); if (!tabs.some(t => t[0]===S.view)) S.view = "hoy";
-  const L = Object.values(S.cli); const nh = L.filter(c => esMio(c) && (pagaHoy(c) || llamarHoy(c))).length; const np = L.filter(c => c.etapa==="postventa" && esMio(c)).length;
-  const nav = $("#nav"); nav.hidden = false;
-  nav.innerHTML = tabs.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}"><svg viewBox="0 0 24 24">${IC[k]}</svg>${l}${k==="hoy"&&nh?`<span class="nb">${nh}</span>`:k==="post"&&np?`<span class="nb">${np}</span>`:""}</button>`).join("");
+  const tops = TOP.slice(); if (!tops.some(t => t[0]===S.view) && S.view!=="hoy" && S.view!=="ajustes") S.view = "g30";
+  tabs.hidden = false;
+  tabs.innerHTML = tops.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}">${l}${k!=="post"&&k!=="pagos"?` <small>${countB(k)}</small>`:""}</button>`).join("");
+  tabs.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { S.view = b.dataset.go; render(); scrollTo(0,0); });
+  const bottom = [["hoy","Hoy"]]; if (isOwner()) bottom.push(["ajustes","Equipo"]);
+  nav.hidden = false;
+  nav.innerHTML = bottom.map(([k,l]) => `<button data-go="${k}" class="${S.view===k?"on":""}">${l}</button>`).join("");
   nav.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { S.view = b.dataset.go; render(); scrollTo(0,0); });
-  const T = {hoy:["Hola, "+first(nameOf(S.email)), "Pagos automáticos para revisar y llamadas de hoy."], post:["Postventa","Bienvenida, visita de entrega y pagos automáticos."], atr:["Atrasados","Por grupo: 0–30, 31–60 y recompra."], cli:["Clientes","Todos los clientes, agregar y actualizar desde el portal."], ajustes:["Equipo","Quién trabaja la cobranza y qué lleva cada una."]}[S.view];
-  $("#title").textContent = T[0]; $("#subtitle").textContent = T[1];
+  const T = {g30:["0-30 días","De 1 a 30 días de atraso. Al día (0) se ve en verde, en la búsqueda."], g60:["31-60 días","Cuentas con 31 a 60 días de atraso."], g90:["61+","61 días o más. Recompra."], post:["Postventa","Entregas, rastreo y pago programado."], pagos:["Pagos y actividad","Llamadas del equipo, promesas y pagos anotados."], hoy:["Hola, "+first(nameOf(S.email)),"Pagos automáticos de hoy y ventas nuevas."], ajustes:["Equipo","Quién cobra y quién puede ver las tarjetas."]};
+  const tit = T[S.view] || ["Cobranza",""]; $("#title").textContent = tit[0]; $("#subtitle").textContent = tit[1];
   if (!S.loaded){ m.innerHTML = `<div class="card empty">Cargando clientes…</div>`; return; }
-  if (S.loadErr){ m.innerHTML = `<div class="card"><h2>Falta un paso</h2><p class="note">Pega las reglas nuevas de Firebase (Firestore → Reglas → Publicar) y vuelve a abrir esta página.</p></div>`; return; }
-  m.innerHTML = ({hoy:vHoy, post:vPost, atr:vAtr, cli:vCli, ajustes:vAjustes})[S.view]();
-  bind(); }
-
-const telA = c => { const t = tel10(c.tel); return t.length===10 ? `<a class="btn small ghost" href="tel:+1${t}" onclick="event.stopPropagation()">📞</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}" onclick="event.stopPropagation()">WhatsApp</a>` : ""; };
-function cItem([id,c], extra=""){ const g = grupoDe(c);
-  const sub = [c.tel ? telFmt(c.tel) : "", c.ciudad ? "📍 "+esc(c.ciudad) : "", c.atraso > 0 ? `<b>${c.atraso} días</b>` : "", c.saldo ? "saldo "+money(c.saldo) : "", c.pago?.dia ? `💳 paga el ${c.pago.dia}` : ""].filter(Boolean).join(" · ");
-  const tags = [c.etapa==="postventa" ? `<span class="tag tg-acc">Postventa</span>` : `<span class="tag ${GCLS[g]}">${GRUPOS[g]}</span>`, c.soloKat ? `<span class="tag tg-bad">👑 Solo Katerine</span>` : "", c.beneficio ? `<span class="tag tg-good">⭐ Califica a beneficio</span>` : "",
-    c.promesa?.fecha && !c.promesa.ok ? `<span class="tag tg-warn">🤝 Prometió ${esc(c.promesa.fecha.slice(5).split("-").reverse().join("/"))}${c.promesa.monto?" · "+money(c.promesa.monto):""}</span>` : "", c.prox ? `<span class="tag tg-mute">📅 llamar ${fmt(c.prox,{day:"numeric",month:"short"})}</span>` : ""].join(" ");
-  return `<div class="item ${c.etapa==="postventa"?"":g==="aldia"?"good":g==="g30"?"warn":"bad"}" data-c="${id}" style="flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(c.nombre||"Sin nombre")}</div><div class="m">${sub}</div><div style="margin-top:4px">${tags}</div>${extra}</div><div class="row" style="gap:6px">${telA(c)}</div></div>`; }
-
-function vHoy(){ const L = Object.entries(S.cli).filter(([,c]) => esMio(c));
-  const pagos = L.filter(([,c]) => pagaHoy(c)), llamar = L.filter(([,c]) => llamarHoy(c)).sort((a,b) => (a[1].prox||0) - (b[1].prox||0));
-  const kat = isOwner() ? Object.entries(S.cli).filter(([,c]) => c.soloKat && c.etapa!=="cerrado") : [];
-  const nv = isOwner() ? ventasNuevas() : [];
-  const atr = L.filter(([,c]) => c.etapa!=="cerrado" && c.etapa!=="postventa" && grupoDe(c)!=="aldia");
-  let h = `<div class="card"><div class="tiles"><div class="tile"><b>${pagos.length}</b><span>Pagos automáticos hoy</span><small>revisa si pasaron</small></div><div class="tile"><b>${llamar.length}</b><span>Para llamar hoy</span></div><div class="tile"><b>${atr.length}</b><span>Atrasados</span><small>${money(atr.reduce((t,[,c]) => t+(+c.saldo||0),0))} en saldo</small></div><div class="tile"><b>${L.filter(([,c]) => c.etapa==="postventa").length}</b><span>En postventa</span></div></div></div>`;
-  h += `<div class="card"><h2>💳 Pagos automáticos de hoy</h2><p class="note" style="margin-top:-6px">Revisa en el portal si el pago pasó. Si no pasó, llama hoy mismo para que no se atrase.</p>${pagos.length ? `<div class="list">${pagos.map(e => cItem(e, `<div class="row" style="margin-top:8px"><button class="btn small" data-rv="${e[0]}|paso">✅ Pasó</button><button class="btn small danger" data-rv="${e[0]}|no">❌ No pasó</button></div>`)).join("")}</div>` : `<div class="empty">Nadie tiene pago automático hoy (o ya se revisaron).</div>`}</div>`;
-  h += `<div class="card"><h2>📞 Llamar hoy</h2>${llamar.length ? `<div class="list">${llamar.map(e => cItem(e)).join("")}</div>` : `<div class="empty">No hay llamadas pendientes para hoy.</div>`}</div>`;
-  if (isOwner()) h += `<div class="card"><h2>👑 Solo te contestan a ti <span class="note">${kat.length}</span></h2>${kat.length ? `<div class="list">${kat.map(e => cItem(e)).join("")}</div>` : `<div class="empty">Ninguno por ahora.</div>`}</div>`;
-  if (isOwner()) h += `<div class="card"><h2>🆕 Ventas aprobadas de Lunaya <span class="note">${nv.length}</span></h2><p class="note" style="margin-top:-6px">Pásalas a postventa para la llamada de bienvenida, la visita y los pagos automáticos.</p>${nv.length ? `<div class="list">${nv.slice(0,30).map(([id,a]) => { const p = priv(id) || {}; return `<div class="item" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(p.client || a.nomVenta || "Cliente")}</div><div class="m">${money(a.amount)} · ${fmt(a.when||Date.now(),{day:"numeric",month:"short"})}${p.city||a.zona ? " · 📍 "+esc(p.city||a.zona) : ""}${p.phone ? " · "+telFmt(p.phone) : ""}</div></div><div class="row" style="gap:6px"><button class="btn small" data-pv="${id}">➕ A postventa</button><button class="btn small ghost" data-pvx="${id}" title="No pasar">✕</button></div></div>`; }).join("")}</div>` : `<div class="empty">No hay ventas aprobadas nuevas.</div>`}</div>`;
-  return h; }
-
-function vPost(){ const L = Object.entries(S.cli).filter(([,c]) => c.etapa==="postventa" && esMio(c)).sort((a,b) => (a[1].createdAt||0) - (b[1].createdAt||0));
-  return `<div class="card"><h2>🚚 Postventa <span class="note">${L.length}</span></h2><p class="note" style="margin-top:-6px">Cuando llega el producto: 1) llamada de bienvenida (¿le llegó todo bien?), 2) visita para enseñarle a usarlo, 3) programar sus pagos automáticos. Al terminar los 3 pasa a cobranza al día.</p>
-    ${L.length ? `<div class="list">${L.map(e => cItem(e, `<div class="m" style="margin-top:4px">Falta: ${postFalta(e[1]).join(" · ") || "nada"}</div>`)).join("")}</div>` : `<div class="empty">No hay clientes en postventa.</div>`}
-    <div class="row" style="margin-top:10px"><button class="btn small ghost" id="add-c">➕ Agregar cliente</button></div></div>`; }
-
-function vAtr(){ const g = ["todos","g30","g60","g90"].includes(S.f.g) ? S.f.g : "todos";
-  const L = Object.entries(S.cli).filter(([,c]) => c.etapa!=="cerrado" && c.etapa!=="postventa" && grupoDe(c)!=="aldia" && (g==="todos" || grupoDe(c)===g) && (!S.f.mios || esMio(c))).sort((a,b) => (b[1].atraso||0) - (a[1].atraso||0));
-  const cnt = k => Object.values(S.cli).filter(c => c.etapa!=="cerrado" && c.etapa!=="postventa" && (k==="todos" ? grupoDe(c)!=="aldia" : grupoDe(c)===k)).length;
-  return `<div class="card"><div class="chips">${[["todos","Todos"],["g30","0–30"],["g60","31–60"],["g90","61+ · recompra"]].map(([k,l]) => `<button class="chip ${g===k?"on":""}" data-g="${k}">${l} (${cnt(k)})</button>`).join("")}</div>
-    ${isDir() ? "" : `<label class="note" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="mios" ${S.f.mios?"checked":""}> Solo los míos</label>`}
-    <div class="tiles" style="margin-top:10px"><div class="tile"><b>${L.length}</b><span>Clientes</span></div><div class="tile"><b>${money(L.reduce((t,[,c]) => t+(+c.saldo||0),0))}</b><span>Saldo</span></div><div class="tile"><b>${L.filter(([,c]) => c.promesa?.fecha && !c.promesa.ok).length}</b><span>Con promesa</span></div></div></div>
-    <div class="card">${L.length ? `<div class="list">${L.map(e => cItem(e, isDir() && encargada(e[1]) ? `<div class="m">Lo lleva ${esc(first(nameOf(encargada(e[1]))))}</div>` : "")).join("")}</div>` : `<div class="empty">No hay atrasados en este grupo.</div>`}</div>`; }
-
-function vCli(){ const q = (S.f.q||"").toLowerCase().trim(); const qd = q.replace(/\D/g,"");
-  const L = Object.entries(S.cli).filter(([,c]) => !q || String(c.nombre||"").toLowerCase().includes(q) || (qd.length >= 4 && tel10(c.tel).includes(qd)) || String(c.cuenta||"").toLowerCase().includes(q)).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||"")));
-  return `<div class="card"><div class="row"><button class="btn" id="add-c">➕ Agregar cliente</button><button class="btn dark" id="imp">📋 Pegar lista del portal</button></div>
-    <input class="i" id="q" type="search" placeholder="🔍 Buscar por nombre, teléfono o número de cuenta" value="${esc(S.f.q||"")}" style="margin-top:10px"></div>
-    <div class="card"><h2>Clientes <span class="note">${L.length}</span></h2>${L.length ? `<div class="list">${L.slice(0,200).map(e => cItem(e)).join("")}</div>` : `<div class="empty">Todavía no hay clientes. Agrégalos o pásalos desde las ventas aprobadas.</div>`}</div>`; }
-
-function vAjustes(){ const st = Object.entries(staff());
-  return `<div class="card"><h2>Equipo de cobranza</h2><p class="note" style="margin-top:-6px">Agrega a cada chica con el correo con el que entra a Lunaya. Lo que marques es lo que le toca: los clientes de ese grupo le salen solos.</p>
-    ${st.length ? `<div class="list">${st.map(([em,v]) => `<div class="item" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(v.name||em)}</div><div class="m">${esc(em)}</div><div class="chips" style="margin-top:6px">${Object.entries(ROLES).map(([k,l]) => `<label class="chip ${(v.roles||[]).includes(k)?"on":""}" style="cursor:pointer"><input type="checkbox" data-rol="${esc(em)}|${k}" ${(v.roles||[]).includes(k)?"checked":""} hidden>${l}</label>`).join("")}</div></div><button class="btn small ghost" data-stdel="${esc(em)}">Quitar</button></div>`).join("")}</div>` : `<div class="empty">Solo tú tienes acceso por ahora.</div>`}
-    <form id="st-f" class="grid2" style="margin-top:10px"><label class="f">Nombre<input class="i" id="st-n" required></label><label class="f">Correo<input class="i" id="st-e" type="email" required></label><div><button class="btn" type="submit">Agregar</button></div></form>
-    <p class="note">Ellas entran por: <b>${esc(location.href.split("#")[0])}</b></p></div>`; }
-
-/* ===== Ficha del cliente ===== */
-function openCli(id){ const c = S.cli[id]; if (!c) return; S.open = id; const g = grupoDe(c);
-  const log = (c.log||[]).slice().sort((a,b) => b.at - a.at);
-  openModal(`<h3>${esc(c.nombre)}</h3>
-    <div class="row">${telA(c)}<span class="tag ${c.etapa==="postventa"?"tg-acc":GCLS[g]}">${c.etapa==="postventa"?"Postventa":GRUPOS[g]}</span>${c.socio?`<span class="note">Vendió ${esc(c.socio)}</span>`:""}</div>
-    <div class="note">${[c.ciudad?"📍 "+esc(c.ciudad):"", c.cuenta?"Cuenta "+esc(c.cuenta):"", c.monto?"Venta "+money(c.monto):"", c.fechaVenta?"del "+esc(c.fechaVenta):""].filter(Boolean).join(" · ")}</div>
-    ${c.etapa==="postventa" ? `<div class="eyebrow">Postventa</div><div class="list">
-      <div class="item ${c.post?.llamada?"good":"warn"}" style="cursor:default"><div><div class="t">1. Llamada de bienvenida</div><div class="m">${c.post?.llamada ? (c.post.llamada.ok ? "✅ Le llegó todo bien" : "⚠️ "+esc(c.post.llamada.nota||"Hubo un problema")) + " · " + fmt(c.post.llamada.at,{day:"numeric",month:"short"}) : "¿Le llegó todo bien?"}</div></div>${c.post?.llamada?"":`<div class="row"><button class="btn small" data-pl="ok">Llegó bien</button><button class="btn small ghost" data-pl="mal">Problema</button></div>`}</div>
-      <div class="item ${c.post?.visita?.hecha?"good":"warn"}" style="cursor:default;flex-wrap:wrap"><div><div class="t">2. Visita de entrega</div><div class="m">${c.post?.visita?.hecha ? "✅ Hecha" : c.post?.visita?.when ? "📅 "+fmtWhen(c.post.visita.when) : "Enseñarle a usar su producto"}</div></div>${c.post?.visita?.hecha?"":`<div class="row"><input class="i" type="date" id="vi-d" value="${c.post?.visita?.when ? laDate(c.post.visita.when) : addDays(today(),2)}" style="width:auto;padding:6px"><button class="btn small ghost" id="vi-ok">Agendar</button><button class="btn small" id="vi-h">✅ Hecha</button></div>`}</div>
-      <div class="item ${c.pago?.dia?"good":"warn"}" style="cursor:default"><div><div class="t">3. Pagos automáticos</div><div class="m">${c.pago?.dia ? `✅ El día ${c.pago.dia} de cada mes${c.pago.monto?" · "+money(c.pago.monto):""}` : "Ponlos abajo en «Pago automático»"}</div></div></div></div>
-      ${postFalta(c).length ? "" : `<button class="btn" id="post-fin">Terminar postventa → pasa a cobranza al día</button>`}` : ""}
-    <div class="eyebrow">Registrar llamada</div>
-    <div class="chips">${Object.entries(RES).map(([k,l]) => `<button class="chip" data-res="${k}">${l}</button>`).join("")}</div>
-    <div class="grid2" id="res-x" hidden><label class="f" id="pr-w" hidden>Fecha que promete<input class="i" type="date" id="pr-d" min="${today()}"></label><label class="f" id="pr-mw" hidden>Monto que promete<input class="i" type="number" min="0" step="0.01" id="pr-m"></label>
-      <label class="f">Próxima llamada<input class="i" type="date" id="nx-d"></label><label class="f" style="grid-column:1/-1">Qué dijo<textarea class="i" id="res-n" placeholder="Ej.: le pagan el viernes, pidió que la llamen en la tarde…"></textarea></label><div><button class="btn" id="res-ok">Guardar llamada</button></div></div>
-    <div class="eyebrow">Cuenta</div>
-    <div class="grid2"><label class="f">Días de atraso<input class="i" type="number" min="0" id="e-at" value="${c.atraso||0}"></label><label class="f">Saldo vencido<input class="i" type="number" min="0" step="0.01" id="e-sa" value="${c.saldo||""}"></label>
-      <label class="f">Pago automático · día del mes<input class="i" type="number" min="1" max="31" id="e-pd" value="${c.pago?.dia||""}" placeholder="Ej.: 15"></label><label class="f">Monto del pago<input class="i" type="number" min="0" step="0.01" id="e-pm" value="${c.pago?.monto||""}"></label>
-      <label class="f">Teléfono<input class="i" id="e-t" value="${esc(c.tel||"")}" inputmode="tel"></label><label class="f">Número de cuenta (del portal)<input class="i" id="e-cu" value="${esc(c.cuenta||"")}"></label>
-      ${isDir() ? `<label class="f">Lo lleva<select class="i" id="e-as"><option value="">Automático (según el grupo)</option>${Object.entries(staff()).map(([em,v]) => `<option value="${esc(em)}" ${c.asignada===em?"selected":""}>${esc(v.name||em)}</option>`).join("")}</select></label>` : ""}</div>
-    <div class="row"><label class="chip ${c.beneficio?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-be" ${c.beneficio?"checked":""} hidden>⭐ Califica a beneficio</label><label class="chip ${c.soloKat?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-sk" ${c.soloKat?"checked":""} hidden>👑 Solo le contesta a Katerine</label></div>
-    <div class="row"><button class="btn dark" id="e-ok">Guardar cuenta</button>${c.etapa!=="cerrado" ? `<button class="btn small ghost" id="e-cl">Cerrar cuenta (pagó todo)</button>` : `<button class="btn small ghost" id="e-re">Volver a abrir</button>`}<button class="btn ghost" data-close>Cerrar</button></div>
-    <div class="eyebrow">Historial</div>${log.length ? `<div class="tl">${log.map(x => `<div><small>${fmtWhen(x.at)} · ${esc(first(nameOf(x.by)))}${x.res?" · "+RES[x.res]||"":""}</small>${esc(x.nota||"")}</div>`).join("")}</div>` : `<div class="note">Sin llamadas todavía.</div>`}`, () => {
-    const ref = S.db.doc("ccli/"+id); const q = x => document.getElementById(x);
-    document.querySelectorAll(".modal label.chip input").forEach(i => i.onchange = () => i.parentElement.classList.toggle("on", i.checked));
-    let res = ""; document.querySelectorAll("[data-res]").forEach(b => b.onclick = () => { res = b.dataset.res; document.querySelectorAll("[data-res]").forEach(z => z.classList.toggle("on", z===b)); q("res-x").hidden = false; q("pr-w").hidden = q("pr-mw").hidden = res!=="promesa";
-      q("nx-d").value = res==="nc" ? addDays(today(),1) : res==="otro_dia" ? addDays(today(),2) : res==="promesa" ? "" : res==="pago" ? "" : q("nx-d").value; });
-    q("res-ok").onclick = async () => { const nota = q("res-n").value.trim(); const nx = q("nx-d").value; const up = {log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res, nota:nota.slice(0,800)}), updatedAt:Date.now(), ultLlamada:Date.now()};
-      if (res==="promesa"){ const d = q("pr-d").value; if (!d) return toast("Pon la fecha que promete"); up.promesa = {fecha:d, monto:+q("pr-m").value||0, at:Date.now()}; up.prox = laToMs(d,"10:00"); }
-      if (res==="pago"){ up.promesa = firebase.firestore.FieldValue.delete(); up.prox = firebase.firestore.FieldValue.delete(); }
-      if (res==="solo_kat") up.soloKat = true;
-      if (nx) up.prox = laToMs(nx, "09:00"); else if (res!=="promesa" && res!=="pago" && res!=="nota") up.prox = firebase.firestore.FieldValue.delete();
-      try { await ref.update(up); toast("Llamada guardada"); openCli(id); } catch(e){ err(e); } };
-    document.querySelectorAll("[data-pl]").forEach(b => b.onclick = async () => { const ok = b.dataset.pl==="ok"; const nota = ok ? "" : (prompt("¿Qué problema hubo?") || "").slice(0,300);
-      try { await ref.update({"post.llamada":{ok, nota, at:Date.now(), by:S.email}, log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res:"nota", nota: ok ? "Bienvenida: le llegó todo bien" : "Bienvenida: "+nota})}); openCli(id); } catch(e){ err(e); } });
-    if (q("vi-ok")) q("vi-ok").onclick = () => ref.update({"post.visita":{when:laToMs(q("vi-d").value,"12:00"), hecha:false}}).then(() => openCli(id), err);
-    if (q("vi-h")) q("vi-h").onclick = () => ref.update({"post.visita":{when:c.post?.visita?.when || Date.now(), hecha:true, at:Date.now()}, log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res:"nota", nota:"Visita de entrega hecha"})}).then(() => openCli(id), err);
-    if (q("post-fin")) q("post-fin").onclick = () => ref.update({etapa:"activo", postFin:Date.now()}).then(() => { closeModal(); toast("Pasó a cobranza al día"); }, err);
-    q("e-ok").onclick = async () => { const at = Math.max(0, +q("e-at").value||0); const pd = +q("e-pd").value||0;
-      const up = {atraso:at, saldo:+q("e-sa").value||0, tel:q("e-t").value.trim(), cuenta:q("e-cu").value.trim().slice(0,40), beneficio:q("e-be").checked, soloKat:q("e-sk").checked, updatedAt:Date.now(), ...(at !== (c.atraso||0) ? {atrasoAt:Date.now()} : {})};
-      up.pago = pd ? {dia:Math.min(31,pd), monto:+q("e-pm").value||0} : firebase.firestore.FieldValue.delete(); if (q("e-as")) up.asignada = q("e-as").value;
-      try { await ref.update(up); toast("Guardado"); openCli(id); } catch(e){ err(e); } };
-    if (q("e-cl")) q("e-cl").onclick = () => ref.update({etapa:"cerrado", atraso:0, saldo:0, cerradoAt:Date.now()}).then(() => { closeModal(); toast("Cuenta cerrada"); }, err);
-    if (q("e-re")) q("e-re").onclick = () => ref.update({etapa:"activo"}).then(() => openCli(id), err);
-  }); }
-
-function openNuevo(pre={}){ openModal(`<h3>Nuevo cliente</h3><div class="grid2">
-    <label class="f">Nombre<input class="i" id="n-n" value="${esc(pre.nombre||"")}"></label><label class="f">Teléfono<input class="i" id="n-t" inputmode="tel" value="${esc(pre.tel||"")}"></label>
-    <label class="f">Ciudad<input class="i" id="n-c" value="${esc(pre.ciudad||"")}"></label><label class="f">Número de cuenta (opcional)<input class="i" id="n-cu"></label>
-    <label class="f">Monto de la venta<input class="i" type="number" min="0" step="0.01" id="n-m" value="${pre.monto||""}"></label><label class="f">Vendió<input class="i" id="n-s" value="${esc(pre.socio||"")}"></label>
-    <label class="f">¿Dónde empieza?<select class="i" id="n-e"><option value="postventa">🚚 Postventa (venta nueva)</option><option value="activo">Cobranza (cliente que ya tenía)</option></select></label><label class="f">Días de atraso<input class="i" type="number" min="0" id="n-a" value="0"></label></div>
-    <div class="row"><button class="btn" id="n-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
-    $("#n-ok").onclick = async () => { const nombre = $("#n-n").value.trim(); if (!nombre) return toast("Escribe el nombre");
-      const d = {nombre:nombre.slice(0,80), tel:$("#n-t").value.trim(), ciudad:$("#n-c").value.trim().slice(0,60), cuenta:$("#n-cu").value.trim().slice(0,40), monto:+$("#n-m").value||0, socio:$("#n-s").value.trim().slice(0,60), etapa:$("#n-e").value, atraso:+$("#n-a").value||0, saldo:0, createdAt:Date.now(), by:S.email, log:[], ...(pre.apptId ? {apptId:pre.apptId, fechaVenta:pre.fechaVenta||""} : {})};
-      try { await S.db.collection("ccli").add(d); closeModal(); toast("Cliente guardado"); } catch(e){ err(e); } }; }); }
-
-/* Pegar la lista del portal: una línea por cliente; se reconoce teléfono, días de atraso y saldo ($) */
-function openImport(){ openModal(`<h3>📋 Pegar lista del portal</h3><p class="note" style="margin:0">Copia del portal la lista de atrasados y pégala aquí, un cliente por línea. Lunaya reconoce el <b>nombre</b>, el <b>teléfono</b>, los <b>días</b> de atraso y el <b>saldo</b> ($). Si el cliente ya está, se actualiza; si no, se agrega.</p>
-    <textarea class="i" id="im-t" style="min-height:180px" placeholder="María López  619-555-1234  45 días  $320.50&#10;Rosa Pérez, (858) 555-9876, 12, $89"></textarea><div id="im-p"></div>
-    <div class="row"><button class="btn ghost" id="im-v">Revisar</button><button class="btn" id="im-ok" disabled>Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
-    let filas = [];
-    const parse = () => { filas = $("#im-t").value.split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => { const telm = l.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/); const tel = telm ? tel10(telm[0]) : "";
-        let rest = telm ? l.replace(telm[0], " ") : l; const sm = rest.match(/\$\s?[\d,]+(?:\.\d{1,2})?/); const saldo = sm ? +sm[0].replace(/[$,\s]/g,"") : 0; if (sm) rest = rest.replace(sm[0]," ");
-        const dm = rest.match(/(\d{1,3})\s*(?:d[ií]as?|days?)?/i); const atraso = dm ? +dm[1] : 0; if (dm) rest = rest.replace(dm[0]," ");
-        const nombre = rest.replace(/[,;|\t]+/g," ").replace(/\s+/g," ").trim().slice(0,80);
-        const ya = Object.entries(S.cli).find(([,c]) => (tel && tel10(c.tel)===tel) || (nombre && String(c.nombre||"").toLowerCase()===nombre.toLowerCase()));
-        return {nombre, tel, atraso, saldo, id: ya ? ya[0] : ""}; }).filter(x => x.nombre || x.tel);
-      $("#im-p").innerHTML = filas.length ? `<div class="tbl"><table><tr><th>Nombre</th><th>Teléfono</th><th class="n">Días</th><th class="n">Saldo</th><th></th></tr>${filas.map(x => `<tr><td>${esc(x.nombre)}</td><td>${telFmt(x.tel)}</td><td class="n">${x.atraso}</td><td class="n">${money(x.saldo)}</td><td>${x.id?"actualiza":"<b>nuevo</b>"}</td></tr>`).join("")}</table></div>` : `<p class="note">No se reconoció ninguna línea.</p>`;
-      $("#im-ok").disabled = !filas.length; };
-    $("#im-v").onclick = parse;
-    $("#im-ok").onclick = async () => { $("#im-ok").disabled = true; try { const bt = S.db.batch(); filas.forEach(x => { if (x.id) bt.update(S.db.doc("ccli/"+x.id), {atraso:x.atraso, saldo:x.saldo, atrasoAt:Date.now(), updatedAt:Date.now(), ...(S.cli[x.id].etapa==="cerrado" && x.atraso>0 ? {etapa:"activo"} : {})});
-        else bt.set(S.db.collection("ccli").doc(), {nombre:x.nombre, tel:x.tel, atraso:x.atraso, saldo:x.saldo, etapa:"activo", createdAt:Date.now(), atrasoAt:Date.now(), by:S.email, log:[]}); });
-        await bt.commit(); closeModal(); toast(`Listo: ${filas.length} cliente(s)`); } catch(e){ $("#im-ok").disabled = false; err(e); } }; }); }
-
-function bind(){ const all = (q, f) => document.querySelectorAll(q).forEach(f);
-  all("[data-c]", b => b.onclick = () => openCli(b.dataset.c));
-  all("[data-g]", b => b.onclick = () => { S.f.g = b.dataset.g; render(); });
-  const mi = $("#mios"); if (mi) mi.onchange = () => { S.f.mios = mi.checked; render(); };
-  const ac = $("#add-c"); if (ac) ac.onclick = () => openNuevo();
-  const im = $("#imp"); if (im) im.onclick = openImport;
-  const qs = $("#q"); if (qs) qs.oninput = () => { S.f.q = qs.value; clearTimeout(S.qt); S.qt = setTimeout(() => { render(); const e = $("#q"); if (e){ e.focus(); e.setSelectionRange(e.value.length, e.value.length); } }, 350); };
-  all("[data-rv]", b => b.onclick = async ev => { ev.stopPropagation(); const [id, r] = b.dataset.rv.split("|"); const up = {["revis."+ym()]: r, log: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res:"nota", nota: r==="paso" ? "💳 Pago automático: pasó" : "💳 Pago automático: NO pasó"})};
-    if (r==="no") up.prox = Date.now(); try { await S.db.doc("ccli/"+id).update(up); toast(r==="paso" ? "Anotado: pasó" : "Anotado: llámala hoy"); if (r==="no") openCli(id); } catch(e){ err(e); } });
-  all("[data-pv]", b => b.onclick = () => { const id = b.dataset.pv, a = S.ventas[id] || {}, p = priv(id) || {}; openNuevo({nombre:p.client || a.nomVenta || "", tel:p.phone||"", ciudad:p.city || a.zona || "", monto:a.amount||0, socio:"", apptId:id, fechaVenta: a.when ? laDate(a.when) : ""}); });
-  all("[data-pvx]", b => b.onclick = () => { S.ventas[b.dataset.pvx].cobOff = true; render(); });
-  const sf = $("#st-f"); if (sf) sf.onsubmit = async e => { e.preventDefault(); const em = $("#st-e").value.trim().toLowerCase(); if (!em) return;
-    try { await S.db.doc("cconfig/main").set({staff:{[em]:{name:$("#st-n").value.trim().slice(0,60), roles:[]}}}, {merge:true}); toast("Agregada. Ahora marca qué le toca."); } catch(x){ err(x); } };
-  all("[data-rol]", i => i.onchange = async () => { const [em, k] = i.dataset.rol.split("|"); const roles = new Set(staff()[em]?.roles||[]); i.checked ? roles.add(k) : roles.delete(k);
-    try { await S.db.doc("cconfig/main").set({staff:{[em]:{...staff()[em], roles:[...roles]}}}, {merge:true}); } catch(x){ err(x); } });
-  all("[data-stdel]", b => b.onclick = async () => { if (!confirm("¿Quitarle el acceso a "+b.dataset.stdel+"?")) return; try { await S.db.doc("cconfig/main").update(new firebase.firestore.FieldPath("staff", b.dataset.stdel), firebase.firestore.FieldValue.delete()); } catch(x){ err(x); } });
+  if (S.loadErr){ m.innerHTML = `<div class="card"><h2>Falta un paso</h2><p class="note">Pega las reglas nuevas de Firebase (Firestore → Reglas → Publicar) y vuelve a abrir esta página. No se publican solas.</p></div>`; return; }
+  const extra = S.extraErr ? `<div class="banner warn">Parte de Cobranza nueva todavía no se puede leer. Katerine tiene que pegar las reglas nuevas en Firebase.</div>` : "";
+  m.innerHTML = extra + ({g30:vBucket, g60:vBucket, g90:vBucket, post:vPost, pagos:vPagos, hoy:vHoy, ajustes:vAjustes})[S.view]();
+  bind();
+  if (S.open && S.cli[S.open] && !document.querySelector(".modal input:focus, .modal textarea:focus, .modal select:focus")) { /* la ficha se reabre al guardar, no en cada snapshot */ }
 }
 
+function filtros(){
+  const gente = Object.entries(staff());
+  return `<div class="row"><input class="i" id="q" type="search" placeholder="Buscar nombre, cuenta, teléfono o producto" value="${esc(S.f.q||"")}" style="flex:1;min-width:180px"></div>
+    <div class="row" style="margin-top:8px"><select class="i" id="f-cob" style="max-width:220px"><option value="">Todas las cobradoras</option><option value="sin" ${S.f.cob==="sin"?"selected":""}>Sin asignar</option>${gente.map(([em,v]) => `<option value="${esc(em)}" ${S.f.cob===em?"selected":""}>${esc(v.name||em)}</option>`).join("")}</select>
+    <select class="i" id="f-tono" style="max-width:220px"><option value="">Todos los estados</option>${[["skip","Skip"],["no","No contestó 3+"],["promesa","Promesa"],["update","Update"],["verde","Al día / pagó"]].map(([k,l]) => `<option value="${k}" ${S.f.tono===k?"selected":""}>${l}</option>`).join("")}</select>
+    ${isDir()?"":`<label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mios" ${S.f.mios?"checked":""}> Solo los míos</label>`}</div>
+    <p class="note" style="margin:8px 0 0">Rojo = skip · naranja = no contestó 3 veces · amarillo = promesa · verde = al día · azul = update ofrecido.</p>`;
+}
+function cItem(id, c, extra){
+  const t = tono(id, c); const g = bucketOf(c);
+  const sub = [c.cuenta ? "Cta "+esc(c.cuenta) : "", c.tel ? telFmt(c.tel) : "", c.producto ? esc(c.producto) : "", `<b>${+c.atraso||0} días</b>`, "vence "+money(vencidoDe(c)), mensualDe(c) ? "mensual "+money(mensualDe(c)) : ""].filter(Boolean).join(" · ");
+  const calls = llamadasDe(id,c); const ult = ultimoDe(id,c);
+  const tags = [c.etapa==="postventa"?`<span class="tag tg-acc">Postventa</span>`:`<span class="tag ${g==="aldia"?"tg-good":g==="g30"?"tg-warn":"tg-bad"}">${GRUPOS[g]}</span>`,
+    L.esSkip(c)?`<span class="tag tg-bad">SKIP</span>`:"", L.esUpdate(c)?`<span class="tag tg-blue">UPDATE ${L.updateAprobado(c)?"aprobado":"por aprobar"}${c.updateMonto?" · "+money(c.updateMonto):""}</span>`:"",
+    c.promesa?.fecha && !c.promesa.ok ? `<span class="tag tg-yellow">Promesa ${esc(String(c.promesa.fecha).slice(5))}${c.promesa.monto?" · "+money(c.promesa.monto):""}</span>`:"",
+    c.carolina?`<span class="tag tg-mute">Avisada Carolina</span>`:"",
+    encargada(c)?`<span class="tag tg-mute">${esc(first(nameOf(encargada(c))))}</span>`:""].join(" ");
+  const link = !L.canPay(c) ? "" : (L.safeHttps(c.payLink) ? `<span class="tag tg-good">Link listo</span>` : (Object.values(S.links).some(x => x.clientId===id && x.status==="pendiente") ? `<span class="tag tg-warn">Link pedido</span>` : ""));
+  return `<div class="item ${t}" data-c="${esc(id)}"><div style="flex:1;min-width:0"><div class="t">${esc(c.nombre||"Sin nombre")}</div><div class="m">${sub}</div><div class="m">${calls} llamada${calls===1?"":"s"} · último contacto ${ult?fmtWhen(ult):"nunca"}</div><div style="margin-top:4px">${tags} ${link}</div>
+    ${L.esSkip(c)?`<div class="banner bad" style="margin-top:8px">SKIP. Hy Cite ya intentó hablarle y no contestó. No se puede tomar ningún pago ni mandar link hasta que el cliente llame a Hy Cite.${c.skipNota?" "+esc(c.skipNota):""}</div>`:""}
+    <div class="row" style="margin-top:8px">${sendBtns(id,c)}</div>${extra||""}</div></div>`;
+}
+function sendBtns(id, c){
+  const dis = k => !datoEnvio(k,c);
+  return `<button class="btn small wa" data-send="whatsapp" data-id="${esc(id)}" ${dis("whatsapp")?"disabled":""}>WhatsApp</button>
+    <button class="btn small ghost" data-send="sms" data-id="${esc(id)}" ${dis("sms")?"disabled":""}>SMS</button>
+    <button class="btn small ghost" data-send="correo" data-id="${esc(id)}" ${dis("correo")?"disabled":""}>Correo</button>`;
+}
+function datoEnvio(tipo,c){ if (tipo==="correo") return !!L.safeMail(c.email); return tel10(c.tel).length===10; }
+function textoDe(c){ return L.mensajeCliente({nombre:c.nombre, cuenta:c.cuenta, producto:c.producto||c.pedido, saldo:c.saldo, mensual:mensualDe(c), vencido:vencidoDe(c), atraso:c.atraso, pagosAtras:c.pagosAtras, proxVence:c.proxVence, updateOn:c.updateOn, updateMonto:c.updateMonto, updateAprobado:c.updateAprobado, payLink:c.payLink, skip:c.skip}, first(nameOf(S.email))||"Cobranza"); }
+function urlEnvio(tipo,c){
+  const body = encodeURIComponent(textoDe(c));
+  if (tipo==="whatsapp") return "https://wa.me/1"+tel10(c.tel)+"?text="+body;
+  if (tipo==="sms") return "sms:+1"+tel10(c.tel)+"?&body="+body;
+  const mail = L.safeMail(c.email); return "mailto:"+encodeURIComponent(mail)+"?subject="+encodeURIComponent("Su cuenta Royal Prestige")+"&body="+body;
+}
+
+function vBucket(){
+  const g = S.view;
+  const all = Object.entries(S.cli);
+  const Lst = all.filter(([id,c]) => enBucket(c,g) && pasaFiltro(id,c)).sort((a,b) => (b[1].atraso||0)-(a[1].atraso||0) || String(a[1].nombre||"").localeCompare(String(b[1].nombre||"")));
+  const otros = (S.f.q||"").trim() ? all.filter(([id,c]) => !enBucket(c,g) && pasaFiltro(id,c)).slice(0,40) : [];
+  const saldo = Lst.reduce((t,[,c]) => t+vencidoDe(c), 0);
+  return `<div class="card">${filtros()}<div class="tiles" style="margin-top:10px"><div class="tile"><b>${Lst.length}</b><span>Cuentas</span></div><div class="tile"><b>${money(saldo)}</b><span>Vencido</span></div><div class="tile"><b>${Lst.filter(([,c]) => c.promesa?.fecha && !c.promesa.ok).length}</b><span>Promesas</span></div><div class="tile"><b>${Lst.filter(([id,c]) => tono(id,c)==="rojo").length}</b><span>En skip</span></div></div>
+    <div class="row" style="margin-top:10px"><button class="btn small" id="add-c">Agregar cliente</button>${isOwner()||isBot()?`<button class="btn small dark" id="imp">Importar CSV o JSON</button>`:""}<button class="btn small ghost" id="imp-portal">Pegar lista del portal</button></div></div>
+    <div class="card"><h2>${GRUPOS[g]} <span class="note">${Lst.length}</span></h2>${Lst.length?`<div class="list">${Lst.map(([id,c]) => cItem(id,c)).join("")}</div>`:`<div class="empty">No hay cuentas en este grupo con ese filtro.</div>`}</div>
+    ${otros.length?`<div class="card"><h2>También coincide <span class="note">${otros.length}</span></h2><div class="list">${otros.map(([id,c]) => cItem(id,c)).join("")}</div></div>`:""}`;
+}
+function vHoy(){
+  const mine = Object.entries(S.cli).filter(([,c]) => esMio(c));
+  const pagos = mine.filter(([,c]) => pagaHoy(c));
+  const llamar = mine.filter(([,c]) => c.etapa!=="cerrado" && ((c.prox && c.prox < finDia()) || (c.promesa?.fecha && !c.promesa.ok && c.promesa.fecha <= today())));
+  const nv = isOwner() ? ventasNuevas() : [];
+  let h = `<div class="card"><div class="tiles"><div class="tile"><b>${pagos.length}</b><span>Pagos automáticos hoy</span></div><div class="tile"><b>${llamar.length}</b><span>Para llamar hoy</span></div><div class="tile"><b>${mine.filter(([,c]) => c.etapa==="postventa").length}</b><span>En postventa vieja</span></div></div></div>`;
+  h += `<div class="card"><h2>Pagos automáticos de hoy</h2><p class="note" style="margin-top:-6px">Revisa en el portal si el pago pasó.</p>${pagos.length?`<div class="list">${pagos.map(([id,c]) => cItem(id,c,`<div class="row" style="margin-top:8px"><button class="btn small" data-rv="${esc(id)}|paso">Pasó</button><button class="btn small danger" data-rv="${esc(id)}|no">No pasó</button></div>`)).join("")}</div>`:`<div class="empty">Nadie tiene pago automático hoy, o ya se revisaron.</div>`}</div>`;
+  h += `<div class="card"><h2>Llamar hoy</h2>${llamar.length?`<div class="list">${llamar.map(([id,c]) => cItem(id,c)).join("")}</div>`:`<div class="empty">No hay llamadas pendientes para hoy.</div>`}</div>`;
+  if (isOwner()) h += ventasCard(nv);
+  return h;
+}
+function ventasCard(nv){
+  return `<div class="card"><h2>Ventas aprobadas de Lunaya <span class="note">${nv.length}</span></h2><p class="note" style="margin-top:-6px">Pásalas a postventa para la bienvenida, la visita y el pago automático.</p>${nv.length?`<div class="list">${nv.slice(0,30).map(([id,a]) => { const p = priv(id)||{}; return `<div class="item normal" style="cursor:default"><div style="flex:1"><div class="t">${esc(p.client||a.nomVenta||"Cliente")}</div><div class="m">${money(a.amount)} · ${fmt(a.when||Date.now(),{day:"numeric",month:"short"})}${p.phone?" · "+telFmt(p.phone):""}</div></div><button class="btn small" data-pv="${esc(id)}">A postventa</button></div>`; }).join("")}</div>`:`<div class="empty">No hay ventas aprobadas nuevas.</div>`}</div>`;
+}
+function vPost(){
+  const ords = Object.entries(S.post).sort((a,b) => String(a[1].entrega||"9999").localeCompare(String(b[1].entrega||"9999")));
+  const legacy = Object.entries(S.cli).filter(([,c]) => c.etapa==="postventa");
+  const fila = ([id,o]) => { const m = semanaDe(o.entrega); const cls = m==="hoy"?"hoy":m==="semana"?"semana":"normal";
+    return `<div class="item ${cls}" data-ord="${esc(id)}" style="cursor:pointer"><div style="flex:1"><div class="t">${esc(o.nombre||"Cliente")} ${m==="hoy"?`<span class="tag tg-bad">Llega hoy</span>`:m==="semana"?`<span class="tag tg-warn">Esta semana</span>`:""}</div>
+      <div class="m">${esc(o.producto||"Sin producto")} · ${esc(o.carrier||"sin paquetería")} ${o.tracking?`· ${esc(o.tracking)}`:""}</div>
+      <div class="m">${o.entrega?`Entrega ${esc(o.entrega)}`:"Sin fecha"} · ${o.entregado?"Entregado":"En camino"} · ${o.recibio?"Cliente confirmó":"Sin confirmar"} · ${o.autopay?"Autopay "+esc(METODO_AUTO[o.autopayMetodo]||o.autopayMetodo||""):"Sin autopay"}</div></div></div>`; };
+  return `<div class="card"><div class="row"><button class="btn" id="add-ord">Nueva orden</button>${isOwner()||isBot()?`<button class="btn dark" id="imp-ord">Importar órdenes</button>`:""}</div>
+    <p class="note">Ordenadas por fecha de entrega. «Llega hoy» y «esta semana» se marcan solas. Quien confirma que el cliente ya recibió es, en la práctica, Arisbel: queda anotado el correo de quien lo marcó.</p></div>
+    <div class="card"><h2>Órdenes <span class="note">${ords.length}</span></h2>${ords.length?`<div class="list">${ords.map(fila).join("")}</div>`:`<div class="empty">Todavía no hay órdenes de postventa. Las ventas que ya estaban en la lista de abajo siguen ahí.</div>`}</div>
+    <div class="card"><h2>Clientes que ya estaban en postventa <span class="note">${legacy.length}</span></h2><p class="note" style="margin-top:-6px">El flujo de antes: bienvenida, visita y pago automático. No se borró.</p>${legacy.length?`<div class="list">${legacy.map(([id,c]) => cItem(id,c)).join("")}</div>`:`<div class="empty">Ninguno.</div>`}</div>
+    ${isOwner()?ventasCard(ventasNuevas()):""}`;
+}
+function vPagos(){
+  const r = rango(S.per);
+  const acts = []; Object.entries(S.acts).forEach(([cid, arr]) => arr.forEach(a => { if (inR(a.at||0, r)) acts.push(Object.assign({clientId:cid}, a)); }));
+  const pays = Object.values(S.pagos).filter(p => inR(p.at||laToMs(p.fecha,"12:00"), r)).sort((a,b) => (b.at||0)-(a.at||0));
+  const gente = Object.keys(staff());
+  if (isOwner() && !gente.includes(S.email)) gente.unshift(S.email);
+  const deQuien = (email, a) => { const q = String(a.quien||"").toLowerCase(); const nm = String(staff()[email]?.name||"").toLowerCase(); if (q && (q===email || (nm && (q===nm || q.startsWith(nm.split(" ")[0]))))) return true; return !q && String(a.by||"").toLowerCase()===email; };
+  const dias = []; for (let d = laDate(r[0]), i=0; d < laDate(r[1]) && i<31; d = addDays(d,1), i++) dias.push(d);
+  const filas = gente.map(em => {
+    const mias = acts.filter(a => deQuien(em, a));
+    const pags = pays.filter(p => deQuien(em, p) || (!p.quien && String(p.by||"").toLowerCase()===em));
+    const porDia = dias.map(d => mias.filter(a => a.tipo==="llamada" && laDate(a.at)===d).length);
+    return {em, llam:mias.filter(a => a.tipo==="llamada").length, cl:new Set(mias.map(a => a.clientId)).size, prom:mias.filter(a => a.resultado==="promesa").length, np:pags.length, monto:pags.reduce((t,p)=>t+(+p.monto||0),0), porDia};
+  });
+  const pend = Object.values(S.links).filter(x => x.status==="pendiente");
+  const puedeLlenar = isOwner() || isBot() || isDir();
+  return `<div class="card"><div class="row"><div class="chips">${[["hoy","Hoy"],["semana","Esta semana"],["mes","Este mes"]].map(([k,l]) => `<button class="chip ${S.per===k?"on":""}" data-per="${k}">${l}</button>`).join("")}</div>${isOwner()||isBot()?`<button class="btn small" id="imp-act">Importar actividad</button>`:""}</div>
+    <div class="tiles" style="margin-top:10px"><div class="tile"><b>${acts.filter(a=>a.tipo==="llamada").length}</b><span>Llamadas</span></div><div class="tile"><b>${new Set(acts.map(a=>a.clientId)).size}</b><span>Clientes trabajados</span></div><div class="tile"><b>${acts.filter(a=>a.resultado==="promesa").length}</b><span>Promesas</span></div><div class="tile"><b>${money(pays.reduce((t,p)=>t+(+p.monto||0),0))}</b><span>Pagos anotados</span></div></div></div>
+    <div class="card"><h2>Links que hay que pedir a Hy Cite <span class="note">${pend.length}</span></h2><p class="note" style="margin-top:-6px">El botón «Pedir link» de la cuenta crea el pedido. El bot (o Katerine) pega el link de Hy Cite y lo marca listo. En skip no se puede.</p>
+      ${pend.length?`<div class="list">${pend.map(x => { const c = S.cli[x.clientId]||{}; const bloque = L.esSkip(c); return `<div class="item ${bloque?"rojo":"normal"}" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(c.nombre||x.nombre||"Cliente")}</div><div class="m">Pedido ${x.askedAt?fmtWhen(x.askedAt):""} · ${esc(nameOf(x.askedBy))}${bloque?" · SKIP, no se puede llenar":""}</div></div>${puedeLlenar&&!bloque?`<div class="row"><input class="i" data-url="${esc(x.id)}" placeholder="https://…" style="min-width:180px"><button class="btn small" data-lista="${esc(x.id)}">Marcar lista</button></div>`:`<span class="tag tg-warn">Pendiente</span>`}</div>`; }).join("")}</div>`:`<div class="empty">No hay pedidos de link.</div>`}</div>
+    <div class="card"><h2>Cobradoras</h2><p class="note" style="margin-top:-6px">Arisbel y Milady salen aquí cuando Katerine las agrega en Equipo, con el correo con el que entran a Lunaya. Las llamadas del bot se cuentan para la cobradora si el registro trae su nombre o su correo.</p>
+      ${filas.length?`<div class="tbl"><table><tr><th>Quién</th><th class="n">Llamadas</th><th class="n">Clientes</th><th class="n">Promesas</th><th class="n">Pagos</th><th>Por día</th></tr>${filas.map(f => `<tr><td><b>${esc(nameOf(f.em))}</b><div class="note">${esc(f.em)}</div></td><td class="n">${f.llam}</td><td class="n">${f.cl}</td><td class="n">${f.prom}</td><td class="n">${f.np}<div class="note">${money(f.monto)}</div></td><td class="note">${f.porDia.map((n,i)=>dias[i].slice(8)+"·"+n).join(" ")}</td></tr>`).join("")}</table></div>`:`<div class="empty">Agrega a Arisbel y a Milady en Equipo para ver su tablero.</div>`}</div>
+    <div class="card"><h2>Pagos anotados <span class="note">${pays.length}</span></h2><div class="tbl">${pays.length?`<table><tr><th>Fecha</th><th>Cliente</th><th class="n">Monto</th><th>Método</th><th>Quién lo anotó</th></tr>${pays.map(p => `<tr><td>${esc(p.fecha||laDate(p.at||0))}</td><td>${esc(p.nombre||"")}</td><td class="n">${money(p.monto)}</td><td>${esc(METODOS[p.metodo]||p.metodo||"")}</td><td>${esc(nameOf(p.by))}</td></tr>`).join("")}</table>`:`<p class="empty">Todavía no hay pagos en este periodo.</p>`}</div></div>`;
+}
+
+function notasTarjeta(){
+  if (!S.membersLoaded) return {sel:[], notes:["Cargando personas de Lunaya…"], saved:Array.isArray(S.cfg.tarjetas)};
+  const sug = L.sugerirTarjetas(S.members);
+  const saved = Array.isArray(S.cfg.tarjetas);
+  const notes = [];
+  if (!saved) notes.push.apply(notes, sug.notes);
+  if (!saved && sug.uids.length && !sug.notes.length) notes.unshift("Arisbel y Milady salen marcadas solo como sugerencia. Toca Guardar para darles acceso. Puedes quitar o agregar a quien quieras.");
+  else if (!saved && sug.uids.length) notes.unshift("Marqué a quien sí encontré. Revisa y toca Guardar. Puedes cambiar la lista.");
+  if (!saved && !sug.uids.length) notes.unshift("No marqué a nadie. Cuando Arisbel y Milady estén en Lunaya, salen marcadas para que tú confirmes.");
+  const staffN = Object.values(staff()).map(v => String(v.name||"").toLowerCase());
+  ["arisbel","milady"].forEach(p => {
+    const marcada = (saved ? S.cfg.tarjetas : (S.tarDraft || sug.uids)).some(id => String(S.members[id]?.name||"").toLowerCase().includes(p) || String(S.members[id]?.email||"").toLowerCase().includes(p));
+    if (!marcada && staffN.some(n => n.includes(p))) notes.push(p[0].toUpperCase()+p.slice(1)+" está en el equipo de cobranza, pero no hallé su usuario de Lunaya (hace falta para la lista de tarjetas).");
+  });
+  const sel = saved ? S.cfg.tarjetas.slice() : (S.tarDraft ? S.tarDraft.slice() : sug.uids.slice());
+  return {sel, notes, saved};
+}
+function vAjustes(){
+  const st = Object.entries(staff());
+  const info = notasTarjeta();
+  const gente = Object.entries(S.members).filter(([,m]) => m && m.role!=="baja" && m.role!=="pendiente").sort((a,b) => String(a[1].name||"").localeCompare(String(b[1].name||""), "es"));
+  const sugIds = new Set((L.sugerirTarjetas(S.members).uids)||[]);
+  gente.sort((a,b) => (sugIds.has(b[0])?1:0) - (sugIds.has(a[0])?1:0));
+  return `<div class="card"><h2>Equipo de cobranza</h2><p class="note" style="margin-top:-6px">Agrega a Arisbel y a Milady con el correo con el que entran a Lunaya. Lo que marques es el grupo que les toca.</p>
+    ${st.length?`<div class="list">${st.map(([em,v]) => `<div class="item normal" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(v.name||em)}</div><div class="m">${esc(em)}</div><div class="chips" style="margin-top:6px">${Object.entries(ROLES).map(([k,l]) => `<label class="chip ${(v.roles||[]).includes(k)?"on":""}" style="cursor:pointer"><input type="checkbox" data-rol="${esc(em)}|${k}" ${(v.roles||[]).includes(k)?"checked":""} hidden>${l}</label>`).join("")}</div></div><button class="btn small ghost" data-stdel="${esc(em)}">Quitar</button></div>`).join("")}</div>`:`<div class="empty">Solo tú tienes acceso por ahora.</div>`}
+    <form id="st-f" class="grid2" style="margin-top:10px"><label class="f">Nombre<input class="i" id="st-n" required></label><label class="f">Correo<input class="i" id="st-e" type="email" required></label><div><button class="btn" type="submit">Agregar</button></div></form></div>
+    <div class="card"><h2>Pueden ver tarjetas</h2>
+      <p class="note" style="margin-top:-6px">Tú eliges quién lee y escribe la tarjeta en archivo. Tú siempre puedes. Los bots nunca, aunque los marques. No se guarda el código de seguridad (CVV).</p>
+      ${info.notes.map(n => `<div class="banner warn" style="margin-bottom:8px">${esc(n)}</div>`).join("")}
+      <input class="i" id="tar-q" placeholder="Buscar persona" style="margin-bottom:8px">
+      <div class="scroll" id="tar-list">
+        <label class="item verde" style="cursor:default"><span><b>Katerine (tú)</b><span class="m">Siempre puede ver las tarjetas</span></span><input type="checkbox" checked disabled></label>
+        ${gente.map(([id,m]) => { const bot = m.role==="bot"; const on = !bot && info.sel.includes(id); const blob = (String(m.name||"")+" "+String(m.email||"")+" "+String(m.role||"")).toLowerCase();
+          return `<label class="item ${on?"azul":"normal"}" data-tarrow="${esc(blob)}" style="cursor:${bot?"not-allowed":"pointer"}"><span><b>${esc(m.name||"Sin nombre")}</b><span class="m">${esc(m.email||"sin correo")} · ${esc(m.role||"")}${bot?" · los bots no pueden":""}</span></span><input type="checkbox" data-tar="${esc(id)}" ${on?"checked":""} ${bot?"disabled":""}></label>`; }).join("")}
+      </div>
+      ${info.saved?`<p class="note" style="margin-top:8px">Lista guardada. Cada cambio se guarda al marcar.</p>`:`<button class="btn" id="tar-save" style="margin-top:8px" ${S.membersLoaded?"":"disabled"}>Guardar quién puede ver tarjetas</button>`}
+    </div>`;
+}
+
+function openCli(id){
+  const c = S.cli[id]; if (!c) return; S.open = id; const t = tono(id,c); const skip = L.esSkip(c);
+  const acts = (S.acts[id]||[]).slice().sort((a,b) => (b.at||0)-(a.at||0));
+  const log = (c.log||[]).slice().sort((a,b) => (b.at||0)-(a.at||0));
+  const cards = Object.entries(S.cards).filter(([,x]) => x.clientId===id);
+  const pend = Object.values(S.links).find(x => x.clientId===id && x.status==="pendiente");
+  openModal(`<h3>${esc(c.nombre||"Cliente")}</h3>
+    <div class="row"><span class="tag ${t==="rojo"?"tg-bad":t==="azul"?"tg-blue":t==="amarillo"?"tg-yellow":t==="naranja"?"tg-orange":t==="verde"?"tg-good":"tg-acc"}">${esc(GRUPOS[bucketOf(c)]||"")}</span>${encargada(c)?`<span class="note">La lleva ${esc(nameOf(encargada(c)))}</span>`:""}${c.lastSyncAt?`<span class="note">Sync ${fmtWhen(c.lastSyncAt)} · ${esc(c.syncedBy||"")}</span>`:""}</div>
+    ${skip?`<div class="banner bad">SKIP. Hy Cite intentó hablarle muchas veces y no contestó. Mientras esté en skip no se toma ningún pago: ni link, ni registro, ni nada, hasta que el cliente llame a Hy Cite.${c.skipNota?" "+esc(c.skipNota):""}</div>`:""}
+    ${L.esUpdate(c)?`<div class="banner blue">UPDATE. Va ${c.pagosAtras||"varios"} pagos atrás. Hy Cite puede ofrecerle pagar ${money(c.updateMonto)} para ponerse al día. El cliente tiene que aprobarlo por llamada o correo. ${L.updateAprobado(c)?"Aprobado"+ (c.updateFecha?" el "+esc(c.updateFecha):"")+".":"Todavía no lo aprueba."} ${c.updateNotas?esc(c.updateNotas):""}</div>`:""}
+    <div class="row">${sendBtns(id,c)}</div>
+    <div class="note">${[c.tel?telFmt(c.tel):"", c.email?esc(c.email):"", c.direccion?esc(c.direccion):"", c.ciudad?esc(c.ciudad):""].filter(Boolean).join(" · ")}</div>
+    <div class="eyebrow">Cuenta</div>
+    <div class="grid2">
+      <label class="f">Nombre<input class="i" id="e-nombre" value="${esc(c.nombre||"")}"></label>
+      <label class="f">Número de cuenta<input class="i" id="e-cuenta" value="${esc(c.cuenta||"")}"></label>
+      <label class="f">Teléfono<input class="i" id="e-tel" value="${esc(c.tel||"")}" inputmode="tel"></label>
+      <label class="f">Correo<input class="i" id="e-email" value="${esc(c.email||"")}" inputmode="email"></label>
+      <label class="f" style="grid-column:1/-1">Dirección<input class="i" id="e-dir" value="${esc(c.direccion||"")}"></label>
+      <label class="f">Ciudad<input class="i" id="e-ciudad" value="${esc(c.ciudad||"")}"></label>
+      <label class="f">Producto / orden<input class="i" id="e-prod" value="${esc(c.producto||"")}"></label>
+      <label class="f">Pedido<input class="i" id="e-pedido" value="${esc(c.pedido||"")}"></label>
+      <label class="f">Saldo<input class="i" type="number" min="0" step="0.01" id="e-saldo" value="${c.saldo??""}"></label>
+      <label class="f">Monto vencido<input class="i" type="number" min="0" step="0.01" id="e-vencido" value="${c.vencido??(c.saldo||"")}"></label>
+      <label class="f">Pago mensual<input class="i" type="number" min="0" step="0.01" id="e-mensual" value="${mensualDe(c)||""}"></label>
+      <label class="f">Días de atraso<input class="i" type="number" min="0" id="e-atraso" value="${c.atraso||0}"></label>
+      <label class="f">Pagos atrás<input class="i" type="number" min="0" id="e-npagos" value="${c.pagosAtras||0}"></label>
+      <label class="f">Próximo vencimiento<input class="i" type="date" id="e-prox" value="${esc(c.proxVence||"")}"></label>
+      <label class="f">Día del pago automático<input class="i" type="number" min="1" max="31" id="e-pd" value="${c.pago?.dia||""}"></label>
+      <label class="f">La cobra<select class="i" id="e-as"><option value="">Según el grupo</option>${Object.entries(staff()).map(([em,v]) => `<option value="${esc(em)}" ${c.asignada===em?"selected":""}>${esc(v.name||em)}</option>`).join("")}</select></label>
+    </div>
+    <label class="f">Notas de Hy Cite<textarea class="i" id="e-notas">${esc(c.notasHy||"")}</textarea></label>
+    <div class="eyebrow">Banderas</div>
+    <label class="chip ${skip?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-skip" ${skip?"checked":""} hidden> SKIP (no contestó; no se cobra)</label>
+    <label class="f">Nota del skip<input class="i" id="e-skipn" value="${esc(c.skipNota||"")}"></label>
+    <label class="chip ${L.esUpdate(c)?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-upd" ${L.esUpdate(c)?"checked":""} hidden> Califica para update</label>
+    <div class="grid2"><label class="f">Monto del update<input class="i" type="number" min="0" step="0.01" id="e-updm" value="${c.updateMonto||""}"></label>
+      <label class="f">Aprobado por el cliente<select class="i" id="e-upda"><option value="no" ${L.updateAprobado(c)?"":"selected"}>No</option><option value="si" ${L.updateAprobado(c)?"selected":""}>Sí</option></select></label>
+      <label class="f">Fecha de aprobación<input class="i" type="date" id="e-updf" value="${esc(c.updateFecha||"")}"></label>
+      <label class="f" style="grid-column:1/-1">Notas del update<input class="i" id="e-updn" value="${esc(c.updateNotas||"")}"></label></div>
+    <label class="chip ${c.carolina?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-car" ${c.carolina?"checked":""} hidden> Avisada a Carolina</label>
+    <div class="grid2"><label class="f">Fecha<input class="i" type="date" id="e-carf" value="${esc(c.carolinaFecha||"")}"></label><label class="f">Nota<input class="i" id="e-carn" value="${esc(c.carolinaNota||"")}"></label></div>
+    <div class="row"><label class="chip ${c.beneficio?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-be" ${c.beneficio?"checked":""} hidden> Califica a beneficio</label><label class="chip ${c.soloKat?"on":""}" style="cursor:pointer"><input type="checkbox" id="e-sk" ${c.soloKat?"checked":""} hidden> Solo le contesta a Katerine</label></div>
+    <div class="eyebrow">Link de pago (lo genera Hy Cite)</div>
+    ${skip?`<p class="note">Los botones de pago están apagados por el skip.</p>`:""}
+    <label class="f">Link actual<input class="i" id="e-link" value="${esc(c.payLink||"")}" placeholder="https://…" ${skip?"disabled":""}></label>
+    <div class="row"><button class="btn small" id="e-pedir" ${skip||pend?"disabled":""}>${pend?"Link pedido":"Pedir link"}</button>
+      <button class="btn small ghost" id="e-copy" ${skip||!L.safeHttps(c.payLink)?"disabled":""}>Copiar link</button>
+      <button class="btn small ghost" id="e-pago" ${skip?"disabled":""}>Anotar pago</button></div>
+    ${c.etapa==="postventa"?`<div class="eyebrow">Postventa de esta cuenta</div>
+      <div class="note">${c.post?.llamada?(c.post.llamada.ok?"Bienvenida: le llegó bien.":"Bienvenida con problema. "+esc(c.post.llamada.nota||"")):"Falta la llamada de bienvenida."}</div>
+      ${c.post?.llamada?"":`<div class="row"><button class="btn small" data-pl="ok">Llegó bien</button><button class="btn small ghost" data-pl="mal">Hubo un problema</button></div>`}
+      <div class="note">${c.post?.visita?.hecha?"Visita de entrega hecha.":(c.post?.visita?.when?"Visita "+fmtWhen(c.post.visita.when):"Falta la visita de entrega.")}</div>
+      ${c.post?.visita?.hecha?"":`<div class="row"><input class="i" type="date" id="vi-d" value="${c.post?.visita?.when?laDate(c.post.visita.when):addDays(today(),2)}" style="max-width:180px"><button class="btn small ghost" id="vi-ok">Agendar</button><button class="btn small" id="vi-h">Visita hecha</button></div>`}
+      <div class="note">${c.pago?.dia?`Pago automático el día ${c.pago.dia}.`:"Falta el día del pago automático (está arriba)."}</div>
+      ${postFalta(c).length?"":`<button class="btn small" id="post-fin">Terminar postventa</button>`}`:""}
+    <div class="eyebrow">Anotar actividad</div>
+    <div class="chips" id="tipos">${Object.entries(TIPOS).map(([k,l]) => `<button class="chip" data-tipo="${k}">${l}</button>`).join("")}</div>
+    <div class="chips" id="outs">${Object.entries(OUTS).filter(([k]) => !(skip&&k==="pago")).map(([k,l]) => `<button class="chip" data-out="${k}">${l}</button>`).join("")}</div>
+    <div class="grid2"><label class="f" id="pr-w">Fecha de la promesa<input class="i" type="date" id="pr-d"></label><label class="f">Monto de la promesa<input class="i" type="number" min="0" step="0.01" id="pr-m"></label>
+      <label class="f" style="grid-column:1/-1">Mensaje que se dejó<textarea class="i" id="res-n"></textarea></label></div>
+    <button class="btn" id="res-ok">Guardar actividad</button>
+    ${veTarjetas()?tarjetaHtml(id,c,cards):""}
+    <div class="row"><button class="btn dark" id="e-ok">Guardar cuenta</button>${c.etapa!=="cerrado"?`<button class="btn small ghost" id="e-cl">Cerrar cuenta (pagó todo)</button>`:`<button class="btn small ghost" id="e-re">Volver a abrir</button>`}<button class="btn ghost" data-close>Cerrar</button></div>
+    <div class="eyebrow">Actividad</div>
+    ${(acts.length||log.length)?`<div class="tl">${acts.map(a => `<div><small>${fmtWhen(a.at)} · ${esc(nameOf(a.quien||a.by))} · ${TIPOS[a.tipo]||a.tipo}${a.resultado?" · "+(OUTS[a.resultado]||""):""}</small>${esc(a.mensaje||"")}${a.promesaFecha?` · promete ${esc(a.promesaFecha)} ${a.promesaMonto?money(a.promesaMonto):""}`:""}</div>`).join("")}${log.map(x => `<div><small>${fmtWhen(x.at)} · ${esc(first(nameOf(x.by)))} · ${esc(RES_OLD[x.res]||"Nota")} · historial anterior</small>${esc(x.nota||"")}</div>`).join("")}</div>`:`<div class="note">Sin actividad todavía.</div>`}`, () => bindCli(id));
+}
+function tarjetaHtml(id,c,cards){
+  return `<div class="eyebrow">Tarjeta en archivo</div>${!Array.isArray(S.cfg.tarjetas)&&isOwner()?`<div class="banner warn">Nadie más puede ver tarjetas hasta que guardes «Pueden ver tarjetas» en Equipo.</div>`:""}<p class="note">Entra Katerine y quien ella marcó. Los bots no. No escribas el CVV: no se guarda.</p>
+    ${cards.map(([cid,x]) => `<div class="item normal" style="cursor:default;flex-wrap:wrap"><div><div class="t">${esc(x.titular||"")}</div><div class="m secret" data-mask="${esc(cid)}">${esc(L.maskCard(x.numero))} · ${esc(x.exp||"")} · ZIP ${esc(x.zip||"")}</div><div class="m">${esc(x.notas||"")}</div></div><div class="row"><button class="btn small ghost" data-show="${esc(cid)}">Mostrar</button>${isOwner()?`<button class="btn small danger" data-cdel="${esc(cid)}">Borrar</button>`:""}</div></div>`).join("")}
+    <div class="grid2"><label class="f">Nombre en la tarjeta<input class="i" id="k-tit" autocomplete="off"></label><label class="f">Número<input class="i" id="k-num" inputmode="numeric" autocomplete="off" placeholder="Solo el número, sin CVV"></label>
+      <label class="f">Vence (MM/AA)<input class="i" id="k-exp" placeholder="12/28" maxlength="5"></label><label class="f">ZIP de cobro<input class="i" id="k-zip" maxlength="12"></label>
+      <label class="f" style="grid-column:1/-1">Notas<input class="i" id="k-notas" maxlength="500"></label></div>
+    <button class="btn small" id="k-ok">Guardar tarjeta de ${esc(c.nombre||"este cliente")}</button>`;
+}
+function bindCli(id){
+  const c = S.cli[id]||{}; const ref = S.db.doc("ccli/"+id);
+  document.querySelectorAll(".modal label.chip input").forEach(i => i.onchange = () => i.parentElement.classList.toggle("on", i.checked));
+  let tipo = "llamada", resultado = "";
+  document.querySelectorAll("[data-tipo]").forEach(b => b.onclick = () => { tipo = b.dataset.tipo; document.querySelectorAll("[data-tipo]").forEach(z => z.classList.toggle("on", z===b)); });
+  document.querySelectorAll("[data-out]").forEach(b => b.onclick = () => { resultado = b.dataset.out; document.querySelectorAll("[data-out]").forEach(z => z.classList.toggle("on", z===b)); });
+  const skipNow = () => document.getElementById("e-skip")?.checked;
+  document.getElementById("res-ok").onclick = () => logAct(id, {tipo, resultado, mensaje:qv("res-n"), promesaFecha:qv("pr-d"), promesaMonto:+qv("pr-m")||0}).then(() => openCli(id)).catch(err);
+  document.getElementById("e-ok").onclick = async () => {
+    const skip = !!document.getElementById("e-skip").checked;
+    const atraso = Math.max(0, +qv("e-atraso")||0);
+    const up = touch({nombre:qv("e-nombre").trim().slice(0,80), cuenta:qv("e-cuenta").trim().slice(0,40), tel:qv("e-tel").trim().slice(0,30), email:qv("e-email").trim().slice(0,120), direccion:qv("e-dir").trim().slice(0,200), ciudad:qv("e-ciudad").trim().slice(0,60), producto:qv("e-prod").trim().slice(0,160), pedido:qv("e-pedido").trim().slice(0,40),
+      saldo:+qv("e-saldo")||0, vencido:+qv("e-vencido")||0, mensual:+qv("e-mensual")||0, atraso, pagosAtras:Math.max(0,+qv("e-npagos")||0), proxVence:qv("e-prox"), notasHy:qv("e-notas").slice(0,4000),
+      skip, skipNota:qv("e-skipn").slice(0,500), updateOn:!!document.getElementById("e-upd").checked, updateMonto:+qv("e-updm")||0, updateNotas:qv("e-updn").slice(0,500), updateAprobado:qv("e-upda")==="si", updateFecha:qv("e-updf"),
+      carolina:!!document.getElementById("e-car").checked, carolinaFecha:qv("e-carf"), carolinaNota:qv("e-carn").slice(0,500), carolinaAt: document.getElementById("e-car").checked ? (c.carolinaAt||Date.now()) : 0,
+      beneficio:!!document.getElementById("e-be").checked, soloKat:!!document.getElementById("e-sk").checked, asignada:qv("e-as")});
+    const pd = +qv("e-pd")||0; up.pago = pd ? {dia:Math.min(31,pd), monto:+qv("e-mensual")||+(c.pago&&c.pago.monto)||0} : firebase.firestore.FieldValue.delete();
+    up.payLink = skip ? "" : L.safeHttps(qv("e-link"));
+    if (!skip && qv("e-link") && !up.payLink) return toast("El link tiene que empezar con https://");
+    up.bucket = L.bucketOf(atraso); up.tono = L.toneOf(Object.assign({}, c, up));
+    try { await ref.update(up); toast("Guardado"); openCli(id); } catch(e){ err(e); }
+  };
+  const pedir = document.getElementById("e-pedir"); if (pedir) pedir.onclick = () => pedirLink(id);
+  const copy = document.getElementById("e-copy"); if (copy) copy.onclick = () => copiarLink(c);
+  const pago = document.getElementById("e-pago"); if (pago) pago.onclick = () => openPago(id);
+  document.querySelectorAll("[data-send]").forEach(b => b.onclick = ev => { ev.preventDefault(); contacto(b.dataset.send, id); });
+  document.querySelectorAll("[data-pl]").forEach(b => b.onclick = async () => { const ok = b.dataset.pl==="ok"; const nota = ok ? "" : String(prompt("¿Qué problema hubo?")||"").slice(0,300);
+    try { await ref.update({"post.llamada":{ok, nota, at:Date.now(), by:S.email}}); openCli(id); } catch(e){ err(e); } });
+  const viOk = document.getElementById("vi-ok"); if (viOk) viOk.onclick = () => ref.update({"post.visita":{when:laToMs(qv("vi-d")||today(),"12:00"), hecha:false}}).then(() => openCli(id), err);
+  const viH = document.getElementById("vi-h"); if (viH) viH.onclick = () => ref.update({"post.visita":{when:c.post?.visita?.when||Date.now(), hecha:true, at:Date.now()}}).then(() => openCli(id), err);
+  const fin = document.getElementById("post-fin"); if (fin) fin.onclick = () => ref.update({etapa:"activo", postFin:Date.now()}).then(() => { closeModal(); toast("Pasó a cobranza al día"); }, err);
+  const cl = document.getElementById("e-cl"); if (cl) cl.onclick = () => ref.update({etapa:"cerrado", atraso:0, saldo:0, vencido:0, cerradoAt:Date.now()}).then(() => { closeModal(); toast("Cuenta cerrada"); }, err);
+  const re = document.getElementById("e-re"); if (re) re.onclick = () => ref.update({etapa:"activo"}).then(() => openCli(id), err);
+  const kok = document.getElementById("k-ok"); if (kok) kok.onclick = () => guardarTarjeta(id, c);
+  document.querySelectorAll("[data-show]").forEach(b => b.onclick = () => {
+    const cid = b.dataset.show; const x = S.cards[cid]; if (!x) return; S.reveal[cid] = !S.reveal[cid];
+    const el = document.querySelector(`[data-mask="${cid}"]`); if (!el) return;
+    el.textContent = (S.reveal[cid] ? L.formatCard(x.numero) : L.maskCard(x.numero)) + " · " + (x.exp||"") + " · ZIP " + (x.zip||"");
+    b.textContent = S.reveal[cid] ? "Ocultar" : "Mostrar";
+  });
+  document.querySelectorAll("[data-cdel]").forEach(b => b.onclick = async () => { if (!confirm("¿Borrar esta tarjeta?")) return; try { await S.db.doc("ctarjetas/"+b.dataset.cdel).delete(); toast("Tarjeta borrada"); openCli(id); } catch(e){ err(e); } });
+  if (skipNow()) { /* el estado inicial ya deshabilita los botones */ }
+}
+async function logAct(clientId, partial){
+  const c = S.cli[clientId]||{};
+  if (L.esSkip(c) && partial.resultado==="pago") throw Object.assign(new Error("skip"), {code:"permission-denied"});
+  const act = {by:S.email, quien:partial.quien||S.email, byName:nameOf(partial.quien||S.email), at:partial.at||Date.now(), tipo:partial.tipo||"nota", resultado:partial.resultado||"", mensaje:String(partial.mensaje||"").slice(0,2000), clientId};
+  if (partial.promesaFecha) act.promesaFecha = partial.promesaFecha;
+  if (partial.promesaMonto) act.promesaMonto = +partial.promesaMonto||0;
+  const up = touch({ultContacto:act.at, contactos:firebase.firestore.FieldValue.increment(1)});
+  if (act.tipo==="llamada"){ up.llamadas = firebase.firestore.FieldValue.increment(1); up.ultLlamada = act.at; }
+  const no = act.resultado==="no" || act.resultado==="buzon";
+  const hit = ["contesto","promesa","pago","equivocado"].includes(act.resultado);
+  if (hit) up.sinContestar = 0; else if (no) up.sinContestar = firebase.firestore.FieldValue.increment(1);
+  if (act.resultado==="promesa" && act.promesaFecha){ up.promesa = {fecha:act.promesaFecha, monto:act.promesaMonto||0, at:act.at, ok:false}; up.prox = laToMs(act.promesaFecha,"10:00"); }
+  if (act.resultado==="pago" && c.promesa) up.promesa = Object.assign({}, c.promesa, {ok:true, okAt:act.at});
+  const nextSin = hit ? 0 : (+c.sinContestar||0) + (no?1:0);
+  up.tono = L.toneOf(Object.assign({}, c, {sinContestar:nextSin}));
+  const batch = S.db.batch();
+  batch.set(S.db.collection("ccli").doc(clientId).collection("act").doc(), act);
+  batch.update(S.db.doc("ccli/"+clientId), up);
+  await batch.commit();
+}
+async function contacto(tipo, id){
+  const c = S.cli[id]; if (!c) return;
+  if (!datoEnvio(tipo,c)) return toast(tipo==="correo" ? "Esta cuenta no tiene correo." : "El teléfono no está completo.");
+  const url = urlEnvio(tipo, c);
+  try { await logAct(id, {tipo, resultado:"", mensaje:"Se abrió "+(TIPOS[tipo]||tipo)+" con el texto listo. La app no envió el mensaje."}); toast("Anotado. Se abre el mensaje; tú lo envías."); }
+  catch(e){ err(e); }
+  if (tipo==="whatsapp") window.open(url, "_blank", "noopener"); else location.href = url;
+}
+function copiarLink(c){
+  if (!L.canPay(c)) return toast("En skip no se copia el link.");
+  const link = L.safeHttps(c.payLink); if (!link) return toast("No hay link todavía.");
+  const done = () => toast("Link copiado");
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, () => { prompt("Copia el link:", link); });
+  else prompt("Copia el link:", link);
+}
+async function pedirLink(id){
+  const c = S.cli[id]; if (!c || !L.canPay(c)) return toast("En skip no se pide link.");
+  if (Object.values(S.links).some(x => x.clientId===id && x.status==="pendiente")) return toast("Ya hay un pedido pendiente.");
+  try {
+    await S.db.collection("clinkreq").add({clientId:id, nombre:c.nombre||"", status:"pendiente", url:"", askedBy:S.email, askedAt:Date.now(), filledBy:"", filledAt:0, nota:""});
+    toast("Pedido anotado. Hy Cite (el bot) pega el link cuando lo tenga.");
+    openCli(id);
+  } catch(e){ err(e); }
+}
+async function llenarLink(reqId){
+  const x = S.links[reqId]; if (!x) return;
+  const c = S.cli[x.clientId]||{}; if (L.esSkip(c)) return toast("Esa cuenta está en skip.");
+  const url = L.safeHttps((document.querySelector(`[data-url="${reqId}"]`)||{}).value||"");
+  if (!url) return toast("Pega un link que empiece con https://");
+  try {
+    const batch = S.db.batch();
+    batch.update(S.db.doc("clinkreq/"+reqId), {status:"lista", url, filledBy:S.email, filledAt:Date.now()});
+    batch.update(S.db.doc("ccli/"+x.clientId), touch({payLink:url}));
+    await batch.commit(); toast("Link guardado");
+  } catch(e){ err(e); }
+}
+function openPago(id){
+  const c = S.cli[id]; if (!c || !L.canPay(c)) return toast("En skip no se anota el pago.");
+  openModal(`<h3>Anotar pago</h3><p class="note">Esto no cobra. Solo deja constancia. El saldo lo actualiza el portal.</p>
+    <div class="grid2"><label class="f">Monto<input class="i" type="number" min="0.01" step="0.01" id="p-m"></label><label class="f">Fecha<input class="i" type="date" id="p-f" value="${today()}"></label>
+      <label class="f">Método<select class="i" id="p-met">${Object.entries(METODOS).map(([k,l]) => `<option value="${k}">${l}</option>`).join("")}</select></label>
+      <label class="f">Nota<input class="i" id="p-n"></label></div>
+    <div class="row"><button class="btn" id="p-ok">Guardar pago</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#p-ok").onclick = async () => {
+      const monto = +qv("p-m")||0; if (monto<=0) return toast("Pon el monto.");
+      const docu = {clientId:id, nombre:c.nombre||"", fecha:qv("p-f")||today(), at:Date.now(), monto, metodo:qv("p-met")||"otro", by:S.email, nota:qv("p-n").slice(0,800), quien:S.email};
+      try { await S.db.collection("cpagos").add(docu); await logAct(id, {tipo:"nota", resultado:"pago", mensaje:"Pago anotado "+money(monto)+" · "+(METODOS[docu.metodo]||"")}); closeModal(); toast("Pago anotado"); } catch(e){ err(e); }
+    };
+  });
+}
+function guardarTarjeta(id, c){
+  const numero = L.digitsCard(qv("k-num"));
+  const exp = qv("k-exp").trim();
+  if (!/^[0-9]{13,19}$/.test(numero)) return toast("El número de tarjeta tiene que tener entre 13 y 19 dígitos. Sin CVV.");
+  if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(exp)) return toast("La fecha va como MM/AA, por ejemplo 12/28.");
+  const zip = qv("k-zip").trim(); if (!/^[0-9A-Za-z -]{3,12}$/.test(zip)) return toast("Falta el ZIP de cobro.");
+  const titular = qv("k-tit").trim(); if (!titular) return toast("Falta el nombre de la tarjeta.");
+  const data = {clientId:id, cliente:(c.nombre||"").slice(0,120), titular:titular.slice(0,80), numero, exp, zip, notas:qv("k-notas").slice(0,500), updatedAt:Date.now(), by:S.email};
+  S.db.collection("ctarjetas").add(data).then(() => { toast("Tarjeta guardada, oculta salvo los últimos 4"); openCli(id); }, err);
+}
+function openNuevo(pre){
+  pre = pre||{};
+  openModal(`<h3>Nuevo cliente</h3><div class="grid2">
+    <label class="f">Nombre<input class="i" id="n-n" value="${esc(pre.nombre||"")}"></label><label class="f">Teléfono<input class="i" id="n-t" value="${esc(pre.tel||"")}"></label>
+    <label class="f">Correo<input class="i" id="n-e"></label><label class="f">Cuenta<input class="i" id="n-cu"></label>
+    <label class="f" style="grid-column:1/-1">Dirección<input class="i" id="n-d" value="${esc(pre.direccion||"")}"></label>
+    <label class="f">Ciudad<input class="i" id="n-c" value="${esc(pre.ciudad||"")}"></label><label class="f">Producto<input class="i" id="n-p"></label>
+    <label class="f">Saldo<input class="i" type="number" min="0" step="0.01" id="n-s" value="${pre.monto||""}"></label><label class="f">Vencido<input class="i" type="number" min="0" step="0.01" id="n-v"></label>
+    <label class="f">Pago mensual<input class="i" type="number" min="0" step="0.01" id="n-m"></label><label class="f">Días de atraso<input class="i" type="number" min="0" id="n-a" value="0"></label>
+    <label class="f">Pagos atrás<input class="i" type="number" min="0" id="n-pa" value="0"></label><label class="f">Próximo vencimiento<input class="i" type="date" id="n-pv"></label>
+    <label class="f">¿Dónde empieza?<select class="i" id="n-et"><option value="activo">Cobranza</option><option value="postventa">Postventa</option></select></label>
+    <label class="f">La cobra<select class="i" id="n-as"><option value="">Según el grupo</option>${Object.entries(staff()).map(([em,v]) => `<option value="${esc(em)}">${esc(v.name||em)}</option>`).join("")}</select></label>
+    </div><div class="row"><button class="btn" id="n-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    $("#n-ok").onclick = async () => {
+      const nombre = qv("n-n").trim(); if (!nombre) return toast("Escribe el nombre");
+      const atraso = +qv("n-a")||0;
+      const d = touch({nombre:nombre.slice(0,80), tel:qv("n-t").trim(), email:qv("n-e").trim(), direccion:qv("n-d").trim().slice(0,200), ciudad:qv("n-c").trim().slice(0,60), cuenta:qv("n-cu").trim().slice(0,40), producto:qv("n-p").trim().slice(0,160), saldo:+qv("n-s")||0, vencido:+qv("n-v")||0, mensual:+qv("n-m")||0, atraso, pagosAtras:+qv("n-pa")||0, proxVence:qv("n-pv"), etapa:qv("n-et")||"activo", asignada:qv("n-as"), skip:false, payLink:"", createdAt:Date.now(), by:S.email, log:[]});
+      d.bucket = L.bucketOf(atraso); d.tono = L.toneOf(d);
+      if (pre.apptId){ d.apptId = pre.apptId; d.fechaVenta = pre.fechaVenta||""; d.monto = pre.monto||d.saldo; }
+      try { await S.db.collection("ccli").add(d); closeModal(); toast("Cliente guardado"); } catch(e){ err(e); }
+    };
+  });
+}
+function ordenDoc(base){
+  return {clientId:base.clientId||"", nombre:base.nombre||"", tel:base.tel||"", email:base.email||"", producto:base.producto||"", pedido:base.pedido||"", carrier:base.carrier||"", tracking:base.tracking||"", entrega:base.entrega||"", entregado:!!base.entregado, recibio:!!base.recibio, recibioAt:base.recibioAt||0, recibioBy:base.recibioBy||"", autopay:!!base.autopay, autopayFecha:base.autopayFecha||"", autopayMetodo:base.autopayMetodo||"", notas:base.notas||"", createdAt:base.createdAt||Date.now(), updatedAt:Date.now(), lastSyncAt:isBot()?Date.now():(base.lastSyncAt||0), syncedBy:isBot()?S.email:(base.syncedBy||""), by:base.by||S.email};
+}
+function openOrden(id){
+  const o = id ? (S.post[id]||{}) : {};
+  const opts = Object.entries(S.cli).sort((a,b)=>String(a[1].nombre||"").localeCompare(String(b[1].nombre||"")));
+  openModal(`<h3>${id?"Orden":"Nueva orden"}</h3><div class="grid2">
+    <label class="f">Cliente de la lista<select class="i" id="o-cli"><option value="">Escribir el nombre</option>${opts.map(([cid,c]) => `<option value="${esc(cid)}" ${o.clientId===cid?"selected":""}>${esc(c.nombre||cid)}</option>`).join("")}</select></label>
+    <label class="f">Nombre<input class="i" id="o-n" value="${esc(o.nombre||"")}"></label>
+    <label class="f">Teléfono<input class="i" id="o-t" value="${esc(o.tel||"")}"></label>
+    <label class="f">Producto<input class="i" id="o-p" value="${esc(o.producto||"")}"></label>
+    <label class="f">Paquetería<input class="i" id="o-c" value="${esc(o.carrier||"")}" placeholder="UPS"></label>
+    <label class="f">Rastreo<input class="i" id="o-tr" value="${esc(o.tracking||"")}"></label>
+    <label class="f">Fecha estimada de entrega<input class="i" type="date" id="o-e" value="${esc(o.entrega||"")}"></label>
+    <label class="f">¿Ya se entregó?<select class="i" id="o-en"><option value="no" ${o.entregado?"":"selected"}>No</option><option value="si" ${o.entregado?"selected":""}>Sí</option></select></label>
+    <label class="f">El cliente confirmó que lo recibió<select class="i" id="o-re"><option value="no" ${o.recibio?"":"selected"}>No</option><option value="si" ${o.recibio?"selected":""}>Sí</option></select></label>
+    <label class="f">Fecha en que confirmó<input class="i" type="date" id="o-rf" value="${o.recibioAt?laDate(o.recibioAt):""}"></label>
+    <label class="f">Autopay programado<select class="i" id="o-au"><option value="no" ${o.autopay?"":"selected"}>No</option><option value="si" ${o.autopay?"selected":""}>Sí</option></select></label>
+    <label class="f">Fecha del autopay<input class="i" type="date" id="o-af" value="${esc(o.autopayFecha||"")}"></label>
+    <label class="f">Método programado<select class="i" id="o-am"><option value="">—</option>${Object.entries(METODO_AUTO).map(([k,l]) => `<option value="${k}" ${o.autopayMetodo===k?"selected":""}>${l}</option>`).join("")}</select></label>
+    <label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="o-no">${esc(o.notas||"")}</textarea></label>
+    </div><p class="note">${o.recibioBy?"Confirmó el recibo: "+esc(nameOf(o.recibioBy)):"La confirmación de recibo la anota Arisbel (o quien la guarde)."}</p>
+    <div class="row"><button class="btn" id="o-ok">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const sel = document.getElementById("o-cli"); sel.onchange = () => { const cc = S.cli[sel.value]; if (cc && !qv("o-n")) document.getElementById("o-n").value = cc.nombre||""; if (cc && !qv("o-t")) document.getElementById("o-t").value = cc.tel||""; };
+    $("#o-ok").onclick = async () => {
+      const nombre = qv("o-n").trim() || (S.cli[qv("o-cli")]||{}).nombre || "";
+      if (!nombre) return toast("Escribe el cliente");
+      const recibio = qv("o-re")==="si";
+      const data = ordenDoc(Object.assign({}, o, {clientId:qv("o-cli"), nombre, tel:qv("o-t").trim(), producto:qv("o-p").trim(), carrier:qv("o-c").trim(), tracking:qv("o-tr").trim(), entrega:qv("o-e"), entregado:qv("o-en")==="si", recibio, recibioAt: recibio ? (o.recibioAt || (qv("o-rf")?laToMs(qv("o-rf"),"12:00"):Date.now())) : 0, recibioBy: recibio ? (o.recibioBy||S.email) : "", autopay:qv("o-au")==="si", autopayFecha:qv("o-af"), autopayMetodo:qv("o-am"), notas:qv("o-no").slice(0,2000), by:o.by||S.email, createdAt:o.createdAt||Date.now()}));
+      try { if (id) await S.db.doc("cpost/"+id).set(data); else await S.db.collection("cpost").add(data); closeModal(); toast("Orden guardada"); } catch(e){ err(e); }
+    };
+  });
+}
+function openImport(kind){
+  const tit = kind==="ordenes" ? "Importar órdenes" : kind==="actividad" ? "Importar actividad" : "Importar cuentas";
+  openModal(`<h3>${tit}</h3><p class="note">Pega CSV (con títulos) o JSON. Lo usan Katerine y el bot. No se importa número de tarjeta ni CVV. En skip se borra el link de pago.</p>
+    <textarea class="i" id="im-t" style="min-height:160px" placeholder='nombre,cuenta,telefono,dias,saldo,skip&#10;Ana López,12345,6195550101,40,320.50,no'></textarea>
+    <div id="im-p"></div><div class="row"><button class="btn ghost" id="im-v">Revisar</button><button class="btn" id="im-ok" disabled>Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    let parsed = {rows:[]};
+    $("#im-v").onclick = () => { parsed = L.parseTable(qv("im-t"), kind); const rows = parsed.rows||[];
+      $("#im-p").innerHTML = `${(parsed.errors||[]).map(e=>`<p class="note">${esc(e)}</p>`).join("")}${(parsed.warnings||[]).map(e=>`<p class="note">${esc(e)}</p>`).join("")}` + (rows.length?`<p class="note">${rows.length} fila(s) listas.</p><div class="tbl"><table><tr><th>#</th><th>Resumen</th></tr>${rows.slice(0,40).map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.nombre||r.cuenta||r.producto||r.tipo||"")}</td></tr>`).join("")}</table></div>`:"");
+      $("#im-ok").disabled = !rows.length; };
+    $("#im-ok").onclick = async () => { $("#im-ok").disabled = true; try { await guardarImport(kind, parsed.rows); closeModal(); toast("Importación lista: "+parsed.rows.length); } catch(e){ $("#im-ok").disabled = false; if (e && e.code==="nomatch") return toast("Ninguna fila coincidió con una cuenta. Primero importa los clientes."); err(e); } };
+  });
+}
+function resolverCobrador(raw){
+  const s = String(raw||"").trim().toLowerCase(); if (!s) return "";
+  const entries = Object.entries(staff());
+  const em = entries.find(([k]) => k===s); if (em) return em[0];
+  const by = entries.filter(([,v]) => String(v.name||"").toLowerCase()===s);
+  return by.length===1 ? by[0][0] : "";
+}
+function findCli(row){
+  const list = Object.entries(S.cli);
+  const cuenta = String(row.cuenta||"").trim().toLowerCase();
+  if (cuenta){ const hit = list.find(([,c]) => String(c.cuenta||"").trim().toLowerCase()===cuenta); if (hit) return hit; }
+  const tel = tel10(row.tel); if (tel.length===10){ const hit = list.find(([,c]) => tel10(c.tel)===tel); if (hit) return hit; }
+  if (row.clientId && S.cli[row.clientId]) return [row.clientId, S.cli[row.clientId]];
+  const nombre = String(row.nombre||"").trim().toLowerCase();
+  if (nombre && !cuenta) return list.find(([,c]) => String(c.nombre||"").trim().toLowerCase()===nombre) || null;
+  return null;
+}
+async function chunked(ops){
+  for (let i=0;i<ops.length;i+=400){ const b = S.db.batch(); ops.slice(i,i+400).forEach(fn => fn(b)); await b.commit(); }
+}
+async function guardarImport(kind, rows){
+  if (kind==="ordenes"){
+    const ops = rows.map(r => b => {
+      const hit = Object.entries(S.post).find(([,o]) => (r.clientId && o.clientId===r.clientId && r.tracking && o.tracking===r.tracking) || (r.cuenta && o.tracking && r.tracking && o.tracking===r.tracking));
+      const base = hit ? Object.assign({}, hit[1], r) : r;
+      const data = ordenDoc(Object.assign({by:S.email}, base, {nombre:r.nombre||base.nombre||"Cliente"}));
+      if (hit) b.set(S.db.doc("cpost/"+hit[0]), data); else b.set(S.db.collection("cpost").doc(), data);
+    });
+    return chunked(ops);
+  }
+  if (kind==="actividad"){
+    const ops = [];
+    let faltan = 0;
+    rows.forEach(r => {
+      const hit = findCli(r); if (!hit) { faltan++; return; }
+      const at = r.at || (r.fecha ? laToMs(r.fecha,"12:00") : Date.now());
+      const quien = resolverCobrador(r.quien) || r.quien || S.email;
+      ops.push(b => b.set(S.db.collection("ccli").doc(hit[0]).collection("act").doc(), {by:S.email, quien, byName:nameOf(quien), at, tipo:r.tipo, resultado:r.resultado||"", mensaje:r.mensaje||"", clientId:hit[0], ...(r.promesaFecha?{promesaFecha:r.promesaFecha}:{}), ...(r.promesaMonto?{promesaMonto:r.promesaMonto}:{})}));
+    });
+    if (!ops.length) { const e = new Error("nomatch"); e.code = "nomatch"; throw e; }
+    return chunked(ops);
+  }
+  const ops = rows.map(r => b => {
+    const hit = findCli(r);
+    const patch = {};
+    (r._keys||[]).forEach(k => { if (k==="cobrador"||k==="cuenta"&&!r.cuenta) return; if (r[k]!==undefined && k!=="_keys") patch[k] = r[k]; });
+    if (r.cobrador){ const em = resolverCobrador(r.cobrador); if (em) patch.asignada = em; }
+    delete patch.cobrador; delete patch._keys;
+    const wasSkip = !!(hit && hit[1].skip === true);
+    const nowSkip = patch.skip != null ? !!patch.skip : wasSkip;
+    if (patch.skip === true || (nowSkip && patch.payLink)) patch.payLink = "";
+    patch.bucket = L.bucketOf(patch.atraso!=null?patch.atraso:(hit?hit[1].atraso:0));
+    Object.assign(patch, {tono:L.toneOf(Object.assign({}, hit?hit[1]:{}, patch))});
+    touch(patch);
+    if (hit) b.update(S.db.doc("ccli/"+hit[0]), patch);
+    else b.set(S.db.collection("ccli").doc(), Object.assign({nombre:r.nombre||"Sin nombre", etapa:"activo", skip:false, payLink:"", createdAt:Date.now(), by:S.email, log:[]}, patch));
+  });
+  return chunked(ops);
+}
+function openPortal(){
+  openModal(`<h3>Pegar lista del portal</h3><p class="note">Un cliente por línea. Se reconoce nombre, teléfono, días y saldo. El monto se guarda como saldo y como vencido.</p>
+    <textarea class="i" id="im-t" style="min-height:160px" placeholder="María López  619-555-1234  45 días  $320.50"></textarea><div id="im-p"></div>
+    <div class="row"><button class="btn ghost" id="im-v">Revisar</button><button class="btn" id="im-ok" disabled>Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+    let filas = [];
+    const parse = () => { filas = qv("im-t").split(/\n+/).map(l => l.trim()).filter(Boolean).map(l => {
+      const telm = l.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/); const tel = telm ? tel10(telm[0]) : "";
+      let rest = telm ? l.replace(telm[0], " ") : l; const sm = rest.match(/\$\s?[\d,]+(?:\.\d{1,2})?/); const saldo = sm ? +sm[0].replace(/[$,\s]/g,"") : 0; if (sm) rest = rest.replace(sm[0]," ");
+      const dm = rest.match(/(\d{1,3})\s*(?:d[ií]as?|days?)?/i); const atraso = dm ? +dm[1] : 0; if (dm) rest = rest.replace(dm[0]," ");
+      const nombre = rest.replace(/[,;|\t]+/g," ").replace(/\s+/g," ").trim().slice(0,80);
+      const ya = findCli({nombre, tel, cuenta:""});
+      return {nombre, tel, atraso, saldo, id:ya?ya[0]:""};
+    }).filter(x => x.nombre || x.tel);
+      $("#im-p").innerHTML = filas.length?`<div class="tbl"><table><tr><th>Nombre</th><th class="n">Días</th><th class="n">Saldo</th><th></th></tr>${filas.map(x=>`<tr><td>${esc(x.nombre)}</td><td class="n">${x.atraso}</td><td class="n">${money(x.saldo)}</td><td>${x.id?"actualiza":"<b>nuevo</b>"}</td></tr>`).join("")}</table></div>`:`<p class="note">No se reconoció ninguna línea.</p>`;
+      $("#im-ok").disabled = !filas.length; };
+    $("#im-v").onclick = parse;
+    $("#im-ok").onclick = async () => { $("#im-ok").disabled = true; try {
+      await chunked(filas.map(x => b => { if (x.id) b.update(S.db.doc("ccli/"+x.id), touch({atraso:x.atraso, saldo:x.saldo, vencido:x.saldo, bucket:L.bucketOf(x.atraso), ...(S.cli[x.id].etapa==="cerrado" && x.atraso>0 ? {etapa:"activo"} : {})}));
+        else b.set(S.db.collection("ccli").doc(), touch({nombre:x.nombre, tel:x.tel, atraso:x.atraso, saldo:x.saldo, vencido:x.saldo, bucket:L.bucketOf(x.atraso), etapa:"activo", skip:false, payLink:"", createdAt:Date.now(), by:S.email, log:[]})); }));
+      closeModal(); toast("Listo: "+filas.length); } catch(e){ $("#im-ok").disabled = false; err(e); } };
+  });
+}
+function bind(){
+  const all = (q,f) => document.querySelectorAll(q).forEach(f);
+  all("[data-c]", b => b.onclick = ev => { if (ev.target.closest("button")) return; openCli(b.dataset.c); });
+  all("[data-send]", b => b.onclick = ev => { ev.stopPropagation(); contacto(b.dataset.send, b.dataset.id); });
+  all("[data-ord]", b => b.onclick = () => openOrden(b.dataset.ord));
+  const q = $("#q"); if (q) q.oninput = () => { S.f.q = q.value; clearTimeout(S.qt); S.qt = setTimeout(() => { const pos = q.selectionStart; render(); const e = $("#q"); if (e){ e.focus(); try { e.setSelectionRange(pos,pos); } catch(err){} } }, 280); };
+  const fc = $("#f-cob"); if (fc) fc.onchange = () => { S.f.cob = fc.value; render(); };
+  const ft = $("#f-tono"); if (ft) ft.onchange = () => { S.f.tono = ft.value; render(); };
+  const mi = $("#mios"); if (mi) mi.onchange = () => { S.f.mios = mi.checked; render(); };
+  const ac = $("#add-c"); if (ac) ac.onclick = () => openNuevo();
+  const im = $("#imp"); if (im) im.onclick = () => openImport("clientes");
+  const ip = $("#imp-portal"); if (ip) ip.onclick = openPortal;
+  const ao = $("#add-ord"); if (ao) ao.onclick = () => openOrden(null);
+  const io = $("#imp-ord"); if (io) io.onclick = () => openImport("ordenes");
+  const ia = $("#imp-act"); if (ia) ia.onclick = () => openImport("actividad");
+  all("[data-per]", b => b.onclick = () => { S.per = b.dataset.per; render(); });
+  all("[data-lista]", b => b.onclick = () => llenarLink(b.dataset.lista));
+  all("[data-rv]", b => b.onclick = async ev => { ev.stopPropagation(); const [id,r] = b.dataset.rv.split("|"); const up = {["revis."+ym()]:r}; up["log"] = firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.email, res:"nota", nota:r==="paso"?"Pago automático: pasó":"Pago automático: NO pasó"}); if (r==="no") up.prox = Date.now(); try { await S.db.doc("ccli/"+id).update(up); toast(r==="paso"?"Anotado: pasó":"Anotado"); } catch(e){ err(e); } });
+  all("[data-pv]", b => b.onclick = () => { const id = b.dataset.pv, a = S.ventas[id]||{}, p = priv(id)||{}; openNuevo({nombre:p.client||a.nomVenta||"", tel:p.phone||"", ciudad:p.city||a.zona||"", direccion:p.address||"", monto:a.amount||0, apptId:id, fechaVenta:a.when?laDate(a.when):""}); });
+  const sf = $("#st-f"); if (sf) sf.onsubmit = async e => { e.preventDefault(); const em = qv("st-e").trim().toLowerCase(); if (!em) return; try { await S.db.doc("cconfig/main").set({staff:{[em]:{name:qv("st-n").trim().slice(0,60), roles:[]}}}, {merge:true}); toast("Agregada. Ahora marca qué le toca."); } catch(x){ err(x); } };
+  all("[data-rol]", i => i.onchange = async () => { const [em,k] = i.dataset.rol.split("|"); const roles = new Set(staff()[em]?.roles||[]); i.checked ? roles.add(k) : roles.delete(k); try { await S.db.doc("cconfig/main").set({staff:{[em]:Object.assign({}, staff()[em], {roles:[...roles]})}}, {merge:true}); } catch(x){ err(x); } });
+  all("[data-stdel]", b => b.onclick = async () => { if (!confirm("¿Quitarle el acceso a "+b.dataset.stdel+"?")) return; try { await S.db.doc("cconfig/main").update(new firebase.firestore.FieldPath("staff", b.dataset.stdel), firebase.firestore.FieldValue.delete()); } catch(x){ err(x); } });
+  const tq = $("#tar-q"); if (tq) tq.oninput = () => { const s = tq.value.trim().toLowerCase(); document.querySelectorAll("[data-tarrow]").forEach(el => { el.hidden = !!(s && !el.dataset.tarrow.includes(s)); }); };
+  all("[data-tar]", i => i.onchange = () => toggleTarjeta(i.dataset.tar, i.checked));
+  const ts = $("#tar-save"); if (ts) ts.onclick = () => guardarTarjetas(tarjetasElegidas());
+}
+function tarjetasElegidas(){ return [...document.querySelectorAll("[data-tar]:checked")].map(i => i.dataset.tar).filter(id => S.members[id]?.role!=="bot"); }
+function toggleTarjeta(uid, on){
+  if (S.members[uid]?.role==="bot") return toast("Los bots no pueden ver tarjetas.");
+  if (!Array.isArray(S.cfg.tarjetas)){ S.tarDraft = tarjetasElegidas(); return; }
+  const next = (S.cfg.tarjetas||[]).filter(x => x!==uid && S.members[x]?.role!=="bot");
+  if (on) next.push(uid);
+  guardarTarjetas(next);
+}
+async function guardarTarjetas(ids){
+  const limpio = [...new Set(ids)].filter(id => !S.members[id] || S.members[id].role!=="bot");
+  try { await S.db.doc("cconfig/main").set({tarjetas:limpio}, {merge:true}); S.tarDraft = null; S.cfg.tarjetas = limpio; toast("Lista de tarjetas guardada"); render(); }
+  catch(e){ err(e); }
+}
 function loginHtml(){ return `<div class="card" style="max-width:440px;margin:0 auto;width:100%"><h2>Entrar</h2><button class="btn dark" id="lg-g" style="width:100%">Entrar con Google</button>
   <p class="note" style="text-align:center">o con tu correo</p><form id="lg-f" style="display:grid;gap:10px"><input class="i" id="lg-e" type="email" placeholder="Correo" required><input class="i" id="lg-p" type="password" placeholder="Contraseña" minlength="6" required>
   <div class="row"><button class="btn" data-m="in">Entrar</button><button class="btn ghost" data-m="up">Crear cuenta</button></div></form><div id="lg-msg" class="note"></div></div>`; }
-function bindLogin(){ $("#lg-g").onclick = () => { const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"}); S.auth.signInWithPopup(p).catch(e => $("#lg-msg").textContent = "No se pudo entrar con Google. Prueba con tu correo."); };
+function bindLogin(){ $("#lg-g").onclick = () => { const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"}); S.auth.signInWithPopup(p).catch(() => $("#lg-msg").textContent = "No se pudo entrar con Google. Prueba con tu correo."); };
   let mode = "in"; document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => mode = b.dataset.m);
-  $("#lg-f").onsubmit = e => { e.preventDefault(); const em = $("#lg-e").value.trim(), pw = $("#lg-p").value; (mode==="up" ? S.auth.createUserWithEmailAndPassword(em, pw) : S.auth.signInWithEmailAndPassword(em, pw)).catch(x => $("#lg-msg").textContent = "Correo o contraseña incorrectos."); }; }
+  $("#lg-f").onsubmit = e => { e.preventDefault(); const em = $("#lg-e").value.trim(), pw = $("#lg-p").value; (mode==="up" ? S.auth.createUserWithEmailAndPassword(em, pw) : S.auth.signInWithEmailAndPassword(em, pw)).catch(() => $("#lg-msg").textContent = "Correo o contraseña incorrectos."); }; }
 boot();
 </script>
 </body>
