@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611241825"></script>
-<script src="anuncios.js?v=202611241825"></script>
-<script src="juego.js?v=202611241825"></script>
+<script src="demo.js?v=202611241911"></script>
+<script src="anuncios.js?v=202611241911"></script>
+<script src="juego.js?v=202611241911"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611241825";
+const APP_VER = "202611241911";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1330,7 +1330,55 @@ function evalTiles(e, showCalls=true){
 }
 /* ===== Recordatorios de llamada: "llámame a las 5" (no es una cita, es un aviso para volver a llamar) ===== */
 const telOkX = t => window.telOk ? telOk(t) : String(t||"").replace(/\D/g,"").slice(-10); const telFmtX = t => window.telFmt ? telFmt(t) : telFmt2(String(t||"").replace(/\D/g,"").slice(-10));
-function recCard(){ const l = Object.entries(S.recs||{}).filter(([,x]) => !x.hecho && x.tipo!=="actividad").sort((a,b) => a[1].when - b[1].when); const now = Date.now();
+/* ===== Agenda personal de la telemarketer: citas por confirmar =====
+   El cliente dice "el jueves a las 3": ella la guarda aquí (solo la ve ella). Ese día lo llama; cuando confirma,
+   la pasa al socio que escoja y ahí sí se vuelve cita. Si no recibió, la mueve (ej. a 3 meses) y le vuelve a salir ese día. */
+const pcDia = ms => new Date(ms).toLocaleDateString("en-CA",{timeZone:TZ});
+function preCitasCard(){ const L = Object.entries(S.recs||{}).filter(([,x]) => x.tipo==="precita" && !x.hecho).sort((a,b) => a[1].when - b[1].when); const hoy = today();
+  const atr = L.filter(([,x]) => pcDia(x.when) < hoy), hy = L.filter(([,x]) => pcDia(x.when) === hoy), prox = L.filter(([,x]) => pcDia(x.when) > hoy);
+  const ver = ["hoy","prox"].includes(S.f.pcv2) ? S.f.pcv2 : "hoy"; const lista = ver==="hoy" ? [...atr, ...hy] : prox;
+  const dias = {}; lista.forEach(e => { const d = pcDia(e[1].when); (dias[d] = dias[d] || []).push(e); });
+  const item = ([id,x]) => { const t = telOkX(x.tel||""); const late = pcDia(x.when) < hoy; return `<div class="item" style="cursor:default;flex-wrap:wrap;gap:8px;border-left:6px solid ${late?"#b3261e":pcDia(x.when)===hoy?"#b45309":"#6d28d9"}"><div style="flex:1;min-width:190px"><div class="t">${esc(x.nombre||"Sin nombre")}${x.vuelta?` <span class="tag tg-mute">🔁 seguimiento</span>`:""}</div>
+      <div class="m"><b>${fmt(x.when,{weekday:"short",day:"numeric",month:"short"})} · ${fmt(x.when,{hour:"numeric",minute:"2-digit"})}</b>${x.city?" · 📍 "+esc(x.city):""}${t?" · "+telFmtX(t):""}</div>${x.nota?`<div class="m">📝 ${esc(x.nota)}</div>`:""}</div>
+      <div class="row" style="gap:6px">${t ? `<a class="btn small ghost" href="tel:+1${t}">📞</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}">WhatsApp</a>` : ""}<button class="btn small" data-pcok="${id}">✅ Confirmó · pasar cita</button><button class="btn small ghost" data-pcmv="${id}">📅 Otra fecha</button><button class="btn small ghost" data-pcno="${id}">❌</button></div></div>`; };
+  return `<div class="card" style="border-left:6px solid #6d28d9"><h2>📒 Mi agenda · citas por confirmar${atr.length+hy.length ? ` <span class="tag tg-warn">${atr.length+hy.length} para confirmar hoy</span>` : ""}</h2>
+    <p class="note" style="margin-top:-6px">Solo la ves tú. Guarda aquí la cita que el cliente te dio para otro día. Ese día lo llamas y, cuando confirme, tocas <b>✅ Confirmó</b>: escoges el socio y ahí sí se le monta la cita.</p>
+    <details ${L.length?"":"open"}><summary class="btn small ghost" style="display:inline-block;margin-bottom:8px">➕ Agregar a mi agenda</summary><form id="pc-form" class="grid2" style="margin-top:6px">
+      <label class="f">Nombre<input class="i" id="pc-n" autocomplete="off"></label><label class="f">Teléfono<input class="i" id="pc-t" inputmode="tel" autocomplete="off"></label>
+      <label class="f">Ciudad<input class="i" id="pc-c"></label><label class="f">Dirección<input class="i" id="pc-a"></label>
+      <label class="f">Día que dijo<input class="i" type="date" id="pc-d" value="${addDays(hoy,1)}" min="${hoy}"></label><label class="f">Hora${timeSel("pc-h","18:00")}</label>
+      <label class="f" style="grid-column:1/-1">Precalificación / notas<textarea class="i" id="pc-x" placeholder="Ej.: casada, estarán los dos, le interesan las ollas…" style="min-height:60px"></textarea></label>
+      <div style="grid-column:1/-1"><button class="btn" type="submit">Guardar en mi agenda</button></div></form></details>
+    <div class="chips" style="margin:6px 0 8px"><button class="chip ${ver==="hoy"?"on":""}" data-pcv2="hoy">Hoy y atrasadas (${atr.length+hy.length})</button><button class="chip ${ver==="prox"?"on":""}" data-pcv2="prox">Próximas (${prox.length})</button></div>
+    ${lista.length ? Object.entries(dias).map(([d,es]) => `<div class="eyebrow" style="margin:10px 0 6px">${d < hoy ? "⚠️ Atrasada · " : d===hoy ? "Hoy · " : ""}${fmt(laToMs(d,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</div><div class="list">${es.map(item).join("")}</div>`).join("") : `<div class="empty">${ver==="hoy" ? "Nada por confirmar hoy." : "No tienes citas guardadas para los próximos días."}</div>`}</div>`; }
+function bindPreCitas(){ const all = (q, f) => document.querySelectorAll(q).forEach(f);
+  const f = document.getElementById("pc-form"); if (f) f.onsubmit = async ev => { ev.preventDefault(); const n = $("#pc-n").value.trim(), d = $("#pc-d").value, h = timeVal("pc-h");
+    if (!n || !d || !h){ toast("Falta el nombre, el día o la hora"); return; }
+    try { await S.db.collection("recordatorios").add({owner:S.uid, tipo:"precita", nombre:n.slice(0,80), tel:$("#pc-t").value.trim().slice(0,30), city:$("#pc-c").value.trim().slice(0,60), addr:$("#pc-a").value.trim().slice(0,160), when:laToMs(d,h), nota:$("#pc-x").value.trim().slice(0,1500), hecho:false, at:Date.now()}); S.f.pcv2 = d===today() ? "hoy" : "prox"; toast("Guardada en tu agenda (solo tú la ves)"); } catch(e){ writeErr(e); } };
+  all("[data-pcv2]", b => b.onclick = () => { S.f.pcv2 = b.dataset.pcv2; render(); });
+  all("[data-pcno]", b => b.onclick = () => { const id = b.dataset.pcno, x = S.recs[id] || {};
+    openModal(`<h3>${esc(x.nombre||"Cliente")}</h3><p class="note">¿Qué pasó?</p><div class="list">${[["No contestó","nc"],["Ya no quiere / no le interesa","no"],["Número equivocado","mal"]].map(([l,k]) => `<button class="item" data-pcres="${k}"><div class="t">${l}</div></button>`).join("")}</div><p class="note">Si no contestó o quiere otro día, mejor usa <b>📅 Otra fecha</b> para que te vuelva a salir.</p><div class="row"><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+      all("[data-pcres]", c => c.onclick = () => S.db.doc("recordatorios/"+id).update({hecho:true, res:c.dataset.pcres, resAt:Date.now()}).then(() => { closeModal(); toast("Quitada de tu agenda"); }, writeErr)); }); });
+  all("[data-pcmv]", b => b.onclick = () => { const id = b.dataset.pcmv, x = S.recs[id] || {}; const hh = fmt(x.when,{hour:"2-digit",minute:"2-digit",hour12:false}).replace(/^24/,"00");
+    const Q = [["Mañana",1],["En 1 semana",7],["En 2 semanas",14],["En 1 mes",30],["En 3 meses",91],["En 6 meses",182]];
+    openModal(`<h3>📅 Otra fecha · ${esc(x.nombre||"")}</h3><p class="note">Para cuando no recibió o pidió que la llamen más adelante. Te vuelve a salir ese día.</p><div class="chips" style="margin-bottom:10px">${Q.map(([l,k]) => `<button class="chip" data-pcq="${k}">${l}</button>`).join("")}</div>
+      <div class="grid2"><label class="f">Día<input class="i" type="date" id="pm-d" value="${addDays(today(),1)}" min="${today()}"></label><label class="f">Hora${timeSel("pm-h", hh)}</label><label class="f" style="grid-column:1/-1">Nota<input class="i" id="pm-x" value="${esc(x.nota||"")}" maxlength="1500"></label></div>
+      <div class="row"><button class="btn" id="pm-ok">Guardar</button><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+      all("[data-pcq]", c => c.onclick = () => { $("#pm-d").value = addDays(today(), +c.dataset.pcq); all("[data-pcq]", z => z.classList.toggle("on", z===c)); });
+      $("#pm-ok").onclick = () => { const d = $("#pm-d").value, h = timeVal("pm-h"); if (!d || !h) return toast("Pon el día y la hora");
+        S.db.doc("recordatorios/"+id).update({when:laToMs(d,h), nota:$("#pm-x").value.trim().slice(0,1500), vuelta:true, movidas:(x.movidas||0)+1}).then(() => { closeModal(); S.f.pcv2 = d===today() ? "hoy" : "prox"; toast("Movida al "+fmt(laToMs(d,h),{day:"numeric",month:"short"})); }, writeErr); }; }); });
+  all("[data-pcok]", b => b.onclick = () => { const id = b.dataset.pcok, x = S.recs[id] || {}; const L = sociosPara({...S.me, id:S.uid});
+    openModal(`<h3>✅ ${esc(x.nombre||"")} confirmó</h3><p class="note">¿A qué socio le pasas la cita?${x.city?` La cita es en <b>${esc(x.city)}</b>.`:""}</p><div class="list">${L.map(s => `<button class="item" data-pcto="${s.id}"><div class="t nm-av">${av(s.id,28)}${esc(s.name)}</div></button>`).join("")}</div><div class="row"><button class="btn ghost" data-close>Cancelar</button></div>`, () => {
+      all("[data-pcto]", c => c.onclick = () => { const sid = c.dataset.pcto; closeModal(); S.world = sid; try { localStorage.setItem("ly-world", sid); } catch {}
+        const src = sources().includes(S.f.source) ? S.f.source : sources()[0]; const hh = fmt(x.when,{hour:"2-digit",minute:"2-digit",hour12:false}).replace(/^24/,"00");
+        setTimeout(() => openCitaForm(src, false, {name:x.nombre, phone:x.tel, city:x.city, addr:x.addr, date:today(), time:hh, pre:x.nota,
+          onSaved: apptId => S.db.doc("recordatorios/"+id).update({hecho:true, res:"pasada", apptId, socioId:sid, resAt:Date.now()}).catch(e => console.log("precita", e))}), 50); }); }); });
+}
+/* Una vez al día: aviso de cuántas tiene por confirmar hoy */
+setInterval(() => { if (!S.recs || role()!=="tele") return; const k = "pcAviso-"+today(); try { if (localStorage.getItem(k)) return; } catch { return; }
+  const n = Object.values(S.recs).filter(x => x.tipo==="precita" && !x.hecho && pcDia(x.when) <= today()).length; if (!n) return;
+  try { localStorage.setItem(k, "1"); } catch {} avisar("📒 Citas por confirmar hoy", `Tienes ${n} en tu agenda para confirmar hoy`); toast(`📒 Tienes ${n} cita(s) por confirmar hoy`); }, 60e3);
+function recCard(){ const l = Object.entries(S.recs||{}).filter(([,x]) => !x.hecho && x.tipo!=="actividad" && x.tipo!=="precita").sort((a,b) => a[1].when - b[1].when); const now = Date.now();
   const recCal = x => { const z = ms => new Date(ms).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""); return "https://calendar.google.com/calendar/render?" + new URLSearchParams({action:"TEMPLATE", text:`📞 Llamar a ${x.nombre||"cliente"}`, dates:`${z(x.when)}/${z(x.when+15*60e3)}`, details:`${x.tel?telFmtX(x.tel)+"\n":""}${x.nota||""}`, ctz:TZ}).toString(); };
   return `<div class="card"><h2>⏰ Recordatorios de llamada${l.filter(([,x]) => x.when <= now).length ? ` <span class="tag tg-bad">${l.filter(([,x]) => x.when <= now).length} para llamar ya</span>` : ""}</h2>
     <p class="note" style="margin-top:-6px">Para cuando alguien te dice "llámame más tarde". No es una cita: es un aviso para volver a llamar. Solo lo ves tú.</p>
@@ -1342,7 +1390,7 @@ function recCard(){ const l = Object.entries(S.recs||{}).filter(([,x]) => !x.hec
       <div class="row" style="gap:6px">${t ? `<a class="btn small" href="tel:+1${t}">📞 Llamar</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}">WhatsApp</a>` : ""}<a class="btn small ghost" target="_blank" rel="noopener" href="${esc(recCal(x))}">📅</a><button class="btn small ghost" data-rec-ok="${id}">✅ Listo</button><button class="btn small ghost" data-rec-del="${id}" aria-label="Borrar">🗑️</button></div></div>`; }).join("")}</div>` : ""}</div>`; }
 /* Aviso en el teléfono cuando llega la hora (con la app abierta) */
 const recAvisados = new Set();
-setInterval(() => { Object.entries(S.recs||{}).forEach(([id,x]) => { if (!x.hecho && x.when <= Date.now() && x.when > Date.now() - 30*60e3 && !recAvisados.has(id)){ recAvisados.add(id); const act = x.tipo==="actividad"; avisar(act ? "📌 Es hora de: "+(x.nombre||"tu actividad") : "⏰ Hora de llamar", act ? (x.nota||"") : `${x.nombre||"Cliente"}${x.tel?" · "+telFmtX(x.tel):""}${x.nota?" · "+x.nota:""}`); toast(act ? `📌 Es hora de: ${x.nombre||"tu actividad"}` : `⏰ Hora de llamar a ${x.nombre||"tu cliente"}`); render(); } }); }, 30e3);
+setInterval(() => { Object.entries(S.recs||{}).forEach(([id,x]) => { if (!x.hecho && x.tipo!=="precita" && x.when <= Date.now() && x.when > Date.now() - 30*60e3 && !recAvisados.has(id)){ recAvisados.add(id); const act = x.tipo==="actividad"; avisar(act ? "📌 Es hora de: "+(x.nombre||"tu actividad") : "⏰ Hora de llamar", act ? (x.nota||"") : `${x.nombre||"Cliente"}${x.tel?" · "+telFmtX(x.tel):""}${x.nota?" · "+x.nota:""}`); toast(act ? `📌 Es hora de: ${x.nombre||"tu actividad"}` : `⏰ Hora de llamar a ${x.nombre||"tu cliente"}`); render(); } }); }, 30e3);
 /* ===== Mensaje del día (cambia solo cada día) ===== */
 const MOTIVA = [
   ["Todo lo puedo en Cristo que me fortalece.", "Filipenses 4:13"],
@@ -1440,7 +1488,7 @@ function recEn(x, r){ if (!x.rep){ return !x.hecho && inR(x.when||0, r) ? x.when
 function miAgendaCard(){ const d0 = S.f.mag || today(); const r = [laToMs(d0,"00:00"), laToMs(addDays(d0,1),"00:00")]; const items = [];
   Object.entries(S.appts).forEach(([id,a]) => { if (a.socioId!==S.uid || !inR(a.when||0, r) || a.status==="cancelada") return; const k = a.tipoVisita==="servicio" ? "serv" : a.sale && a.saleStatus==="aprobada" ? "aprob" : a.sale && (a.saleStatus||"pendiente")==="pendiente" ? "verif" : "demo";
     items.push({at:a.when, k, t:cName(a), m:[a.city, a.status==="hecha" ? (a.sale ? "Venta "+money(a.amount) : "Demostración hecha") : a.status==="no_se_hizo" ? "No se hizo" : ""].filter(Boolean).join(" · "), appt:id}); });
-  Object.entries(S.recs||{}).forEach(([id,x]) => { const at = recEn(x, r); if (!at) return; items.push({at, k: x.tipo==="actividad" ? "act" : "llamar", t:x.nombre||"", m:(x.rep ? REP_TXT[x.rep]+(x.nota?" · ":"") : "")+(x.nota||""), rec:id, dia:laDate(at)}); });
+  Object.entries(S.recs||{}).forEach(([id,x]) => { if (x.tipo==="precita") return; const at = recEn(x, r); if (!at) return; items.push({at, k: x.tipo==="actividad" ? "act" : "llamar", t:x.nombre||"", m:(x.rep ? REP_TXT[x.rep]+(x.nota?" · ":"") : "")+(x.nota||""), rec:id, dia:laDate(at)}); });
   items.sort((a,b) => a.at - b.at);
   const ch = (v,t) => `<button class="chip ${d0===v?"on":""}" data-mag="${v}">${t}</button>`;
   return `<div class="card"><h2>📅 Mi agenda<span class="note">${items.length} cosa(s)</span></h2><div class="chips" style="margin-bottom:8px">${ch(addDays(today(),-1),"Ayer")}${ch(today(),"Hoy")}${ch(addDays(today(),1),"Mañana")}${ch(addDays(today(),2),fmt(laToMs(addDays(today(),2),"12:00"),{weekday:"long"}))}</div>
@@ -1471,7 +1519,7 @@ function avisoReporteDia(){ const r = role(); if (r!=="socio" && r!=="admin") re
   const k = "ly-rep-"+S.uid+"-"+today(); try { if (localStorage.getItem(k)) return; localStorage.setItem(k, "1"); } catch { return; }
   const d = reporteDiaDatos(S.uid); avisar("📋 Tu reporte del día", `${d.casas} casa(s) · ${d.refs} referidos · ${d.ventas} venta(s). Toca para ver qué mejorar mañana.`, () => go("hoy")); }
 function viewHoy(r){
-  const rg = range(S.f.period); const top = reporteDiaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? pendLlamarCard() : "") + recCard();
+  const rg = range(S.f.period); const top = reporteDiaCard() + (r!=="tele" ? miAgendaCard() : "") + porAprobarCard(); let h = (r==="tele" ? preCitasCard() + pendLlamarCard() : "") + recCard();
   if (r==="tele"){
     const d = teleEval(S.uid, range("hoy")); const mL = +S.config.metaLlamadas||80, mC = +S.config.metaCitas||4;
     h += `<div class="card"><h2>Tu día<span class="note">Meta: ${mL} llamadas · ${mC} citas</span></h2><div class="tiles">
@@ -1702,7 +1750,7 @@ function openCitaForm(src, own, pre){
     const tvSync = () => { const serv = $("#c-tv").value==="servicio"; ["c-src","c-cred","c-refby","c-prog"].forEach(k => { const e = document.getElementById(k); const f = e && e.closest(".f"); if (f) f.style.display = serv ? "none" : ""; });
       document.querySelector("#modal h3").textContent = serv ? "Nueva visita de servicio" : (own ? "Nueva cita propia" : "Nueva cita para "+memberName(S.world)); $("#c-save").textContent = serv ? "Guardar servicio" : "Guardar cita"; };
     $("#c-tv").onchange = tvSync;
-    if (pre){ $("#c-name").value = pre.name||""; $("#c-phone").value = pre.phone||""; $("#c-notes").value = pre.notes||""; if (pre.refBy) $("#c-refby").value = pre.refBy; if (pre.code && $("#c-prog")) $("#c-prog").value = pre.code; }
+    if (pre){ if (pre.city) $("#c-city").value = pre.city; if (pre.addr) $("#c-addr").value = pre.addr; if (pre.date && pre.date >= today()) $("#c-date").value = pre.date; if (pre.time){ const tw = document.getElementById("c-time"); if (tw) tw.outerHTML = timeSel("c-time", pre.time); } if (pre.pre && $("#c-pre")) $("#c-pre").value = pre.pre; $("#c-name").value = pre.name||""; $("#c-phone").value = pre.phone||""; $("#c-notes").value = pre.notes||""; if (pre.refBy) $("#c-refby").value = pre.refBy; if (pre.code && $("#c-prog")) $("#c-prog").value = pre.code; }
     const cp = $("#c-prog"); if (cp){ cp.onchange = () => { const j = S.juegos?.[cp.value]; if (j && !$("#c-refby").value.trim()) $("#c-refby").value = j.ref || ""; };
       $("#c-refby").onchange = () => { if (cp.value) return; const v = $("#c-refby").value.trim().toLowerCase(); const m = progsCli(socio).find(([,j]) => String(j.ref||"").trim().toLowerCase()===v); if (m) cp.value = m[0]; }; }
     $("#c-phone").onchange = $("#c-phone").onblur = async () => { const h = await getHistAny(own ? S.uid : S.world, $("#c-phone").value); $("#c-hist").innerHTML = histHtml(h); if (h && h.name && !$("#c-name").value.trim()) $("#c-name").value = h.name; };
@@ -2921,6 +2969,7 @@ function bindCommon(){
   all("[data-mp]", b => b.onclick = () => { S.f.mp = b.dataset.mp; render(); });
   all("[data-kdp]", b => b.onclick = () => { S.f.kdp = b.dataset.kdp; render(); });
   all("[data-dper]", b => b.onclick = () => { S.f.dper = b.dataset.dper; render(); });
+  bindPreCitas();
   { const rf = m.querySelector("#rec-form"); if (rf) rf.onsubmit = async e => { e.preventDefault(); const n = $("#rec-n").value.trim(), t = telOkX($("#rec-t").value), d = $("#rec-d").value, h = timeVal("rec-h");
       if (!n && !t){ toast("Escribe el nombre o el teléfono"); return; } if (!d || !h){ toast("Escoge el día y la hora"); return; }
       try { await S.db.collection("recordatorios").add({owner:S.uid, nombre:n.slice(0,60), tel:t||"", when:laToMs(d,h), nota:$("#rec-x").value.trim().slice(0,200), hecho:false, at:Date.now()}); toast("Recordatorio guardado"); } catch(err){ writeErr(err); } }; }
