@@ -335,6 +335,12 @@
   }
 
   /* A quién marca de entrada «Pueden ver tarjetas». No escribe nada: Katerine confirma. */
+  /* El correo (en minúsculas) está en cconfig/main.staff. La dueña y el bot se deciden aparte. */
+  function enStaffCobranza(email, staff) {
+    if (!staff || typeof staff !== "object" || !email) return false;
+    return Object.prototype.hasOwnProperty.call(staff, String(email).toLowerCase());
+  }
+
   function sugerirTarjetas(members) {
     const notes = [];
     const uids = [];
@@ -363,6 +369,6 @@
   return {
     bucketOf: bucketOf, esSkip: esSkip, esUpdate: esUpdate, updateAprobado: updateAprobado, toneOf: toneOf, canPay: canPay,
     digitsCard: digitsCard, maskCard: maskCard, formatCard: formatCard, safeHttps: safeHttps, safeMail: safeMail,
-    mensajeCliente: mensajeCliente, parseTable: parseTable, sugerirTarjetas: sugerirTarjetas, asDate: asDate, money: money
+    mensajeCliente: mensajeCliente, parseTable: parseTable, sugerirTarjetas: sugerirTarjetas, enStaffCobranza: enStaffCobranza, asDate: asDate, money: money
   };
 });

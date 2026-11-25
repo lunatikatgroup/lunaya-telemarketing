@@ -13,7 +13,14 @@ service cloud.firestore {
     function hasDoc() { return signedIn() && exists(memberPath(request.auth.uid)); }
     function meData() { return get(memberPath(request.auth.uid)).data; }
     // Quien tiene el acceso suspendido (bloqueado) se trata como sin rol: no puede leer ni escribir hasta que Dirección se lo devuelva
-    function myRole() { return hasDoc() ? (('bloqueado' in meData()) && meData().role != 'admin' ? 'bloqueado' : meData().role) : ''; }
+    // sinTele (lo pone solo la dueña) quita el telemarketing sin borrar a la persona.
+    // Si el campo no existe, sigue con telemarketing, como hasta ahora. La dueña nunca queda sin él.
+    function myRole() {
+      return !hasDoc() ? ''
+        : (('bloqueado' in meData()) && meData().role != 'admin') ? 'bloqueado'
+        : (meData().get('sinTele', false) == true && !isOwnerEmail()) ? 'cobranza'
+        : meData().role;
+    }
     function isAdmin() { return isOwnerEmail() || myRole() == 'admin'; }
     // ===== Bots (asistentes de IA de Katerine) =====
     // Un solo usuario (correo y contraseña) con rol 'bot'. Solo la dueña (isOwnerEmail) se lo asigna desde Equipo.
@@ -74,7 +81,8 @@ service cloud.firestore {
          || request.resource.data.role == 'pendiente'
          || validInvite(request.resource.data));
       allow update: if (isAdmin() && (isOwnerEmail()
-             || (request.resource.data.get('role', '') != 'bot' && resource.data.get('role', '') != 'bot')))
+             || (request.resource.data.get('role', '') != 'bot' && resource.data.get('role', '') != 'bot'
+                 && request.resource.data.get('sinTele', false) == resource.data.get('sinTele', false))))
          // El distribuidor ajusta el plan de pago de SUS telemarketers
          || (isDist() && resource.data.get('upline', '') == request.auth.uid
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sueldo', 'pct', 'startDate', 'ruta']))
