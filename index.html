@@ -192,13 +192,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611250850"></script>
-<script src="anuncios.js?v=202611250850"></script>
-<script src="juego.js?v=202611250850"></script>
+<script src="demo.js?v=202611250909"></script>
+<script src="anuncios.js?v=202611250909"></script>
+<script src="juego.js?v=202611250909"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611250850";
+const APP_VER = "202611250909";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.reload(); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2328,13 +2328,14 @@ function viewLider(){
   if (!S.me?.lider && !S.isOwner) return `<div class="card empty">Esta pantalla es solo para la líder del equipo.</div>`;
   const rg = range(S.f.period);
   const teles = telesLunaya().map(t => ({name:t.name+(t.lider?" · líder":""), e:teleEval(t.id, rg), id:t.id}));
-  let h = nominaCard() + reunionCard() + repDistCard() + estadisticasCard() + horasCard() + `<div class="card"><h2>Efectividad del equipo ${periodChips()}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
+  let h = nominaCard() + reunionCard() + repDistCard() + estadisticasCard() + horasCard() + `<div class="card"><h2>Efectividad del equipo ${periodChips(["hoy","semana","quin","quinant","mes","mesant"])}</h2>${teles.length?evalTable(teles, true):`<div class="empty">Sin telemarketers.</div>`}</div>`;
   const hoyT = telesLunaya().map(t => { const d = teleEval(t.id, range("hoy")); const last = allCalls().filter(c=>c.teleId===t.id).sort((a,b)=>b.at-a.at)[0]; return `<tr><td><b>${esc(t.name)}</b></td><td class="n">${d.calls}</td><td class="n">${d.contacts}</td><td class="n">${d.citas}</td><td class="note">${last?fmt(last.at,{weekday:"short",hour:"numeric",minute:"2-digit"}):"—"}</td></tr>`; }).join("");
   h += refsPendCard() + citasDiaCard() + metaSemEquipoCard() + citasEquipoCard() + refByCard(socios().map(x => x.id));
   h += `<div class="card"><h2>Hoy en vivo</h2><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th class="n">Llamadas</th><th class="n">Contactos</th><th class="n">Citas</th><th>Último registro</th></tr></thead><tbody>${hoyT}</tbody></table></div></div>`;
   h += `<div class="card"><h2>Día de inicio de cada telemarketer</h2><p class="note" style="margin-top:-6px">El sueldo se cuenta desde el día que realmente empezó a trabajar, aunque la hayas agregado a la app después. Cámbialo si no es el correcto.</p><div class="tbl-wrap"><table><thead><tr><th>Telemarketer</th><th>Empezó a trabajar</th></tr></thead><tbody>${telesLunaya().map(t => `<tr><td><b>${esc(t.name)}</b></td><td><input class="i" type="date" data-start="${t.id}" value="${startOf(t)==="2000-01-01"?"":startOf(t)}" max="${today()}" style="padding:4px 6px"></td></tr>`).join("")}</tbody></table></div></div>`;
-  h += ventasLider(S.f.period==="mesant" ? "mesant" : "mes");
-  h += comCard(S.f.period==="mesant" ? "mesant" : "mes");
+  { const pp = ["semana","quin","quinant","mes","mesant"].includes(S.f.period) ? S.f.period : "mes";
+    h += `<div class="card"><h2>💵 Pagos de las telemarketers ${periodChips(["semana","quin","quinant","mes","mesant"])}</h2><p class="note" style="margin:-6px 0 0">${rangoTxt(pp)}. Escoge el periodo para ver las ventas y lo que le toca a cada una.</p></div>`;
+    h += ventasLider(pp); h += comCard(pp); }
   h += respaldoLiderCard() + inviteCard() + quitarTeleCard();
   return h;
 }
