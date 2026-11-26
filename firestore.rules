@@ -294,6 +294,9 @@ service cloud.firestore {
          && existsAfter(leadPath(request.resource.data.last)) && !exists(leadPath(request.resource.data.last));
       allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until', 'ref', 'alias', 'regalos', 'visitas', 'ganados', 'avisados', 'img'])
          && (!('img' in request.resource.data) || (request.resource.data.img is string && request.resource.data.img.size() <= 700000));
+      // Su propia copia de la plantilla: el link pasa a usar un programa (regalos) que es de él
+      allow update: if lv() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pid', 'solo'])
+         && get(/databases/$(database)/documents/programs/$(request.resource.data.pid)).data.owner == request.auth.uid;
       // Anuncios: cuenta cuántos entraron y cuántos jugaron (de uno en uno)
       allow update: if resource.data.get('anuncio', false) == true
          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vis'])
