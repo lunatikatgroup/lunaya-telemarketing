@@ -194,13 +194,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611251819"></script>
-<script src="anuncios.js?v=202611251819"></script>
-<script src="juego.js?v=202611251819"></script>
+<script src="demo.js?v=202611251847"></script>
+<script src="anuncios.js?v=202611251847"></script>
+<script src="juego.js?v=202611251847"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611251819";
+const APP_VER = "202611251847";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2035,6 +2035,8 @@ function openAppt(id, o0={}){
   const liderAcc = r==="tele" && S.me?.lider && !S.me?.upline && esTeleProg(a.agendo);
   const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc || liderAcc || (isDist() && S.members[a.socioId]?.upline===S.uid); const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid || teleAcc || liderAcc;
   const canClient = a._priv && (r==="admin" || a.agendo===S.uid || a.socioId===S.uid || liderAcc);
+  /* La líder (Carly) puede aprobar o cancelar cualquier venta, también las que Dirección o los distribuidores reportan como hechas */
+  const soloEstado = !canResult && esLiderProg() && a.sale;
   openModal(`<h3>${esc(cName(a))}</h3>
     <div class="note">${fmt(a.when,{weekday:"short",day:"numeric",month:"short"})}, ${horaCita(a)} · hora San Diego · <b>${esc(origenTxt(a))}</b>${a.source?` · ${esc(a.source)}`:""}${a.refBy?` · referida por <b>${esc(a.refBy)}</b>`:""}</div>
     ${a.status!=="agendada" && (a.resNote || a.refsDemo || (a.resultBy && a.resultBy!==a.socioId)) ? `<div class="banner">${notasDe(a).length ? notasDe(a).map(x => `<div style="margin-bottom:6px">📝 ${esc(x.t)}<div class="note">${x.viejo ? "Comentario anterior" : `— <b>${esc(memberName(x.by))}</b> · ${fmt(x.at,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}`}</div></div>`).join("") : a.resNote?`📝 <b>Qué pasó:</b> ${esc(a.resNote)}`:""}${a.refsDemo?`<div>👥 <b>${a.refsDemo}</b> referidos sacados en la demo</div>`:""}${a.resultBy && a.resultBy!==a.socioId?`<div class="note">Resultado (${esc(ST_TXT_R(a))}) marcado por ${esc(memberName(a.resultBy))}${a.resultAt?" · "+fmt(a.resultAt,{weekday:"short",day:"numeric",hour:"numeric",minute:"2-digit"}):""}</div>`:""}</div>` : ""}
@@ -2047,6 +2049,7 @@ function openAppt(id, o0={}){
     <div id="ap-hist"></div>
     <div>${a.phone?`<div><a href="tel:${esc(String(a.phone).replace(/[^0-9+]/g,""))}" style="color:inherit"><b>📞 ${esc(a.phone)}</b></a></div>`:""}${a.city||a.address?`<div>${esc([a.address,a.city].filter(Boolean).join(", "))}</div><a class="btn small ghost" style="margin-top:6px;display:inline-block" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([a.address,a.city].filter(Boolean).join(", "))}" target="_blank" rel="noopener">📍 Abrir en Google Maps</a>`:""}<div class="note">Socio: ${esc(memberName(a.socioId))} · agendó ${esc(memberName(a.teleId))} · fuente ${esc(a.source||"")}</div></div>
     ${a.notes?`<p style="white-space:pre-wrap;margin:0">${esc(a.notes)}</p>`:""}
+    ${soloEstado ? `<div class="eyebrow">Estado de la venta · ${money(a.amount)}</div><div class="opts">${Object.entries(SALE_ST).map(([k,l])=>`<button class="opt ${(a.saleStatus||"pendiente")===k?"on":""}" data-ss="${k}">${l}</button>`).join("")}</div><p class="note" style="margin:0">Como líder puedes aprobar o cancelar esta venta.</p>` : ""}
     ${canResult && a.tipoVisita==="servicio" ? `<div class="eyebrow">🛠️ Servicio</div><div class="opts"><button class="opt ${a.status==="hecha"?"on":""}" data-sv="hecha">✅ Hecho</button><button class="opt ${a.status==="no_se_hizo"?"on":""}" data-sv="no_se_hizo">❌ No hecho</button></div>
       ${a._priv ? `<label class="f" style="margin-top:6px">Nota del servicio<textarea class="i" id="sv-note" maxlength="1000" placeholder="Ej: se cambió la válvula; vuelve en 6 meses…">${esc(notaMia(a))}</textarea></label><button class="btn small ghost" id="sv-nsave">Guardar nota</button>` : ""}` : ""}
     ${canResult && a.tipoVisita!=="servicio"?`<div class="eyebrow">Resultado de la cita</div><div class="opts">
@@ -2083,7 +2086,7 @@ function openAppt(id, o0={}){
     $("#chat-send") && ($("#chat-send").onclick = send);
     $("#chat-in") && ($("#chat-in").onkeydown = e => { if (e.key==="Enter"){ e.preventDefault(); send(); } });
     const save = async upd => { /* en cada venta queda visible el nombre del cliente (solo el nombre) para la nómina de Dirección */
-      if ((upd.sale || a.sale) && a._priv && a.client && a.nomVenta !== String(a.client).trim().slice(0,80)) upd = {...upd, nomVenta:String(a.client).trim().slice(0,80)};
+      if (!soloEstado && (upd.sale || a.sale) && a._priv && a.client && a.nomVenta !== String(a.client).trim().slice(0,80)) upd = {...upd, nomVenta:String(a.client).trim().slice(0,80)};
       try { await chain("appt:"+id, () => S.db.doc("appts/"+id).update(upd)); closeModal(); toast("Guardado"); } catch(e){ writeErr(e); } };
     const needAc = esEmp(S.members[a.socioId]);
     const acb = () => needAc ? `<div class="f" style="grid-column:1/-1"><span>¿Cómo fue a la cita? <b style="color:var(--bad,#c0392b)">*</b></span><div class="opts" style="margin-top:4px"><button type="button" class="opt ${a.acomp===false?"on":""}" data-ac="solo">🙋 Fue solo</button><button type="button" class="opt ${a.acomp===true?"on":""}" data-ac="acomp">🤝 Con entrenador</button></div><select class="i" id="ac-who" style="margin-top:6px;${a.acomp===true?"":"display:none"}"><option value="">¿Quién fue el entrenador?</option>${socios().filter(m=>m.id!==a.socioId).map(m=>`<option value="${m.id}" ${a.entrenador===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select></div>` : "";
