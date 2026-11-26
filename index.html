@@ -194,14 +194,14 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611251523"></script>
-<script src="anuncios.js?v=202611251523"></script>
-<script src="juego.js?v=202611251523"></script>
-<script src="cobranza/logic.js?v=202611251523"></script>
+<script src="demo.js?v=202611251559"></script>
+<script src="anuncios.js?v=202611251559"></script>
+<script src="juego.js?v=202611251559"></script>
+<script src="cobranza/logic.js?v=202611251559"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611251523";
+const APP_VER = "202611251559";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1229,7 +1229,7 @@ function render(){
   if (r==="nuevo" || r==="pendiente"){ $("#nav").hidden = true; main.innerHTML = viewJoin(); bindJoin(); return; }
   if (S.me?.bloqueado && (r!=="admin" || esBot()) && !S.isOwner){ $("#nav").hidden = true; main.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:54px">🔒</div><h2 style="justify-content:center">Acceso suspendido temporalmente</h2><p>Tu acceso a Lunaya está inhabilitado por el momento.</p>${S.me.bloqueado.motivo?`<p class="note"><b>Motivo:</b> ${esc(S.me.bloqueado.motivo)}</p>`:""}<p class="note">Comunícate con Katerine para reactivarlo.</p><button class="btn ghost" id="bq-out">Salir</button></div>`; const bo = $("#bq-out"); if (bo) bo.onclick = () => firebase.auth().signOut(); return; }
   const areas = $("#areas");
-  if (areas) { const both = veCobranza() && !sinTele() && r!=="nuevo" && r!=="pendiente"; areas.hidden = !both; if (both) { areas.innerHTML = `<button type="button" class="chip ${S.view==="cobra"?"":"on"}" data-area="hoy">Telemarketing</button><button type="button" class="chip ${S.view==="cobra"?"on":""}" data-area="cobra">Cobranza</button>`; areas.querySelectorAll("[data-area]").forEach(b => b.onclick = () => go(b.dataset.area)); } }
+  if (areas) { const both = veCobranza() && !sinTele() && r!=="admin" && r!=="nuevo" && r!=="pendiente"; areas.hidden = !both; if (both) { areas.innerHTML = `<button type="button" class="chip ${S.view==="cobra"?"":"on"}" data-area="hoy">Telemarketing</button><button type="button" class="chip ${S.view==="cobra"?"on":""}" data-area="cobra">Cobranza</button>`; areas.querySelectorAll("[data-area]").forEach(b => b.onclick = () => go(b.dataset.area)); } }
   if (sinTele()) {
     if (S.cconfig == null) { $("#nav").hidden = true; $("#title").textContent = "Cobranza"; $("#subtitle").textContent = ""; main.innerHTML = `<div class="card empty">Cargando…</div>`; return; }
     if (!veCobranza()) { $("#nav").hidden = true; $("#title").textContent = "Sin acceso"; $("#subtitle").textContent = ""; main.innerHTML = `<div class="card"><h2>Sin área asignada</h2><p>No tienes telemarketing ni cobranza. Pídele a Katerine que te active un área.</p><button class="btn ghost" id="out">Salir</button></div>`; const o = $("#out"); if (o) o.onclick = () => S.auth.signOut(); return; }

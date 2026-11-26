@@ -67,6 +67,30 @@ test("la actividad reconoce el resultado", () => {
   assert.equal(out.rows[0].at, null);
 });
 
+test("la importación guarda teléfono, dirección completa y correo", () => {
+  const csv = C.parseTable("nombre,telefono,correo,direccion,ciudad,estado,zip\nAna,619-555-0101,ana@example.com,123 Main St,San Diego,CA,92101\n", "clientes");
+  assert.equal(csv.errors.length, 0);
+  assert.equal(csv.rows[0].tel, "619-555-0101");
+  assert.equal(csv.rows[0].email, "ana@example.com");
+  assert.equal(csv.rows[0].direccion, "123 Main St, San Diego, CA, 92101");
+  assert.equal(csv.rows[0]._keys.includes("direccion"), true);
+});
+
+test("el nombre de la cita junta el apellido cuando existe", () => {
+  assert.equal(C.nombreCompleto({ client: "Rosario", apellido: "García" }), "Rosario García");
+  assert.equal(C.nombreCompleto({ client: "Janet" }), "Janet");
+  assert.equal(C.nombreCompleto({ client: "Noe", nomVenta: "Noe Ramírez" }), "Noe Ramírez");
+  assert.equal(C.nombreMasLargo("Rosa", "Rosario García"), "Rosa");
+  assert.equal(C.nombreMasLargo("Noe", "Noe Ramírez"), "Noe Ramírez");
+});
+
+test("la revisión del pago automático es al día siguiente", () => {
+  assert.equal(C.revisionFecha({ dia: 15 }, "2026-11-25"), "2026-11-16");
+  assert.equal(C.revisionFecha({ fecha: "2026-11-30" }, "2026-11-25"), "2026-12-01");
+  assert.equal(C.revisionFecha({ dia: 31 }, "2026-11-02"), "2026-12-01");
+  assert.equal(C.revisionFecha({}, "2026-11-25"), "");
+});
+
 test("la pestaña de Cobranza sale si el correo está en el equipo", () => {
   const staff = { "arisbel@example.com": { name: "Arisbel" }, "milady@example.com": { name: "Milady" } };
   assert.equal(C.enStaffCobranza("arisbel@example.com", staff), true);
