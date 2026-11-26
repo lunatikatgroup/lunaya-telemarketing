@@ -156,7 +156,7 @@ nav.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-
 nav.bottom button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:11.5px;font-weight:700;padding:6px 6px;border-radius:10px;cursor:pointer;min-width:54px;flex:1;max-width:96px}
 nav.bottom button.on{color:var(--accent);background:var(--accent-soft)}
 nav.bottom svg{width:22px;height:22px}
-body.area-full header.top{display:none}body.area-full main{padding:0!important;max-width:none!important}body.area-full iframe.area{position:fixed!important;left:0;right:0;top:env(safe-area-inset-top);width:100%!important;height:calc(100dvh - env(safe-area-inset-top) - var(--navh,84px))!important;min-height:0!important;border:0!important;border-radius:0!important;z-index:4}
+body.area-full header.top #title,body.area-full header.top #subtitle,body.area-full header.top #who,body.area-full header.top #areas{display:none!important}body.area-full main{padding:0!important;max-width:none!important}body.area-full iframe.area{position:fixed!important;left:0;right:0;top:var(--toph,200px);width:100%!important;height:calc(100dvh - var(--toph,200px) - var(--navh,84px))!important;min-height:0!important;border:0!important;border-radius:0!important;z-index:4}
 nav.bottom.many button{font-size:10px;min-width:0;padding:6px 1px;letter-spacing:-.01em}
 nav.bottom.mas{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}nav.bottom.mas::-webkit-scrollbar{display:none}nav.bottom.mas button{flex:0 0 auto;min-width:52px;max-width:none;padding:6px 3px}
 .modal-bg{position:fixed;inset:0;background:rgba(31,30,29,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611252232"></script>
-<script src="anuncios.js?v=202611252232"></script>
-<script src="juego.js?v=202611252232"></script>
+<script src="demo.js?v=202611252316"></script>
+<script src="anuncios.js?v=202611252316"></script>
+<script src="juego.js?v=202611252316"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611252232";
+const APP_VER = "202611252316";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1266,7 +1266,7 @@ function render(){
   /* Reclutamiento y Cobranza: sus páginas se abren aquí adentro (mismo inicio de sesión). No se recargan con cada cambio de Lunaya. */
   { const bs = document.getElementById("bs-sis"); if (bs) bs.textContent = S.view==="reclut" ? "Sistema de reclutamiento" : S.view==="cobra" ? "Sistema de cobranza" : "Sistema de telemarketing"; }
   document.body.classList.toggle("area-full", S.view==="reclut" || S.view==="cobra");
-  if (S.view==="reclut" || S.view==="cobra"){ requestAnimationFrame(() => { const nv = $("#nav"); if (nv) document.documentElement.style.setProperty("--navh", nv.offsetHeight + "px"); }); const src = (S.view==="reclut" ? "reclutamiento/" : "cobranza/") + "?v=" + APP_VER; const f = main.querySelector("iframe.area");
+  if (S.view==="reclut" || S.view==="cobra"){ requestAnimationFrame(() => { scrollTo(0,0); const nv = $("#nav"); if (nv) document.documentElement.style.setProperty("--navh", nv.offsetHeight + "px"); const hd = document.querySelector("header.top"); if (hd) document.documentElement.style.setProperty("--toph", Math.ceil(hd.getBoundingClientRect().bottom + 6) + "px"); }); const src = (S.view==="reclut" ? "reclutamiento/" : "cobranza/") + "?v=" + APP_VER; const f = main.querySelector("iframe.area");
     if (!f || f.dataset.src !== src) main.innerHTML = `<iframe class="area" data-src="${src}" src="${src}" title="${S.view==="reclut"?"Reclutamiento":"Cobranza"}" style="width:100%;height:calc(100svh - 190px);min-height:420px;border:1px solid var(--line);border-radius:16px;background:#e8dcc6;display:block"></iframe>`;
     return; }
   let html = S.canWrite === false ? `<div class="banner warn">Tu acceso es solo de lectura. Pide a Katerine que te invite como Editor.</div>` : "";
