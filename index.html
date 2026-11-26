@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611260747"></script>
-<script src="anuncios.js?v=202611260747"></script>
-<script src="juego.js?v=202611260747"></script>
+<script src="demo.js?v=202611261100"></script>
+<script src="anuncios.js?v=202611261100"></script>
+<script src="juego.js?v=202611261100"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611260747";
+const APP_VER = "202611261100";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1859,7 +1859,10 @@ function vigilar(){ if (!S.uid) return; const mine = Object.entries(S.appts||{})
   try { if (navigator.setAppBadge) (n+unreadTotal()) ? navigator.setAppBadge(n+unreadTotal()) : navigator.clearAppBadge(); } catch {}
 }
 function canChat(a){ return !!a._priv; }
-function unread(a){ if (!a || !canChat(a)) return 0; const seen = (a.seen&&a.seen[S.uid])||0; return (a.chat||[]).filter(m => m.by!==S.uid && m.at>seen).length; }
+/* Los mensajes de una cita solo le avisan a quien la trabaja (la tiene, la agendó, su líder directo) o a quien ya escribió en ese chat.
+   Quien solo la pasó o era la dueña original sigue viendo la cita, pero no le llegan avisos de sus mensajes. */
+function chatMio(a){ return a.socioId===S.uid || a.agendo===S.uid || a.teleId===S.uid || a.up===S.uid || (a.chat||[]).some(m => m.by===S.uid); }
+function unread(a){ if (!a || !canChat(a) || !chatMio(a)) return 0; const seen = (a.seen&&a.seen[S.uid])||0; return (a.chat||[]).filter(m => m.by!==S.uid && m.at>seen).length; }
 function unreadTotal(){ return Object.values(S.appts||{}).reduce((n,a)=>n+unread(a),0); }
 function chatHtml(a){ const ms = a.chat||[]; return ms.length ? ms.map(m => `<div class="msg ${m.by===S.uid?"mine":""}"><div class="mh">${esc(memberName(m.by))} · ${fmt(m.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}</div><div>${esc(m.text)}</div></div>`).join("") : `<div class="note">Aún no hay mensajes. Escribe aquí para hablar sobre esta cita.</div>`; }
 function refreshChat(){ const id = S.openAppt, el = document.getElementById("chat-list"); if (!id || !el) return; const a = S.appts[id]; if (!a) return; el.innerHTML = chatHtml(a); el.scrollTop = el.scrollHeight; markSeen(id); }
