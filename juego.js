@@ -708,7 +708,7 @@ function subJuegos(){ if (window.subAnuncios) setTimeout(subAnuncios, 0);
   const r = S.me?.role; const q = [["by", S.uid], ["socioId", S.uid]]; if (S.isOwner || r==="admin" || isDist()) q.push(["up", S.uid]); if (r==="tele" && !S.me?.upline) q.push(["tv", true]); if (S.me?.verDe && S.me.verDe !== S.uid) q.push(["socioId", S.me.verDe]); if (typeof jefeBot === "function" && jefeBot()) ["by","socioId","up"].forEach(f => q.push([f, jefeBot()]));
   S.unsub.push(S.db.collection("programs").onSnapshot(s => { S.programs = {}; s.docs.forEach(d => S.programs[d.id] = d.data()); if (S.view==="juego") render(); }, e => console.log("programs", e)));
   q.forEach(([f,v]) => jgSub(f, v).forEach(u => S.unsub.push(u)));
-  setTimeout(() => S.leadsReady = true, 5000);
+  setTimeout(() => S.leadsReady = true, 5000); setTimeout(vincularRepetidos, 8000);
 }
 /* Suscribe links y prospectos de un filtro; devuelve cómo cancelarlo (para quitar el acceso de una telemarketer a un distribuidor) */
 function jgSub(f, v){ const k = f+"|"+v;
@@ -744,6 +744,12 @@ function syncAvance(){ Object.entries(S.juegos||{}).forEach(([code,j]) => { if (
   if (a.visitas !== (j.visitas||0) || a.ganados !== (j.ganados||0)){ if (a.ganados > (j.ganados||0)) avisar("🎁 Un cliente se ganó su regalo", `${j.ref} ya tiene ${a.base} ${a.unidad}. Avísale desde Ruleta.`);
     j.visitas = a.visitas; j.ganados = a.ganados; S.db.doc("juegos/"+code).update({visitas:a.visitas, ganados:a.ganados}).catch(e => console.log("avance", e)); } }); }
 /* El mismo teléfono en otros links o programas tuyos: se avisa, pero igual queda inscrito */
+/* Si la misma persona jugó otro juego y ya tenía cita (o compró), el prospecto nuevo queda ligado a esa cita: no se vuelve a llamar y sale con su venta */
+async function vincularRepetidos(){ if (Date.now() - (S.vrAt||0) < 5*60e3) return; S.vrAt = Date.now();
+  for (const [id,l] of Object.entries(S.leads||{})){ if (l.kind!=="jugador" || l.apptId || !["nuevo","llamado"].includes(l.status||"nuevo") || !l.tel) continue;
+    const o = Object.values(S.leads).find(x => x!==l && x.tel===l.tel && x.apptId && S.appts?.[x.apptId] && S.appts[x.apptId].status!=="cancelada"); if (!o) continue;
+    try { await S.db.doc("leads/"+id).update({status:"cita", apptId:o.apptId, statusAt:Date.now(), notes:(String(l.notes||"") + (l.notes ? "\n" : "") + "🔁 Ya tenía cita por otro juego: quedó ligado a esa cita").slice(0,2000)}); Object.assign(l, {status:"cita", apptId:o.apptId}); } catch(e){ console.log("vincular", id, e); } }
+  render(); }
 function otrasVeces(id){ const l = S.leads[id]; if (!l || !l.tel) return [];
   return Object.entries(S.leads).filter(([k,x]) => k!==id && esProsp(x) && x.tel===l.tel && !(x.code===l.code)).map(([,x]) => x).sort((a,b) => (a.at||0) - (b.at||0)); }
 function repetidoHtml(id){ const o = otrasVeces(id); if (!o.length) return "";
@@ -778,8 +784,9 @@ function gruposLeads(leads){ const g = {};
 const puedeAds = () => role()==="socio" && S.me?.anuncios !== false;
 function anunciosResCard(ads){ if (!ads.length || !(role()==="admin" || (window.esAsist && esAsist()) || puedeAds())) return "";
   const p = ["semana","mes","mesant","todo"].includes(S.f.adp) ? S.f.adp : "todo"; const rg = p==="todo" ? [0, Infinity] : range(p); const enR = t => t >= rg[0] && t < rg[1];
+  const primero = {}; Object.values(S.leads||{}).filter(l => l.kind==="jugador" && l.apptId).sort((a,b) => (a.at||0)-(b.at||0)).forEach(l => { if (!primero[l.apptId]) primero[l.apptId] = l.code; });
   const rows = ads.map(([c,j]) => { const ls = Object.values(S.leads||{}).filter(l => l.code===c && l.kind==="jugador" && enR(l.at||0));
-    const ap = ls.map(l => l.apptId && S.appts[l.apptId]).filter(Boolean);
+    const ap = ls.map(l => l.apptId && primero[l.apptId]===c && S.appts[l.apptId]).filter(Boolean);
     const citas = Math.max(ap.length, ls.filter(l => l.status==="cita").length), demos = ap.filter(a => a.status==="hecha").length, vs = ap.filter(a => a.sale && (a.saleStatus||"pendiente")!=="cancelada");
     return {c, n: j.ref||"Anuncio", vis: p==="todo" ? (j.vis||0) : null, jug: p==="todo" ? (j.jug||0) : null, leads: ls.length, llamados: ls.filter(l => (l.intentos||[]).length || l.status!=="nuevo").length, citas, demos, ventas: vs.length, monto: vs.reduce((t,a) => t+(+a.amount||0), 0), aprob: vs.filter(a => a.saleStatus==="aprobada").length, montoAp: vs.filter(a => a.saleStatus==="aprobada").reduce((t,a) => t+(+a.amount||0), 0), refs: ap.filter(a => a.status==="hecha").reduce((t,a) => t+(+a.refsDemo||0), 0)}; })
     .filter(x => x.leads || x.vis).sort((a,b) => b.leads - a.leads);
