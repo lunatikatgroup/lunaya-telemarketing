@@ -18,7 +18,7 @@ header{padding:18px 16px 4px;max-width:980px;margin:0 auto}
 .brand{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid var(--line);padding-bottom:12px;margin-bottom:10px}
 .brand b{font-family:var(--serif);font-size:30px;letter-spacing:.06em}.brand small{display:block;font-size:11.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
 h1{font-family:var(--serif);font-size:23px;margin:6px 0 2px;text-transform:uppercase}.sub{color:var(--muted);margin:0;font-size:14px}
-main{max-width:980px;margin:0 auto;padding:12px 16px 110px;display:grid;gap:14px}main>*{min-width:0}
+main{max-width:980px;margin:0 auto;padding:12px 16px 40px;display:grid;gap:14px}main>*{min-width:0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
 .card h2{font-family:var(--serif);font-size:18px;text-transform:uppercase;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .btn{border:0;border-radius:10px;padding:11px 16px;font-weight:700;cursor:pointer;background:var(--accent);color:#fff;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
@@ -43,7 +43,7 @@ textarea.i{min-height:70px}
 .bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--accent)}
 table{border-collapse:collapse;width:100%;font-size:14px}th{font-size:11.5px;text-transform:uppercase;color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}td{padding:8px;border-bottom:1px solid var(--line)}td.n,th.n{text-align:right}
 .tbl{overflow-x:auto}
-nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:5}
+nav{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);display:flex;justify-content:space-around;padding:6px 4px;z-index:5;max-width:980px;margin:0 auto;border-radius:0 0 14px 14px;box-shadow:0 4px 12px rgba(0,0,0,.06)}
 nav button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:700;padding:6px;border-radius:10px;cursor:pointer;flex:1;max-width:96px}
 nav button.on{color:var(--accent);background:var(--accent-soft)}nav svg{width:22px;height:22px}
 .nb{display:inline-block;background:#c0392b;color:#fff;border-radius:9px;font-size:10px;padding:0 5px;margin-left:2px}
@@ -61,8 +61,8 @@ nav button.on{color:var(--accent);background:var(--accent-soft)}nav svg{width:22
 <body>
 <header><div class="brand"><svg viewBox="0 0 24 24" width="34" height="34" style="color:var(--accent)"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5zm7-5h2v2h2v2h-2v2h-2v-2h-2v-2h2z"/></svg><div><b>LUNATIKAT</b><small>Reclutamiento</small></div></div>
 <h1 id="title">Cargando…</h1><p class="sub" id="subtitle"></p></header>
-<main id="main"><div class="card empty">Cargando…</div></main>
 <nav id="nav" hidden></nav>
+<main id="main"><div class="card empty">Cargando…</div></main>
 <div id="modal"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -127,7 +127,7 @@ const entrevistadores = () => [...new Set([...(isOwner() ? [S.email] : []), ...S
 function boot(){ const cfg = window.LUNAYA_CONFIG || {}; firebase.initializeApp(cfg.firebase); S.auth = firebase.auth(); S.db = firebase.firestore();
   S.owners = (cfg.owners||[]).map(x => x.toLowerCase());
   S.auth.onAuthStateChanged(u => { S.unsub.forEach(f => { try { f(); } catch {} }); S.unsub = []; S.user = u; S.email = (u?.email||"").toLowerCase(); S.loaded = false; S.cfg = {}; S.cands = {};
-    if (!u) return render();
+    pfHeader(); if (!u) return render(); pfCargar();
     S.unsub.push(S.db.doc("rconfig/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : {}; S.cfgLoaded = true; if (!S.subC && (isOwner() || staff()[S.email])) subCands(); render(); }, e => { S.cfgLoaded = true; render(); }));
     render(); });
 }
@@ -311,7 +311,7 @@ function vPagos(){ const off = +S.f.qoff || 0; const Q = quinR(off); const st = 
   return `<div class="card noprint"><div class="row" style="justify-content:space-between"><button class="btn ghost small" data-qoff="-1">← Anterior</button><b>${fmt(laToMs(Q.a,"12:00"),{day:"numeric",month:"short"})} – ${fmt(laToMs(Q.b,"12:00"),{day:"numeric",month:"short",year:"numeric"})}</b><button class="btn ghost small" data-qoff="1" ${off>=0?"disabled":""}>Siguiente →</button></div>
     <p class="note" style="margin:8px 0 0">Sueldo fijo por quincena. Se paga el ${fmt(laToMs(Q.paga,"12:00"),{weekday:"long",day:"numeric",month:"short"})}. El sueldo de cada persona se cambia aquí abajo.</p></div>
     <div class="card"><h2>💵 Pago de la quincena</h2><div class="tiles"><div class="tile"><b>${money(tot)}</b><span>Total nómina</span></div><div class="tile"><b>${money(pagado)}</b><span>Ya pagado</span></div><div class="tile"><b>${money(Math.max(0,tot-pagado))}</b><span>Falta</span></div></div>
-    ${st.length ? `<div class="list" style="margin-top:10px">${st.map(([em,v]) => { const a = actividadDe(em, Q.r); const p = pag[em]; return `<div class="item ${p?"good":"warn"}" style="cursor:default;display:grid;gap:6px"><div class="row" style="justify-content:space-between"><div><div class="t">${esc(v.name||em)}</div><div class="m">${(v.roles||[]).map(r => ROLES[r]||(r==="direccion"?"Dirección":r)).join(" · ")}</div></div><b style="font-size:20px">${money(+v.sueldo||0)}</b></div>
+    ${st.length ? `<div class="list" style="margin-top:10px">${st.map(([em,v]) => { const a = actividadDe(em, Q.r); const p = pag[em]; return `<div class="item ${p?"good":"warn"}" style="cursor:default;display:grid;gap:6px"><div class="row" style="justify-content:space-between"><div><div class="t" style="display:flex;align-items:center;gap:8px">${pfAv(em,30)}${esc(v.name||em)}</div><div class="m">${(v.roles||[]).map(r => ROLES[r]||(r==="direccion"?"Dirección":r)).join(" · ")}</div></div><b style="font-size:20px">${money(+v.sueldo||0)}</b></div>
       <div class="m">Actividad: ${a.nuevos} prospectos · ${a.agendo} agendó · ${a.entrev} entrevistas (${a.asistieron} asistieron) · ${a.iniciaron} iniciaron · ${a.acciones} acciones registradas</div>
       <div class="row noprint"><label class="note" style="display:flex;gap:4px;align-items:center">Sueldo quincenal $<input class="i" type="number" min="0" step="1" data-sueldo="${esc(em)}" value="${v.sueldo||""}" style="width:100px;padding:6px"></label>${p ? `<span class="tag tg-good">✅ Pagado ${money(p.monto)} · ${fmt(p.at,{day:"numeric",month:"short"})}</span><button class="btn small ghost" data-desp="${esc(em)}">Deshacer</button>` : `<button class="btn small" data-pagar="${esc(em)}" ${+v.sueldo?"":"disabled"}>✅ Marcar pagado</button>`}</div></div>`; }).join("")}</div>` : `<div class="empty">Todavía no hay nadie en el equipo. Agrégalos en «Equipo».</div>`}
     <div class="row noprint" style="margin-top:10px"><button class="btn small dark" onclick="print()">🖨️ PDF / imprimir</button></div></div>`; }
@@ -319,7 +319,7 @@ function vPagos(){ const off = +S.f.qoff || 0; const Q = quinR(off); const st = 
 /* ===== Ajustes (Dirección) ===== */
 function vAjustes(){ const st = staff(); const c = S.cfg; const wk = mondayOf(today());
   return `<div class="card"><h2>Equipo de reclutamiento</h2><p class="note" style="margin-top:-6px">Escribe el correo con el que entra cada persona (el mismo de Lunaya) y marca lo que hace.</p>
-    <div class="list">${Object.entries(st).map(([em,v]) => `<div class="item" style="cursor:default;display:grid"><div class="row" style="justify-content:space-between"><div><div class="t">${esc(v.name||em)}</div><div class="m">${esc(em)}</div></div><button class="btn small ghost" data-del="${esc(em)}">Quitar</button></div>
+    <div class="list">${Object.entries(st).map(([em,v]) => `<div class="item" style="cursor:default;display:grid"><div class="row" style="justify-content:space-between"><div><div class="t" style="display:flex;align-items:center;gap:8px">${pfAv(em,30)}${esc(v.name||em)}</div><div class="m">${esc(em)}</div></div><button class="btn small ghost" data-del="${esc(em)}">Quitar</button></div>
       <div class="chips">${Object.entries({...ROLES, direccion:"Dirección (ve todo)"}).map(([r,l]) => `<label class="chip"><input type="checkbox" data-role="${esc(em)}|${r}" ${(v.roles||[]).includes(r)?"checked":""}> ${l}</label>`).join("")}</div></div>`).join("")}</div>
     <div class="grid2" style="margin-top:10px"><input class="i" id="st-n" placeholder="Nombre (ej.: Jessika)"><input class="i" id="st-e" type="email" placeholder="Correo"></div><button class="btn small" id="st-add" style="margin-top:8px">Agregar al equipo</button></div>
   <div class="card"><h2>Oficina</h2><label class="f">Dirección de la oficina (sale en los mensajes)<input class="i" id="of" value="${esc(c.oficina||"")}" placeholder="Ej.: 1234 Main St, Chula Vista, CA"></label><label class="f" style="margin-top:8px">Meta semanal de entrevistas presenciales (por posteador)<input class="i" type="number" min="1" id="mt-s" value="${c.metaSem||10}" style="max-width:120px"></label><button class="btn small" id="of-s" style="margin-top:8px">Guardar</button></div>
@@ -477,6 +477,22 @@ function csv(){ const rows = [["Fecha","Nombre","Teléfono","Fuente","Campaña",
   ...Object.values(S.cands).sort((a,b) => (a.createdAt||0) - (b.createdAt||0)).map(c => [fmt(c.createdAt,{year:"numeric",month:"2-digit",day:"2-digit"}), c.name, telFmt(c.phone), SRC[c.src]||c.src, c.camp||"", c.zona||"", nameOf(c.poster), nameOf(c.owner), ST[c.stage]||c.stage, c.iv?.when ? fmtWhen(c.iv.when) : "", c.iv?.type||"", c.fueCon ? nameOf(c.fueCon) : "", c.fue ? "Sí" : "", c.start ? fmtWhen(c.start) : "", c.empezoAt ? "Sí" : "", c.activo30===true ? "Sí" : c.activo30===false ? "No" : "", c.porque||"", (c.notes||[]).map(n => n.text).join(" | ")])];
   const cell = v => { const t = v==null ? "" : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g,'""')}"` : t; };
   const url = URL.createObjectURL(new Blob(["﻿" + rows.map(r => r.map(cell).join(",")).join("\r\n")], {type:"text/csv;charset=utf-8"})); const a = document.createElement("a"); a.href = url; a.download = `candidatos-${today()}.csv`; document.body.appendChild(a); a.click(); a.remove(); }
+/* ===== Perfil con foto (el mismo de Lunaya: members/{uid}.photo) ===== */
+const PF = {me:null, byMail:{}};
+function pfCargar(){ if (!S.user) return; try { S.unsub.push(S.db.doc("members/"+S.user.uid).onSnapshot(d => { PF.me = d.exists ? d.data() : null; pfHeader(); }, () => {})); } catch {}
+  S.db.collection("members").get().then(q => { q.docs.forEach(d => { const m = d.data(); if (m.email) PF.byMail[String(m.email).toLowerCase()] = m; }); try { render(); } catch {} }).catch(() => {}); }
+const pfAv = (em, size) => { size = size || 30; const m = em===S.email ? PF.me : PF.byMail[String(em||"").toLowerCase()]; const nm = (m && m.name) || (typeof nameOf==="function" ? nameOf(em) : "") || em || "?"; const ini = String(nm).trim().split(/\s+/).slice(0,2).map(w => w[0]||"").join("").toUpperCase();
+  return m && /^data:image\//.test(m.photo||"") ? `<img src="${m.photo}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;vertical-align:middle;flex:none">` : `<span style="display:inline-grid;place-items:center;width:${size}px;height:${size}px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:${Math.round(size*.38)}px;vertical-align:middle;flex:none">${esc(ini)}</span>`; };
+function pfHeader(){ const brand = document.querySelector(".brand"); if (!brand) return; let b = document.getElementById("pf-btn"); if (!S.user){ if (b) b.remove(); return; }
+  if (!b){ b = document.createElement("button"); b.id = "pf-btn"; b.type = "button"; b.style.cssText = "margin-left:auto;background:none;border:0;cursor:pointer;display:grid;justify-items:center;gap:2px;font:inherit;font-size:11px;font-weight:700;color:var(--muted)"; b.onclick = pfAbrir; brand.appendChild(b); }
+  b.innerHTML = pfAv(S.email, 46) + (PF.me && PF.me.photo ? "Mi perfil" : "📷 Poner foto"); }
+function pfAbrir(){ if (!PF.me){ toast("Tu perfil se arma en Lunaya"); return; }
+  openModal(`<h3>Mi perfil</h3><div style="text-align:center">${pfAv(S.email, 120)}<div style="margin-top:8px;font-weight:800;font-size:18px">${esc(PF.me.name||"")}</div><div class="note">${esc(S.email)}</div></div>
+    <div class="row" style="justify-content:center"><label class="btn small" style="cursor:pointer">📷 ${PF.me.photo?"Cambiar foto":"Poner foto"}<input type="file" id="pf-f" accept="image/*" hidden></label>${PF.me.photo?`<button class="btn small ghost" id="pf-x">Quitar foto</button>`:""}<button class="btn small ghost" data-close>Cerrar</button></div>
+    <p class="note" style="text-align:center">Es la misma foto de Lunaya: si la cambias aquí, cambia en todas partes.</p>`, () => {
+    document.getElementById("pf-f").onchange = e => { const f = e.target.files[0]; if (!f) return; const img = new Image(); img.onload = () => { const c = document.createElement("canvas"); c.width = c.height = 240; const s0 = Math.min(img.width, img.height); c.getContext("2d").drawImage(img, (img.width-s0)/2, (img.height-s0)/2, s0, s0, 0, 0, 240, 240);
+      S.db.doc("members/"+S.user.uid).update({photo:c.toDataURL("image/jpeg", .85)}).then(() => { toast("Foto guardada"); closeModal(); }, e2 => { console.log(e2); toast("No se pudo guardar la foto"); }); }; img.onerror = () => toast("No se pudo abrir esa foto"); img.src = URL.createObjectURL(f); };
+    const x = document.getElementById("pf-x"); if (x) x.onclick = () => S.db.doc("members/"+S.user.uid).update({photo:""}).then(() => { toast("Foto quitada"); closeModal(); }, () => toast("No se pudo")); }); }
 boot();
 </script>
 </body>

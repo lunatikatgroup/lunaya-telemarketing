@@ -78,7 +78,7 @@ table{border-collapse:collapse;width:100%;font-size:14px}th{font-size:11.5px;tex
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611251753"></script>
+<script src="logic.js?v=202611251758"></script>
 <script>
 if (window.top !== window.self) document.documentElement.classList.add("framed");
 /* Cobranza v2. Cuentas en ccli (lo que ya había). Actividad en ccli/{id}/act.
@@ -177,7 +177,7 @@ function boot(){
     S.unsub.forEach(f => { try { f(); } catch(e){} }); S.unsub = [];
     S.user = u; S.uid = u?.uid||""; S.email = (u?.email||"").toLowerCase();
     S.me = null; S.meLoaded = !u; S.cfg = {}; S.cfgLoaded = !u; S.loaded = false; S.cli = {}; S.autos = {}; S.agenda = {}; S.revs = {}; S.drive = ""; S.subC = false; S.subCards = false; S.subM = false; S.membersLoaded = false;
-    if (!u) return render();
+    pfHeader(); if (!u) return render(); pfCargar();
     S.unsub.push(S.db.doc("members/"+S.uid).onSnapshot(s => { S.me = s.exists ? s.data() : null; S.meLoaded = true; maybeSub(); render(); }, () => { S.meLoaded = true; render(); }));
     S.unsub.push(S.db.doc("cconfig/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : {}; S.cfgLoaded = true; if (!S.fInit && canEnter() && !isDir()) S.f.mios = true; S.fInit = S.fInit || canEnter(); maybeSub(); render(); }, () => { S.cfgLoaded = true; render(); }));
   });
@@ -391,7 +391,7 @@ function vAjustes(){
   const sugIds = new Set((L.sugerirTarjetas(S.members).uids)||[]);
   gente.sort((a,b) => (sugIds.has(b[0])?1:0) - (sugIds.has(a[0])?1:0));
   return `<div class="card"><h2>Equipo de cobranza</h2><p class="note" style="margin-top:-6px">Agrega a Arisbel y a Milady con el correo con el que entran a Lunaya. Lo que marques es el grupo que les toca.</p>
-    ${st.length?`<div class="list">${st.map(([em,v]) => `<div class="item normal" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t">${esc(v.name||em)}</div><div class="m">${esc(em)}</div><div class="chips" style="margin-top:6px">${Object.entries(ROLES).map(([k,l]) => `<label class="chip ${(v.roles||[]).includes(k)?"on":""}" style="cursor:pointer"><input type="checkbox" data-rol="${esc(em)}|${k}" ${(v.roles||[]).includes(k)?"checked":""} hidden>${l}</label>`).join("")}</div></div><button class="btn small ghost" data-stdel="${esc(em)}">Quitar</button></div>`).join("")}</div>`:`<div class="empty">Solo tú tienes acceso por ahora.</div>`}
+    ${st.length?`<div class="list">${st.map(([em,v]) => `<div class="item normal" style="cursor:default;flex-wrap:wrap"><div style="flex:1;min-width:180px"><div class="t" style="display:flex;align-items:center;gap:8px">${pfAv(em,30)}${esc(v.name||em)}</div><div class="m">${esc(em)}</div><div class="chips" style="margin-top:6px">${Object.entries(ROLES).map(([k,l]) => `<label class="chip ${(v.roles||[]).includes(k)?"on":""}" style="cursor:pointer"><input type="checkbox" data-rol="${esc(em)}|${k}" ${(v.roles||[]).includes(k)?"checked":""} hidden>${l}</label>`).join("")}</div></div><button class="btn small ghost" data-stdel="${esc(em)}">Quitar</button></div>`).join("")}</div>`:`<div class="empty">Solo tú tienes acceso por ahora.</div>`}
     <form id="st-f" class="grid2" style="margin-top:10px"><label class="f">Nombre<input class="i" id="st-n" required></label><label class="f">Correo<input class="i" id="st-e" type="email" required></label><div><button class="btn" type="submit">Agregar</button></div></form></div>
     <div class="card"><h2>Pueden ver tarjetas</h2>
       <p class="note" style="margin-top:-6px">Tú eliges quién lee y escribe la tarjeta en archivo. Tú siempre puedes. Los bots nunca, aunque los marques. No se guarda el código de seguridad (CVV).</p>
@@ -806,21 +806,22 @@ function autoFila(base, by){ const met = ["tarjeta","cheque","sitio","llamada"].
   return {clientId:base.clientId||"", nombre:String(base.nombre||"").slice(0,120), cuenta:String(base.cuenta||"").slice(0,40), dia:Math.max(0, Math.min(31, +base.dia||0)), fecha:/^\d{4}-\d{2}-\d{2}$/.test(base.fecha||"")?base.fecha:"", monto:+base.monto||0, metodo:met, notas:String(base.notas||"").slice(0,500), by:by||S.email, updatedAt:Date.now()}; }
 function agendaFila(base, by){ return {fecha:base.fecha||today(), hora:String(base.hora||"09:00").slice(0,8), clientId:base.clientId||"", nombre:String(base.nombre||"").slice(0,120), tipo:AGENDA_TIPO[base.tipo]?base.tipo:"llamar", asignada:String(base.asignada||S.email).slice(0,80), notas:String(base.notas||"").slice(0,800), estado:base.estado==="hecho"?"hecho":"pendiente", by:by||S.email, createdAt:base.createdAt||Date.now(), hechoAt:+base.hechoAt||0}; }
 function genteMails(){ const g = Object.entries(staff()); if ((isOwner()||isBot()) && S.email && !staff()[S.email]) g.unshift([S.email,{name:isOwner()?"Katerine":"Bot"}]); return g; }
-function optsGente(sel){ return genteMails().map(([em,v]) => `<option value="${esc(em)}" ${sel===em?"selected":""}>${esc(v.name||em)}</option>`).join(""); }
+function optsGente(sel, conEquipo){ return (conEquipo ? `<option value="equipo" ${sel==="equipo"?"selected":""}>👥 Compartida (todas)</option>` : "") + genteMails().map(([em,v]) => `<option value="${esc(em)}" ${sel===em?"selected":""}>${esc(v.name||em)}</option>`).join(""); }
 function optsCli(sel){ return `<option value="">Sin cuenta ligada</option>`+Object.entries(S.cli).sort((a,b)=>nombreDe(a[1]).localeCompare(nombreDe(b[1]),"es")).map(([id,c]) => `<option value="${esc(id)}" ${sel===id?"selected":""}>${esc(nombreDe(c)||id)}${c.cuenta?" · "+esc(c.cuenta):""}</option>`).join(""); }
 function revisiones(){ const out = []; Object.entries(S.autos).forEach(([id,a]) => { const fecha = L.revisionFecha(a, today()); if (!fecha || !enRangoFecha(fecha)) return; if (S.revs[id+"_"+fecha]) return; out.push({id, fecha, a}); }); return out; }
 function vAgenda(){
-  const who = S.agWho;
-  const citas = Object.entries(S.agenda).filter(([,a]) => enRangoFecha(a.fecha) && (!who || a.asignada===who)).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
-  const revs = revisiones().filter(r => { if (!who) return true; const c = S.cli[r.a.clientId]; return c ? encargada(c)===who : false; });
+  const vista = S.agVista || (isOwner() ? "todas" : "mia"); const who = vista==="todas" ? S.agWho : vista==="mia" ? S.email : "equipo";
+  const citas = Object.entries(S.agenda).filter(([,a]) => enRangoFecha(a.fecha) && (!who || a.asignada===who || (vista==="mia" && a.asignada==="equipo"))).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
+  const revs = revisiones().filter(r => { if (!who || who==="equipo") return true; const c = S.cli[r.a.clientId]; return c ? encargada(c)===who : false; });
   const filaC = ([id,a]) => { const cc = a.clientId && S.cli[a.clientId]; const nom = cc ? `<button type="button" class="linkish" data-open="${esc(a.clientId)}">${esc(nombreDe(cc)||a.nombre)}</button>` : esc(a.nombre||"Sin cliente"); const vt = cc ? vendTxt(cc) : "";
-    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${esc(nameOf(a.asignada))}${a.notas?" · "+esc(a.notas):""}</div></div>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
+    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.notas?" · "+esc(a.notas):""}</div></div>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
   const filaR = r => { const c = S.cli[r.a.clientId]; const nom = c ? `<button type="button" class="linkish" data-open="${esc(r.a.clientId)}">${esc(nombreDe(c)||r.a.nombre)}</button>` : esc(r.a.nombre||"Cliente");
     return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag" style="background:#ede9fe;color:#6d28d9">Revisión pago automático</span></div><div class="m">${esc(r.fecha)} · ${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo)}${r.a.dia?` · día ${r.a.dia}`:""}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small danger" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; };
   const autos = Object.entries(S.autos).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||""),"es"));
   return `<div class="card"><div class="row"><div class="chips"><button class="chip ${S.agWhen==="hoy"?"on":""}" data-agw="hoy">Hoy</button><button class="chip ${S.agWhen==="semana"?"on":""}" data-agw="semana">Semana</button></div>
-    <select class="i" id="ag-who" style="max-width:220px"><option value="">Todas</option>${optsGente(who)}</select><button class="btn small" id="ag-add">Nueva cita</button></div>
-    <p class="note">Toca el nombre para abrir la cuenta. En morado: al día siguiente de cada pago automático hay que confirmar si pasó.</p></div>
+    <div class="chips"><button class="chip ${vista==="mia"?"on":""}" data-agv="mia">📒 Mi agenda</button><button class="chip ${vista==="equipo"?"on":""}" data-agv="equipo">👥 Compartida</button><button class="chip ${vista==="todas"?"on":""}" data-agv="todas">Todas</button></div>
+    ${vista==="todas" ? `<select class="i" id="ag-who" style="max-width:220px"><option value="">De todas</option>${optsGente(S.agWho)}</select>` : ""}<button class="btn small" id="ag-add">Nueva cita</button></div>
+    <p class="note">📒 <b>Mi agenda</b>: lo tuyo y lo compartido. 👥 <b>Compartida</b>: lo que ven las tres (al crear la cita escoge «Compartida (todas)»). Toca el nombre para abrir la cuenta. En morado: al día siguiente de cada pago automático hay que confirmar si pasó.</p></div>
     <div class="card"><h2>Para ${S.agWhen==="hoy"?"hoy":"esta semana"} <span class="note">${citas.length+revs.length}</span></h2>
       ${revs.length?`<div class="list">${revs.map(filaR).join("")}</div>`:""}
       ${citas.length?`<div class="list" style="margin-top:8px">${citas.map(filaC).join("")}</div>`:`<div class="empty">${revs.length?"":"Nada en la agenda para este periodo."}</div>`}</div>
@@ -853,7 +854,7 @@ function openAgenda(id){ const a = id ? (S.agenda[id]||{}) : {asignada:S.email, 
     <label class="f">Cuenta<select class="i" id="ag-cli">${optsCli(a.clientId||"")}</select></label>
     <label class="f">Nombre si no está en la lista<input class="i" id="ag-n" value="${esc(a.nombre||"")}"></label>
     <label class="f">Tipo<select class="i" id="ag-t">${Object.entries(AGENDA_TIPO).map(([k,l]) => `<option value="${k}" ${(a.tipo||"llamar")===k?"selected":""}>${l}</option>`).join("")}</select></label>
-    <label class="f">Asignada a<select class="i" id="ag-as">${optsGente(a.asignada||S.email)}</select></label>
+    <label class="f">Asignada a<select class="i" id="ag-as">${optsGente(a.asignada||S.email, true)}</select></label>
     <label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="ag-no">${esc(a.notas||"")}</textarea></label>
   </div><div class="row"><button class="btn" id="ag-ok">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     $("#ag-ok").onclick = async () => { const cid = qv("ag-cli"); const c = S.cli[cid]; const nombre = qv("ag-n").trim() || (c&&c.nombre) || ""; if (!nombre) return toast("Escribe el cliente");
@@ -901,6 +902,7 @@ function bind(){
   all("[data-open]", b => b.onclick = ev => { ev.stopPropagation(); openCli(b.dataset.open); });
   all("[data-agw]", b => b.onclick = () => { S.agWhen = b.dataset.agw; render(); });
   const aw = $("#ag-who"); if (aw) aw.onchange = () => { S.agWho = aw.value; render(); };
+  document.querySelectorAll("[data-agv]").forEach(b => b.onclick = () => { S.agVista = b.dataset.agv; render(); });
   const aa = $("#ag-add"); if (aa) aa.onclick = () => openAgenda(null);
   const an = $("#ag-new"); if (an) an.onclick = () => openAuto(null);
   all("[data-auto]", b => b.onclick = () => openAuto(b.dataset.auto));
@@ -949,6 +951,22 @@ function loginHtml(){ return `<div class="card" style="max-width:440px;margin:0 
 function bindLogin(){ $("#lg-g").onclick = () => { const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"}); S.auth.signInWithPopup(p).catch(() => $("#lg-msg").textContent = "No se pudo entrar con Google. Prueba con tu correo."); };
   let mode = "in"; document.querySelectorAll("[data-m]").forEach(b => b.onclick = () => mode = b.dataset.m);
   $("#lg-f").onsubmit = e => { e.preventDefault(); const em = $("#lg-e").value.trim(), pw = $("#lg-p").value; (mode==="up" ? S.auth.createUserWithEmailAndPassword(em, pw) : S.auth.signInWithEmailAndPassword(em, pw)).catch(() => $("#lg-msg").textContent = "Correo o contraseña incorrectos."); }; }
+/* ===== Perfil con foto (el mismo de Lunaya: members/{uid}.photo) ===== */
+const PF = {me:null, byMail:{}};
+function pfCargar(){ if (!S.user) return; try { S.unsub.push(S.db.doc("members/"+S.user.uid).onSnapshot(d => { PF.me = d.exists ? d.data() : null; pfHeader(); }, () => {})); } catch {}
+  S.db.collection("members").get().then(q => { q.docs.forEach(d => { const m = d.data(); if (m.email) PF.byMail[String(m.email).toLowerCase()] = m; }); try { render(); } catch {} }).catch(() => {}); }
+const pfAv = (em, size) => { size = size || 30; const m = em===S.email ? PF.me : PF.byMail[String(em||"").toLowerCase()]; const nm = (m && m.name) || (typeof nameOf==="function" ? nameOf(em) : "") || em || "?"; const ini = String(nm).trim().split(/\s+/).slice(0,2).map(w => w[0]||"").join("").toUpperCase();
+  return m && /^data:image\//.test(m.photo||"") ? `<img src="${m.photo}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;vertical-align:middle;flex:none">` : `<span style="display:inline-grid;place-items:center;width:${size}px;height:${size}px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:${Math.round(size*.38)}px;vertical-align:middle;flex:none">${esc(ini)}</span>`; };
+function pfHeader(){ const brand = document.querySelector(".brand"); if (!brand) return; let b = document.getElementById("pf-btn"); if (!S.user){ if (b) b.remove(); return; }
+  if (!b){ b = document.createElement("button"); b.id = "pf-btn"; b.type = "button"; b.style.cssText = "margin-left:auto;background:none;border:0;cursor:pointer;display:grid;justify-items:center;gap:2px;font:inherit;font-size:11px;font-weight:700;color:var(--muted)"; b.onclick = pfAbrir; brand.appendChild(b); }
+  b.innerHTML = pfAv(S.email, 46) + (PF.me && PF.me.photo ? "Mi perfil" : "📷 Poner foto"); }
+function pfAbrir(){ if (!PF.me){ toast("Tu perfil se arma en Lunaya"); return; }
+  openModal(`<h3>Mi perfil</h3><div style="text-align:center">${pfAv(S.email, 120)}<div style="margin-top:8px;font-weight:800;font-size:18px">${esc(PF.me.name||"")}</div><div class="note">${esc(S.email)}</div></div>
+    <div class="row" style="justify-content:center"><label class="btn small" style="cursor:pointer">📷 ${PF.me.photo?"Cambiar foto":"Poner foto"}<input type="file" id="pf-f" accept="image/*" hidden></label>${PF.me.photo?`<button class="btn small ghost" id="pf-x">Quitar foto</button>`:""}<button class="btn small ghost" data-close>Cerrar</button></div>
+    <p class="note" style="text-align:center">Es la misma foto de Lunaya: si la cambias aquí, cambia en todas partes.</p>`, () => {
+    document.getElementById("pf-f").onchange = e => { const f = e.target.files[0]; if (!f) return; const img = new Image(); img.onload = () => { const c = document.createElement("canvas"); c.width = c.height = 240; const s0 = Math.min(img.width, img.height); c.getContext("2d").drawImage(img, (img.width-s0)/2, (img.height-s0)/2, s0, s0, 0, 0, 240, 240);
+      S.db.doc("members/"+S.user.uid).update({photo:c.toDataURL("image/jpeg", .85)}).then(() => { toast("Foto guardada"); closeModal(); }, e2 => { console.log(e2); toast("No se pudo guardar la foto"); }); }; img.onerror = () => toast("No se pudo abrir esa foto"); img.src = URL.createObjectURL(f); };
+    const x = document.getElementById("pf-x"); if (x) x.onclick = () => S.db.doc("members/"+S.user.uid).update({photo:""}).then(() => { toast("Foto quitada"); closeModal(); }, () => toast("No se pudo")); }); }
 boot();
 </script>
 </body>
