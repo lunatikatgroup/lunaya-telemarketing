@@ -42,7 +42,7 @@ textarea.i{min-height:70px}
 .list{display:grid;gap:8px}
 .item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:12px;background:var(--card);cursor:pointer;text-align:left;width:100%}
 .item .t{font-weight:800;font-size:16px}.item .m{color:var(--muted);font-size:13px}
-.item.normal{border-left-color:var(--accent)}.item.verde{border-left-color:var(--good)}.item.amarillo{border-left-color:#d4a017}.item.naranja{border-left-color:#e07a1f}.item.rojo{border-left-color:var(--bad)}.item.azul{border-left-color:var(--blue)}
+.item.normal{border-left-color:var(--accent)}.item.verde{border-left-color:var(--good)}.item.amarillo{border-left-color:#d4a017}.item.naranja{border-left-color:#e07a1f}.item.rojo{border-left-color:var(--bad)}.item.morado{border-left-color:#7c3aed}.item.azul{border-left-color:var(--blue)}
 .item.hoy{box-shadow:inset 0 0 0 2px var(--bad)}.item.semana{box-shadow:inset 0 0 0 2px var(--warn)}.item.rev{border-left-color:#6d28d9;background:#f6f0ff}
 .tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;white-space:nowrap}
 .tg-good{background:var(--good-bg);color:var(--good)}.tg-warn{background:var(--warn-bg);color:var(--warn)}.tg-bad{background:var(--bad-bg);color:var(--bad)}.tg-mute{background:var(--soft);color:var(--muted)}.tg-acc{background:var(--accent-soft);color:var(--accent)}
@@ -163,6 +163,8 @@ function streakNo(id, c){
   return n;
 }
 const tono = (id,c) => L.toneOf({...c, sinContestar:streakNo(id,c)});
+/* Color de la línea de la tarjeta: por días de atraso (0–30 amarillo, 31+ rojo); skip morado y update azul aparte */
+const linea = c => L.esSkip(c) ? "morado" : (L.esUpdate(c) && !L.updateAprobado(c)) ? "azul" : (c.etapa==="cerrado" || (+c.atraso||0) <= 0) ? "verde" : (+c.atraso||0) <= 30 ? "amarillo" : "rojo";
 function llamadasDe(id,c){ const legacy = (c.log||[]).filter(x => x.res && x.res!=="nota").length; if (S.actsReady) return (S.acts[id]||[]).filter(a => a.tipo==="llamada").length + legacy; return (+c.llamadas||0) + legacy; }
 function ultimoDe(id,c){ const t = [c.ultContacto||0, c.ultLlamada||0]; (S.acts[id]||[]).forEach(a => t.push(a.at||0)); (c.log||[]).forEach(x => t.push(x.at||0)); return Math.max(0,...t); }
 function touch(o){ o.updatedAt = Date.now(); if (isBot()){ o.lastSyncAt = Date.now(); o.syncedBy = S.email; } return o; }
@@ -280,7 +282,7 @@ function filtros(){
     <div class="row" style="margin-top:8px"><select class="i" id="f-cob" style="max-width:220px"><option value="">Todas las cobradoras</option><option value="sin" ${S.f.cob==="sin"?"selected":""}>Sin asignar</option>${gente.map(([em,v]) => `<option value="${esc(em)}" ${S.f.cob===em?"selected":""}>${esc(v.name||em)}</option>`).join("")}</select>
     <select class="i" id="f-tono" style="max-width:220px"><option value="">Todos los estados</option>${[["skip","Skip"],["no","No contestó 3+"],["promesa","Promesa"],["update","Update"],["verde","Al día / pagó"]].map(([k,l]) => `<option value="${k}" ${S.f.tono===k?"selected":""}>${l}</option>`).join("")}</select>
     ${isDir()?"":`<label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mios" ${S.f.mios?"checked":""}> Solo los míos</label>`}</div>
-    <p class="note" style="margin:8px 0 0">Rojo = skip · naranja = no contestó 3 veces · amarillo = promesa · verde = al día · azul = update ofrecido.</p>`;
+    <p class="note" style="margin:8px 0 0">Línea: 🟡 amarillo = 1–30 días · 🔴 rojo = 31 días o más · 🟣 morado = skip · 🔵 azul = update · 🟢 verde = al día. Las promesas y los "no contestó" salen como etiqueta.</p>`;
 }
 function cItem(id, c, extra){
   const t = tono(id, c); const g = bucketOf(c);
@@ -289,12 +291,13 @@ function cItem(id, c, extra){
   const tags = [c.etapa==="postventa"?`<span class="tag tg-acc">Postventa</span>`:`<span class="tag ${g==="aldia"?"tg-good":g==="g30"?"tg-warn":"tg-bad"}">${GRUPOS[g]}</span>`,
     L.esSkip(c)?`<span class="tag tg-bad">SKIP</span>`:"", c.skipLlamo?`<span class="tag tg-mute">Ya llamó a Hy Cite</span>`:"", L.esUpdate(c)?`<span class="tag tg-blue">UPDATE ${L.updateAprobado(c)?"aprobado":"por aprobar"}${c.updateMonto?" · "+money(c.updateMonto):""}</span>`:"",
     c.promesa?.fecha && !c.promesa.ok ? `<span class="tag tg-yellow">Promesa ${esc(String(c.promesa.fecha).slice(5))}${c.promesa.monto?" · "+money(c.promesa.monto):""}</span>`:"",
+    t==="naranja"?`<span class="tag tg-orange">No contestó 3+</span>`:"",
     c.carolina?`<span class="tag tg-mute">Avisada Carolina</span>`:"",
     encargada(c)?`<span class="tag tg-mute">${esc(first(nameOf(encargada(c))))}</span>`:""].join(" ");
   const link = L.safeHttps(c.payLink) ? `<span class="tag tg-good">Link listo</span>` : (Object.values(S.links).some(x => x.clientId===id && x.status==="pendiente") ? `<span class="tag tg-warn">Link pedido</span>` : "");
   const fono = tel10(c.tel).length===10 ? `<button type="button" class="linkish" data-phone="${esc(id)}">${esc(telFmt(c.tel))}</button>` : "";
   const vend = vendTxt(c);
-  return `<div class="item ${t}" data-c="${esc(id)}"><div style="flex:1;min-width:0"><div class="t">${esc(nombreDe(c)||"Sin nombre")}</div>${fono?`<div style="margin-top:2px">${fono}</div>`:""}<div class="m">${sub}</div>${vend?`<div class="m">${esc(vend)}</div>`:""}<div class="m">${calls} llamada${calls===1?"":"s"} · último contacto ${ult?fmtWhen(ult):"nunca"}</div><div style="margin-top:4px">${tags} ${link}</div>
+  return `<div class="item ${linea(c)}" data-c="${esc(id)}"><div style="flex:1;min-width:0"><div class="t">${esc(nombreDe(c)||"Sin nombre")}</div>${fono?`<div style="margin-top:2px">${fono}</div>`:""}<div class="m">${sub}</div>${vend?`<div class="m">${esc(vend)}</div>`:""}<div class="m">${calls} llamada${calls===1?"":"s"} · último contacto ${ult?fmtWhen(ult):"nunca"}</div><div style="margin-top:4px">${tags} ${link}</div>
     ${L.esSkip(c)?`<div class="banner bad" style="margin-top:8px">${esc(SKIP_TXT)}${c.skipNota?" "+esc(c.skipNota):""}</div>`:""}
     ${extra||""}</div></div>`;
 }
