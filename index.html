@@ -194,13 +194,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611251728"></script>
-<script src="anuncios.js?v=202611251728"></script>
-<script src="juego.js?v=202611251728"></script>
+<script src="demo.js?v=202611251736"></script>
+<script src="anuncios.js?v=202611251736"></script>
+<script src="juego.js?v=202611251736"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611251728";
+const APP_VER = "202611251736";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2247,6 +2247,9 @@ function viewRanking(){
     return {...x, name: (dn ? dn + " · " : "") + (m.name || memberName(x.id))}; }).sort((a,b)=>b.monto-a.monto||b.aprob-a.aprob);
   h += board("✅ Ventas aprobadas · por distribución", distA, [["aprob","aprobadas"],["gente","personas vendieron"],["ventas","ventas en total"]], "monto", true);
   h += board("✅ Ventas aprobadas · telemarketers", teleA, [["citas","citas"],["demos","demostraciones"],["ventas","ventas"],["aprob","aprobadas"]], "monto", true);
+  /* Para comprobar: qué órdenes aprobadas le cuentan a cada telemarketer en este periodo (fecha de aprobación) */
+  { const det = telesLunaya().map(t => [t, Object.values(S.appts).filter(a => a.teleId===t.id && a.sale && a.saleStatus==="aprobada" && a.tipoVisita!=="servicio" && enCorte(a, rg)).sort((x,y) => aprobAt(x) - aprobAt(y))]).filter(([,l]) => l.length);
+    if (det.length) h += `<div class="card"><h2>🔎 ¿Qué órdenes le cuentan a cada una?</h2><p class="note" style="margin-top:-6px">${rangoTxt(p)}. Cuenta la fecha en que se <b>aprobó</b> la orden, no la de la cita. Toca un nombre para ver sus órdenes.</p>${det.map(([t,l]) => `<details style="margin-top:6px"><summary style="cursor:pointer"><b>${esc(t.name)}</b> · ${l.length} aprobada${l.length===1?"":"s"} · ${money(l.reduce((n,a)=>n+(+a.amount||0),0))}</summary><div class="tbl-wrap"><table><thead><tr><th>Aprobada</th><th>Cita</th><th>Cliente</th><th>Vendió</th><th class="n">Monto</th></tr></thead><tbody>${l.map(a => `<tr><td>${fmt(aprobAt(a),{day:"numeric",month:"short"})}</td><td class="note">${fmt(a.when,{day:"numeric",month:"short"})}</td><td>${esc(a._priv && a.client ? a.client : (a.nomVenta || "—"))}</td><td>${esc(firstName2(memberName(a.socioId)))}</td><td class="n">${money(a.amount)}</td></tr>`).join("")}</tbody></table></div></details>`).join("")}</div>`; }
   return h;
 }
 
