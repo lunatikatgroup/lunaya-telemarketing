@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lunatikat Reclutamiento</title>
+<title>Lunaya · Reclutamiento</title>
 <link rel="icon" href="../favicon.png">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Reclutamiento">
@@ -56,10 +56,11 @@ nav button.on{color:var(--accent);background:var(--accent-soft)}nav svg{width:22
 .tl{display:grid;gap:6px;max-height:220px;overflow:auto}.tl div{background:var(--soft);border-radius:10px;padding:7px 10px;font-size:14px}.tl small{display:block;color:var(--muted);font-size:11.5px;font-weight:700}
 @media print{header .brand,nav,.noprint,#modal,.toast{display:none!important}body{background:#fff}.card{break-inside:avoid;border-color:#ccc}main{padding-bottom:0}}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:90%}
+html.embebido .brand{display:none!important}
 </style>
 </head>
 <body>
-<header><div class="brand"><svg viewBox="0 0 24 24" width="34" height="34" style="color:var(--accent)"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5zm7-5h2v2h2v2h-2v2h-2v-2h-2v-2h2z"/></svg><div><b>LUNATIKAT</b><small>Reclutamiento</small></div></div>
+<header><div class="brand"><svg viewBox="0 0 24 24" width="34" height="34" style="color:var(--accent)"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5zm7-5h2v2h2v2h-2v2h-2v-2h-2v-2h2z"/></svg><div><b>LUNAYA</b><small>Sistema de reclutamiento</small></div></div>
 <h1 id="title">Cargando…</h1><p class="sub" id="subtitle"></p></header>
 <nav id="nav" hidden></nav>
 <main id="main"><div class="card empty">Cargando…</div></main>
@@ -69,6 +70,7 @@ nav button.on{color:var(--accent);background:var(--accent-soft)}nav svg{width:22
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
 <script>
+try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 /* ===== Lunatikat Reclutamiento =====
    rcands/{id}: candidatos. rconfig/main: equipo (por correo), oficina, campañas, mensajes, gasto de publicidad. */
 const TZ = "America/Los_Angeles";
