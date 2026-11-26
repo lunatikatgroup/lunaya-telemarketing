@@ -540,9 +540,24 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if isOwnerEmail();
     }
+    function vendedorOk() {
+      return (isAdmin() && !isBot())
+        || (resource != null
+          && request.resource.data.get('vendedorId', '') == resource.data.get('vendedorId', '')
+          && request.resource.data.get('vendedorNombre', '') == resource.data.get('vendedorNombre', '')
+          && request.resource.data.get('changedBy', '') == resource.data.get('changedBy', '')
+          && request.resource.data.get('changedAt', 0) == resource.data.get('changedAt', 0))
+        || (resource == null && !request.resource.data.keys().hasAny(['vendedorId', 'vendedorNombre', 'changedBy', 'changedAt']));
+    }
+    function vendedorForma() {
+      return (!('vendedorId' in request.resource.data) || (request.resource.data.vendedorId is string && request.resource.data.vendedorId.size() <= 80))
+        && (!('vendedorNombre' in request.resource.data) || (request.resource.data.vendedorNombre is string && request.resource.data.vendedorNombre.size() <= 80))
+        && (!('changedBy' in request.resource.data) || (request.resource.data.changedBy is string && request.resource.data.changedBy.size() <= 80))
+        && (!('changedAt' in request.resource.data) || request.resource.data.changedAt is number);
+    }
     match /ccli/{id} {
       allow read: if cAccess();
-      allow create, update: if cAccess() && noSecrets() && request.resource.data.keys().size() < 80;
+      allow create, update: if cAccess() && noSecrets() && request.resource.data.keys().size() < 80 && vendedorOk() && vendedorForma();
       allow delete: if isOwnerEmail();
       match /act/{aid} {
         allow read: if cAccess();
@@ -567,6 +582,70 @@ service cloud.firestore {
     match /clinkreq/{id} {
       allow read: if cAccess();
       allow create, update: if cAccess() && linkOk();
+      allow delete: if isOwnerEmail();
+    }
+    function autoOk() {
+      return noSecrets()
+        && request.resource.data.keys().hasOnly(['clientId', 'nombre', 'cuenta', 'dia', 'fecha', 'monto', 'metodo', 'notas', 'by', 'updatedAt'])
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() <= 120
+        && request.resource.data.cuenta is string && request.resource.data.cuenta.size() <= 40
+        && request.resource.data.clientId is string && request.resource.data.clientId.size() <= 80
+        && request.resource.data.dia is number && request.resource.data.dia >= 0 && request.resource.data.dia <= 31
+        && request.resource.data.fecha is string && request.resource.data.fecha.size() <= 20
+        && request.resource.data.monto is number && request.resource.data.monto >= 0
+        && request.resource.data.metodo in ['tarjeta', 'cheque', 'sitio', 'llamada']
+        && request.resource.data.notas is string && request.resource.data.notas.size() <= 500
+        && request.resource.data.updatedAt is number
+        && mismoAutor();
+    }
+    function agendaOk() {
+      return noSecrets()
+        && request.resource.data.keys().hasOnly(['fecha', 'hora', 'clientId', 'nombre', 'tipo', 'asignada', 'notas', 'estado', 'by', 'createdAt', 'hechoAt'])
+        && request.resource.data.fecha is string && request.resource.data.fecha.size() <= 20
+        && request.resource.data.hora is string && request.resource.data.hora.size() <= 8
+        && request.resource.data.clientId is string && request.resource.data.clientId.size() <= 80
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() <= 120
+        && request.resource.data.tipo in ['llamar', 'ir', 'entrega', 'otro']
+        && request.resource.data.asignada is string && request.resource.data.asignada.size() <= 80
+        && request.resource.data.notas is string && request.resource.data.notas.size() <= 800
+        && request.resource.data.estado in ['pendiente', 'hecho']
+        && request.resource.data.createdAt is number
+        && request.resource.data.hechoAt is number
+        && mismoAutor();
+    }
+    function revOk() {
+      return request.resource.data.keys().hasOnly(['autopagoId', 'fecha', 'resultado', 'by', 'at'])
+        && request.resource.data.autopagoId is string && request.resource.data.autopagoId.size() > 0 && request.resource.data.autopagoId.size() <= 80
+        && request.resource.data.fecha is string && request.resource.data.fecha.size() <= 20
+        && request.resource.data.resultado in ['procesado', 'rechazado']
+        && request.resource.data.at is number
+        && request.resource.data.by == request.auth.token.email.lower();
+    }
+    function fuenteOk() {
+      return request.resource.data.keys().hasOnly(['url', 'by', 'updatedAt'])
+        && request.resource.data.url is string && request.resource.data.url.size() <= 500
+        && (request.resource.data.url == '' || request.resource.data.url.matches('^https://.+'))
+        && request.resource.data.updatedAt is number
+        && request.resource.data.by == request.auth.token.email.lower();
+    }
+    match /cautopago/{id} {
+      allow read: if cAccess();
+      allow create, update: if cAccess() && autoOk();
+      allow delete: if isOwnerEmail();
+    }
+    match /cagenda/{id} {
+      allow read: if cAccess();
+      allow create, update: if cAccess() && agendaOk();
+      allow delete: if isOwnerEmail();
+    }
+    match /carev/{id} {
+      allow read: if cAccess();
+      allow create, update: if cAccess() && revOk();
+      allow delete: if isOwnerEmail();
+    }
+    match /cautolink/{id} {
+      allow read: if cAccess();
+      allow create, update: if cAccess() && fuenteOk();
       allow delete: if isOwnerEmail();
     }
     match /ctarjetas/{id} {

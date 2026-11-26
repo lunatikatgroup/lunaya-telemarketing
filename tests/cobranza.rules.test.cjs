@@ -150,6 +150,26 @@ test("el bot no cambia la lista de tarjetas ni la configuración", async () => {
   await assertSucceeds(setDoc(doc(db(owner), "cconfig/main"), { tarjetas: ["aris"] }, { merge: true }));
 });
 
+test("el vendedor lo cambia la dueña y el bot no", async () => {
+  await assertSucceeds(updateDoc(doc(db(owner), "ccli/ana"), { vendedorId: "rebeca", vendedorNombre: "Rebeca", changedBy: OWNER, changedAt: Date.now() }));
+  await assertFails(updateDoc(doc(db(bot), "ccli/ana"), { vendedorNombre: "Otra" }));
+  await assertFails(updateDoc(doc(db(aris), "ccli/ana"), { vendedorId: "x", vendedorNombre: "X" }));
+  await assertSucceeds(updateDoc(doc(db(bot), "ccli/ana"), { atraso: 9 }));
+  await assertFails(setDoc(doc(db(bot), "ccli/botcli"), { nombre: "Bot", vendedorId: "rebeca", vendedorNombre: "Rebeca", by: "bot@example.com" }));
+});
+
+test("el bot anota pagos automáticos y agenda, y no los borra", async () => {
+  const fila = { clientId: "ana", nombre: "Ana", cuenta: "9", dia: 15, fecha: "", monto: 80, metodo: "tarjeta", notas: "", by: "bot@example.com", updatedAt: Date.now() };
+  const cita = { fecha: "2026-11-26", hora: "09:00", clientId: "ana", nombre: "Ana", tipo: "llamar", asignada: "arisbel@example.com", notas: "", estado: "pendiente", by: "bot@example.com", createdAt: Date.now(), hechoAt: 0 };
+  const ref = await assertSucceeds(addDoc(collection(db(bot), "cautopago"), fila));
+  await assertSucceeds(getDoc(doc(db(aris), ref.path)));
+  await assertFails(deleteDoc(ref));
+  await assertFails(getDoc(doc(db(stranger), ref.path)));
+  const ag = await assertSucceeds(addDoc(collection(db(bot), "cagenda"), cita));
+  await assertFails(deleteDoc(ag));
+  await assertSucceeds(setDoc(doc(db(bot), "cautolink/main"), { url: "https://docs.google.com/spreadsheets/d/abc", by: "bot@example.com", updatedAt: Date.now() }));
+});
+
 test("el bot crea postventa y no la borra", async () => {
   const ref = await assertSucceeds(addDoc(collection(db(bot), "cpost"), orden("bot@example.com")));
   await assertFails(deleteDoc(ref));

@@ -8,11 +8,14 @@
   const BLOCKED = new Set(["cvv", "cvc", "cvv2", "cid", "securitycode", "numero", "pan", "tarjeta", "cardnumber", "card", "numerodetarjeta", "codigoseguridad"]);
   const ALIAS = {
     nombre: "nombre", name: "nombre", cliente: "nombre",
+    apellido: "apellido", apellidos: "apellido", lastname: "apellido", last: "apellido",
     cuenta: "cuenta", account: "cuenta", accountnumber: "cuenta", numerodecuenta: "cuenta",
-    tel: "tel", telefono: "tel", phone: "tel", celular: "tel",
-    email: "email", correo: "email",
-    direccion: "direccion", address: "direccion", domicilio: "direccion",
+    tel: "tel", telefono: "tel", phone: "tel", celular: "tel", movil: "tel", mobile: "tel", cellphone: "tel",
+    email: "email", correo: "email", correoelectronico: "email", mail: "email",
+    direccion: "direccion", address: "direccion", domicilio: "direccion", calle: "direccion", street: "direccion", address1: "direccion",
     ciudad: "ciudad", city: "ciudad",
+    estado: "estado", state: "estado",
+    zip: "zip", zipcode: "zip", postalcode: "zip", codigopostal: "zip", cp: "zip",
     producto: "producto", product: "producto",
     pedido: "pedido", ordenid: "pedido",
     saldo: "saldo", balance: "saldo",
@@ -226,12 +229,16 @@
     if (src._keys.indexOf("nombre") === -1 && src._keys.indexOf("cuenta") === -1 && src._keys.indexOf("tel") === -1) return { error: "Falta nombre, cuenta o teléfono." };
     const o = {};
     const set = function (k, v) { if (src._keys.indexOf(k) !== -1) o[k] = v; };
-    set("nombre", clip(src.nombre, 80));
-    set("tel", clip(src.tel, 30));
+    set("nombre", clip(nombreCompleto(src) || src.nombre, 120));
+    set("apellido", clip(src.apellido, 80));
+    set("tel", clip(src.tel, 40));
     set("email", safeMail(src.email) || (src._keys.indexOf("email") !== -1 ? "" : undefined));
     if (src._keys.indexOf("email") !== -1 && src.email && !safeMail(src.email)) warnings.push("Correo no válido, se dejó vacío: " + src.email);
-    set("direccion", clip(src.direccion, 200));
-    set("ciudad", clip(src.ciudad, 60));
+    if (["direccion", "ciudad", "estado", "zip"].some(function (k) { return src._keys.indexOf(k) !== -1; })) {
+      o.direccion = direccionCompleta(src);
+      if (src._keys.indexOf("direccion") === -1) src._keys.push("direccion");
+    }
+    set("ciudad", clip(src.ciudad, 80));
     set("cuenta", clip(src.cuenta, 40));
     set("producto", clip(src.producto, 160));
     set("pedido", clip(src.pedido, 40));
@@ -335,6 +342,63 @@
   }
 
   /* A quién marca de entrada «Pueden ver tarjetas». No escribe nada: Katerine confirma. */
+  function addDaysISO(d, n){
+    const p = String(d||"").split("-").map(Number);
+    if (p.length < 3 || !p[0]) return "";
+    return new Date(Date.UTC(p[0], p[1]-1, p[2]+n, 12)).toISOString().slice(0,10);
+  }
+  /* Día X del mes (o una fecha fija) se revisa al día siguiente. */
+  function revisionFecha(row, hoy){
+    const fecha = String(row && row.fecha || "");
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return addDaysISO(fecha, 1);
+    const dia = +(row && row.dia) || 0;
+    if (dia < 1 || !/^\d{4}-\d{2}-\d{2}$/.test(String(hoy||""))) return "";
+    const y = +hoy.slice(0,4), m = +hoy.slice(5,7);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const pay = y + "-" + String(m).padStart(2,"0") + "-" + String(Math.min(dia, last)).padStart(2,"0");
+    return addDaysISO(pay, 1);
+  }
+
+  function direccionCompleta(src) {
+    src = src || {};
+    const parts = [];
+    [src.direccion, src.ciudad, src.estado || src.state, src.zip || src.cp].forEach(function (p) {
+      const s = clip(p, 200);
+      if (!s) return;
+      const have = parts.join(", ").toLowerCase();
+      if (have.indexOf(s.toLowerCase()) !== -1) return;
+      parts.push(s);
+    });
+    return parts.join(", ").slice(0, 300);
+  }
+
+  function limpioNombre(v) { return String(v || "").trim().replace(/\s+/g, " "); }
+  /* Si uno de los dos nombres es el otro más el apellido, se queda el largo. Si no coinciden, se queda el primero. */
+  function nombreMasLargo(a, b) {
+    const x = limpioNombre(a), y = limpioNombre(b);
+    if (!x) return y;
+    if (!y) return x;
+    const xl = x.toLowerCase(), yl = y.toLowerCase();
+    if (xl === yl) return x.length >= y.length ? x : y;
+    if (yl.indexOf(xl + " ") === 0 || yl.slice(-(xl.length + 1)) === " " + xl) return y;
+    if (xl.indexOf(yl + " ") === 0 || xl.slice(-(yl.length + 1)) === " " + yl) return x;
+    return x;
+  }
+  function conApellido(base, ape) {
+    const b = limpioNombre(base), a = limpioNombre(ape);
+    if (!a) return b;
+    if (!b) return a;
+    if (b.toLowerCase().indexOf(a.toLowerCase()) !== -1) return b;
+    return b + " " + a;
+  }
+  /* Nombre y apellido de la cita o de la cuenta. Si solo hay nombre, se queda así. */
+  function nombreCompleto(src) {
+    src = src || {};
+    const cands = [src.client, src.nomVenta, src.nombre, src.name].map(limpioNombre).filter(Boolean);
+    cands.sort(function (a, b) { return b.length - a.length; });
+    return conApellido(cands[0] || "", src.apellido || src.apellidos || src.lastName || "");
+  }
+
   /* El correo (en minúsculas) está en cconfig/main.staff. La dueña y el bot se deciden aparte. */
   function enStaffCobranza(email, staff) {
     if (!staff || typeof staff !== "object" || !email) return false;
@@ -369,6 +433,6 @@
   return {
     bucketOf: bucketOf, esSkip: esSkip, esUpdate: esUpdate, updateAprobado: updateAprobado, toneOf: toneOf, canPay: canPay,
     digitsCard: digitsCard, maskCard: maskCard, formatCard: formatCard, safeHttps: safeHttps, safeMail: safeMail,
-    mensajeCliente: mensajeCliente, parseTable: parseTable, sugerirTarjetas: sugerirTarjetas, enStaffCobranza: enStaffCobranza, asDate: asDate, money: money
+    mensajeCliente: mensajeCliente, parseTable: parseTable, sugerirTarjetas: sugerirTarjetas, enStaffCobranza: enStaffCobranza, revisionFecha: revisionFecha, nombreCompleto: nombreCompleto, nombreMasLargo: nombreMasLargo, asDate: asDate, money: money
   };
 });
