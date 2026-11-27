@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611271359"></script>
-<script src="anuncios.js?v=202611271359"></script>
-<script src="juego.js?v=202611271359"></script>
+<script src="demo.js?v=202611271419"></script>
+<script src="anuncios.js?v=202611271419"></script>
+<script src="juego.js?v=202611271419"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611271359";
+const APP_VER = "202611271419";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2063,8 +2063,8 @@ function openAppt(id, o0={}){
   const teleAcc = r==="tele" && !S.me?.upline && a._priv;
   /* La líder (Carly) maneja completas las citas que sacó cualquier telemarketer del programa */
   const liderAcc = r==="tele" && S.me?.lider && !S.me?.upline && esTeleProg(a.agendo);
-  const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc || liderAcc || (isDist() && S.members[a.socioId]?.upline===S.uid); const canEdit = r==="admin" || a.agendo===S.uid || a.socioId===S.uid || teleAcc || liderAcc;
-  const canClient = a._priv && (r==="admin" || a.agendo===S.uid || a.socioId===S.uid || liderAcc);
+  const canResult = r==="admin" || a.socioId===S.uid || (r==="tele" && a.agendo===S.uid) || teleAcc || liderAcc || (isDist() && S.members[a.socioId]?.upline===S.uid); const canEdit = r==="admin" || a.agendo===S.uid || a.teleId===S.uid || a.socioId===S.uid || teleAcc || liderAcc;
+  const canClient = a._priv && (r==="admin" || a.agendo===S.uid || a.teleId===S.uid || a.socioId===S.uid || liderAcc);
   /* La líder (Carly) puede aprobar o cancelar cualquier venta, también las que Dirección o los distribuidores reportan como hechas */
   const soloEstado = !canResult && esLiderProg() && a.sale;
   openModal(`<h3>${esc(cName(a))}</h3>
@@ -2270,6 +2270,38 @@ function board(title, list, metrics, sortKey, total, clic){
     <div class="bar" style="margin-top:0"><i style="width:${Math.round(x[sortKey]*100/max)}%"></i></div>
     <div class="row note" style="gap:14px">${metrics.filter(([k]) => k!=="citas" || role()==="admin" || x.id===S.uid).map(([k,l])=>`<span><b style="color:var(--ink)">${k==="monto"?money(x[k]):x[k]}</b> ${l}</span>`).join("")}</div>${clic ? `<div class="note" style="color:var(--accent);font-weight:700">Toca para ver los clientes aprobados →</div>` : ""}</div>`).join("")}</div>${total ? `<div class="row" style="justify-content:space-between;margin-top:10px;padding:12px 14px;border-radius:14px;background:var(--accent);color:#fff"><b>Total</b><span style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline">${metrics.filter(([k]) => k!=="citas" || role()==="admin").map(([k,l]) => `<span style="font-size:13px;opacity:.9"><b>${list.reduce((n,x)=>n+(+x[k]||0),0)}</b> ${l}</span>`).join("")}<b style="font-family:var(--serif);font-size:22px">${money(list.reduce((n,x)=>n+(+x[sortKey]||0),0))}</b></span></div>` : ""}</div>`;
 }
+/* ===== Efectividad en la misma base de datos =====
+   Cada llamada queda con la base (distribuidor + fuente) y la telemarketer. Si varias repasaron la misma base,
+   se compara cuántas citas sacó cada una por cada 100 llamadas contra lo que sacaron las demás en esas mismas bases. */
+function efectividadCard(rg, p){ if (!(role()==="admin" || esLiderProg())) return "";
+  const B = {};
+  Object.values(S.logs||{}).forEach(d => (d.calls||[]).forEach(c => { const at = c.at||0; if (!inR(at, rg) || !c.socioId) return; const tid = c.teleId || d.teleId; if (!tid) return;
+    const k = c.socioId+"|"+(c.source||"Otro"); const b = B[k] ||= {k, socio:c.socioId, src:c.source||"Otro", t:{}};
+    const t = b.t[tid] ||= {id:tid, calls:0, cont:0, citas:0, first:at, last:at}; t.calls++; if (CONTACT.has(c.result)) t.cont++; if (c.result==="cita") t.citas++; t.first = Math.min(t.first, at); t.last = Math.max(t.last, at); }));
+  const bases = Object.values(B).map(b => { const L = Object.values(b.t).sort((x,y) => x.first-y.first); return {...b, L, calls:L.reduce((n,x)=>n+x.calls,0), citas:L.reduce((n,x)=>n+x.citas,0)}; })
+    .filter(b => b.L.length >= 2).sort((a,b) => b.calls-a.calls);
+  const tasa = (ci, ca) => ca ? ci*100/ca : 0; const f1 = n => (Math.round(n*10)/10).toLocaleString("es-US");
+  /* Índice: citas que sacó ÷ citas que habrían sacado las demás con esas mismas llamadas, en esas mismas bases */
+  const T = {}; bases.forEach(b => b.L.forEach(x => { const oCa = b.calls - x.calls, oCi = b.citas - x.citas; const r = T[x.id] ||= {id:x.id, calls:0, cont:0, citas:0, esp:0, bases:0, sinBase:0};
+    r.calls += x.calls; r.cont += x.cont; r.citas += x.citas; r.bases++; if (oCa) r.esp += x.calls * oCi / oCa; }));
+  const rows = Object.values(T).filter(r => r.calls).map(r => ({...r, idx: r.esp > 0 ? r.citas / r.esp : null})).sort((a,b) => (b.idx??-1)-(a.idx??-1) || b.citas-a.citas);
+  const MIN = 20;
+  const etiqueta = r => { if (r.calls < MIN) return `<span class="tag tg-mute">pocas llamadas</span>`;
+    if (r.idx === null) return r.citas ? `<span class="tag tg-good">sacó citas donde las demás no</span>` : `<span class="tag tg-mute">nadie sacó citas en esas bases</span>`;
+    if (r.idx >= 1.25) return `<span class="tag tg-good">${f1(r.idx)}× las demás</span>`;
+    if (r.idx >= 0.8) return `<span class="tag tg-warn">igual que las demás</span>`;
+    return `<span class="tag tg-bad">${r.citas ? f1(r.idx)+"× las demás" : "0 citas donde las demás sí sacaron"}</span>`; };
+  const fila = r => `<div class="item" style="cursor:default;display:block"><div class="row" style="justify-content:space-between;gap:8px"><span class="t nm-av">${av(r.id,28)}${esc(memberName(r.id))}</span>${etiqueta(r)}</div>
+    <div class="m">${r.calls} llamadas · ${r.cont} contactos · <b>${r.citas} citas</b> · ${f1(tasa(r.citas, r.calls))} citas por cada 100 llamadas · en ${r.bases} base(s) que también repasaron otras${r.esp>0?` · las demás habrían sacado ~${f1(r.esp)}`:""}</div></div>`;
+  const baseH = b => `<div class="item" style="cursor:default;display:block"><div class="t">${esc(memberName(b.socio))} · <span class="note">${esc(b.src)}</span></div>
+    <div class="m">${b.calls} llamadas · ${b.citas} citas · promedio ${f1(tasa(b.citas, b.calls))} por cada 100</div>
+    <div style="margin-top:6px;display:grid;gap:4px">${b.L.map((x,i) => { const tx = tasa(x.citas, x.calls), pr = tasa(b.citas, b.calls); const col = x.calls < 10 ? "var(--mute,#888)" : tx > pr*1.25 ? "#15803d" : tx < pr*0.8 ? "#b91c1c" : "var(--ink)";
+      return `<div class="row" style="justify-content:space-between;gap:8px;font-size:14px"><span>${i+1}ª · ${esc(firstName2(memberName(x.id)))} <span class="note">desde ${fmt(x.first,{day:"numeric",month:"short"})}</span></span><span style="color:${col}"><b>${x.citas}</b> cita(s) / ${x.calls} llam. · ${f1(tx)}%</span></div>`; }).join("")}</div></div>`;
+  return `<div class="card"><h2>🎯 Efectividad en la misma base de datos</h2>
+    <p class="note" style="margin-top:-6px">${rangoTxt(p)}. Se comparan solo las bases que repasó más de una telemarketer (mismo distribuidor y misma fuente). «2× las demás» = sacó el doble de citas que las otras con la misma cantidad de llamadas en esa base. Con menos de ${MIN} llamadas no se juzga.</p>
+    ${rows.length ? `<div class="list">${rows.map(fila).join("")}</div>
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Ver cada base (${bases.length}) y quién la repasó primero</summary><div class="list" style="margin-top:8px">${bases.map(baseH).join("")}</div></details>`
+    : `<div class="empty">En este periodo ninguna base la repasó más de una telemarketer todavía.</div>`}</div>`; }
 function viewRanking(){ if (role()==="tele" && !S.rkIni){ S.rkIni = 1; S.f.period = "quin"; }
   const p = ["semana","quin","quinant","mes","mesant"].includes(S.f.period) || String(S.f.period||"").startsWith("w:") ? S.f.period : (role()==="tele" ? "quin" : "mes"); const rg = range(p);
   const teles = telesLunaya().map(t => { const e = teleEval(t.id, rg); return {id:t.id, name:t.name, citas:e.citas, demos:e.demos, ventas:e.ventas, aprob:e.aprob, hecho:money(e.monto), monto:e.montoAprob||0}; }).sort((a,b)=>b.monto-a.monto||b.aprob-a.aprob||b.ventas-a.ventas||b.demos-a.demos);
@@ -2291,6 +2323,7 @@ function viewRanking(){ if (role()==="tele" && !S.rkIni){ S.rkIni = 1; S.f.perio
     return {...x, name: (dn ? dn + " · " : "") + (m.name || memberName(x.id))}; }).sort((a,b)=>b.monto-a.monto||b.aprob-a.aprob);
   h += board("✅ Ventas aprobadas · por distribución", distA, [["aprob","aprobadas"],["gente","personas vendieron"],["ventas","ventas en total"]], "monto", true);
   h += board("✅ Ventas aprobadas · telemarketers", teleA, [["citas","citas"],["demos","demostraciones"],["ventas","ventas"],["aprob","aprobadas"]], "monto", true, "rkt");
+  h += efectividadCard(rg, p);
   h += `<div class="card"><h2>🔍 ¿Por qué no me cuenta una venta?</h2><p class="note" style="margin-top:-6px">Escribe el nombre del cliente y Lunaya te dice de quién es la venta, si está aprobada, cuándo se aprobó y en qué quincena cuenta.</p><div class="row"><input class="i" id="rk-q" placeholder="Ej.: Amalia Figueroa" value="${esc(S.f.rkq||"")}" style="flex:1;min-width:160px"><button class="btn small" id="rk-qb">Buscar</button></div>${S.f.rkq ? rkBuscar(S.f.rkq) : ""}</div>`;
   /* Para comprobar: qué órdenes aprobadas le cuentan a cada telemarketer en este periodo (fecha de aprobación) */
   { const det = telesLunaya().map(t => [t, Object.values(S.appts).filter(a => a.teleId===t.id && a.sale && a.saleStatus==="aprobada" && a.tipoVisita!=="servicio" && enCorte(a, rg)).sort((x,y) => aprobAt(x) - aprobAt(y))]).filter(([,l]) => l.length);

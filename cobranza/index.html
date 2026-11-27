@@ -79,7 +79,7 @@ html.embebido .brand{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611271359"></script>
+<script src="logic.js?v=202611271419"></script>
 <script>
 try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 if (window.top !== window.self) document.documentElement.classList.add("framed");
@@ -859,7 +859,7 @@ function vAgenda(){
   const citas = Object.entries(S.agenda).filter(([,a]) => enRangoFecha(a.fecha) && (!who || a.asignada===who || (vista==="mia" && a.asignada==="equipo"))).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
   const revs = revisiones().filter(r => { if (!who || who==="equipo") return true; const c = S.cli[r.a.clientId]; return c ? encargada(c)===who : false; });
   const filaC = ([id,a]) => { const cc = a.clientId && S.cli[a.clientId]; const nom = cc ? `<button type="button" class="linkish" data-open="${esc(a.clientId)}">${esc(nombreDe(cc)||a.nombre)}</button>` : esc(a.nombre||"Sin cliente"); const vt = cc ? vendTxt(cc) : "";
-    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.dir?" · 📍 "+esc(a.dir):""}${a.notas?" · "+esc(a.notas):""}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
+    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.dir?" · 📍 "+esc(a.dir):""}${a.notas?" · "+esc(a.notas):""}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div><button class="btn small ghost" data-agedit="${esc(id)}" title="Editar">✏️ Editar</button>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
   const filaR = r => { const c = S.cli[r.a.clientId]; const nom = c ? `<button type="button" class="linkish" data-open="${esc(r.a.clientId)}">${esc(nombreDe(c)||r.a.nombre)}</button>` : esc(r.a.nombre||"Cliente");
     return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag" style="background:#ede9fe;color:#6d28d9">Revisión pago automático</span></div><div class="m">${esc(r.fecha)} · ${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo)}${r.a.dia?` · día ${r.a.dia}`:""}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small danger" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; };
   const autos = Object.entries(S.autos).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||""),"es"));
@@ -902,10 +902,11 @@ function openAgenda(id){ const a = id ? (S.agenda[id]||{}) : {asignada:S.email, 
     <label class="f">Asignada a<select class="i" id="ag-as">${optsGente(a.asignada||S.email, true)}</select></label>
     <label class="f">Teléfono<input class="i" id="ag-tel" value="${esc(a.tel||"")}" placeholder="Se llena solo si escoges la cuenta"></label>
     <label class="f">Dirección (para visitas)<input class="i" id="ag-dir" value="${esc(a.dir||"")}" placeholder="Se llena sola si escoges la cuenta"></label>
+    ${id?`<label class="f">Estado<select class="i" id="ag-es"><option value="pendiente" ${a.estado!=="hecho"?"selected":""}>Pendiente</option><option value="hecho" ${a.estado==="hecho"?"selected":""}>Hecho</option></select></label>`:""}
     <label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="ag-no">${esc(a.notas||"")}</textarea></label>
   </div><div class="row"><button class="btn" id="ag-ok">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     $("#ag-ok").onclick = async () => { const cid = qv("ag-cli"); const c = S.cli[cid]; const nombre = qv("ag-n").trim() || (c&&c.nombre) || ""; if (!nombre) return toast("Escribe el cliente");
-      const data = agendaFila(Object.assign({}, a, {fecha:qv("ag-f")||today(), hora:qv("ag-h")||"09:00", clientId:cid, nombre, tipo:qv("ag-t"), asignada:qv("ag-as")||S.email, notas:qv("ag-no"), estado:a.estado||"pendiente", hechoAt:a.hechoAt||0, createdAt:a.createdAt||Date.now(),
+      const data = agendaFila(Object.assign({}, a, {fecha:qv("ag-f")||today(), hora:qv("ag-h")||"09:00", clientId:cid, nombre, tipo:qv("ag-t"), asignada:qv("ag-as")||S.email, notas:qv("ag-no"), estado:(document.getElementById("ag-es")?.value)||a.estado||"pendiente", hechoAt:(document.getElementById("ag-es")?.value==="pendiente") ? 0 : (a.hechoAt||(document.getElementById("ag-es")?.value==="hecho"?Date.now():0)), createdAt:a.createdAt||Date.now(),
         tel:qv("ag-tel").trim() || (c&&c.tel) || "", dir:qv("ag-dir").trim() || (c&&c.direccion) || ""}), a.by||S.email);
       const guardar = d => id ? S.db.doc("cagenda/"+id).set(d) : S.db.collection("cagenda").add(d);
       try { await guardar(data); closeModal(); toast(data.asignada===S.owners[0] ? "Cita guardada · ya le sale a Katerine en su agenda" : "Cita guardada"); }
@@ -960,6 +961,7 @@ function bind(){
   const an = $("#ag-new"); if (an) an.onclick = () => openAuto(null);
   all("[data-auto]", b => b.onclick = () => openAuto(b.dataset.auto));
   all("[data-hecho]", b => b.onclick = ev => { ev.stopPropagation(); marcarHecho(b.dataset.hecho); });
+  all("[data-agedit]", b => b.onclick = ev => { ev.stopPropagation(); openAgenda(b.dataset.agedit); });
   all("[data-rev]", b => b.onclick = ev => { ev.stopPropagation(); const [id,fecha,res] = b.dataset.rev.split("|"); resolverRev(id, fecha, res); });
   const dk = $("#ag-drive-ok"); if (dk) dk.onclick = async () => { const url = qv("ag-drive").trim(); if (url && !/^https:\/\//i.test(url)) return toast("El enlace tiene que empezar con https://"); try { await S.db.doc("cautolink/main").set({url, by:S.email, updatedAt:Date.now()}); toast("Enlace guardado"); } catch(e){ err(e); } };
   const fl = $("#ag-file"); if (fl) fl.onchange = async () => { const f = fl.files && fl.files[0]; fl.value = ""; if (!f) return; try { await importarAutos(f); } catch(e){ toast("No se pudo leer el archivo. Prueba con CSV o Excel."); console.log(e); } };
