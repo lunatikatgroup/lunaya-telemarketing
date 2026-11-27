@@ -79,7 +79,7 @@ html.embebido .brand{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611271129"></script>
+<script src="logic.js?v=202611271341"></script>
 <script>
 try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 if (window.top !== window.self) document.documentElement.classList.add("framed");
@@ -153,7 +153,13 @@ const ym = () => today().slice(0,7);
 const diaHoy = () => +today().slice(8,10);
 const ultimoDia = () => { const [y,m] = today().split("-").map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); };
 const pagaHoy = c => c.pago?.dia && c.etapa!=="cerrado" && (Math.min(+c.pago.dia, ultimoDia()) === diaHoy()) && !(c.revis||{})[ym()];
-const esMio = c => isDir() ? true : (encargada(c)===S.email || (c.etapa==="postventa" && (staff()[S.email]?.roles||[]).includes("post")));
+/* Las cuentas de una cobradora: las que le asignaron a ella, o las de su rango (0-30, 31-60, 61+) si no tienen a nadie asignado.
+   Si dos tienen el mismo rango, las dos las ven. Si todavía no le marcaron ningún rango, ve todas (para que nunca le salga vacío). */
+const misRoles = () => staff()[S.email]?.roles || [];
+const esMio = c => { if (isDir()) return true; const r = misRoles();
+  if (c.etapa==="postventa" && r.includes("post")) return true;
+  if (c.asignada) return c.asignada===S.email;
+  return r.includes(bucketOf(c)) || !["g30","g60","g90"].some(k => r.includes(k)); };
 const postFalta = c => [!c.post?.llamada && "Llamada de bienvenida", !c.post?.visita?.hecha && "Visita de entrega", !c.pago?.dia && "Pagos automáticos"].filter(Boolean);
 function streakNo(id, c){
   const items = [];
@@ -245,7 +251,7 @@ function pasaFiltro(id,c){
   return pasaQuery(c);
 }
 function enBucket(c,g){ return c.etapa!=="cerrado" && bucketOf(c)===g; }
-const countB = g => Object.values(S.cli).filter(c => enBucket(c,g)).length;
+const countB = g => Object.values(S.cli).filter(c => enBucket(c,g) && (!S.f.mios || esMio(c))).length;
 function tabCount(k){
   if (k==="g30"||k==="g60"||k==="g90") return countB(k);
   if (k==="post") return Object.keys(S.post).length;
