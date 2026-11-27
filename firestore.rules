@@ -378,6 +378,11 @@ service cloud.firestore {
       allow update: if isLeader() && get(memberPath(resource.data.owner)).data.role == 'baja'
          && request.resource.data.owner == request.auth.uid
          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['owner', 'deQuien', 'pasadaAt']);
+      // La asistente de Katerine ve su agenda (actividades y recordatorios) y puede marcarlos como hechos
+      allow read: if isAsist() && get(memberPath(resource.data.owner)).data.get('email', '').lower() in ['lunatikatgroup@gmail.com'];
+      allow update: if isAsist() && get(memberPath(resource.data.owner)).data.get('email', '').lower() in ['lunatikatgroup@gmail.com']
+         && request.resource.data.owner == resource.data.owner
+         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hecho', 'hechos', 'hechoAt', 'nota']);
       allow create: if isMember() && request.resource.data.owner == request.auth.uid;
     }
 

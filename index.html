@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611271505"></script>
-<script src="anuncios.js?v=202611271505"></script>
-<script src="juego.js?v=202611271505"></script>
+<script src="demo.js?v=202611271522"></script>
+<script src="anuncios.js?v=202611271522"></script>
+<script src="juego.js?v=202611271522"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611271505";
+const APP_VER = "202611271522";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1543,9 +1543,11 @@ const CAG_TXT = {llamar:"Llamar", visita:"Visitar al cliente", ir:"Ir por pago",
 const cagAt = x => laToMs(x.fecha||today(), String(x.hora||"09:00").slice(0,5));
 /* Agenda de Cobranza/Postventa asignada a esta persona, dentro de «Citas» (mismo día; en Hoy también las atrasadas) */
 /* Agenda de Katerine para su asistente: sus citas de ventas/servicio y lo que Cobranza le asignó, por día */
-function viewKAgenda(){ const K = ownerUid(); const d0 = S.f.kag || today(); const r = [laToMs(d0,"00:00"), laToMs(addDays(d0,1),"00:00")]; const items = [];
+function viewKAgenda(){ const K = ownerUid();
+  if (K && !S.recsKSub){ S.recsKSub = true; S.unsub.push(S.db.collection("recordatorios").where("owner", "==", K).onSnapshot(q => { S.recsK = {}; q.docs.forEach(d => S.recsK[d.id] = d.data()); render(); }, e => { S.recsK = {}; console.log("recsK", e.code||e); })); } const d0 = S.f.kag || today(); const r = [laToMs(d0,"00:00"), laToMs(addDays(d0,1),"00:00")]; const items = [];
   Object.entries(S.appts||{}).forEach(([id,a]) => { if (a.socioId!==K || !inR(a.when||0, r) || a.status==="cancelada") return; const k = a.tipoVisita==="servicio" ? "serv" : a.sale && a.saleStatus==="aprobada" ? "aprob" : a.sale ? "verif" : "demo";
     items.push({at:a.when, k, t:cName(a), m:[a.city, a.status==="hecha" ? (a.sale ? "Venta "+money(a.amount) : "Demostración hecha") : a.status==="no_se_hizo" ? "No se hizo" : ""].filter(Boolean).join(" · "), attr:`data-appt="${id}"`}); });
+  Object.entries(S.recsK||{}).forEach(([id,x]) => { if (x.tipo==="precita") return; const at = recEn(x, r); if (!at) return; items.push({at, k: x.tipo==="actividad" ? "act" : "llamar", t:x.nombre||"", m:(x.rep ? REP_TXT[x.rep]+(x.nota?" · ":"") : "")+(x.nota||""), attr:""}); });
   Object.entries(S.cagK||{}).forEach(([id,x]) => { if (x.estado==="hecho") return; const at = cagAt(x), atr = d0===today() && x.fecha < d0; if (x.fecha!==d0 && !atr) return;
     items.push({at: atr ? r[0] : at, hx:at, k:CAG_K(x.tipo), t:x.nombre||"Cliente", m:[atr?"⚠️ atrasada":"", CAG_TXT[x.tipo]||"", x.dir?"📍 "+x.dir:"", x.notas||""].filter(Boolean).join(" · "), attr:`data-cag="${id}"`}); });
   items.sort((a,b) => a.at - b.at);
