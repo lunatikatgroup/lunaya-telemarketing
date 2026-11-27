@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611271341"></script>
-<script src="anuncios.js?v=202611271341"></script>
-<script src="juego.js?v=202611271341"></script>
+<script src="demo.js?v=202611271345"></script>
+<script src="anuncios.js?v=202611271345"></script>
+<script src="juego.js?v=202611271345"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611271341";
+const APP_VER = "202611271345";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -442,6 +442,8 @@ function subscribeAll(){
   S.unsub.push(S.db.collection("calllog").where("date", ">=", from).onSnapshot(s => { S.logs = {}; s.docs.forEach(d => S.logs[d.id] = d.data()); S.loaded.logs = true; render(); }, onErr));
   S.unsub.push(S.db.doc("config/main").onSnapshot(s => { S.config = s.exists ? s.data() : {}; if (!(s.metadata && s.metadata.fromCache)) S.cfgLoaded = true; render(); }, onErr));
   subPagosDist();
+  /* Lo que Cobranza/Postventa le asigna a esta persona (por su correo) también sale en su agenda de Lunaya */
+  if (S.email) S.unsub.push(S.db.collection("cagenda").where("asignada", "==", S.email).onSnapshot(s => { S.cag = {}; s.docs.forEach(d => S.cag[d.id] = d.data()); render(); }, e => { S.cag = {}; console.log("cagenda", e.code||e); }));
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
   if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner || esBot()){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
@@ -1532,7 +1534,25 @@ function avisosTransfer(){ let seen; try { seen = new Set(JSON.parse(localStorag
     if (role()==="tele" && a.teleId===S.uid && a.socioId!==S.uid && reciente(a.transferredAt) && a.transferredBy !== S.uid) ev.push(["tl"+a.transferredAt, "🔀 Pasaron una cita que agendaste", `${cName(a)} ahora es de ${memberName(a.socioId)}`]);
     ev.forEach(([k,t,b]) => { const key = id+"|"+k; if (seen.has(key)) return; seen.add(key); cambio = true; if (!first){ avisar(t, b); toast(t+": "+b); } }); });
   if (cambio || first) try { localStorage.setItem("ly-trv-"+S.uid, JSON.stringify([...seen].slice(-400))); } catch {} }
-const AG_COL = {demo:["#9f1239","🍳 Demostración"], aprob:["#15803d","💰 Venta aprobada"], verif:["#7e22ce","💜 Venta en verificación"], serv:["#0f766e","🛠️ Servicio"], llamar:["#c2410c","📞 Llamar"], act:["#1d4ed8","📌 Actividad"]};
+const AG_COL = {demo:["#9f1239","🍳 Demostración"], aprob:["#15803d","💰 Venta aprobada"], verif:["#7e22ce","💜 Venta en verificación"], serv:["#0f766e","🛠️ Servicio"], llamar:["#c2410c","📞 Llamar"], act:["#1d4ed8","📌 Actividad"], cobLl:["#b45309","☎️ Cobranza: llamar"], cobVi:["#4338ca","🏠 Visita de cobranza"], post:["#db2777","📦 Postventa"]};
+const CAG_K = t => t==="visita" || t==="ir" ? "cobVi" : t==="entrega" ? "post" : "cobLl";
+const CAG_TXT = {llamar:"Llamar", visita:"Visitar al cliente", ir:"Ir por pago", entrega:"Confirmar entrega", otro:"Pendiente"};
+const cagAt = x => laToMs(x.fecha||today(), String(x.hora||"09:00").slice(0,5));
+function openCag(id){ const x = (S.cag||{})[id]; if (!x) return; const t = String(x.tel||"").replace(/\D/g,"").slice(-10); const k = CAG_K(x.tipo);
+  openModal(`<h3 style="border-left:6px solid ${AG_COL[k][0]};padding-left:10px">${esc(x.nombre||"Cliente")}</h3>
+    <p class="note" style="margin-top:-4px">${AG_COL[k][1]} · ${esc(CAG_TXT[x.tipo]||x.tipo)} · ${fmt(cagAt(x),{weekday:"long",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}<br>Te la puso ${esc((Object.values(S.members||{}).find(m => (m.email||"").toLowerCase()===x.by)||{}).name || String(x.by||"").split("@")[0])} desde Cobranza</p>
+    ${t.length===10?`<div class="row" style="gap:6px;margin-bottom:8px"><a class="btn small" href="tel:+1${t}">📞 Llamar</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}">WhatsApp</a></div>`:""}
+    ${x.dir?`<p>📍 <a target="_blank" rel="noopener" href="https://maps.apple.com/?q=${encodeURIComponent(x.dir)}">${esc(x.dir)}</a></p>`:""}
+    ${x.notas?`<p style="white-space:pre-wrap">${esc(x.notas)}</p>`:""}
+    ${x.estado==="hecho" ? `<div class="banner good">✅ Hecha${x.res?": "+esc(x.res):""}</div><div class="row"><button class="btn ghost" data-close>Cerrar</button></div>` :
+    `<label class="f">¿Qué pasó? (lo ve la chica de cobranza)<textarea class="i" id="cag-r" maxlength="480" placeholder="Ej.: pagó $150, quedó de pagar el viernes, no estaba…"></textarea></label>
+    <div class="row"><button class="btn" id="cag-ok">✅ Marcar como hecha</button><button class="btn ghost" data-close>Cerrar</button></div>`}`, () => {
+    const b = document.getElementById("cag-ok"); if (b) b.onclick = async () => { const r = (document.getElementById("cag-r").value||"").trim().slice(0,480); b.disabled = true;
+      const quien = firstName2(S.me?.name || "Katerine");
+      try { await S.db.doc("cagenda/"+id).update({estado:"hecho", hechoAt:Date.now(), ...(r ? {res:quien+": "+r} : {})}); closeModal(); toast("✅ Hecha. Ya se quitó de tu agenda"); }
+      catch(e){ try { await S.db.doc("cagenda/"+id).update({estado:"hecho", hechoAt:Date.now(), notas:[x.notas, r ? "✅ "+quien+": "+r : ""].filter(Boolean).join("\n").slice(0,800)}); closeModal(); toast("✅ Hecha. Ya se quitó de tu agenda"); }
+        catch(e2){ b.disabled = false; toast("No se pudo guardar. Revisa tu conexión."); console.log(e2); } } }; }); }
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-cag]"); if (b){ e.preventDefault(); openCag(b.dataset.cag); } });
 /* Cosas de la agenda que se repiten (semanal, quincenal, mensual): ¿tocan en este día? Devuelve la hora o null */
 const REP_TXT = {semanal:"🔁 Cada semana", quincenal:"🔁 Cada 15 días", mensual:"🔁 Cada mes"};
 function recEn(x, r){ if (!x.rep){ return !x.hecho && inR(x.when||0, r) ? x.when : null; }
@@ -1544,11 +1564,15 @@ function miAgendaCard(){ const d0 = S.f.mag || today(); const r = [laToMs(d0,"00
   Object.entries(S.appts).forEach(([id,a]) => { if (a.socioId!==S.uid || !inR(a.when||0, r) || a.status==="cancelada") return; const k = a.tipoVisita==="servicio" ? "serv" : a.sale && a.saleStatus==="aprobada" ? "aprob" : a.sale && (a.saleStatus||"pendiente")==="pendiente" ? "verif" : "demo";
     items.push({at:a.when, k, t:cName(a), m:[a.city, a.status==="hecha" ? (a.sale ? "Venta "+money(a.amount) : "Demostración hecha") : a.status==="no_se_hizo" ? "No se hizo" : ""].filter(Boolean).join(" · "), appt:id}); });
   Object.entries(S.recs||{}).forEach(([id,x]) => { if (x.tipo==="precita") return; const at = recEn(x, r); if (!at) return; items.push({at, k: x.tipo==="actividad" ? "act" : "llamar", t:x.nombre||"", m:(x.rep ? REP_TXT[x.rep]+(x.nota?" · ":"") : "")+(x.nota||""), rec:id, dia:laDate(at)}); });
+  let cagHechas = 0; Object.entries(S.cag||{}).forEach(([id,x]) => { const at = cagAt(x);
+    if (x.estado==="hecho"){ if (laDate(+x.hechoAt||at)===d0) cagHechas++; return; }
+    const atrasada = d0===today() && x.fecha < d0; if (x.fecha!==d0 && !atrasada) return;
+    items.push({at: atrasada ? r[0] : at, hx: at, k:CAG_K(x.tipo), t:x.nombre||"Cliente", m:[atrasada?"⚠️ atrasada ("+fmt(at,{day:"numeric",month:"short"})+")":"", CAG_TXT[x.tipo]||"", x.dir?"📍 "+x.dir:"", x.notas||""].filter(Boolean).join(" · "), cag:id}); });
   items.sort((a,b) => a.at - b.at);
   const ch = (v,t) => `<button class="chip ${d0===v?"on":""}" data-mag="${v}">${t}</button>`;
   return `<div class="card"><h2>📅 Mi agenda<span class="note">${items.length} cosa(s)</span></h2><div class="chips" style="margin-bottom:8px">${ch(addDays(today(),-1),"Ayer")}${ch(today(),"Hoy")}${ch(addDays(today(),1),"Mañana")}${ch(addDays(today(),2),fmt(laToMs(addDays(today(),2),"12:00"),{weekday:"long"}))}</div>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">${Object.values(AG_COL).map(([c,l]) => `<span class="note" style="display:inline-flex;align-items:center;gap:4px"><i style="width:10px;height:10px;border-radius:3px;background:${c};display:inline-block"></i>${l}</span>`).join("")}</div>
-    ${items.length ? `<div class="list">${items.map(x => `<${x.appt?"button":"div"} class="item" ${x.appt?`data-appt="${x.appt}"`:""} style="${x.appt?"":"cursor:default;"}border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div>${x.rec?`<button class="btn small ghost" data-rec-ok="${x.rec}" data-rec-dia="${x.dia||""}">✅</button>${(S.recs||{})[x.rec]?.rep ? `<button class="btn small ghost" data-rec-del="${x.rec}" title="Ya no repetir">🗑</button>` : ""}`:""}</${x.appt?"button":"div"}>`).join("")}</div>` : `<div class="empty">No tienes nada en la agenda este día.</div>`}
+    ${cagHechas ? `<p class="note">✅ ${cagHechas} de cobranza/postventa ya hecha(s) este día</p>` : ""}${items.length ? `<div class="list">${items.map(x => `<${x.appt||x.cag?"button":"div"} class="item" ${x.appt?`data-appt="${x.appt}"`:x.cag?`data-cag="${x.cag}"`:""} style="${x.appt||x.cag?"":"cursor:default;"}border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.hx||x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div>${x.rec?`<button class="btn small ghost" data-rec-ok="${x.rec}" data-rec-dia="${x.dia||""}">✅</button>${(S.recs||{})[x.rec]?.rep ? `<button class="btn small ghost" data-rec-del="${x.rec}" title="Ya no repetir">🗑</button>` : ""}`:""}${x.cag?`<span class="pill acc">Abrir</span>`:""}</${x.appt||x.cag?"button":"div"}>`).join("")}</div>` : `<div class="empty">No tienes nada en la agenda este día.</div>`}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">➕ Agregar algo a mi agenda</summary><form id="act-form" class="grid2" style="margin-top:8px"><label class="f" style="grid-column:1/-1">¿Qué vas a hacer?<input class="i" id="act-t" placeholder="Ej.: entregar regalo a María, reunión de equipo" maxlength="80"></label><label class="f">Día<input class="i" type="date" id="act-d" value="${d0}"></label><label class="f">Hora${timeSel("act-h","10:00")}</label><label class="f" style="grid-column:1/-1">Nota (opcional)<input class="i" id="act-x" maxlength="200"></label><div><button class="btn" type="submit">Guardar en mi agenda</button></div></form></details></div>`; }
 /* ===== Reporte del día del socio (distribuidor o emprendedor): cómo le fue y qué mejorar mañana ===== */
 const REF_X_CASA = 4;

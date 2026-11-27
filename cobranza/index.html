@@ -79,7 +79,7 @@ html.embebido .brand{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611271341"></script>
+<script src="logic.js?v=202611271345"></script>
 <script>
 try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 if (window.top !== window.self) document.documentElement.classList.add("framed");
@@ -108,7 +108,7 @@ const RES_OLD = {nc:"No contestó", promesa:"Promesa de pago", pago:"Pagó", otr
 const METODOS = {cheque:"Cheque", sitio:"Sitio web", llamada:"Llamada", tarjeta:"Tarjeta en archivo", link:"Link de Hy Cite", otro:"Otro"};
 const METODO_AUTO = {cheque:"Cheque", sitio:"Sitio web", llamada:"Llamada", tarjeta:"Tarjeta en archivo"};
 const SKIP_TXT = "En skip: Hy Cite tiene bloqueados pagos y links. Objetivo: que el cliente llame a Hy Cite para quitar el skip.";
-const AGENDA_TIPO = {llamar:"Llamar", ir:"Ir por pago", entrega:"Confirmar entrega", otro:"Otro"};
+const AGENDA_TIPO = {llamar:"Llamar", visita:"Visitar al cliente", ir:"Ir por pago", entrega:"Confirmar entrega", otro:"Otro"};
 const S = {db:null, auth:null, user:null, uid:"", email:"", owners:[], cfg:{}, me:null, meLoaded:false, cfgLoaded:false, cli:{}, acts:{}, actsReady:false, pagos:{}, post:{}, links:{}, cards:{}, autos:{}, agenda:{}, revs:{}, drive:"", agWhen:"hoy", agWho:"", members:{}, membersLoaded:false, ventas:{}, privs:{}, view:"g30", f:{q:"", cob:"", tono:"", mios:false}, per:"hoy", loaded:false, unsub:[], tarDraft:null, reveal:{}};
 
 const $ = s => document.querySelector(s);
@@ -812,8 +812,8 @@ function openPortal(){
 function enRangoFecha(f){ if (!f) return false; if (S.agWhen==="semana"){ const mo = mondayOf(today()); return f>=mo && f<=addDays(mo,6); } return f===today(); }
 function autoFila(base, by){ const met = ["tarjeta","cheque","sitio","llamada"].includes(base.metodo) ? base.metodo : "tarjeta";
   return {clientId:base.clientId||"", nombre:String(base.nombre||"").slice(0,120), cuenta:String(base.cuenta||"").slice(0,40), dia:Math.max(0, Math.min(31, +base.dia||0)), fecha:/^\d{4}-\d{2}-\d{2}$/.test(base.fecha||"")?base.fecha:"", monto:+base.monto||0, metodo:met, notas:String(base.notas||"").slice(0,500), by:by||S.email, updatedAt:Date.now()}; }
-function agendaFila(base, by){ return {fecha:base.fecha||today(), hora:String(base.hora||"09:00").slice(0,8), clientId:base.clientId||"", nombre:String(base.nombre||"").slice(0,120), tipo:AGENDA_TIPO[base.tipo]?base.tipo:"llamar", asignada:String(base.asignada||S.email).slice(0,80), notas:String(base.notas||"").slice(0,800), estado:base.estado==="hecho"?"hecho":"pendiente", by:by||S.email, createdAt:base.createdAt||Date.now(), hechoAt:+base.hechoAt||0}; }
-function genteMails(){ const g = Object.entries(staff()); if ((isOwner()||isBot()) && S.email && !staff()[S.email]) g.unshift([S.email,{name:isOwner()?"Katerine":"Bot"}]); return g; }
+function agendaFila(base, by){ return {fecha:base.fecha||today(), hora:String(base.hora||"09:00").slice(0,8), clientId:base.clientId||"", nombre:String(base.nombre||"").slice(0,120), tipo:AGENDA_TIPO[base.tipo]?base.tipo:"llamar", asignada:String(base.asignada||S.email).slice(0,80), notas:String(base.notas||"").slice(0,800), estado:base.estado==="hecho"?"hecho":"pendiente", by:by||S.email, createdAt:base.createdAt||Date.now(), hechoAt:+base.hechoAt||0, ...(base.dir ? {dir:String(base.dir).slice(0,200)} : {}), ...(base.tel ? {tel:String(base.tel).slice(0,40)} : {}), ...(base.res ? {res:String(base.res).slice(0,500)} : {})}; }
+function genteMails(){ const g = Object.entries(staff()); const k = S.owners[0]; if (k && !staff()[k]) g.unshift([k,{name:"⭐ Katerine (sale en su agenda de Lunaya)"}]); if (isBot() && S.email && !staff()[S.email] && S.email!==k) g.unshift([S.email,{name:"Bot"}]); return g; }
 function optsGente(sel, conEquipo){ return (conEquipo ? `<option value="equipo" ${sel==="equipo"?"selected":""}>👥 Compartida (todas)</option>` : "") + genteMails().map(([em,v]) => `<option value="${esc(em)}" ${sel===em?"selected":""}>${esc(v.name||em)}</option>`).join(""); }
 function optsCli(sel){ return `<option value="">Sin cuenta ligada</option>`+Object.entries(S.cli).sort((a,b)=>nombreDe(a[1]).localeCompare(nombreDe(b[1]),"es")).map(([id,c]) => `<option value="${esc(id)}" ${sel===id?"selected":""}>${esc(nombreDe(c)||id)}${c.cuenta?" · "+esc(c.cuenta):""}</option>`).join(""); }
 function revisiones(){ const out = []; Object.entries(S.autos).forEach(([id,a]) => { const fecha = L.revisionFecha(a, today()); if (!fecha || !enRangoFecha(fecha)) return; if (S.revs[id+"_"+fecha]) return; out.push({id, fecha, a}); }); return out; }
@@ -822,7 +822,7 @@ function vAgenda(){
   const citas = Object.entries(S.agenda).filter(([,a]) => enRangoFecha(a.fecha) && (!who || a.asignada===who || (vista==="mia" && a.asignada==="equipo"))).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
   const revs = revisiones().filter(r => { if (!who || who==="equipo") return true; const c = S.cli[r.a.clientId]; return c ? encargada(c)===who : false; });
   const filaC = ([id,a]) => { const cc = a.clientId && S.cli[a.clientId]; const nom = cc ? `<button type="button" class="linkish" data-open="${esc(a.clientId)}">${esc(nombreDe(cc)||a.nombre)}</button>` : esc(a.nombre||"Sin cliente"); const vt = cc ? vendTxt(cc) : "";
-    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.notas?" · "+esc(a.notas):""}</div></div>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
+    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.dir?" · 📍 "+esc(a.dir):""}${a.notas?" · "+esc(a.notas):""}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
   const filaR = r => { const c = S.cli[r.a.clientId]; const nom = c ? `<button type="button" class="linkish" data-open="${esc(r.a.clientId)}">${esc(nombreDe(c)||r.a.nombre)}</button>` : esc(r.a.nombre||"Cliente");
     return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag" style="background:#ede9fe;color:#6d28d9">Revisión pago automático</span></div><div class="m">${esc(r.fecha)} · ${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo)}${r.a.dia?` · día ${r.a.dia}`:""}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small danger" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; };
   const autos = Object.entries(S.autos).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||""),"es"));
@@ -863,11 +863,19 @@ function openAgenda(id){ const a = id ? (S.agenda[id]||{}) : {asignada:S.email, 
     <label class="f">Nombre si no está en la lista<input class="i" id="ag-n" value="${esc(a.nombre||"")}"></label>
     <label class="f">Tipo<select class="i" id="ag-t">${Object.entries(AGENDA_TIPO).map(([k,l]) => `<option value="${k}" ${(a.tipo||"llamar")===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="f">Asignada a<select class="i" id="ag-as">${optsGente(a.asignada||S.email, true)}</select></label>
+    <label class="f">Teléfono<input class="i" id="ag-tel" value="${esc(a.tel||"")}" placeholder="Se llena solo si escoges la cuenta"></label>
+    <label class="f">Dirección (para visitas)<input class="i" id="ag-dir" value="${esc(a.dir||"")}" placeholder="Se llena sola si escoges la cuenta"></label>
     <label class="f" style="grid-column:1/-1">Notas<textarea class="i" id="ag-no">${esc(a.notas||"")}</textarea></label>
   </div><div class="row"><button class="btn" id="ag-ok">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     $("#ag-ok").onclick = async () => { const cid = qv("ag-cli"); const c = S.cli[cid]; const nombre = qv("ag-n").trim() || (c&&c.nombre) || ""; if (!nombre) return toast("Escribe el cliente");
-      const data = agendaFila(Object.assign({}, a, {fecha:qv("ag-f")||today(), hora:qv("ag-h")||"09:00", clientId:cid, nombre, tipo:qv("ag-t"), asignada:qv("ag-as")||S.email, notas:qv("ag-no"), estado:a.estado||"pendiente", hechoAt:a.hechoAt||0, createdAt:a.createdAt||Date.now()}), a.by||S.email);
-      try { if (id) await S.db.doc("cagenda/"+id).set(data); else await S.db.collection("cagenda").add(data); closeModal(); toast("Cita guardada"); } catch(e){ err(e); } };
+      const data = agendaFila(Object.assign({}, a, {fecha:qv("ag-f")||today(), hora:qv("ag-h")||"09:00", clientId:cid, nombre, tipo:qv("ag-t"), asignada:qv("ag-as")||S.email, notas:qv("ag-no"), estado:a.estado||"pendiente", hechoAt:a.hechoAt||0, createdAt:a.createdAt||Date.now(),
+        tel:qv("ag-tel").trim() || (c&&c.tel) || "", dir:qv("ag-dir").trim() || (c&&c.direccion) || ""}), a.by||S.email);
+      const guardar = d => id ? S.db.doc("cagenda/"+id).set(d) : S.db.collection("cagenda").add(d);
+      try { await guardar(data); closeModal(); toast(data.asignada===S.owners[0] ? "Cita guardada · ya le sale a Katerine en su agenda" : "Cita guardada"); }
+      catch(e){ /* reglas viejas en Firebase: se guarda igual, con el teléfono y la dirección dentro de las notas */
+        if (!/permission/i.test(String(e&&e.message||e))) return err(e);
+        const d2 = Object.assign({}, data); const ex = [d2.tel?"📞 "+d2.tel:"", d2.dir?"📍 "+d2.dir:""].filter(Boolean).join(" · "); delete d2.tel; delete d2.dir; delete d2.res; if (d2.tipo==="visita"){ d2.tipo = "ir"; } d2.notas = [d2.notas, ex].filter(Boolean).join("\n").slice(0,800);
+        try { await guardar(d2); closeModal(); toast("Cita guardada"); } catch(e2){ err(e2); } } };
   });
 }
 function metAuto(v){ const n = String(v||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); if (n.includes("cheq")) return "cheque"; if (n.includes("sitio")||n.includes("web")) return "sitio"; if (n.includes("llama")) return "llamada"; return "tarjeta"; }
