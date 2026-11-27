@@ -79,7 +79,7 @@ html.embebido .brand{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611271345"></script>
+<script src="logic.js?v=202611271353"></script>
 <script>
 try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 if (window.top !== window.self) document.documentElement.classList.add("framed");
@@ -187,7 +187,7 @@ function boot(){
     S.me = null; S.meLoaded = !u; S.cfg = {}; S.cfgLoaded = !u; S.loaded = false; S.cli = {}; S.autos = {}; S.agenda = {}; S.revs = {}; S.drive = ""; S.subC = false; S.subCards = false; S.subM = false; S.membersLoaded = false;
     pfHeader(); if (!u) return render(); pfCargar();
     S.unsub.push(S.db.doc("members/"+S.uid).onSnapshot(s => { S.me = s.exists ? s.data() : null; S.meLoaded = true; maybeSub(); render(); }, () => { S.meLoaded = true; render(); }));
-    S.unsub.push(S.db.doc("cconfig/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : {}; S.cfgLoaded = true; if (!S.fInit && canEnter() && !isDir()) S.f.mios = true; S.fInit = S.fInit || canEnter(); maybeSub(); render(); }, () => { S.cfgLoaded = true; render(); }));
+    S.unsub.push(S.db.doc("cconfig/main").onSnapshot(s => { S.cfg = s.exists ? s.data() : {}; S.cfgLoaded = true; /* Todas las cobradoras ven todas las cuentas (0-30, 31-60, 61+): un cliente pasa de un rango a otro y entre ellas se comunican. «Solo los míos» queda como filtro opcional. */ S.fInit = S.fInit || canEnter(); maybeSub(); render(); }, () => { S.cfgLoaded = true; render(); }));
   });
 }
 function maybeSub(){ if (!S.meLoaded || !S.cfgLoaded || !canEnter()) return; if (!S.subC) subCli(); if (puedeVendedor() && !S.subM) subMembers(); ensureCards(); }
