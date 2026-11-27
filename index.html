@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611271522"></script>
-<script src="anuncios.js?v=202611271522"></script>
-<script src="juego.js?v=202611271522"></script>
+<script src="demo.js?v=202611271532"></script>
+<script src="anuncios.js?v=202611271532"></script>
+<script src="juego.js?v=202611271532"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611271522";
+const APP_VER = "202611271532";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1556,6 +1556,12 @@ function viewKAgenda(){ const K = ownerUid();
     ${items.length ? `<div class="list">${items.map(x => `<button class="item" ${x.attr} style="border-left:6px solid ${AG_COL[x.k][0]};background:linear-gradient(90deg,${AG_COL[x.k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(x.hx||x.at)}</b> · ${esc(x.t)}</div><div class="m">${AG_COL[x.k][1]}${x.m?" · "+esc(x.m):""}</div></div></button>`).join("")}</div>` : `<div class="empty">Katerine no tiene nada en la agenda este día.</div>`}</div>`; }
 document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-kagd]"); if (b){ S.f.kag = b.dataset.kagd; render(); } });
 document.addEventListener("change", e => { if (e.target && e.target.id==="kag-d" && e.target.value){ S.f.kag = e.target.value; render(); } });
+/* Citas → Territorio: una burbuja por persona con sus citas del día; al tocarla se ve solo su agenda */
+function porPersonaChips(day){ const c = {}; Object.values(S.appts||{}).forEach(a => { if (!a.socioId || a.status==="cancelada" || laDate(a.when||0)!==day) return; c[a.socioId] = (c[a.socioId]||0) + 1; });
+  const L = Object.entries(c).sort((x,y) => y[1]-x[1] || memberName(x[0]).localeCompare(memberName(y[0])));
+  if (!L.length) return "";
+  return `<div class="chips" style="margin:-2px 0 10px;flex-wrap:wrap"><button class="chip ${!S.f.aSocio?"on":""}" data-pp="">👥 Todos</button>${L.map(([id,n]) => `<button class="chip ${S.f.aSocio===id?"on":""}" data-pp="${id}" style="display:inline-flex;align-items:center;gap:6px">${av(id,20)}${esc(firstName2(memberName(id)))} <b>${n}</b></button>`).join("")}</div>`; }
+document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-pp]"); if (b){ S.f.aSocio = b.dataset.pp; render(); } });
 function cagDiaHtml(day){ const L = Object.entries(S.cag||{}).filter(([,x]) => x.estado!=="hecho" && (x.fecha===day || (day===today() && x.fecha < day))).sort((a,b) => cagAt(a[1]) - cagAt(b[1]));
   const hechas = Object.values(S.cag||{}).filter(x => x.estado==="hecho" && laDate(+x.hechoAt||cagAt(x))===day).length;
   if (!L.length && !hechas) return "";
@@ -2012,7 +2018,7 @@ function viewCitas(r){
     <div class="week">${week}</div></div>
     ${r==="socio"||r==="admin"?`<button class="btn" id="own-cita" style="margin-bottom:12px">➕ Nueva cita propia</button>`:""}
     <div class="card" style="padding:10px 12px"><input class="i" id="bq" type="search" placeholder="${role()==="tele"||esAsist() ? "🔍 Buscar cita por nombre o teléfono (todos los socios, cualquier fecha)" : "🔍 Buscar entre tus citas, las que diste y las que te dieron"}" autocomplete="off" value="${esc(S.f.bq||"")}"><div id="bq-r"></div></div>
-    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}</h2>${resumenDia}${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">${list0.length||pasadas.length ? "No quedan citas activas este día." : "Sin citas este día."}</div>`}
+    <div class="card"><h2>${fmt(laToMs(day,"12:00"),{weekday:"long",day:"numeric",month:"long"})}${r==="admin" && S.f.cview==="terr" && S.f.aSocio ? ` · <span style="color:var(--acc)">agenda de ${esc(firstName2(memberName(S.f.aSocio)))}</span>` : ""}</h2>${r==="admin" && S.f.cview==="terr" ? porPersonaChips(day) : ""}${resumenDia}${list.length?`<div class="list">${list.map(([id,a,sg])=>apptItem(id,a,sg)).join("")}</div>`:`<div class="empty">${list0.length||pasadas.length ? "No quedan citas activas este día." : "Sin citas este día."}</div>`}
     ${cagDiaHtml(day)}
     ${listNo.length ? `<div class="eyebrow" style="margin:14px 0 6px">❌ No se hicieron o se cancelaron (${listNo.length})</div><p class="note" style="margin:-2px 0 6px">${day >= today() ? "Las que siguen pendientes están en «📞 Llamar para reagendar»." : "Quedan aquí como registro."}</p><div class="list" style="opacity:.85">${listNo.map(([id,a]) => apptItem(id,a)).join("")}</div>` : ""}
     ${pasadas.length ? `<div class="eyebrow" style="margin:14px 0 6px">🔀 Citas de este día que pasaste (${pasadas.length})</div><div class="list" style="opacity:.85">${pasadas.map(([id,a]) => `<div><div class="note" style="margin:0 0 3px 4px">Ahora la tiene <b>${esc(memberName(a.socioId))}</b>${a.status==="hecha" ? (a.sale ? " · ✅ venta" : " · demo hecha") : a.status==="agendada" ? "" : " · no se hizo"}</div>${apptItem(id,a)}</div>`).join("")}</div>` : ""}</div>`;
