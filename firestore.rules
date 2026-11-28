@@ -307,16 +307,22 @@ service cloud.firestore {
       allow delete: if isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid);
     }
 
-    // Listas del portal (cumpleaños y filtros): las importa Dirección.
-    // Las telemarketers del programa leen y anotan la llamada. No es público.
+    // Listas del portal de Katerine (cumpleaños, filtros y mantenimiento).
+    // Las importa ella o la cuenta de bots (rol bot, jefe = la dueña). No es público
+    // y no lo ven distribuidores ni otras distribuciones.
     match /portallists/{id} {
+      function portalImporta() { return isOwnerEmail() || isBot(); }
+      function portalVe() { return isOwnerEmail() || isProgramTele() || isBot(); }
       function portalBase() {
-        return request.resource.data.lista in ['cumple', 'filtros']
+        return request.resource.data.lista in ['cumple', 'filtros', 'mant']
           && request.resource.data.mes is string && request.resource.data.mes.matches('^\\d{4}-\\d{2}$')
           && request.resource.data.cuenta is string && request.resource.data.cuenta.matches('^[0-9]{4,12}$')
           && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 120
           && request.resource.data.tel is string && request.resource.data.tel.size() <= 20
           && request.resource.data.tel2 is string && request.resource.data.tel2.size() <= 20
+          && request.resource.data.direccion is string && request.resource.data.direccion.size() <= 300
+          && request.resource.data.producto is string && request.resource.data.producto.size() <= 200
+          && request.resource.data.vence is string && request.resource.data.vence.size() <= 12
           && request.resource.data.saldo is number
           && request.resource.data.cumple is string && request.resource.data.cumple.size() <= 8
           && request.resource.data.promo is string && request.resource.data.promo.size() <= 160
@@ -326,24 +332,24 @@ service cloud.firestore {
           && request.resource.data.by == request.auth.uid
           && id == request.resource.data.lista + '_' + request.resource.data.mes + '_' + request.resource.data.cuenta;
       }
-      allow read: if isAdmin() || isProgramTele();
-      allow create: if isAdmin() && !isBot() && portalBase()
+      allow read: if portalVe();
+      allow create: if portalImporta() && portalBase()
         && request.resource.data.status == 'nuevo'
         && request.resource.data.notes == ''
         && request.resource.data.sigue == ''
         && request.resource.data.intentos.size() == 0;
-      allow update: if isAdmin() && !isBot() && portalBase()
+      allow update: if portalImporta() && portalBase()
         && request.resource.data.status == resource.data.status
         && request.resource.data.notes == resource.data.notes
         && request.resource.data.sigue == resource.data.sigue
         && request.resource.data.intentos == resource.data.intentos;
-      allow update: if isProgramTele()
+      allow update: if (isProgramTele() || isOwnerEmail())
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'notes', 'intentos', 'sigue', 'statusAt', 'updatedAt'])
-        && request.resource.data.status in ['nuevo', 'llamado', 'seguimiento', 'no_interesa']
+        && request.resource.data.status in ['nuevo', 'llamado', 'seguimiento', 'no_interesa', 'llamo', 'nc', 'no', 'cita', 'msj', 'otro']
         && request.resource.data.notes is string && request.resource.data.notes.size() <= 1000
         && request.resource.data.sigue is string && request.resource.data.sigue.size() <= 10
         && request.resource.data.intentos is list && request.resource.data.intentos.size() <= 40;
-      allow delete: if isAdmin() && !isBot();
+      allow delete: if isOwnerEmail();
     }
 
     // Prospectos de la ruleta: los ven el socio, quien creó el link, su director o distribuidor

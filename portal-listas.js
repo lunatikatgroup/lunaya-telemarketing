@@ -173,11 +173,76 @@
     if (flat.indexOf("customer marketing") >= 0 || flat.indexOf("description") >= 0 || flat.indexOf("carp") >= 0) return "filtros";
     return "";
   }
+  function addMonthsISO(iso, n) {
+    const p = String(iso || "").split("-").map(Number);
+    if (p.length < 3 || !p[0]) return "";
+    const y = p[0], m = p[1] - 1 + n, d = p[2];
+    const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const out = new Date(Date.UTC(y, m, Math.min(d, last)));
+    return out.toISOString().slice(0, 10);
+  }
+  function pick(obj, names) {
+    const keys = Object.keys(obj || {});
+    for (let i = 0; i < names.length; i++) {
+      const want = norm(names[i]).replace(/[^a-z0-9]/g, "");
+      const hit = keys.find(function (k) { return norm(k).replace(/[^a-z0-9]/g, "") === want; });
+      if (hit != null && obj[hit] !== "" && obj[hit] != null) return obj[hit];
+    }
+    return "";
+  }
+  function parseMantRows(rows) {
+    const warnings = [];
+    const by = new Map();
+    (rows || []).forEach(function (src, i) {
+      const cuenta = text(pick(src, ["cuenta", "customer no", "customer#", "numero", "customer number"])).replace(/\D/g, "");
+      const nombre = text(pick(src, ["nombre", "name", "customer name"])).slice(0, 120);
+      const fecha = parseFecha(pick(src, ["fecha", "fecha compra", "order date", "purchase date", "fecha orden"]));
+      if (!cuenta || !fecha) { warnings.push("Fila " + (i + 1) + ": falta el número de cliente o la fecha de compra."); return; }
+      const vence = addMonthsISO(fecha, 6);
+      const prev = by.get(cuenta) || {
+        cuenta: cuenta, nombre: nombre, tel: "", tel2: "", direccion: "", producto: "",
+        saldo: 0, cumple: "", promo: "", detalle: "", estado: "", accion: fecha, vence: vence
+      };
+      if (nombre) prev.nombre = nombre;
+      const tel = telDigits(pick(src, ["tel", "telefono", "home phone", "phone"]));
+      const tel2 = telDigits(pick(src, ["tel2", "trabajo", "work phone", "telefono trabajo"]));
+      if (tel) prev.tel = tel;
+      if (tel2 && tel2 !== prev.tel) prev.tel2 = tel2;
+      const dir = text(pick(src, ["direccion", "address", "domicilio"])).slice(0, 300);
+      if (dir) prev.direccion = dir;
+      const prod = text(pick(src, ["producto", "productos", "product", "producto comprado"])).slice(0, 200);
+      if (prod && prev.producto.indexOf(prod) < 0) prev.producto = (prev.producto ? prev.producto + ", " : "") + prod;
+      if (vence && (!prev.vence || vence < prev.vence)) { prev.vence = vence; prev.accion = fecha; }
+      by.set(cuenta, prev);
+    });
+    const rowsOut = [...by.values()].map(function (r) { r.producto = r.producto.slice(0, 200); return r; });
+    return { rows: rowsOut, warnings: warnings };
+  }
+  function parseTabla(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return [];
+    if (raw[0] === "[" || raw[0] === "{") {
+      const data = JSON.parse(raw);
+      return Array.isArray(data) ? data : [data];
+    }
+    const lines = raw.split(/\r?\n/).filter(function (l) { return l.trim(); });
+    if (lines.length < 2) return [];
+    const sep = (lines[0].split("\t").length > lines[0].split(",").length) ? "\t" : ",";
+    const heads = lines[0].split(sep).map(function (h) { return h.trim(); });
+    return lines.slice(1).map(function (line) {
+      const cols = line.split(sep);
+      const o = {};
+      heads.forEach(function (h, i) { o[h] = (cols[i] || "").trim(); });
+      return o;
+    });
+  }
+
   function parse(kind, aoa) {
     const k = kind || detect(aoa);
     if (k === "filtros") return parseFiltros(aoa || []);
+    if (k === "mant") return { mes: "", rows: [], warnings: ["El mantenimiento se importa con CSV o JSON, no con el Excel de cumpleaños."] };
     return parseCumples(aoa || []);
   }
 
-  return { parse: parse, detect: detect, docId: docId, serialToISO: serialToISO, parseCumple: parseCumple, cumpleTxt: cumpleTxt, telDigits: telDigits };
+  return { parse: parse, detect: detect, parseMantRows: parseMantRows, parseTabla: parseTabla, addMonthsISO: addMonthsISO, docId: docId, serialToISO: serialToISO, parseCumple: parseCumple, cumpleTxt: cumpleTxt, telDigits: telDigits };
 });

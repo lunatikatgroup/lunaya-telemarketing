@@ -195,14 +195,14 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611272217"></script>
-<script src="anuncios.js?v=202611272217"></script>
-<script src="juego.js?v=202611272217"></script>
-<script src="portal-listas.js?v=202611272217"></script>
+<script src="demo.js?v=202611272337"></script>
+<script src="anuncios.js?v=202611272337"></script>
+<script src="juego.js?v=202611272337"></script>
+<script src="portal-listas.js?v=202611272337"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611272217";
+const APP_VER = "202611272337";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -448,7 +448,7 @@ function subscribeAll(){
   if (S.email) S.unsub.push(S.db.collection("cagenda").where("asignada", "==", S.email).onSnapshot(s => { S.cag = {}; s.docs.forEach(d => S.cag[d.id] = d.data()); render(); }, e => { S.cag = {}; console.log("cagenda", e.code||e); }));
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
   if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner || esBot()){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
-  if (S.isOwner || S.me?.role === "admin" || (S.me?.role === "tele" && !S.me?.upline)) S.unsub.push(S.db.collection("portallists").onSnapshot(s => { S.portal = {}; s.docs.forEach(d => S.portal[d.id] = Object.assign({id:d.id}, d.data())); render(); }, e => console.log("portal", e.code||e)));
+  if (S.isOwner || esBot() || (S.me?.role === "tele" && !S.me?.upline)) S.unsub.push(S.db.collection("portallists").onSnapshot(s => { S.portal = {}; s.docs.forEach(d => S.portal[d.id] = Object.assign({id:d.id}, d.data())); render(); }, e => console.log("portal", e.code||e)));
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
   else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
   if (S.me?.role === "socio" && S.me?.tipo === "Socio distribuidor"){
@@ -573,7 +573,7 @@ function tabsFor(r){
   else if (r==="socio" && S.me?.asistente && !isDist()) tabs = [["hoy","Hoy"],["cobros","Cobros"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
   else if (r==="tele") tabs = S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["portal","Llamadas"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["portal","Llamadas"],["ranking","Ranking"]];
   else if (r==="socio") tabs = isDist() ? [["hoy","Hoy"],["citas","Citas"],["juego","Ruleta"],["grupo","Mi grupo"],["pagos","Pagos"],["ranking","Ranking"]] : [["hoy","Hoy"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
-  if (r==="tele" && S.me?.upline) tabs = tabs.filter(t => t[0]!=="portal");
+  if (!(S.isOwner || esBot() || (r==="tele" && !S.me?.upline))) tabs = tabs.filter(t => t[0]!=="portal");
   if (veCobranza() && !tabs.some(t => t[0]==="cobra")) tabs = tabs.concat([["cobra","Cobranza"]]);
   return tabs;
 }
@@ -1224,61 +1224,69 @@ const temaApp = () => { try { return localStorage.getItem("ly-tema") || "crema";
 function setTemaApp(t){ try { localStorage.setItem("ly-tema", t); } catch {} const h = document.documentElement;
   if (t==="crema"){ h.removeAttribute("data-apptema"); h.removeAttribute("data-theme"); } else { h.setAttribute("data-apptema", t); h.setAttribute("data-theme", ["negro","azul","verde"].includes(t) ? "dark" : "light"); }
   const bg = (TEMAS_APP.find(x => x[0]===t)||[])[2]; const m = document.querySelector('meta[name="theme-color"]'); if (m && bg) m.setAttribute("content", bg); }
-const PL_ST = {nuevo:"Sin llamar", llamado:"Llamado", seguimiento:"Seguimiento", no_interesa:"No interesa"};
-const PL_INT = {nc:"📵 No contestó", msj:"💬 Le dejé mensaje", ok:"✅ Contestó"};
+const PL_ST = {nuevo:"Sin llamar", llamo:"Se llamó", nc:"No contestó", no:"No quiso cita", cita:"Cita agendada", msj:"Le dejé mensaje", otro:"Otro"};
+const PL_INT = PL_ST;
+function portalFilas(lista){
+  const all = Object.entries(S.portal || {}).filter(([,x]) => x.mes===S.pMes && x.lista===lista);
+  const f = S.pFilt || "todos";
+  const rows = all.filter(([,x]) => f==="todos" ? true : f==="llamar" ? (x.status==="nuevo" || !x.status || (x.sigue && x.sigue <= today())) : f==="seguimiento" ? !!x.sigue : (x.intentos||[]).length);
+  rows.sort((a,b) => String(a[1].cumple||a[1].vence||a[1].nombre).localeCompare(String(b[1].cumple||b[1].vence||b[1].nombre), "es"));
+  return rows;
+}
+function portalItem(id, x){
+  const PL = window.PortalListas;
+  const telFmtP = t => t && t.length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"");
+  const ult = (x.intentos||[]).slice(-1)[0];
+  const bits = [telFmtP(x.tel)||"sin teléfono", x.tel2?("trabajo "+telFmtP(x.tel2)):"", x.direccion||"", x.producto||"", x.cumple&&PL?PL.cumpleTxt(x.cumple):"", x.saldo?"saldo $"+x.saldo:"", x.promo||"", x.detalle||"", x.accion?("aviso "+x.accion):"", x.vence?("toca "+x.vence):""].filter(Boolean);
+  const sig = x.sigue ? (x.sigue < today() ? "Seguimiento atrasado " : "Seguimiento ") + x.sigue : "";
+  return `<button class="item" data-pl="${esc(id)}" style="display:block"><div class="t">${esc(x.nombre)} <span class="tag ${(x.status&&x.status!=="nuevo")?"tg-good":"tg-warn"}">${esc(PL_ST[x.status]||"Sin llamar")}</span></div><div class="m">${esc(bits.join(" · "))}</div><div class="m">${ult ? `${esc(PL_ST[ult.r]||ult.r)} · ${fmt(ult.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(ult.by))}` : "Nadie lo ha llamado"}${sig?" · "+esc(sig):""}</div></button>`;
+}
 function viewPortal(){
   const PL = window.PortalListas;
   if (!PL) return `<div class="card empty">Cargando…</div>`;
-  if (!(S.isOwner || role()==="admin" || (role()==="tele" && !S.me?.upline))) return `<div class="card empty">Esta lista es para las telemarketers del programa y para Dirección.</div>`;
-  const all = Object.entries(S.portal || {});
-  const meses = [...new Set(all.map(([,x]) => x.mes).filter(Boolean).concat([today().slice(0,7)]))].sort();
+  if (!(S.isOwner || esBot() || (role()==="tele" && !S.me?.upline))) return `<div class="card empty">Este reporte es solo de Katerine y de sus telemarketers.</div>`;
+  const meses = [...new Set(Object.values(S.portal||{}).map(x => x.mes).filter(Boolean).concat([today().slice(0,7)]))].sort();
   if (!S.pMes || !meses.includes(S.pMes)) S.pMes = meses[meses.length-1];
-  const lista = S.pLista === "filtros" ? "filtros" : "cumple";
   const filtro = S.pFilt || "todos";
-  let rows = all.filter(([,x]) => x.mes===S.pMes && x.lista===lista);
-  if (filtro==="llamar") rows = rows.filter(([,x]) => x.status==="nuevo" || (x.sigue && x.sigue <= today() && x.status!=="no_interesa"));
-  else if (filtro==="seguimiento") rows = rows.filter(([,x]) => x.sigue);
-  else if (filtro==="llamados") rows = rows.filter(([,x]) => (x.intentos||[]).length);
-  rows.sort((a,b) => String(a[1].cumple||a[1].nombre).localeCompare(String(b[1].cumple||b[1].nombre), "es"));
-  const telFmtP = t => t && t.length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"sin teléfono");
-  const item = ([id,x]) => { const ult = (x.intentos||[]).slice(-1)[0];
-    const extra = lista==="cumple" ? [PL.cumpleTxt(x.cumple), x.saldo ? "saldo $"+x.saldo : ""].filter(Boolean).join(" · ") : [x.promo, x.detalle, x.accion].filter(Boolean).join(" · ");
-    const sig = x.sigue ? (x.sigue < today() ? "Seguimiento atrasado " : "Seguimiento ") + x.sigue : "";
-    return `<button class="item" data-pl="${esc(id)}" style="display:block"><div class="t">${esc(x.nombre)} <span class="tag ${x.status==="nuevo"?"tg-warn":x.status==="no_interesa"?"tg-mute":"tg-good"}">${esc(PL_ST[x.status]||"Sin llamar")}</span></div><div class="m">${esc(telFmtP(x.tel))}${x.tel2?" · trabajo "+esc(telFmtP(x.tel2)):""}${extra?" · "+esc(extra):""}</div><div class="m">${ult ? `${esc(PL_INT[ult.r]||ult.r)} · ${fmt(ult.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(ult.by))}` : "Nadie lo ha llamado"}${sig?" · "+esc(sig):""}</div></button>`; };
-  const admin = role()==="admin" || S.isOwner;
-  return `<div class="card"><div class="chips"><button class="chip ${lista==="cumple"?"on":""}" data-plista="cumple">🎂 Cumpleaños</button><button class="chip ${lista==="filtros"?"on":""}" data-plista="filtros">💧 Filtros</button></div>
-    <div class="row" style="margin-top:8px"><label class="f">Mes<select class="i" id="p-mes">${meses.map(m => `<option value="${m}" ${m===S.pMes?"selected":""}>${m}</option>`).join("")}</select></label>
+  const importa = S.isOwner || esBot();
+  const sec = (lista, titulo, nota) => { const rows = portalFilas(lista); return `<div class="card"><h2>${titulo} <span class="note">${rows.length}</span></h2><p class="note" style="margin-top:-6px">${nota}</p>${rows.length?`<div class="list">${rows.map(([id,x]) => portalItem(id,x)).join("")}</div>`:`<div class="empty">Nadie en ${esc(S.pMes)}.</div>`}</div>`; };
+  return `<div class="card"><h2>Reporte del mes</h2>
+    <div class="row"><label class="f">Mes<select class="i" id="p-mes">${meses.map(m => `<option value="${m}" ${m===S.pMes?"selected":""}>${m}</option>`).join("")}</select></label>
     <label class="f">Ver<select class="i" id="p-fil">${[["todos","Todos"],["llamar","Por llamar"],["seguimiento","Con seguimiento"],["llamados","Ya llamados"]].map(([k,l]) => `<option value="${k}" ${filtro===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
-    <p class="note">${lista==="cumple"?"Cumpleaños de ese mes. Solo se guarda el día y el mes.":"Clientes del programa de filtros (CARP) de ese mes."} ${rows.length} en la lista.</p>
-    ${admin?`<div class="row"><label class="btn small">Subir Excel del portal<input id="p-file" type="file" accept=".xls,.xlsx,.html,text/html" hidden></label><span class="note">Elige el archivo del mes. Si el cliente ya estaba, se actualizan sus datos y se conservan las llamadas.</span></div>`:""}</div>
-    <div class="card"><h2>${lista==="cumple"?"Cumpleaños":"Filtros"} <span class="note">${esc(S.pMes)}</span></h2>${rows.length?`<div class="list">${rows.map(item).join("")}</div>`:`<div class="empty">No hay clientes para este mes. ${admin?"Sube el Excel del portal.":""}</div>`}</div>`;
+    <p class="note">Solo lo ven Katerine y las telemarketers de su programa. Cada cliente guarda el resultado, quién llamó y la próxima fecha.</p>
+    ${importa?`<div class="row"><label class="btn small">Subir Excel (cumpleaños o filtros)<input id="p-file" type="file" accept=".xls,.xlsx,.html,text/html,.csv,.json" hidden></label><button class="btn small ghost" id="p-tabla" type="button">Pegar CSV o JSON</button></div><p class="note">Olivia entra con la cuenta Bots y sube el archivo del mes. Si el cliente ya estaba, se actualizan sus datos y se conservan las llamadas.</p>`:""}</div>
+    ${sec("filtros","Filtros del mes","Cliente, teléfonos, promoción, avisos que ya mandó Hy Cite y fechas.")}
+    ${sec("cumple","Cumpleaños del mes","Nombre, número, teléfonos, saldo y el día del cumpleaños.")}
+    ${sec("mant","Mantenimiento de filtro 6 meses","Quien compró Fresca Flow, Fresca Pure u otro filtro. Toca a los 6 meses de la compra.")}`;
 }
 function bindPortal(){
-  document.querySelectorAll("[data-plista]").forEach(b => b.onclick = () => { S.pLista = b.dataset.plista; render(); });
   const mes = document.getElementById("p-mes"); if (mes) mes.onchange = () => { S.pMes = mes.value; render(); };
   const fil = document.getElementById("p-fil"); if (fil) fil.onchange = () => { S.pFilt = fil.value; render(); };
   document.querySelectorAll("[data-pl]").forEach(b => b.onclick = () => openPortalCliente(b.dataset.pl));
   const file = document.getElementById("p-file"); if (file) file.onchange = async () => { const f = file.files && file.files[0]; file.value = ""; if (f) importarPortal(f); };
+  const tab = document.getElementById("p-tabla"); if (tab) tab.onclick = () => openModal(`<h3>Pegar CSV o JSON</h3><p class="note">Mantenimiento: cuenta, nombre, telefono, direccion, producto, fecha (AAAA-MM-DD). Cumpleaños y filtros también aceptan el Excel del portal.</p><label class="f">Lista<select class="i" id="p-kind"><option value="mant">Mantenimiento de filtro</option><option value="cumple">Cumpleaños</option><option value="filtros">Filtros</option></select></label><textarea class="i" id="p-txt" style="min-height:140px" placeholder="cuenta,nombre,telefono,direccion,producto,fecha"></textarea><div class="row"><button class="btn" id="p-ok">Importar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => { document.getElementById("p-ok").onclick = () => importarPortalTexto(document.getElementById("p-kind").value, document.getElementById("p-txt").value); });
 }
 function openPortalCliente(id){
   const x = (S.portal||{})[id]; if (!x) return;
   const PL = window.PortalListas;
   const tel = x.tel || "";
   const mostrar = t => t && t.length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"");
-  openModal(`<h3>${esc(x.nombre)}</h3><p class="note" style="margin:0">${x.lista==="cumple"?"Cumpleaños":"Filtros"} · ${esc(x.mes)} · cuenta ${esc(x.cuenta)}${x.cumple?" · "+esc(PL.cumpleTxt(x.cumple)):""}${x.saldo?" · saldo $"+esc(x.saldo):""}</p>
+  openModal(`<h3>${esc(x.nombre)}</h3><p class="note" style="margin:0">${x.lista==="mant"?"Mantenimiento":x.lista==="cumple"?"Cumpleaños":"Filtros"} · ${esc(x.mes)} · cuenta ${esc(x.cuenta)}${x.cumple?" · "+esc(PL.cumpleTxt(x.cumple)):""}${x.saldo?" · saldo $"+esc(x.saldo):""}${x.vence?" · toca el "+esc(x.vence):""}</p>
+    ${x.direccion?`<p class="note" style="margin:0">${esc(x.direccion)}</p>`:""}
+    ${x.producto?`<p class="note" style="margin:0">${esc(x.producto)}</p>`:""}
     ${x.promo?`<p class="note" style="margin:0">${esc(x.promo)}${x.detalle?" · "+esc(x.detalle):""}${x.accion?" · "+esc(x.accion):""}${x.estado?" · "+esc(x.estado):""}</p>`:""}
     <div class="row">${tel?`<a class="btn" href="tel:+1${esc(tel)}">📞 Llamar</a><a class="btn dark" target="_blank" rel="noopener" href="https://wa.me/1${esc(tel)}">WhatsApp</a><a class="btn ghost" href="sms:+1${esc(tel)}">Mensaje</a>`:`<span class="note">Sin teléfono de casa${x.tel2?" · trabajo "+esc(mostrar(x.tel2)):""}</span>`}${x.tel2&&tel?`<a class="btn ghost" href="tel:+1${esc(x.tel2)}">Trabajo</a>`:""}</div>
     <div style="border:1px solid var(--line);border-radius:12px;padding:10px"><div class="eyebrow" style="margin-bottom:6px">¿Cómo te fue con la llamada?</div><div class="opts">${Object.entries(PL_INT).map(([k,v]) => `<button class="opt" data-pint="${k}">${v}</button>`).join("")}</div>
       ${(x.intentos||[]).length?`<div class="note" style="margin-top:6px">${(x.intentos||[]).slice().reverse().map(it => `${esc(PL_INT[it.r]||it.r)} · ${fmt(it.at,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(it.by))}`).join("<br>")}</div>`:`<div class="note" style="margin-top:6px">Todavía nadie lo ha llamado.</div>`}</div>
     <label class="f">Notas<textarea class="i" id="pl-n">${esc(x.notes||"")}</textarea></label>
     <label class="f">Próximo seguimiento<input class="i" type="date" id="pl-s" value="${esc(x.sigue||"")}"></label>
-    <label class="f">Estado<select class="i" id="pl-st">${Object.entries(PL_ST).map(([k,v]) => `<option value="${k}" ${(x.status||"nuevo")===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    <label class="f">Resultado<select class="i" id="pl-st">${Object.entries(PL_ST).map(([k,v]) => `<option value="${k}" ${(x.status||"nuevo")===k?"selected":""}>${v}</option>`).join("")}</select></label>
     <div class="row"><button class="btn" id="pl-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     const guardar = async (resultado) => {
       const sigue = (document.getElementById("pl-s").value||"").slice(0,10);
       const notes = document.getElementById("pl-n").value.trim().slice(0,1000);
       let status = document.getElementById("pl-st").value;
-      if (resultado) status = "llamado";
+      if (resultado) status = resultado;
       if (sigue && status==="nuevo") status = "seguimiento";
       const o = {status, notes, sigue, statusAt:Date.now(), updatedAt:Date.now()};
       if (resultado) o.intentos = firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, r:resultado});
@@ -1300,16 +1308,51 @@ async function importarPortal(file){
     const wb = XLSX.read(buf, {type:"array"});
     aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:""});
   }
-  const kind = PL.detect(aoa) || (S.pLista === "filtros" ? "filtros" : "cumple");
+  const name = String(file.name||"").toLowerCase();
+  if (name.endsWith(".csv") || name.endsWith(".json") || head.startsWith("[") || head.startsWith("{")) { const raw = new TextDecoder().decode(buf); const low = raw.toLowerCase(); const kind = low.includes("birth") || low.includes("cumple") ? "cumple" : (low.includes("description") || low.includes("promo")) ? "filtros" : "mant"; return importarPortalTexto(kind, raw); }
+  const kind = PL.detect(aoa) || "cumple";
   const parsed = PL.parse(kind, aoa);
   if (!parsed.rows.length) return toast(parsed.warnings[0] || "No encontré clientes en el archivo.");
-  const mes = parsed.mes || S.pMes || today().slice(0,7);
+  return guardarPortal(kind, parsed.mes || S.pMes || today().slice(0,7), parsed.rows, parsed.warnings);
+}
+async function importarPortalTexto(kind, text){
+  const PL = window.PortalListas; if (!PL) return;
+  let rows = [], warnings = [], mes = "";
+  try {
+    if (kind === "mant") {
+      const got = PL.parseMantRows(PL.parseTabla(text));
+      rows = got.rows; warnings = got.warnings;
+      const meses = {};
+      rows.forEach(r => { const m = (r.vence||"").slice(0,7); if (m) meses[m] = (meses[m]||0)+1; });
+      mes = Object.entries(meses).sort((a,b) => b[1]-a[1])[0]?.[0] || "";
+    } else {
+      const lines = String(text||"").trim().split(/\r?\n/);
+      const sep = (lines[0]||"").includes("\t") ? "\t" : ",";
+      const aoa = lines.filter(Boolean).map(l => l.split(sep));
+      const parsed = PL.parse(kind, aoa);
+      rows = parsed.rows; warnings = parsed.warnings; mes = parsed.mes;
+    }
+  } catch(e) { return toast("No pude leer esa tabla. Revisa los títulos de las columnas."); }
+  if (!rows.length) return toast(warnings[0] || "No encontré clientes.");
+  if (kind === "mant") {
+    const groups = {};
+    rows.forEach(r => { const m = (r.vence||"").slice(0,7); if (!m) return; (groups[m] = groups[m] || []).push(r); });
+    let n = 0;
+    for (const m of Object.keys(groups)) { await guardarPortal("mant", m, groups[m], []); n += groups[m].length; }
+    S.pMes = mes || S.pMes; toast("Listos " + n + " mantenimientos, cada uno en el mes en que cumplen 6 meses.");
+    closeModal(); return;
+  }
+  await guardarPortal(kind, mes || S.pMes || today().slice(0,7), rows, warnings);
+  closeModal();
+}
+async function guardarPortal(kind, mes, rows, warnings){
+  const PL = window.PortalListas;
   let n = 0;
-  for (let i = 0; i < parsed.rows.length; i += 400){
+  for (let i = 0; i < rows.length; i += 400){
     const b = S.db.batch();
-    parsed.rows.slice(i, i+400).forEach(row => {
+    rows.slice(i, i+400).forEach(row => {
       const id = PL.docId(kind, mes, row.cuenta);
-      const base = {lista:kind, mes, cuenta:row.cuenta, nombre:row.nombre||"Sin nombre", tel:row.tel||"", tel2:row.tel2||"", saldo:+row.saldo||0, cumple:row.cumple||"", promo:(row.promo||"").slice(0,160), detalle:(row.detalle||"").slice(0,200), estado:row.estado||"", accion:row.accion||"", by:S.uid, updatedAt:Date.now()};
+      const base = {lista:kind, mes, cuenta:row.cuenta, nombre:row.nombre||"Sin nombre", tel:row.tel||"", tel2:row.tel2||"", direccion:(row.direccion||"").slice(0,300), producto:(row.producto||"").slice(0,200), vence:row.vence||"", saldo:+row.saldo||0, cumple:row.cumple||"", promo:(row.promo||"").slice(0,160), detalle:(row.detalle||"").slice(0,200), estado:row.estado||"", accion:row.accion||"", by:S.uid, updatedAt:Date.now()};
       const prev = (S.portal||{})[id];
       if (prev) b.set(S.db.doc("portallists/"+id), base, {merge:true});
       else b.set(S.db.doc("portallists/"+id), Object.assign({status:"nuevo", notes:"", sigue:"", statusAt:0, intentos:[]}, base));
@@ -1317,8 +1360,8 @@ async function importarPortal(file){
     });
     await b.commit();
   }
-  S.pMes = mes; S.pLista = kind;
-  toast("Listos " + n + " clientes de " + mes + (parsed.warnings.length ? ". " + parsed.warnings[0] : ""));
+  S.pMes = mes;
+  toast("Listos " + n + " clientes de " + mes + ((warnings||[]).length ? ". " + warnings[0] : ""));
 }
 function render(){
   if (S.publicGame) return;

@@ -173,6 +173,7 @@ test("el bot anota pagos automáticos y agenda, y no los borra", async () => {
 test("la lista del portal la ve la telemarketer y no el público", async () => {
   const fila = {
     lista: "cumple", mes: "2026-11", cuenta: "1001", nombre: "Ana Ejemplo", tel: "6195550101", tel2: "",
+    direccion: "", producto: "", vence: "",
     saldo: 0, cumple: "11-06", promo: "", detalle: "", estado: "", accion: "", by: "kat", updatedAt: Date.now(),
     status: "nuevo", notes: "", sigue: "", statusAt: 0, intentos: []
   };
@@ -180,8 +181,10 @@ test("la lista del portal la ve la telemarketer y no el público", async () => {
   await assertSucceeds(setDoc(ref, fila));
   await assertSucceeds(getDoc(doc(db(aris), "portallists/cumple_2026-11_1001")));
   await assertFails(getDoc(doc(db(stranger), "portallists/cumple_2026-11_1001")));
-  await assertFails(getDoc(doc(db(bot), "portallists/cumple_2026-11_1001")));
+  await assertSucceeds(getDoc(doc(db(bot), "portallists/cumple_2026-11_1001")));
+  await assertSucceeds(setDoc(doc(db(bot), "portallists/cumple_2026-11_1003"), Object.assign({}, fila, { cuenta: "1003", by: "bot1" })));
   await assertFails(setDoc(doc(db(aris), "portallists/cumple_2026-11_1002"), fila));
+  await assertFails(deleteDoc(doc(db(bot), "portallists/cumple_2026-11_1001")));
   await assertSucceeds(updateDoc(doc(db(aris), "portallists/cumple_2026-11_1001"), {
     status: "seguimiento", notes: "volver a llamar", sigue: "2026-12-01", statusAt: Date.now(), updatedAt: Date.now(),
     intentos: arrayUnion({ at: Date.now(), by: "aris", r: "nc" })

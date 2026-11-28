@@ -42,6 +42,16 @@ test("el reporte de filtros junta las filas del mismo cliente", () => {
   assert.equal(out.rows[1].detalle, "WEB");
 });
 
+test("el mantenimiento se archiva en el mes en que cumple 6 meses", () => {
+  const rows = P.parseTabla("cuenta,nombre,telefono,direccion,producto,fecha\n30000001,Ana Ejemplo,619-555-0101,123 Main St,Fresca Flow,2026-05-15\n");
+  const out = P.parseMantRows(rows);
+  assert.equal(out.rows.length, 1);
+  assert.equal(out.rows[0].vence, "2026-11-15");
+  assert.equal(out.rows[0].direccion, "123 Main St");
+  assert.equal(out.rows[0].producto, "Fresca Flow");
+  assert.equal(P.docId("mant", out.rows[0].vence.slice(0, 7), out.rows[0].cuenta), "mant_2026-11_30000001");
+});
+
 test("una fecha de Excel se vuelve día de calendario", () => {
   assert.equal(P.serialToISO(46327), "2026-11-01");
 });
