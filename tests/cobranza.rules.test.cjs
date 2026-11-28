@@ -199,6 +199,27 @@ test("el nivel de crédito lo ve la operación de Katerine y lo importa el bot",
   await assertFails(updateDoc(doc(db(bot), "hcredito/10000001"), { status: "llamado" }));
 });
 
+test("la lista del portal la ve la telemarketer y no el público", async () => {
+  const fila = {
+    lista: "filtros", mes: "2026-11", cuenta: "1001", nombre: "Ana Ejemplo", tel: "6195550101", tel2: "",
+    direccion: "", producto: "Filtro", vence: "",
+    saldo: 0, cumple: "", promo: "", detalle: "", estado: "", accion: "", by: "kat", updatedAt: Date.now(),
+    status: "nuevo", notes: "", sigue: "", statusAt: 0, intentos: []
+  };
+  await assertSucceeds(setDoc(doc(db(owner), "portallists/filtros_2026-11_1001"), fila));
+  await assertSucceeds(getDoc(doc(db(aris), "portallists/filtros_2026-11_1001")));
+  await assertFails(getDoc(doc(db(stranger), "portallists/filtros_2026-11_1001")));
+  await assertSucceeds(getDoc(doc(db(bot), "portallists/filtros_2026-11_1001")));
+  await assertSucceeds(setDoc(doc(db(bot), "portallists/mant_2026-11_1003"), Object.assign({}, fila, { lista: "mant", cuenta: "1003", by: "bot1" })));
+  await assertFails(setDoc(doc(db(aris), "portallists/filtros_2026-11_1002"), fila));
+  await assertFails(deleteDoc(doc(db(bot), "portallists/filtros_2026-11_1001")));
+  await assertSucceeds(updateDoc(doc(db(aris), "portallists/filtros_2026-11_1001"), {
+    status: "seguimiento", notes: "volver a llamar", sigue: "2026-12-01", statusAt: Date.now(), updatedAt: Date.now(),
+    intentos: arrayUnion({ at: Date.now(), by: "aris", r: "nc" })
+  }));
+  await assertFails(updateDoc(doc(db(aris), "portallists/filtros_2026-11_1001"), { tel: "0000000000" }));
+});
+
 test("el bot crea postventa y no la borra", async () => {
   const ref = await assertSucceeds(addDoc(collection(db(bot), "cpost"), orden("bot@example.com")));
   await assertFails(deleteDoc(ref));
