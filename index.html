@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611271532"></script>
-<script src="anuncios.js?v=202611271532"></script>
-<script src="juego.js?v=202611271532"></script>
+<script src="demo.js?v=202611271650"></script>
+<script src="anuncios.js?v=202611271650"></script>
+<script src="juego.js?v=202611271650"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611271532";
+const APP_VER = "202611271650";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -1566,17 +1566,20 @@ function cagDiaHtml(day){ const L = Object.entries(S.cag||{}).filter(([,x]) => x
   const hechas = Object.values(S.cag||{}).filter(x => x.estado==="hecho" && laDate(+x.hechoAt||cagAt(x))===day).length;
   if (!L.length && !hechas) return "";
   return `<div class="eyebrow" style="margin:14px 0 6px">📒 Cobranza y postventa (${L.length})${hechas?` · ✅ ${hechas} hecha(s)`:""}</div>${L.length?`<div class="list">${L.map(([id,x]) => { const k = CAG_K(x.tipo), at = cagAt(x), atr = x.fecha < day;
-    return `<button class="item" data-cag="${id}" style="border-left:6px solid ${AG_COL[k][0]};background:linear-gradient(90deg,${AG_COL[k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(at)}</b> · ${esc(x.nombre||"Cliente")}</div><div class="m">${AG_COL[k][1]}${atr?" · ⚠️ atrasada ("+fmt(at,{day:"numeric",month:"short"})+")":""}${x.dir?" · 📍 "+esc(x.dir):""}${x.notas?" · "+esc(x.notas):""}</div></div><span class="pill acc">Abrir</span></button>`; }).join("")}</div>`:""}`; }
+    return `<button class="item" data-cag="${id}" style="border-left:6px solid ${AG_COL[k][0]};background:linear-gradient(90deg,${AG_COL[k][0]}18,transparent 70%)"><div style="flex:1"><div class="t"><b>${horaTxt(at)}</b> · ${esc(x.nombre||"Cliente")}</div><div class="m">${AG_COL[k][1]}${atr?" · ⚠️ atrasada ("+fmt(at,{day:"numeric",month:"short"})+")":""}${x.dir?" · 📍 "+esc(x.dir):""}${x.notas?" · "+esc(notasLimpias(x.notas).replace(/\n/g," · ")):""}</div></div><span class="pill acc">Abrir</span></button>`; }).join("")}</div>`:""}`; }
+/* Notas de cobranza: quita las líneas repetidas (teléfono/dirección que se guardaron dos veces) */
+function notasLimpias(n){ const vis = new Set(); return String(n||"").split("\n").filter(l => { const k = l.toLowerCase().replace(/[^a-z0-9]/g,""); if (!k) return true; if (vis.has(k)) return false; vis.add(k); return true; }).join("\n").trim(); }
 function openCag(id){ const x0 = (S.cag||{})[id] || (S.cagK||{})[id]; if (!x0) return; const nm = String(x0.notas||"").match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/); const dm = String(x0.notas||"").match(/📍\s*([^·\n]+)/);
   const x = Object.assign({}, x0, {dir: x0.dir || (dm ? dm[1].trim() : "")}); const t = String(x0.tel||"").replace(/\D/g,"").slice(-10) || (nm ? nm[1]+nm[2]+nm[3] : ""); const k = CAG_K(x.tipo);
   openModal(`<h3 style="border-left:6px solid ${AG_COL[k][0]};padding-left:10px">${esc(x.nombre||"Cliente")}</h3>
     <p class="note" style="margin-top:-4px">${AG_COL[k][1]} · ${esc(CAG_TXT[x.tipo]||x.tipo)} · ${fmt(cagAt(x),{weekday:"long",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})}<br>Te la puso ${esc((Object.values(S.members||{}).find(m => (m.email||"").toLowerCase()===x.by)||{}).name || String(x.by||"").split("@")[0])} desde Cobranza</p>
-    ${t.length===10?`<div class="row" style="gap:6px;margin-bottom:8px"><a class="btn small" href="tel:+1${t}">📞 Llamar</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}">WhatsApp</a></div>`:""}
+    ${t.length===10?`<p style="margin:0 0 8px;font-size:20px"><a href="tel:+1${t}" style="color:inherit"><b>📞 (${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}</b></a> <button type="button" class="btn small ghost" id="cag-cp" style="margin-left:6px">Copiar</button></p><div class="row" style="gap:6px;margin-bottom:8px"><a class="btn small" href="tel:+1${t}">📞 Llamar</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}">WhatsApp</a></div>`:""}
     ${x.dir?`<p>📍 <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.dir)}">${esc(x.dir)}</a></p>`:""}
-    ${x.notas?`<p style="white-space:pre-wrap">${esc(x.notas)}</p>`:""}
+    ${x.notas?`<p style="white-space:pre-wrap">${esc(notasLimpias(x.notas))}</p>`:""}
     ${x.estado==="hecho" ? `<div class="banner good">✅ Hecha${x.res?": "+esc(x.res):""}</div><div class="row"><button class="btn ghost" data-close>Cerrar</button></div>` :
     `<label class="f">¿Qué pasó? (lo ve la chica de cobranza)<textarea class="i" id="cag-r" maxlength="480" placeholder="Ej.: pagó $150, quedó de pagar el viernes, no estaba…"></textarea></label>
     <div class="row"><button class="btn" id="cag-ok">✅ Marcar como hecha</button><button class="btn ghost" data-close>Cerrar</button></div>`}`, () => {
+    const cp = document.getElementById("cag-cp"); if (cp) cp.onclick = () => { const v = `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}`; try { navigator.clipboard.writeText(v).then(() => toast("Número copiado: "+v), () => toast(v)); } catch { toast(v); } };
     const b = document.getElementById("cag-ok"); if (b) b.onclick = async () => { const r = (document.getElementById("cag-r").value||"").trim().slice(0,480); b.disabled = true;
       const quien = firstName2(S.me?.name || "Katerine");
       try { await S.db.doc("cagenda/"+id).update({estado:"hecho", hechoAt:Date.now(), ...(r ? {res:quien+": "+r} : {})}); closeModal(); toast("✅ Hecha. Ya se quitó de tu agenda"); }
@@ -1597,7 +1600,7 @@ function miAgendaCard(){ const d0 = S.f.mag || today(); const r = [laToMs(d0,"00
   let cagHechas = 0; Object.entries(S.cag||{}).forEach(([id,x]) => { const at = cagAt(x);
     if (x.estado==="hecho"){ if (laDate(+x.hechoAt||at)===d0) cagHechas++; return; }
     const atrasada = d0===today() && x.fecha < d0; if (x.fecha!==d0 && !atrasada) return;
-    items.push({at: atrasada ? r[0] : at, hx: at, k:CAG_K(x.tipo), t:x.nombre||"Cliente", m:[atrasada?"⚠️ atrasada ("+fmt(at,{day:"numeric",month:"short"})+")":"", CAG_TXT[x.tipo]||"", x.dir?"📍 "+x.dir:"", x.notas||""].filter(Boolean).join(" · "), cag:id}); });
+    items.push({at: atrasada ? r[0] : at, hx: at, k:CAG_K(x.tipo), t:x.nombre||"Cliente", m:[atrasada?"⚠️ atrasada ("+fmt(at,{day:"numeric",month:"short"})+")":"", CAG_TXT[x.tipo]||"", x.dir?"📍 "+x.dir:"", notasLimpias(x.notas).replace(/\n/g," · ")].filter(Boolean).join(" · "), cag:id}); });
   items.sort((a,b) => a.at - b.at);
   const ch = (v,t) => `<button class="chip ${d0===v?"on":""}" data-mag="${v}">${t}</button>`;
   return `<div class="card"><h2>📅 Mi agenda<span class="note">${items.length} cosa(s)</span></h2><div class="chips" style="margin-bottom:8px">${ch(addDays(today(),-1),"Ayer")}${ch(today(),"Hoy")}${ch(addDays(today(),1),"Mañana")}${ch(addDays(today(),2),fmt(laToMs(addDays(today(),2),"12:00"),{weekday:"long"}))}</div>

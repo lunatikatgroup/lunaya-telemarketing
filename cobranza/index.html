@@ -79,7 +79,7 @@ html.embebido .brand{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611271532"></script>
+<script src="logic.js?v=202611271650"></script>
 <script>
 try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 if (window.top !== window.self) document.documentElement.classList.add("framed");
@@ -852,6 +852,7 @@ function autoFila(base, by){ const met = ["tarjeta","cheque","sitio","llamada"].
 /* Teléfonos y direcciones de la agenda: se tocan para llamar, mandar WhatsApp o abrir el mapa */
 const TEL_RX = /(\+?1[\s.-]?)?\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/g;
 const DIR_RX = /📍\s*([^·\n]+)/;
+function notasLimpias(n){ const vis = new Set(); return String(n||"").split("\n").filter(l => { const k = l.toLowerCase().replace(/[^a-z0-9]/g,""); if (!k) return true; if (vis.has(k)) return false; vis.add(k); return true; }).join("\n").trim(); }
 function linkTxt(t){ return esc(t).replace(TEL_RX, (m,_,a,b,c) => `<a href="tel:+1${a}${b}${c}" style="color:inherit;font-weight:700">${m}</a>`); }
 function accRapidas(a){ const t = (String(a.tel||"").replace(/\D/g,"").slice(-10)) || (() => { const m = String(a.notas||"").match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/); return m ? m[1]+m[2]+m[3] : ""; })();
   const cc = a.clientId && S.cli[a.clientId]; const dir = a.dir || (String(a.notas||"").match(DIR_RX)||[])[1] || (cc && cc.direccion) || "";
@@ -867,7 +868,7 @@ function vAgenda(){
   const citas = Object.entries(S.agenda).filter(([,a]) => enRangoFecha(a.fecha) && (!who || a.asignada===who || (vista==="mia" && a.asignada==="equipo"))).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
   const revs = revisiones().filter(r => { if (!who || who==="equipo") return true; const c = S.cli[r.a.clientId]; return c ? encargada(c)===who : false; });
   const filaC = ([id,a]) => { const cc = a.clientId && S.cli[a.clientId]; const nom = cc ? `<button type="button" class="linkish" data-open="${esc(a.clientId)}">${esc(nombreDe(cc)||a.nombre)}</button>` : esc(a.nombre||"Sin cliente"); const vt = cc ? vendTxt(cc) : "";
-    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.notas?" · "+linkTxt(a.notas):""}${accRapidas(a)}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div><button class="btn small ghost" data-agedit="${esc(id)}" title="Editar">✏️ Editar</button>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
+    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.notas?" · "+linkTxt(notasLimpias(a.notas)):""}${accRapidas(a)}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div><button class="btn small ghost" data-agedit="${esc(id)}" title="Editar">✏️ Editar</button>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
   const filaR = r => { const c = S.cli[r.a.clientId]; const nom = c ? `<button type="button" class="linkish" data-open="${esc(r.a.clientId)}">${esc(nombreDe(c)||r.a.nombre)}</button>` : esc(r.a.nombre||"Cliente");
     return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag" style="background:#ede9fe;color:#6d28d9">Revisión pago automático</span></div><div class="m">${esc(r.fecha)} · ${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo)}${r.a.dia?` · día ${r.a.dia}`:""}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small danger" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; };
   const autos = Object.entries(S.autos).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||""),"es"));
@@ -908,7 +909,7 @@ function openAgenda(id){ const a = id ? (S.agenda[id]||{}) : {asignada:S.email, 
     <label class="f">Nombre si no está en la lista<input class="i" id="ag-n" value="${esc(a.nombre||"")}"></label>
     <label class="f">Tipo<select class="i" id="ag-t">${Object.entries(AGENDA_TIPO).map(([k,l]) => `<option value="${k}" ${(a.tipo||"llamar")===k?"selected":""}>${l}</option>`).join("")}</select></label>
     <label class="f">Asignada a<select class="i" id="ag-as">${optsGente(a.asignada||S.email, true)}</select></label>
-    <label class="f">Teléfono<input class="i" id="ag-tel" value="${esc(a.tel||"")}" placeholder="Se llena solo si escoges la cuenta"></label>
+    <label class="f">Teléfono<input class="i" id="ag-tel" value="${esc(a.tel||((String(a.notas||"").match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)||[])[0])||"")}" placeholder="Se llena solo si escoges la cuenta"></label>
     <label class="f">Dirección (para visitas)<input class="i" id="ag-dir" value="${esc(a.dir||"")}" placeholder="Se llena sola si escoges la cuenta"></label>
     ${id?`<label class="f">Estado<select class="i" id="ag-es"><option value="pendiente" ${a.estado!=="hecho"?"selected":""}>Pendiente</option><option value="hecho" ${a.estado==="hecho"?"selected":""}>Hecho</option></select></label>`:""}
     ${!id && S.owners[0] ? `<label class="f" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="ag-kat"> 📌 Ponérsela también a Katerine (le sale en su agenda de Lunaya)</label>` : ""}
@@ -923,7 +924,7 @@ function openAgenda(id){ const a = id ? (S.agenda[id]||{}) : {asignada:S.email, 
       try { await guardar(data); closeModal(); toast(data.asignada===S.owners[0] ? "Cita guardada · ya le sale a Katerine en su agenda" : "Cita guardada"); }
       catch(e){ /* reglas viejas en Firebase: se guarda igual, con el teléfono y la dirección dentro de las notas */
         if (!/permission/i.test(String(e&&e.message||e))) return err(e);
-        const d2 = Object.assign({}, data); const ex = [d2.tel?"📞 "+d2.tel:"", d2.dir?"📍 "+d2.dir:""].filter(Boolean).join(" · "); delete d2.tel; delete d2.dir; delete d2.res; if (d2.tipo==="visita"){ d2.tipo = "ir"; } d2.notas = [d2.notas, ex].filter(Boolean).join("\n").slice(0,800);
+        const d2 = Object.assign({}, data); const ex = [d2.tel?"📞 "+d2.tel:"", d2.dir?"📍 "+d2.dir:""].filter(Boolean).join(" · "); delete d2.tel; delete d2.dir; delete d2.res; if (d2.tipo==="visita"){ d2.tipo = "ir"; } const dig = String(data.tel||"").replace(/\D/g,"").slice(-10); const ya = dig && String(d2.notas||"").replace(/\D/g,"").includes(dig); d2.notas = notasLimpias([d2.notas, ya ? "" : ex].filter(Boolean).join("\n")).slice(0,800);
         try { await guardar(d2); closeModal(); toast("Cita guardada"); } catch(e2){ err(e2); } } };
   });
 }
