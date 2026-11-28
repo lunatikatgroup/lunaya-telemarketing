@@ -2,7 +2,7 @@
   "name": "lunaya-telemarketing",
   "private": true,
   "scripts": {
-    "test": "node --test tests/cobranza-logic.test.cjs",
+    "test": "node --test tests/cobranza-logic.test.cjs tests/portal-listas.test.cjs",
     "test:rules": "firebase emulators:exec --only firestore --project lunaya-demo \"node --test tests/cobranza.rules.test.cjs\""
   },
   "devDependencies": {

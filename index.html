@@ -195,13 +195,14 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611272202"></script>
-<script src="anuncios.js?v=202611272202"></script>
-<script src="juego.js?v=202611272202"></script>
+<script src="demo.js?v=202611272217"></script>
+<script src="anuncios.js?v=202611272217"></script>
+<script src="juego.js?v=202611272217"></script>
+<script src="portal-listas.js?v=202611272217"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611272202";
+const APP_VER = "202611272217";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -447,6 +448,7 @@ function subscribeAll(){
   if (S.email) S.unsub.push(S.db.collection("cagenda").where("asignada", "==", S.email).onSnapshot(s => { S.cag = {}; s.docs.forEach(d => S.cag[d.id] = d.data()); render(); }, e => { S.cag = {}; console.log("cagenda", e.code||e); }));
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
   if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner || esBot()){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
+  if (S.isOwner || S.me?.role === "admin" || (S.me?.role === "tele" && !S.me?.upline)) S.unsub.push(S.db.collection("portallists").onSnapshot(s => { S.portal = {}; s.docs.forEach(d => S.portal[d.id] = Object.assign({id:d.id}, d.data())); render(); }, e => console.log("portal", e.code||e)));
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
   else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
   if (S.me?.role === "socio" && S.me?.tipo === "Socio distribuidor"){
@@ -550,6 +552,7 @@ const ICONS = {
   lider:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>',
   grupo:ICONS_LIDER,
   juego:'<path d="M20 7h-2.2A3 3 0 0 0 12 3.8 3 3 0 0 0 6.2 7H4a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8h1a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM15 5a1 1 0 0 1 0 2h-2a1 1 0 0 1 1-2zm-6 0a1 1 0 0 1 1 1v1H8a1 1 0 0 1 1-2zm2 15H7v-8h4zm0-10H5V9h6zm6 10h-4v-8h4zm2-10h-6V9h6z" fill="currentColor"/>',
+  portal:'<path d="M6 2h9l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm8 1.5V8h4.5M8 13h8M8 17h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   equipo:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM9 13c-3.3 0-7 1.6-7 4v3h14v-3c0-2.4-3.7-4-7-4zm8 0c-.5 0-1 0-1.5.1 1.5.9 2.5 2.2 2.5 3.9v3h5v-3c0-2.2-3.4-4-6-4z" fill="currentColor"/>'
 };
 function sinTele(){ return !S.isOwner && S.me?.sinTele === true; }
@@ -564,12 +567,13 @@ function veCobranza(){
 function tabsFor(r){
   if (sinTele()) return veCobranza() ? [["cobra","Cobranza"]] : [];
   let tabs = [];
-  if (r==="admin") tabs = [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"],["reclut","Reclutar"]];
+  if (r==="admin") tabs = [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["portal","Llamadas"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"],["reclut","Reclutar"]];
   else if ((r==="tele" || r==="socio") && S.me?.asistente && S.me?.soloAsist) tabs = [["cobros","Pagos"],["kag","Agenda"],["ranking","Reportes"]];
-  else if (r==="tele" && S.me?.asistente) tabs = [["hoy","Hoy"],["cobros","Cobros"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"], ...(S.me?.lider ? [["lider","Mi equipo"]] : [])];
+  else if (r==="tele" && S.me?.asistente) tabs = [["hoy","Hoy"],["cobros","Cobros"],["registrar","Registrar"],["citas","Citas"],["portal","Llamadas"],["ranking","Ranking"], ...(S.me?.lider ? [["lider","Mi equipo"]] : [])];
   else if (r==="socio" && S.me?.asistente && !isDist()) tabs = [["hoy","Hoy"],["cobros","Cobros"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
-  else if (r==="tele") tabs = S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"]];
+  else if (r==="tele") tabs = S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["portal","Llamadas"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["portal","Llamadas"],["ranking","Ranking"]];
   else if (r==="socio") tabs = isDist() ? [["hoy","Hoy"],["citas","Citas"],["juego","Ruleta"],["grupo","Mi grupo"],["pagos","Pagos"],["ranking","Ranking"]] : [["hoy","Hoy"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
+  if (r==="tele" && S.me?.upline) tabs = tabs.filter(t => t[0]!=="portal");
   if (veCobranza() && !tabs.some(t => t[0]==="cobra")) tabs = tabs.concat([["cobra","Cobranza"]]);
   return tabs;
 }
@@ -1220,6 +1224,102 @@ const temaApp = () => { try { return localStorage.getItem("ly-tema") || "crema";
 function setTemaApp(t){ try { localStorage.setItem("ly-tema", t); } catch {} const h = document.documentElement;
   if (t==="crema"){ h.removeAttribute("data-apptema"); h.removeAttribute("data-theme"); } else { h.setAttribute("data-apptema", t); h.setAttribute("data-theme", ["negro","azul","verde"].includes(t) ? "dark" : "light"); }
   const bg = (TEMAS_APP.find(x => x[0]===t)||[])[2]; const m = document.querySelector('meta[name="theme-color"]'); if (m && bg) m.setAttribute("content", bg); }
+const PL_ST = {nuevo:"Sin llamar", llamado:"Llamado", seguimiento:"Seguimiento", no_interesa:"No interesa"};
+const PL_INT = {nc:"📵 No contestó", msj:"💬 Le dejé mensaje", ok:"✅ Contestó"};
+function viewPortal(){
+  const PL = window.PortalListas;
+  if (!PL) return `<div class="card empty">Cargando…</div>`;
+  if (!(S.isOwner || role()==="admin" || (role()==="tele" && !S.me?.upline))) return `<div class="card empty">Esta lista es para las telemarketers del programa y para Dirección.</div>`;
+  const all = Object.entries(S.portal || {});
+  const meses = [...new Set(all.map(([,x]) => x.mes).filter(Boolean).concat([today().slice(0,7)]))].sort();
+  if (!S.pMes || !meses.includes(S.pMes)) S.pMes = meses[meses.length-1];
+  const lista = S.pLista === "filtros" ? "filtros" : "cumple";
+  const filtro = S.pFilt || "todos";
+  let rows = all.filter(([,x]) => x.mes===S.pMes && x.lista===lista);
+  if (filtro==="llamar") rows = rows.filter(([,x]) => x.status==="nuevo" || (x.sigue && x.sigue <= today() && x.status!=="no_interesa"));
+  else if (filtro==="seguimiento") rows = rows.filter(([,x]) => x.sigue);
+  else if (filtro==="llamados") rows = rows.filter(([,x]) => (x.intentos||[]).length);
+  rows.sort((a,b) => String(a[1].cumple||a[1].nombre).localeCompare(String(b[1].cumple||b[1].nombre), "es"));
+  const telFmtP = t => t && t.length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"sin teléfono");
+  const item = ([id,x]) => { const ult = (x.intentos||[]).slice(-1)[0];
+    const extra = lista==="cumple" ? [PL.cumpleTxt(x.cumple), x.saldo ? "saldo $"+x.saldo : ""].filter(Boolean).join(" · ") : [x.promo, x.detalle, x.accion].filter(Boolean).join(" · ");
+    const sig = x.sigue ? (x.sigue < today() ? "Seguimiento atrasado " : "Seguimiento ") + x.sigue : "";
+    return `<button class="item" data-pl="${esc(id)}" style="display:block"><div class="t">${esc(x.nombre)} <span class="tag ${x.status==="nuevo"?"tg-warn":x.status==="no_interesa"?"tg-mute":"tg-good"}">${esc(PL_ST[x.status]||"Sin llamar")}</span></div><div class="m">${esc(telFmtP(x.tel))}${x.tel2?" · trabajo "+esc(telFmtP(x.tel2)):""}${extra?" · "+esc(extra):""}</div><div class="m">${ult ? `${esc(PL_INT[ult.r]||ult.r)} · ${fmt(ult.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(ult.by))}` : "Nadie lo ha llamado"}${sig?" · "+esc(sig):""}</div></button>`; };
+  const admin = role()==="admin" || S.isOwner;
+  return `<div class="card"><div class="chips"><button class="chip ${lista==="cumple"?"on":""}" data-plista="cumple">🎂 Cumpleaños</button><button class="chip ${lista==="filtros"?"on":""}" data-plista="filtros">💧 Filtros</button></div>
+    <div class="row" style="margin-top:8px"><label class="f">Mes<select class="i" id="p-mes">${meses.map(m => `<option value="${m}" ${m===S.pMes?"selected":""}>${m}</option>`).join("")}</select></label>
+    <label class="f">Ver<select class="i" id="p-fil">${[["todos","Todos"],["llamar","Por llamar"],["seguimiento","Con seguimiento"],["llamados","Ya llamados"]].map(([k,l]) => `<option value="${k}" ${filtro===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <p class="note">${lista==="cumple"?"Cumpleaños de ese mes. Solo se guarda el día y el mes.":"Clientes del programa de filtros (CARP) de ese mes."} ${rows.length} en la lista.</p>
+    ${admin?`<div class="row"><label class="btn small">Subir Excel del portal<input id="p-file" type="file" accept=".xls,.xlsx,.html,text/html" hidden></label><span class="note">Elige el archivo del mes. Si el cliente ya estaba, se actualizan sus datos y se conservan las llamadas.</span></div>`:""}</div>
+    <div class="card"><h2>${lista==="cumple"?"Cumpleaños":"Filtros"} <span class="note">${esc(S.pMes)}</span></h2>${rows.length?`<div class="list">${rows.map(item).join("")}</div>`:`<div class="empty">No hay clientes para este mes. ${admin?"Sube el Excel del portal.":""}</div>`}</div>`;
+}
+function bindPortal(){
+  document.querySelectorAll("[data-plista]").forEach(b => b.onclick = () => { S.pLista = b.dataset.plista; render(); });
+  const mes = document.getElementById("p-mes"); if (mes) mes.onchange = () => { S.pMes = mes.value; render(); };
+  const fil = document.getElementById("p-fil"); if (fil) fil.onchange = () => { S.pFilt = fil.value; render(); };
+  document.querySelectorAll("[data-pl]").forEach(b => b.onclick = () => openPortalCliente(b.dataset.pl));
+  const file = document.getElementById("p-file"); if (file) file.onchange = async () => { const f = file.files && file.files[0]; file.value = ""; if (f) importarPortal(f); };
+}
+function openPortalCliente(id){
+  const x = (S.portal||{})[id]; if (!x) return;
+  const PL = window.PortalListas;
+  const tel = x.tel || "";
+  const mostrar = t => t && t.length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"");
+  openModal(`<h3>${esc(x.nombre)}</h3><p class="note" style="margin:0">${x.lista==="cumple"?"Cumpleaños":"Filtros"} · ${esc(x.mes)} · cuenta ${esc(x.cuenta)}${x.cumple?" · "+esc(PL.cumpleTxt(x.cumple)):""}${x.saldo?" · saldo $"+esc(x.saldo):""}</p>
+    ${x.promo?`<p class="note" style="margin:0">${esc(x.promo)}${x.detalle?" · "+esc(x.detalle):""}${x.accion?" · "+esc(x.accion):""}${x.estado?" · "+esc(x.estado):""}</p>`:""}
+    <div class="row">${tel?`<a class="btn" href="tel:+1${esc(tel)}">📞 Llamar</a><a class="btn dark" target="_blank" rel="noopener" href="https://wa.me/1${esc(tel)}">WhatsApp</a><a class="btn ghost" href="sms:+1${esc(tel)}">Mensaje</a>`:`<span class="note">Sin teléfono de casa${x.tel2?" · trabajo "+esc(mostrar(x.tel2)):""}</span>`}${x.tel2&&tel?`<a class="btn ghost" href="tel:+1${esc(x.tel2)}">Trabajo</a>`:""}</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:10px"><div class="eyebrow" style="margin-bottom:6px">¿Cómo te fue con la llamada?</div><div class="opts">${Object.entries(PL_INT).map(([k,v]) => `<button class="opt" data-pint="${k}">${v}</button>`).join("")}</div>
+      ${(x.intentos||[]).length?`<div class="note" style="margin-top:6px">${(x.intentos||[]).slice().reverse().map(it => `${esc(PL_INT[it.r]||it.r)} · ${fmt(it.at,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(it.by))}`).join("<br>")}</div>`:`<div class="note" style="margin-top:6px">Todavía nadie lo ha llamado.</div>`}</div>
+    <label class="f">Notas<textarea class="i" id="pl-n">${esc(x.notes||"")}</textarea></label>
+    <label class="f">Próximo seguimiento<input class="i" type="date" id="pl-s" value="${esc(x.sigue||"")}"></label>
+    <label class="f">Estado<select class="i" id="pl-st">${Object.entries(PL_ST).map(([k,v]) => `<option value="${k}" ${(x.status||"nuevo")===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    <div class="row"><button class="btn" id="pl-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const guardar = async (resultado) => {
+      const sigue = (document.getElementById("pl-s").value||"").slice(0,10);
+      const notes = document.getElementById("pl-n").value.trim().slice(0,1000);
+      let status = document.getElementById("pl-st").value;
+      if (resultado) status = "llamado";
+      if (sigue && status==="nuevo") status = "seguimiento";
+      const o = {status, notes, sigue, statusAt:Date.now(), updatedAt:Date.now()};
+      if (resultado) o.intentos = firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, r:resultado});
+      try { await S.db.doc("portallists/"+id).update(o); Object.assign(S.portal[id], {status, notes, sigue, statusAt:o.statusAt}); if (resultado) (S.portal[id].intentos = S.portal[id].intentos || []).push({at:o.statusAt, by:S.uid, r:resultado}); toast("Guardado"); openPortalCliente(id); }
+      catch(e){ console.log(e); toast("No se pudo guardar."); }
+    };
+    document.querySelectorAll("[data-pint]").forEach(b => b.onclick = () => guardar(b.dataset.pint));
+    document.getElementById("pl-save").onclick = () => guardar();
+  });
+}
+async function importarPortal(file){
+  const PL = window.PortalListas; if (!PL) return;
+  const buf = await file.arrayBuffer();
+  const head = new TextDecoder().decode(buf.slice(0, 80)).trim();
+  let aoa;
+  if (head.startsWith("<")) aoa = [...new DOMParser().parseFromString(new TextDecoder().decode(buf), "text/html").querySelectorAll("tr")].map(tr => [...tr.children].map(td => td.textContent.trim()));
+  else {
+    await new Promise((ok, no) => { if (window.XLSX) return ok(); const s = document.createElement("script"); s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = () => no(new Error("xlsx")); document.head.appendChild(s); });
+    const wb = XLSX.read(buf, {type:"array"});
+    aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:""});
+  }
+  const kind = PL.detect(aoa) || (S.pLista === "filtros" ? "filtros" : "cumple");
+  const parsed = PL.parse(kind, aoa);
+  if (!parsed.rows.length) return toast(parsed.warnings[0] || "No encontré clientes en el archivo.");
+  const mes = parsed.mes || S.pMes || today().slice(0,7);
+  let n = 0;
+  for (let i = 0; i < parsed.rows.length; i += 400){
+    const b = S.db.batch();
+    parsed.rows.slice(i, i+400).forEach(row => {
+      const id = PL.docId(kind, mes, row.cuenta);
+      const base = {lista:kind, mes, cuenta:row.cuenta, nombre:row.nombre||"Sin nombre", tel:row.tel||"", tel2:row.tel2||"", saldo:+row.saldo||0, cumple:row.cumple||"", promo:(row.promo||"").slice(0,160), detalle:(row.detalle||"").slice(0,200), estado:row.estado||"", accion:row.accion||"", by:S.uid, updatedAt:Date.now()};
+      const prev = (S.portal||{})[id];
+      if (prev) b.set(S.db.doc("portallists/"+id), base, {merge:true});
+      else b.set(S.db.doc("portallists/"+id), Object.assign({status:"nuevo", notes:"", sigue:"", statusAt:0, intentos:[]}, base));
+      n++;
+    });
+    await b.commit();
+  }
+  S.pMes = mes; S.pLista = kind;
+  toast("Listos " + n + " clientes de " + mes + (parsed.warnings.length ? ". " + parsed.warnings[0] : ""));
+}
 function render(){
   if (S.publicGame) return;
   { const ae = document.activeElement; if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && $("#main")?.contains(ae) && Date.now() - (S.userAct||0) > 200){ S.pendingRender = true; return; } }
@@ -1284,8 +1384,8 @@ function render(){
   const needsWorld = (S.view==="registrar") || (S.view==="citas" && r==="tele");
   if (S.view==="registrar" && (r==="tele" || r==="admin")) html += enVivoCard();
   if (needsWorld && !worldOk()) html += worldPicker();
-  else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:(r==="admin" ? viewPagos : viewPagosDist), cobros:viewCobros, equipo:viewEquipo, lider:viewLider, ranking:viewRanking, kag:viewKAgenda, juego:(x => window.viewJuego ? viewJuego(x) : `<div class="card empty">Cargando…</div>`)}[S.view])(r);
-  main.innerHTML = html; bindCommon(); setTimeout(() => { try { avisoReporteDia(); } catch {} }, 3000); setTimeout(mostrarNovedades, 1200); refreshChat(); if (S.view==="juego" && window.bindJuego) bindJuego(); if (window.bindDemo) bindDemo();
+  else html += ({hoy:viewHoy, registrar:viewRegistrar, citas:viewCitas, grupo:viewGrupo, pagos:(r==="admin" ? viewPagos : viewPagosDist), cobros:viewCobros, equipo:viewEquipo, lider:viewLider, ranking:viewRanking, kag:viewKAgenda, portal:viewPortal, juego:(x => window.viewJuego ? viewJuego(x) : `<div class="card empty">Cargando…</div>`)}[S.view])(r);
+  main.innerHTML = html; bindCommon(); setTimeout(() => { try { avisoReporteDia(); } catch {} }, 3000); setTimeout(mostrarNovedades, 1200); refreshChat(); if (S.view==="juego" && window.bindJuego) bindJuego(); if (S.view==="portal") bindPortal(); if (window.bindDemo) bindDemo();
   if (S.openAppt && S.appts[S.openAppt] && !!S.appts[S.openAppt]._priv !== S.openPrivState && !document.querySelector(".modal input:focus,.modal textarea:focus")) openAppt(S.openAppt);
   if (fid){ const el = document.getElementById(fid); if (el){ el.focus(); if (sel && "setSelectionRange" in el) try { el.setSelectionRange(sel[0], sel[1]); } catch {} } }
 }
@@ -1295,7 +1395,7 @@ function bindHeader(){
   const b = document.getElementById("me-btn"); if (b) b.onclick = openProfile; }
 function renderHeader(r){
   const first = (S.me?.name||"").split(" ")[0];
-  const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", cobros:"Cobros a distribuidores", kag:"Agenda de Katerine", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing", juego:"Ruleta y prospectos", cobra:"Cobranza y postventa", reclut:"Reclutamiento"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla.", juego:"Regalos para tus clientes y los prospectos que llegan solos.", cobra:"Cuentas, entregas y pagos.", reclut:"Candidatas del equipo."};
+  const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", cobros:"Cobros a distribuidores", kag:"Agenda de Katerine", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing", juego:"Ruleta y prospectos", portal:"Llamadas del portal", cobra:"Cobranza y postventa", reclut:"Reclutamiento"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla.", juego:"Regalos para tus clientes y los prospectos que llegan solos.", portal:"Cumpleaños y filtros del mes. Anota la llamada y el seguimiento.", cobra:"Cuentas, entregas y pagos.", reclut:"Candidatas del equipo."};
   if (!S.authUser){ $("#title").textContent = "Bienvenidos"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunaya."; $("#who").innerHTML = ""; return; }
   if (r==="nuevo"||r==="pendiente"){ $("#title").textContent = "Te damos la bienvenida a Lunaya"; $("#subtitle").textContent = "Registra tu nombre para entrar."; }
   else { $("#title").textContent = T[S.view] || ""; $("#subtitle").textContent = Sb[S.view] || ""; }
