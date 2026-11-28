@@ -79,7 +79,7 @@ html.embebido .brand{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611271650"></script>
+<script src="logic.js?v=202611272202"></script>
 <script>
 try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 if (window.top !== window.self) document.documentElement.classList.add("framed");
@@ -258,8 +258,8 @@ function tabCount(k){
   if (k==="g30"||k==="g60"||k==="g90") return countB(k);
   if (k==="rmes") return recMes(0).filter(x => !x.ya).length;
   if (k==="post") return Object.keys(S.post).length;
-  if (k==="hoy"){ let n = 0; Object.values(S.cli).forEach(c => { if (!esMio(c)) return; if (pagaHoy(c)) n++; if (c.etapa!=="cerrado" && ((c.prox && c.prox < finDia()) || (c.promesa?.fecha && !c.promesa.ok && c.promesa.fecha <= today()))) n++; }); return n; }
-  if (k==="agenda"){ const t = today(); let n = Object.values(S.agenda).filter(a => a.fecha===t && a.estado!=="hecho").length; Object.entries(S.autos).forEach(([id,a]) => { if (L.revisionFecha(a, t)===t && !(S.revs[id+"_"+t])) n++; }); return n; }
+  if (k==="hoy"){ let n = Object.values(S.agenda||{}).filter(a => a.estado!=="hecho" && esRechazo(a)).length + revisiones().filter(r => r.atr || r.fecha===today()).length; Object.values(S.cli).forEach(c => { if (!esMio(c)) return; if (pagaHoy(c)) n++; if (c.etapa!=="cerrado" && ((c.prox && c.prox < finDia()) || (c.promesa?.fecha && !c.promesa.ok && c.promesa.fecha <= today()))) n++; }); return n; }
+  if (k==="agenda"){ const t = today(); let n = Object.values(S.agenda).filter(a => a.fecha<=t && a.estado!=="hecho").length; Object.entries(S.autos).forEach(([id,a]) => { if (L.revisionFecha(a, t)===t && !(S.revs[id+"_"+t])) n++; }); return n; }
   if (k==="ajustes") return Object.keys(staff()).length;
   return null;
 }
@@ -357,6 +357,14 @@ const fmtCorta = d => { try { return new Date(d+"T12:00:00").toLocaleDateString(
 const fmtMes = d => { try { return new Date(d.slice(0,7)+"-15T12:00:00").toLocaleDateString("es-US",{month:"long", year:"numeric"}); } catch { return d; } };
 document.addEventListener("click", e => { if (e.target.closest && e.target.closest("[data-gorm]")){ S.view = "rmes"; render(); scrollTo(0,0); return; } const b = e.target.closest && e.target.closest("[data-rmo]"); if (b){ S.rmOff = +b.dataset.rmo; render(); } });
 document.addEventListener("change", e => { if (e.target && e.target.id==="rm-u"){ try { localStorage.setItem("cob-umbral", e.target.value); } catch {} render(); } });
+function rechazosCard(){ const L = Object.entries(S.agenda).filter(([,a]) => a.estado!=="hecho" && esRechazo(a)).sort((x,y) => (x[1].fecha+x[1].hora).localeCompare(y[1].fecha+y[1].hora));
+  const rv = revisiones().filter(r => r.atr || r.fecha===today());
+  if (!L.length && !rv.length) return "";
+  return `<div class="card" style="border:2px solid #b91c1c;background:#fef2f2"><h2 style="color:#b91c1c">⚠️ Pagos automáticos por resolver <span class="note">${L.length+rv.length}</span></h2>
+    ${L.length?`<p class="note" style="margin-top:-6px"><b>Rechazados:</b> llamar hoy para procesarlos antes de que entren en atraso.</p><div class="list">${L.map(([id,a]) => { const cc = a.clientId && S.cli[a.clientId];
+      return `<div class="item normal" style="cursor:default;border-left:6px solid #b91c1c"><div style="flex:1"><div class="t">${cc?`<button type="button" class="linkish" data-open="${esc(a.clientId)}">${esc(nombreDe(cc)||a.nombre)}</button>`:esc(a.nombre||"Cliente")}${a.fecha<today()?` <span class="tag tg-bad">desde ${esc(a.fecha.slice(5))}</span>`:""}</div><div class="m">${linkTxt(notasLimpias(a.notas))} · ${a.asignada==="equipo"?"👥 Compartida":esc(nameOf(a.asignada))}</div>${accRapidas(a)}</div><button class="btn small" data-hecho="${esc(id)}">Hecho</button></div>`; }).join("")}</div>`:""}
+    ${rv.length?`<p class="note" style="margin-top:10px"><b>Sin revisar:</b> confirma en el portal si el pago pasó.</p><div class="list">${rv.map(r => { const c = S.cli[r.a.clientId];
+      return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${esc((c&&nombreDe(c))||r.a.nombre||"Cliente")}${r.atr?` <span class="tag tg-bad">atrasada ${esc(r.fecha.slice(5))}</span>`:""}</div><div class="m">${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo||"")}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small" style="background:#b91c1c" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; }).join("")}</div>`:""}</div>`; }
 function vHoy(){
   const mine = Object.entries(S.cli).filter(([,c]) => esMio(c));
   const pagos = mine.filter(([,c]) => pagaHoy(c));
@@ -366,6 +374,7 @@ function vHoy(){
   h += `<div class="card"><h2>Pagos automáticos de hoy</h2><p class="note" style="margin-top:-6px">Revisa en el portal si el pago pasó.</p>${pagos.length?`<div class="list">${pagos.map(([id,c]) => cItem(id,c,`<div class="row" style="margin-top:8px"><button class="btn small" data-rv="${esc(id)}|paso">Pasó</button><button class="btn small danger" data-rv="${esc(id)}|no">No pasó</button></div>`)).join("")}</div>`:`<div class="empty">Nadie tiene pago automático hoy, o ya se revisaron.</div>`}</div>`;
   h += `<div class="card"><h2>Llamar hoy</h2>${llamar.length?`<div class="list">${llamar.map(([id,c]) => cItem(id,c)).join("")}</div>`:`<div class="empty">No hay llamadas pendientes para hoy.</div>`}</div>`;
   { const rm = recMes(0).filter(x => !x.ya); if (rm.length) h = `<button type="button" class="card" data-gorm="1" style="display:block;width:100%;text-align:left;border:2px solid #b91c1c;background:#fef2f2;cursor:pointer"><b style="color:#b91c1c">🔥 ${rm.length} cliente(s) pasan a recompra este mes</b><div class="note">${money(rm.reduce((t,x) => t+vencidoDe(x.c), 0))} vencido. Toca para verlos y salvarlos a tiempo.</div></button>` + h; }
+  h = rechazosCard() + h;
   if (isOwner()) h += ventasCard(nv);
   return h;
 }
@@ -854,7 +863,7 @@ const TEL_RX = /(\+?1[\s.-]?)?\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/g;
 const DIR_RX = /📍\s*([^·\n]+)/;
 function notasLimpias(n){ const vis = new Set(); return String(n||"").split("\n").filter(l => { const k = l.toLowerCase().replace(/[^a-z0-9]/g,""); if (!k) return true; if (vis.has(k)) return false; vis.add(k); return true; }).join("\n").trim(); }
 function linkTxt(t){ return esc(t).replace(TEL_RX, (m,_,a,b,c) => `<a href="tel:+1${a}${b}${c}" style="color:inherit;font-weight:700">${m}</a>`); }
-function accRapidas(a){ const t = (String(a.tel||"").replace(/\D/g,"").slice(-10)) || (() => { const m = String(a.notas||"").match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/); return m ? m[1]+m[2]+m[3] : ""; })();
+function accRapidas(a){ const t = (String(a.tel||"").replace(/\D/g,"").slice(-10)) || (a.clientId && S.cli[a.clientId] ? String(S.cli[a.clientId].tel||"").replace(/\D/g,"").slice(-10) : "") || (() => { const m = String(a.notas||"").match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/); return m ? m[1]+m[2]+m[3] : ""; })();
   const cc = a.clientId && S.cli[a.clientId]; const dir = a.dir || (String(a.notas||"").match(DIR_RX)||[])[1] || (cc && cc.direccion) || "";
   if (t.length!==10 && !dir) return "";
   return `<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap">${t.length===10?`<a class="btn small" href="tel:+1${t}">📞 Llamar</a><a class="btn small ghost" target="_blank" rel="noopener" href="https://wa.me/1${t}">WhatsApp</a>`:""}${dir?`<a class="btn small ghost" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dir.trim())}">📍 Mapa</a>`:""}</div>`; }
@@ -862,17 +871,21 @@ function agendaFila(base, by){ return {fecha:base.fecha||today(), hora:String(ba
 function genteMails(){ const g = Object.entries(staff()); const k = S.owners[0]; if (k && !staff()[k]) g.unshift([k,{name:"⭐ Katerine (sale en su agenda de Lunaya)"}]); if (isBot() && S.email && !staff()[S.email] && S.email!==k) g.unshift([S.email,{name:"Bot"}]); return g; }
 function optsGente(sel, conEquipo){ return (conEquipo ? `<option value="equipo" ${sel==="equipo"?"selected":""}>👥 Compartida (todas)</option>` : "") + genteMails().map(([em,v]) => `<option value="${esc(em)}" ${sel===em?"selected":""}>${esc(v.name||em)}</option>`).join(""); }
 function optsCli(sel){ return `<option value="">Sin cuenta ligada</option>`+Object.entries(S.cli).sort((a,b)=>nombreDe(a[1]).localeCompare(nombreDe(b[1]),"es")).map(([id,c]) => `<option value="${esc(id)}" ${sel===id?"selected":""}>${esc(nombreDe(c)||id)}${c.cuenta?" · "+esc(c.cuenta):""}</option>`).join(""); }
-function revisiones(){ const out = []; Object.entries(S.autos).forEach(([id,a]) => { const fecha = L.revisionFecha(a, today()); if (!fecha || !enRangoFecha(fecha)) return; if (S.revs[id+"_"+fecha]) return; out.push({id, fecha, a}); }); return out; }
+/* Revisiones del pago automático: las de hoy (o la semana) y las que quedaron SIN revisar de días anteriores (no se pierden) */
+function revisiones(){ const out = [], hoy = today(), lim = addDays(hoy, -35); const mesAnt = addDays(hoy.slice(0,8)+"01", -1);
+  Object.entries(S.autos).forEach(([id,a]) => { const fs = new Set([L.revisionFecha(a, hoy), L.revisionFecha(a, mesAnt)].filter(Boolean));
+    fs.forEach(fecha => { if (S.revs[id+"_"+fecha]) return; const atr = fecha < hoy && fecha >= lim; if (!enRangoFecha(fecha) && !atr) return; out.push({id, fecha, a, atr}); }); });
+  return out.sort((x,y) => x.fecha.localeCompare(y.fecha)); }
 function vAgenda(){
   const vista = S.agVista || (isOwner() ? "todas" : "mia"); const who = vista==="todas" ? S.agWho : vista==="mia" ? S.email : "equipo";
-  const citas = Object.entries(S.agenda).filter(([,a]) => enRangoFecha(a.fecha) && (!who || a.asignada===who || (vista==="mia" && a.asignada==="equipo"))).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
+  const citas = Object.entries(S.agenda).filter(([,a]) => (enRangoFecha(a.fecha) || (a.estado!=="hecho" && a.fecha < today())) && (!who || a.asignada===who || (vista==="mia" && a.asignada==="equipo"))).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
   const revs = revisiones().filter(r => { if (!who || who==="equipo") return true; const c = S.cli[r.a.clientId]; return c ? encargada(c)===who : false; });
   const filaC = ([id,a]) => { const cc = a.clientId && S.cli[a.clientId]; const nom = cc ? `<button type="button" class="linkish" data-open="${esc(a.clientId)}">${esc(nombreDe(cc)||a.nombre)}</button>` : esc(a.nombre||"Sin cliente"); const vt = cc ? vendTxt(cc) : "";
     return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.notas?" · "+linkTxt(notasLimpias(a.notas)):""}${accRapidas(a)}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div><button class="btn small ghost" data-agedit="${esc(id)}" title="Editar">✏️ Editar</button>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
   const filaR = r => { const c = S.cli[r.a.clientId]; const nom = c ? `<button type="button" class="linkish" data-open="${esc(r.a.clientId)}">${esc(nombreDe(c)||r.a.nombre)}</button>` : esc(r.a.nombre||"Cliente");
-    return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag" style="background:#ede9fe;color:#6d28d9">Revisión pago automático</span></div><div class="m">${esc(r.fecha)} · ${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo)}${r.a.dia?` · día ${r.a.dia}`:""}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small danger" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; };
+    return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag" style="background:#ede9fe;color:#6d28d9">Revisión pago automático</span></div><div class="m">${esc(r.fecha)} · ${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo)}${r.a.dia?` · día ${r.a.dia}`:""}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small" style="background:#b91c1c" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; };
   const autos = Object.entries(S.autos).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||""),"es"));
-  return `<div class="card"><div class="row"><div class="chips"><button class="chip ${S.agWhen==="hoy"?"on":""}" data-agw="hoy">Hoy</button><button class="chip ${S.agWhen==="semana"?"on":""}" data-agw="semana">Semana</button></div>
+  return rechazosCard() + `<div class="card"><div class="row"><div class="chips"><button class="chip ${S.agWhen==="hoy"?"on":""}" data-agw="hoy">Hoy</button><button class="chip ${S.agWhen==="semana"?"on":""}" data-agw="semana">Semana</button></div>
     <div class="chips"><button class="chip ${vista==="mia"?"on":""}" data-agv="mia">📒 Mi agenda</button><button class="chip ${vista==="equipo"?"on":""}" data-agv="equipo">👥 Compartida</button><button class="chip ${vista==="todas"?"on":""}" data-agv="todas">Todas</button></div>
     ${vista==="todas" ? `<select class="i" id="ag-who" style="max-width:220px"><option value="">De todas</option>${optsGente(S.agWho)}</select>` : ""}<button class="btn small" id="ag-add">Nueva cita</button></div>
     <p class="note">📒 <b>Mi agenda</b>: lo tuyo y lo compartido. 👥 <b>Compartida</b>: lo que ven las tres (al crear la cita escoge «Compartida (todas)»). Toca el nombre para abrir la cuenta. En morado: al día siguiente de cada pago automático hay que confirmar si pasó.</p></div>
@@ -934,27 +947,37 @@ async function importarAutos(file){
   await new Promise((ok, no) => { if (window.XLSX) return ok(); const s = document.createElement("script"); s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = () => no(new Error("xlsx")); document.head.appendChild(s); });
   const wb = XLSX.read(await file.arrayBuffer(), {type:"array"});
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:"", raw:false});
-  const ops = [];
+  const ops = [], refs = [], rech = [];
   rows.forEach(o => { const map = {}; Object.entries(o).forEach(([k,v]) => map[normKeyAg(k)] = v);
     const nombre = String(map.nombre||map.cliente||map.name||"").trim(); const cuenta = String(map.cuenta||map.account||"").trim();
     const fecha = L.asDate(map.fecha||map.date||""); const dia = parseInt(String(map.dia||map.day||"").replace(/\D/g,""), 10) || 0;
     const monto = parseFloat(String(map.monto||map.amount||map.pago||"").replace(/[$,\s]/g,"")) || 0;
     if (!nombre && !cuenta) return; const hit = findCli({nombre, cuenta, tel:""});
-    ops.push(autoFila({clientId:hit?hit[0]:"", nombre:nombre||(hit&&hit[1].nombre)||"", cuenta, dia:fecha?0:dia, fecha, monto, metodo:metAuto(map.metodo||map.method||""), notas:String(map.notas||map.notes||"")}, S.email));
+    const d = autoFila({clientId:hit?hit[0]:"", nombre:nombre||(hit&&hit[1].nombre)||"", cuenta, dia:fecha?0:dia, fecha, monto, metodo:metAuto(map.metodo||map.method||""), notas:String(map.notas||map.notes||"")}, S.email);
+    const est = [map.estado, map.status, map.resultado, map.result, map.estatus, map.notas, map.notes].map(x => String(x||"")).join(" ");
+    const ref = S.db.collection("cautopago").doc(); ops.push(d); refs.push(ref); if (/rechaz|declin|no pas|no se proces|fall[oó]|fail|denied|insuficiente|insufficient|nsf|returned|devuelt/i.test(est)) rech.push([ref.id, d]);
   });
   if (!ops.length) return toast("No reconocí filas. Usa columnas nombre, cuenta, dia o fecha, monto, metodo.");
-  await chunked(ops.map(d => b => b.set(S.db.collection("cautopago").doc(), d)));
-  toast("Listo: "+ops.length+" pago(s) automático(s)");
+  await chunked(ops.map((d,i) => b => b.set(refs[i], d)));
+  for (const [rid, d] of rech){ try { await crearRechazo(rid, d.fecha || today(), d, true); } catch(e){ console.log("rechazo", e); } }
+  toast("Listo: "+ops.length+" pago(s) automático(s)"+(rech.length?" · ⚠️ "+rech.length+" rechazado(s): ya quedaron para llamar hoy":""));
 }
 async function marcarHecho(id){ const a = S.agenda[id]; if (!a) return;
   try { await S.db.doc("cagenda/"+id).set(agendaFila(Object.assign({}, a, {estado:"hecho", hechoAt:Date.now()}), a.by||S.email)); if (a.clientId) await logAct(a.clientId, {tipo:"nota", resultado:"", mensaje:"Agenda hecha: "+(AGENDA_TIPO[a.tipo]||a.tipo)}); toast("Marcada como hecha"); }
   catch(e){ err(e); }
 }
+const esRechazo = a => /pago autom[aá]tico rechazado/i.test(a && a.notas || "");
+async function crearRechazo(autopagoId, fecha, a, porImport){ const c = S.cli[a.clientId]; const nombre = (c&&c.nombre)||a.nombre||"Cliente";
+  await S.db.doc("carev/"+autopagoId+"_"+fecha).set({autopagoId, fecha, resultado:"rechazado", by:S.email, at:Date.now()});
+  await S.db.collection("cagenda").add(agendaFila({fecha:today(), hora:"08:00", clientId:a.clientId||"", nombre, tipo:"llamar", asignada:c?encargada(c)||"equipo":"equipo", notas:"⚠️ Pago automático rechazado"+(a.monto?" ("+money(a.monto)+")":"")+". Llamar hoy para procesarlo antes de que entre en atraso."+(c&&c.tel?"\n📞 "+c.tel:""), estado:"pendiente", hechoAt:0, tel:(c&&c.tel)||""}, S.email)).catch(async () => {
+    await S.db.collection("cagenda").add(agendaFila({fecha:today(), hora:"08:00", clientId:a.clientId||"", nombre, tipo:"llamar", asignada:c?encargada(c)||"equipo":"equipo", notas:"⚠️ Pago automático rechazado"+(a.monto?" ("+money(a.monto)+")":"")+". Llamar hoy para procesarlo antes de que entre en atraso."+(c&&c.tel?"\n📞 "+c.tel:""), estado:"pendiente", hechoAt:0}, S.email)); });
+  if (a.clientId) await logAct(a.clientId, {tipo:"nota", resultado:"", mensaje:"Pago automático rechazado"+(porImport?" (cargado en la lista)":"")});
+}
 async function resolverRev(autopagoId, fecha, resultado){ const a = S.autos[autopagoId]; if (!a) return;
   const rev = {autopagoId, fecha, resultado, by:S.email, at:Date.now()};
   try {
     await S.db.doc("carev/"+autopagoId+"_"+fecha).set(rev);
-    if (resultado==="rechazado"){ const c = S.cli[a.clientId]; const nombre = (c&&c.nombre)||a.nombre||"Cliente";
+    if (resultado==="rechazado"){ await crearRechazo(autopagoId, fecha, a, false); toast("Rechazado. Quedó una llamada para hoy, arriba de todo."); return;
       await S.db.collection("cagenda").add(agendaFila({fecha:today(), hora:"09:00", clientId:a.clientId||"", nombre, tipo:"llamar", asignada:c?encargada(c)||S.email:S.email, notas:"Pago automático rechazado. Llamar hoy.", estado:"pendiente", hechoAt:0}, S.email));
       if (a.clientId) await logAct(a.clientId, {tipo:"nota", resultado:"", mensaje:"Revisión del pago automático: rechazado"});
       toast("Rechazado. Quedó una llamada para hoy.");
