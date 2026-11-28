@@ -195,13 +195,13 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611272202"></script>
-<script src="anuncios.js?v=202611272202"></script>
-<script src="juego.js?v=202611272202"></script>
+<script src="demo.js?v=202611272236"></script>
+<script src="anuncios.js?v=202611272236"></script>
+<script src="juego.js?v=202611272236"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611272202";
+const APP_VER = "202611272236";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -2310,7 +2310,7 @@ function board(title, list, metrics, sortKey, total, clic){
    se compara cuántas citas sacó cada una por cada 100 llamadas contra lo que sacaron las demás en esas mismas bases. */
 function efectividadCard(rg, p){ if (!(role()==="admin" || esLiderProg())) return "";
   const B = {};
-  Object.values(S.logs||{}).forEach(d => (d.calls||[]).forEach(c => { const at = c.at||0; if (!inR(at, rg) || !c.socioId) return; const tid = c.teleId || d.teleId; if (!tid) return;
+  Object.values(S.logs||{}).forEach(d => (d.calls||[]).forEach(c => { const at = c.at||0; if (!inR(at, rg) || !c.socioId) return; const tid = c.teleId || d.teleId; if (!tid || (S.members[tid]||{}).role!=="tele") return; /* solo telemarketers: los distribuidores y Dirección no entran */
     const k = c.socioId+"|"+(c.source||"Otro"); const b = B[k] ||= {k, socio:c.socioId, src:c.source||"Otro", t:{}};
     const t = b.t[tid] ||= {id:tid, calls:0, cont:0, citas:0, first:at, last:at}; t.calls++; if (CONTACT.has(c.result)) t.cont++; if (c.result==="cita") t.citas++; t.first = Math.min(t.first, at); t.last = Math.max(t.last, at); }));
   const bases = Object.values(B).map(b => { const L = Object.values(b.t).sort((x,y) => x.first-y.first); return {...b, L, calls:L.reduce((n,x)=>n+x.calls,0), citas:L.reduce((n,x)=>n+x.citas,0)}; })
