@@ -42,7 +42,10 @@ textarea.i{min-height:70px}
 .list{display:grid;gap:8px}
 .item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:12px;background:var(--card);cursor:pointer;text-align:left;width:100%}
 .item .t{font-weight:800;font-size:16px}.item .m{color:var(--muted);font-size:13px}
-.item.normal{border-left-color:var(--accent)}.item.verde{border-left-color:var(--good)}.item.amarillo{border-left-color:#d4a017}.item.naranja{border-left-color:#e07a1f}.item.rojo{border-left-color:var(--bad)}.item.morado{border-left-color:#7c3aed}.item.azul{border-left-color:var(--blue)}
+.item.normal{border-left-color:var(--accent)}.item.verde{border-left-color:var(--good);background:#f4faf5}.item.amarillo{border-left-color:#c9a000;background:#fff6cc}.item.naranja{border-left-color:#e07a1f}.item.rojo{border-left-color:#b4442f;background:#fdecea}.item.morado{border-left-color:#7c3aed}.item.azul{border-left-color:var(--blue)}
+.namechip{display:inline-block;max-width:100%;border-radius:8px;padding:2px 8px;line-height:1.35}
+.namechip.y{background:#f5d20a;color:#2b2508}.namechip.r{background:#b4442f;color:#fff}
+.tag.hy-y{background:#f5d20a;color:#2b2508}.tag.hy-r{background:#b4442f;color:#fff}
 .item.hoy{box-shadow:inset 0 0 0 2px var(--bad)}.item.semana{box-shadow:inset 0 0 0 2px var(--warn)}.item.rev{border-left-color:#6d28d9;background:#f6f0ff}
 .tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700;white-space:nowrap}
 .tg-good{background:var(--good-bg);color:var(--good)}.tg-warn{background:var(--warn-bg);color:var(--warn)}.tg-bad{background:var(--bad-bg);color:var(--bad)}.tg-mute{background:var(--soft);color:var(--muted)}.tg-acc{background:var(--accent-soft);color:var(--accent)}
@@ -79,7 +82,7 @@ html.embebido .brand{display:none!important}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="../config.js"></script>
-<script src="logic.js?v=202611272202"></script>
+<script src="logic.js?v=202611272208"></script>
 <script>
 try { if (window.self !== window.top) document.documentElement.classList.add("embebido"); } catch { document.documentElement.classList.add("embebido"); }
 if (window.top !== window.self) document.documentElement.classList.add("framed");
@@ -174,7 +177,13 @@ function streakNo(id, c){
 }
 const tono = (id,c) => L.toneOf({...c, sinContestar:streakNo(id,c)});
 /* Color de la línea de la tarjeta: por días de atraso (0–30 amarillo, 31+ rojo); skip morado y update azul aparte */
-const linea = c => L.esSkip(c) ? "morado" : (L.esUpdate(c) && !L.updateAprobado(c)) ? "azul" : (c.etapa==="cerrado" || (+c.atraso||0) <= 0) ? "verde" : (+c.atraso||0) <= 30 ? "amarillo" : "rojo";
+/* Color del grupo de la pestaña (bucketOf), no de un campo de color. 0-30 amarillo, 31+ rojo. */
+const linea = c => { if (!c || c.etapa==="cerrado") return "verde"; const g = bucketOf(c); return g==="g30" ? "amarillo" : (g==="g60"||g==="g90") ? "rojo" : "verde"; };
+function nameChip(c, label){ const n = esc(label||nombreDe(c)||"Sin nombre"); const k = linea(c); return k==="amarillo" ? `<span class="namechip y">${n}</span>` : k==="rojo" ? `<span class="namechip r">${n}</span>` : n; }
+function badgeGrupo(c){ const g = bucketOf(c); const k = linea(c); const cls = k==="amarillo" ? "hy-y" : k==="rojo" ? "hy-r" : "tg-good"; return `<span class="tag ${cls}">${esc(GRUPOS[g]||"")}</span>`; }
+function ownerUidCob(){ const hit = Object.entries(S.members).find(([,m]) => S.owners.includes(String(m.email||"").toLowerCase())); return hit ? hit[0] : (isOwner() ? S.uid : ""); }
+/* Venta de Lunatikat: Katerine, o un emprendedor cuyo patrocinador (upline) es ella. No otras distribuciones. */
+function ventaLunatikat(a){ if (!S.membersLoaded) return false; const id = a && a.socioId; if (!id) return false; const kat = ownerUidCob(); if (id===kat) return true; const m = S.members[id]; return !!(m && m.role==="socio" && m.tipo==="Emprendedor" && kat && m.upline===kat); }
 function llamadasDe(id,c){ const legacy = (c.log||[]).filter(x => x.res && x.res!=="nota").length; if (S.actsReady) return (S.acts[id]||[]).filter(a => a.tipo==="llamada").length + legacy; return (+c.llamadas||0) + legacy; }
 function ultimoDe(id,c){ const t = [c.ultContacto||0, c.ultLlamada||0]; (S.acts[id]||[]).forEach(a => t.push(a.at||0)); (c.log||[]).forEach(x => t.push(x.at||0)); return Math.max(0,...t); }
 function touch(o){ o.updatedAt = Date.now(); if (o.atraso !== undefined && o.atrasoAt === undefined) o.atrasoAt = Date.now(); if (isBot()){ o.lastSyncAt = Date.now(); o.syncedBy = S.email; } return o; }
@@ -234,7 +243,7 @@ function completarDesdeVenta(){ if (!isOwner() || !S.db || !S.loaded) return;
     (S.relleno = S.relleno || {})[id] = 1; if (!Object.keys(up).length) return;
     S.db.doc("ccli/"+id).update(up).catch(e => { delete S.relleno[id]; console.log("vendedor", e); }); }); }
 const ventasNuevas = () => { const ya = new Set(Object.values(S.cli).map(c => c.apptId).filter(Boolean)); const desde = Date.now() - 120*864e5;
-  return Object.entries(S.ventas).filter(([id,a]) => a.sale && !ya.has(id) && !a.cobOff && (a.saleStatusAt || a.when || 0) >= desde).sort((x,y) => (y[1].saleStatusAt||y[1].when||0) - (x[1].saleStatusAt||x[1].when||0)); };
+  return Object.entries(S.ventas).filter(([id,a]) => a.sale && !ya.has(id) && !a.cobOff && ventaLunatikat(a) && (a.saleStatusAt || a.when || 0) >= desde).sort((x,y) => (y[1].saleStatusAt||y[1].when||0) - (x[1].saleStatusAt||x[1].when||0)); };
 
 function pasaQuery(c){ const q = (S.f.q||"").trim().toLowerCase(); if (!q) return true; const qd = q.replace(/\D/g,"");
   const blob = (nombreDe(c)+" "+(c.apellido||"")+" "+(c.vendedorNombre||"")).toLowerCase();
@@ -293,13 +302,13 @@ function filtros(){
     <div class="row" style="margin-top:8px"><select class="i" id="f-cob" style="max-width:220px"><option value="">Todas las cobradoras</option><option value="sin" ${S.f.cob==="sin"?"selected":""}>Sin asignar</option>${gente.map(([em,v]) => `<option value="${esc(em)}" ${S.f.cob===em?"selected":""}>${esc(v.name||em)}</option>`).join("")}</select>
     <select class="i" id="f-tono" style="max-width:220px"><option value="">Todos los estados</option>${[["skip","Skip"],["no","No contestó 3+"],["promesa","Promesa"],["update","Update"],["verde","Al día / pagó"]].map(([k,l]) => `<option value="${k}" ${S.f.tono===k?"selected":""}>${l}</option>`).join("")}</select>
     ${isDir()?"":`<label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="mios" ${S.f.mios?"checked":""}> Solo los míos</label>`}</div>
-    <p class="note" style="margin:8px 0 0">Línea: 🟡 amarillo = 1–30 días · 🔴 rojo = 31 días o más · 🟣 morado = skip · 🔵 azul = update · 🟢 verde = al día. Las promesas y los "no contestó" salen como etiqueta.</p>`;
+    <p class="note" style="margin:8px 0 0">El nombre y la línea siguen la pestaña: amarillo = 0-30, rojo = 31-60 y 61+. Verde = al día. Skip y update siguen como etiqueta.</p>`;
 }
 function cItem(id, c, extra){
   const t = tono(id, c); const g = bucketOf(c);
   const sub = [c.cuenta ? "Cta "+esc(c.cuenta) : "", c.producto ? esc(c.producto) : "", `<b>${+c.atraso||0} días</b>`, "vence "+money(vencidoDe(c)), mensualDe(c) ? "mensual "+money(mensualDe(c)) : ""].filter(Boolean).join(" · ");
   const calls = llamadasDe(id,c); const ult = ultimoDe(id,c);
-  const tags = [c.etapa==="postventa"?`<span class="tag tg-acc">Postventa</span>`:`<span class="tag ${g==="aldia"?"tg-good":g==="g30"?"tg-warn":"tg-bad"}">${GRUPOS[g]}</span>`,
+  const tags = [c.etapa==="postventa"?`<span class="tag tg-acc">Postventa</span>`:badgeGrupo(c),
     L.esSkip(c)?`<span class="tag tg-bad">SKIP</span>`:"", c.skipLlamo?`<span class="tag tg-mute">Ya llamó a Hy Cite</span>`:"", L.esUpdate(c)?`<span class="tag tg-blue">UPDATE ${L.updateAprobado(c)?"aprobado":"por aprobar"}${c.updateMonto?" · "+money(c.updateMonto):""}</span>`:"",
     c.promesa?.fecha && !c.promesa.ok ? `<span class="tag tg-yellow">Promesa ${esc(String(c.promesa.fecha).slice(5))}${c.promesa.monto?" · "+money(c.promesa.monto):""}</span>`:"",
     t==="naranja"?`<span class="tag tg-orange">No contestó 3+</span>`:"",
@@ -308,7 +317,7 @@ function cItem(id, c, extra){
   const link = L.safeHttps(c.payLink) ? `<span class="tag tg-good">Link listo</span>` : (Object.values(S.links).some(x => x.clientId===id && x.status==="pendiente") ? `<span class="tag tg-warn">Link pedido</span>` : "");
   const fono = tel10(c.tel).length===10 ? `<button type="button" class="linkish" data-phone="${esc(id)}">${esc(telFmt(c.tel))}</button>` : "";
   const vend = vendTxt(c);
-  return `<div class="item ${linea(c)}" data-c="${esc(id)}"><div style="flex:1;min-width:0"><div class="t">${esc(nombreDe(c)||"Sin nombre")}</div>${fono?`<div style="margin-top:2px">${fono}</div>`:""}<div class="m">${sub}</div>${vend?`<div class="m">${esc(vend)}</div>`:""}<div class="m">${calls} llamada${calls===1?"":"s"} · último contacto ${ult?fmtWhen(ult):"nunca"}</div><div style="margin-top:4px">${tags} ${link}</div>
+  return `<div class="item ${linea(c)}" data-c="${esc(id)}"><div style="flex:1;min-width:0"><div class="t">${nameChip(c)}</div>${fono?`<div style="margin-top:2px">${fono}</div>`:""}<div class="m">${sub}</div>${vend?`<div class="m">${esc(vend)}</div>`:""}<div class="m">${calls} llamada${calls===1?"":"s"} · último contacto ${ult?fmtWhen(ult):"nunca"}</div><div style="margin-top:4px">${tags} ${link}</div>
     ${L.esSkip(c)?`<div class="banner bad" style="margin-top:8px">${esc(SKIP_TXT)}${c.skipNota?" "+esc(c.skipNota):""}</div>`:""}
     ${extra||""}</div></div>`;
 }
@@ -342,7 +351,7 @@ function vRecMes(){ const off = S.rmOff||0; const T = umbral(); const L0 = recMe
     const est = [L.esUpdate(c) ? `<span class="tag tg-blue">Califica update${c.updateMonto?" · "+money(c.updateMonto):""}${L.updateAprobado(c)?" · aprobado":""}</span>` : `<span class="tag tg-mute">Sin update</span>`,
       L.esSkip(c) ? `<span class="tag tg-bad">SKIP${c.skipLlamo?" · ya llamó":""}</span>` : "", pr ? `<span class="tag tg-yellow">Promesa ${esc(String(c.promesa.fecha).slice(5))}${c.promesa.monto?" · "+money(c.promesa.monto):""}</span>` : ""].join(" ");
     const cuando = x.ya ? `<b style="color:#b91c1c">Ya pasó el ${fmtCorta(x.fecha)}</b>` : `<b style="color:${x.falta<=7?"#b91c1c":x.falta<=15?"#b45309":"#166534"}">${fmtCorta(x.fecha)}</b> · faltan ${x.falta} día(s)`;
-    return `<div class="item normal" style="cursor:default;display:block;border-left:6px solid ${x.ya?"#7f1d1d":x.falta<=7?"#b91c1c":x.falta<=15?"#d97706":"#16a34a"}"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1;min-width:0"><div class="t"><button type="button" class="linkish" data-open="${esc(x.id)}">${esc(nombreDe(c)||"Cliente")}</button>${c.cuenta?` <span class="note">Cta ${esc(c.cuenta)}</span>`:""}</div>
+    return `<div class="item ${linea(c)}" style="cursor:default;display:block"><div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1;min-width:0"><div class="t"><button type="button" class="linkish" data-open="${esc(x.id)}">${nameChip(c)}</button>${c.cuenta?` <span class="note">Cta ${esc(c.cuenta)}</span>`:""} ${badgeGrupo(c)}</div>
       <div class="m">${cuando} · hoy ~${x.dias} días · vencido ${money(vencidoDe(c))}${mensualDe(c)?" · mensual "+money(mensualDe(c)):""}</div>
       <div style="margin-top:4px">${est}</div>
       <div class="m" style="margin-top:4px">${encargada(c)?"La lleva "+esc(first(nameOf(encargada(c))))+" · ":""}${ult?"Último contacto "+esc(fmtCorta(new Date(ult).toISOString().slice(0,10))):"<b>Sin contacto todavía</b>"}</div></div>
@@ -379,7 +388,7 @@ function vHoy(){
   return h;
 }
 function ventasCard(nv){
-  return `<div class="card"><h2>Ventas aprobadas de Lunaya <span class="note">${nv.length}</span></h2><p class="note" style="margin-top:-6px">Pásalas a postventa para la bienvenida, la visita y el pago automático.</p>${nv.length?`<div class="list">${nv.slice(0,30).map(([id,a]) => { const p = priv(id)||{}; const vend = memberNom(a.socioId); return `<div class="item normal" style="cursor:default"><div style="flex:1"><div class="t">${esc(nombreVenta(id,a,p))}</div><div class="m">${vend?`Vendedor: ${esc(vend)} · `:""}${money(a.amount)} · ${fmt(a.when||Date.now(),{day:"numeric",month:"short"})}${p.phone?" · "+telFmt(p.phone):""}</div></div><button class="btn small" data-pv="${esc(id)}">A postventa</button></div>`; }).join("")}</div>`:`<div class="empty">No hay ventas aprobadas nuevas.</div>`}</div>`;
+  return `<div class="card"><h2>Ventas aprobadas de Lunaya <span class="note">${nv.length}</span></h2><p class="note" style="margin-top:-6px">Solo Katerine y sus emprendedores directos (el patrocinador en Equipo es ella). Las otras distribuciones no salen aquí.</p>${nv.length?`<div class="list">${nv.slice(0,30).map(([id,a]) => { const p = priv(id)||{}; const vend = memberNom(a.socioId); return `<div class="item normal" style="cursor:default"><div style="flex:1"><div class="t">${esc(nombreVenta(id,a,p))}</div><div class="m">${vend?`Vendedor: ${esc(vend)} · `:""}${money(a.amount)} · ${fmt(a.when||Date.now(),{day:"numeric",month:"short"})}${p.phone?" · "+telFmt(p.phone):""}</div></div><button class="btn small" data-pv="${esc(id)}">A postventa</button></div>`; }).join("")}</div>`:`<div class="empty">${S.membersLoaded?"No hay ventas nuevas de Katerine ni de sus emprendedores directos.":"Cargando el equipo…"}</div>`}</div>`;
 }
 function vPost(){
   const ords = Object.entries(S.post).sort((a,b) => String(a[1].entrega||"9999").localeCompare(String(b[1].entrega||"9999")));
@@ -467,8 +476,8 @@ function openCli(id){
   const pend = Object.values(S.links).find(x => x.clientId===id && x.status==="pendiente");
   const fono = tel10(c.tel).length===10 ? `<button type="button" class="linkish" data-phone="${esc(id)}" style="font-size:18px">${esc(telFmt(c.tel))}</button>` : `<span class="note">${c.tel?esc(telFmt(c.tel)):"Sin teléfono"}</span>`;
   const vend = vendedorDe(c);
-  openModal(`<h3>${esc(nombreDe(c)||"Cliente")}</h3>
-    <div class="row"><span class="tag ${t==="rojo"?"tg-bad":t==="azul"?"tg-blue":t==="amarillo"?"tg-yellow":t==="naranja"?"tg-orange":t==="verde"?"tg-good":"tg-acc"}">${esc(GRUPOS[bucketOf(c)]||"")}</span>${encargada(c)?`<span class="note">La lleva ${esc(nameOf(encargada(c)))}</span>`:""}${c.lastSyncAt?`<span class="note">Sync ${fmtWhen(c.lastSyncAt)} · ${esc(c.syncedBy||"")}</span>`:""}</div>
+  openModal(`<h3>${nameChip(c)}</h3>
+    <div class="row">${badgeGrupo(c)}${encargada(c)?`<span class="note">La lleva ${esc(nameOf(encargada(c)))}</span>`:""}${c.lastSyncAt?`<span class="note">Sync ${fmtWhen(c.lastSyncAt)} · ${esc(c.syncedBy||"")}</span>`:""}</div>
     ${skip?`<div class="banner bad">${esc(SKIP_TXT)}${c.skipNota?" "+esc(c.skipNota):""}${c.skipLlamo?" Ya llamó a Hy Cite"+(c.skipLlamoFecha?" el "+esc(c.skipLlamoFecha):"")+".":""}</div>`:""}
     ${L.esUpdate(c)?`<div class="banner blue">UPDATE. Va ${c.pagosAtras||"varios"} pagos atrás. Hy Cite puede ofrecerle pagar ${money(c.updateMonto)} para ponerse al día. El cliente tiene que aprobarlo por llamada o correo. ${L.updateAprobado(c)?"Aprobado"+ (c.updateFecha?" el "+esc(c.updateFecha):"")+".":"Todavía no lo aprueba."} ${c.updateNotas?esc(c.updateNotas):""}</div>`:""}
     <div class="row">${fono}</div>
@@ -880,8 +889,8 @@ function vAgenda(){
   const vista = S.agVista || (isOwner() ? "todas" : "mia"); const who = vista==="todas" ? S.agWho : vista==="mia" ? S.email : "equipo";
   const citas = Object.entries(S.agenda).filter(([,a]) => (enRangoFecha(a.fecha) || (a.estado!=="hecho" && a.fecha < today())) && (!who || a.asignada===who || (vista==="mia" && a.asignada==="equipo"))).sort((a,b) => (a[1].fecha+a[1].hora).localeCompare(b[1].fecha+b[1].hora));
   const revs = revisiones().filter(r => { if (!who || who==="equipo") return true; const c = S.cli[r.a.clientId]; return c ? encargada(c)===who : false; });
-  const filaC = ([id,a]) => { const cc = a.clientId && S.cli[a.clientId]; const nom = cc ? `<button type="button" class="linkish" data-open="${esc(a.clientId)}">${esc(nombreDe(cc)||a.nombre)}</button>` : esc(a.nombre||"Sin cliente"); const vt = cc ? vendTxt(cc) : "";
-    return `<div class="item ${a.estado==="hecho"?"verde":"normal"}" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.notas?" · "+linkTxt(notasLimpias(a.notas)):""}${accRapidas(a)}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div><button class="btn small ghost" data-agedit="${esc(id)}" title="Editar">✏️ Editar</button>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
+  const filaC = ([id,a]) => { const cc = a.clientId && S.cli[a.clientId]; const nom = cc ? `<button type="button" class="linkish" data-open="${esc(a.clientId)}">${nameChip(cc)}</button>` : esc(a.nombre||"Sin cliente"); const vt = cc ? vendTxt(cc) : "";
+    return `<div class="item ${cc?linea(cc):(a.estado==="hecho"?"verde":"normal")}" style="cursor:default"><div style="flex:1"><div class="t">${nom} ${cc?badgeGrupo(cc):""} <span class="tag tg-acc">${esc(AGENDA_TIPO[a.tipo]||a.tipo)}</span>${a.estado==="hecho"?" <span class=\"tag tg-good\">Hecho</span>":""}</div><div class="m">${vt?esc(vt)+" · ":""}${esc(a.fecha)} ${esc(a.hora||"")} · ${a.asignada==="equipo" ? "👥 Compartida" : esc(nameOf(a.asignada))}${a.notas?" · "+linkTxt(notasLimpias(a.notas)):""}${accRapidas(a)}${a.res?`<div style="margin-top:4px;color:#166534"><b>Resultado:</b> ${esc(a.res)}</div>`:""}</div></div><button class="btn small ghost" data-agedit="${esc(id)}" title="Editar">✏️ Editar</button>${a.estado==="pendiente"?`<button class="btn small" data-hecho="${esc(id)}">Hecho</button>`:""}</div>`; };
   const filaR = r => { const c = S.cli[r.a.clientId]; const nom = c ? `<button type="button" class="linkish" data-open="${esc(r.a.clientId)}">${esc(nombreDe(c)||r.a.nombre)}</button>` : esc(r.a.nombre||"Cliente");
     return `<div class="item rev" style="cursor:default"><div style="flex:1"><div class="t">${nom} <span class="tag" style="background:#ede9fe;color:#6d28d9">Revisión pago automático</span></div><div class="m">${esc(r.fecha)} · ${money(r.a.monto)} · ${esc(METODO_AUTO[r.a.metodo]||r.a.metodo)}${r.a.dia?` · día ${r.a.dia}`:""}</div></div><div class="row"><button class="btn small" data-rev="${esc(r.id)}|${esc(r.fecha)}|procesado">Procesado</button><button class="btn small" style="background:#b91c1c" data-rev="${esc(r.id)}|${esc(r.fecha)}|rechazado">Rechazado</button></div></div>`; };
   const autos = Object.entries(S.autos).sort((a,b) => String(a[1].nombre||"").localeCompare(String(b[1].nombre||""),"es"));
