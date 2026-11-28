@@ -854,12 +854,14 @@ function kitPlantilla(code, mine){ const t = (S.config?.plantillasAd||{})[code] 
     const cp = async v => { try { await navigator.clipboard.writeText(v); toast("Copiado"); } catch { toast("Mantén presionado para copiar"); } };
     document.getElementById("kt-l").onclick = () => cp(link); document.getElementById("kt-t").onclick = () => cp(txt); }); }
 function viewJuego(r){
+  if (S.f.credito && (S.isOwner || esBot() || (r==="tele" && !S.me?.upline))) return viewCredito();
   const f = S.f.lead || "nuevo"; const fs = S.f.lsoc || ""; const socs = [...new Set(prospectos().map(([,l]) => l.socioId))];
   const leads = prospectos().filter(([,l]) => (f==="todos" || l.status===f) && (!fs || l.socioId===fs)).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
   const progs = misProgramas(); const mine = Object.entries(S.programs||{}).filter(([,p]) => p.owner===S.uid);
   const links = Object.entries(S.juegos||{}).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
   const porAvisar = links.filter(([c,j]) => j.kind!=="campana" && avanceDe(c).ganados > (j.avisados||0));
-  return `${porAvisar.map(([c,j]) => `<div class="banner good" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🎁 <b>${esc(j.ref)}</b> se ganó su regalo${avanceDe(c).ganados>1?" #"+avanceDe(c).ganados:""} (${avanceDe(c).base} ${avanceDe(c).unidad}). ¡Avísale!</span><button class="btn small" data-avance="${c}">Avisarle</button></div>`).join("")}
+  const credBtn = (S.isOwner || esBot() || (r==="tele" && !S.me?.upline)) ? `<div class="card" style="border-left:6px solid #1d4ed8"><div class="row" style="justify-content:space-between"><div><h2 style="margin:0">Nivel de crédito Hy Cite</h2><p class="note" style="margin:4px 0 0">Aparte de los programas de regalos. Clientes al día que pueden bajar a nivel 3.</p></div><button class="btn" id="jg-cred">Abrir</button></div></div>` : "";
+  return `${credBtn}${porAvisar.map(([c,j]) => `<div class="banner good" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🎁 <b>${esc(j.ref)}</b> se ganó su regalo${avanceDe(c).ganados>1?" #"+avanceDe(c).ganados:""} (${avanceDe(c).base} ${avanceDe(c).unidad}). ¡Avísale!</span><button class="btn small" data-avance="${c}">Avisarle</button></div>`).join("")}
     <div class="card"><div class="row"><button class="btn" id="jg-ins">🎁 Inscribir cliente</button><button class="btn dark" id="jg-camp">📣 Campaña por mensaje</button><button class="btn ghost" id="jg-newp">➕ Nuevo programa</button></div>
       ${progs.length?"":`<p class="note" style="margin-bottom:0">Primero crea un programa: los regalos con su foto, la probabilidad de cada uno y la meta de referidos.</p>`}</div>
     ${plantillasCard()}
@@ -884,6 +886,8 @@ function viewJuego(r){
     ${(() => { const cp = Object.entries(S.programs||{}).filter(([,p]) => p.owner!==S.uid && p.activo!==false && S.members[p.owner]?.role==="admin"); return cp.length ? `<div class="card"><h2>Diseña tu propia ruleta</h2><p class="note" style="margin-top:-6px">La ruleta de Lunaya ya está lista para usar: solo toca "Inscribir cliente". Si quieres una a tu gusto, cópiala y cámbiale lo que quieras: colores, textos, regalos, fotos y mensaje. La copia es solo tuya.</p><div class="list">${cp.map(([id,p])=>`<div class="item" style="cursor:default"><div><div class="t">${TI(p.tipo).e} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div></div><button class="btn small" data-pcopy="${id}">Copiar y diseñar</button></div>`).join("")}</div></div>` : ""; })()}`;
 }
 function bindJuego(){
+  const cred = document.getElementById("jg-cred"); if (cred) cred.onclick = () => { S.f.credito = true; render(); };
+  if (S.f.credito && document.getElementById("hc-back")) return bindCredito();
   document.querySelectorAll("[data-adp]").forEach(b => b.onclick = () => { S.f.adp = b.dataset.adp; render(); });
   document.querySelectorAll("[data-plt]").forEach(b => b.onclick = async () => { const c = b.dataset.plt, j = S.juegos[c] || {}; const on = !!S.config?.plantillasAd?.[c];
     try { await S.db.doc("config/main").set({plantillasAd:{[c]: on ? firebase.firestore.FieldValue.delete() : {nombre:String(j.ref||"Campaña").replace(/^Meta\s*·\s*/,"").slice(0,50), tipo:j.tipo || S.programs?.[j.pid]?.tipo || "ruleta", pid:j.pid, ...(j.pv ? {pv:j.pv} : {}), ...(j.solo ? {solo:j.solo} : {}), at:Date.now()}}}, {merge:true}); toast(on ? "Ya no se comparte" : "Compartida: los distribuidores con permiso la ven lista para usar"); render(); } catch(e){ writeErr(e); } });
@@ -1337,3 +1341,82 @@ function metaExcluir(){ const tel = t => { let d = String(t||"").replace(/\D/g,"
   const url = URL.createObjectURL(new Blob([rows.map(r => r.map(cell).join(",")).join("\n")], {type:"text/csv"}));
   const el = document.createElement("a"); el.href = url; el.download = `excluir-meta-${today()}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
   toast(`✅ ${rows.length-1} teléfonos en la lista`); }
+
+function viewCredito(){
+  const f = S.f.cf || (S.isOwner || esBot() ? "todos" : "califica");
+  const all = Object.entries(S.hcredito || {});
+  const importa = S.isOwner || esBot();
+  const rows = all.filter(([,x]) => {
+    if (!importa && x.califica !== true) return false;
+    if (f==="todos") return true;
+    if (f==="no") return x.califica === false;
+    if (f==="nuevos") return (x.status||"nuevo")==="nuevo";
+    return x.califica===true && (x.status||"nuevo")!=="no_interesa";
+  });
+  rows.sort((a,b) => String(a[1].nombre).localeCompare(String(b[1].nombre), "es"));
+  const telFmtP = t => t && String(t).length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"sin teléfono");
+  const item = ([id,x]) => { const ult = (x.intentos||[]).slice(-1)[0]; const ap = x.apptId && S.appts?.[x.apptId];
+    return `<button class="item" data-hc="${esc(id)}" style="display:block"><div class="t">${esc(x.nombre)} <span class="tag ${x.califica?"tg-good":"tg-warn"}">${x.califica?"Califica":"No califica"}</span> <span class="tag ${x.status==="cita"?"tg-good":x.status==="nuevo"||!x.status?"tg-warn":"tg-mute"}">${esc(JG_ST[x.status]||"Nuevo")}</span></div><div class="m">Cuenta ${esc(x.cuenta)} · nivel ${x.nivel} · ${x.pagos} pagos · ${esc(telFmtP(x.tel))}${x.emprendedor?" · "+esc(x.emprendedor):""}</div><div class="m">${(x.intentos||[]).length?`${(x.intentos||[]).length} intento(s) · último ${esc(INT_R[ult.r]||ult.r)} · ${fmt(ult.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(ult.by))}`:"Nadie lo ha llamado"}${ap?" · cita: "+esc(APPT_ST[ap.status]||ap.status)+(ap.sale?" · vendió":""):""}${x.motivo&&!x.califica?" · "+esc(x.motivo):""}</div></button>`; };
+  const chips = [["califica","Califican"],["nuevos","Sin llamar"]].concat(importa?[["no","No califican"],["todos","Todos"]]:[]);
+  return `<div class="card"><div class="row" style="justify-content:space-between"><button class="btn ghost small" id="hc-back">← Programas de regalos</button>${importa?`<button class="btn small" id="hc-imp">Importar CSV o JSON</button>`:""}</div>
+    <h2>Nivel de crédito Hy Cite <span class="note">${rows.length}</span></h2>
+    <p class="note">Al día y con los pagos que pide Hy Cite: 7 si está en nivel 9, 6 si está en nivel 4 a 8. La llamada es para agendar la cita, subir el crédito y entregar el regalo.</p>
+    <div class="chips">${chips.map(([k,l]) => `<button class="chip ${f===k?"on":""}" data-cf="${k}">${l}</button>`).join("")}</div></div>
+    <div class="card">${rows.length?`<div class="list">${rows.map(item).join("")}</div>`:`<div class="empty">${importa?"Importa la lista con nombre, cuenta, teléfono, correo, dirección, nivel, pagos, último pago, saldo y emprendedor.":"No hay clientes en este filtro."}</div>`}</div>`;
+}
+function bindCredito(){
+  const back = document.getElementById("hc-back"); if (back) back.onclick = () => { S.f.credito = false; render(); };
+  document.querySelectorAll("[data-cf]").forEach(b => b.onclick = () => { S.f.cf = b.dataset.cf; render(); });
+  document.querySelectorAll("[data-hc]").forEach(b => b.onclick = () => openCredito(b.dataset.hc));
+  const imp = document.getElementById("hc-imp"); if (imp) imp.onclick = () => openModal(`<h3>Importar nivel de crédito</h3><p class="note">Columnas: nombre, cuenta, telefono, correo, direccion, nivel, pagos, ultimo_pago, saldo, emprendedor. Opcional: aldia (si/no). Si el saldo es 0 y no viene aldia, se toma como al día. La misma cuenta se actualiza, no se duplica.</p><textarea class="i" id="hc-txt" style="min-height:160px" placeholder="nombre,cuenta,telefono,correo,direccion,nivel,pagos,ultimo_pago,saldo,emprendedor"></textarea><div class="row"><button class="btn" id="hc-ok">Importar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    document.getElementById("hc-ok").onclick = async () => {
+      const C = window.Credito; if (!C) return;
+      let got; try { got = C.filas(document.getElementById("hc-txt").value); } catch(e) { return toast("No pude leer la tabla."); }
+      if (!got.rows.length) return toast(got.warnings[0] || "No hay filas.");
+      let n = 0;
+      for (let i = 0; i < got.rows.length; i += 400) {
+        const b = S.db.batch();
+        got.rows.slice(i, i+400).forEach(row => {
+          const base = {cuenta:row.cuenta, nombre:row.nombre, tel:row.tel||"", correo:row.correo||"", direccion:row.direccion||"", nivel:row.nivel, pagos:row.pagos, ultimoPago:row.ultimoPago||"", saldo:row.saldo||0, emprendedor:row.emprendedor||"", califica:!!row.califica, motivo:row.motivo||"", by:S.uid, updatedAt:Date.now()};
+          const prev = (S.hcredito||{})[row.cuenta];
+          if (prev) b.set(S.db.doc("hcredito/"+row.cuenta), base, {merge:true});
+          else b.set(S.db.doc("hcredito/"+row.cuenta), Object.assign({status:"nuevo", notes:"", socioId:"", apptId:"", statusAt:0, intentos:[]}, base));
+          n++;
+        });
+        await b.commit();
+      }
+      closeModal(); toast("Listas " + n + " cuentas. " + got.rows.filter(r => r.califica).length + " califican.");
+    };
+  });
+}
+function openCredito(id){
+  const x = (S.hcredito||{})[id]; if (!x) return;
+  const tel = x.tel || "";
+  const ap = x.apptId && S.appts?.[x.apptId];
+  const gente = (role()==="tele" ? sociosPara({...S.me, id:S.uid}) : socios()).filter(m => m.role!=="baja");
+  openModal(`<h3>${esc(x.nombre)}</h3><p class="note" style="margin:0">Cuenta ${esc(x.cuenta)} · nivel ${x.nivel} · ${x.pagos} pagos${x.ultimoPago?" · último pago "+esc(x.ultimoPago):""}${x.saldo?" · saldo $"+x.saldo:""}</p>
+    <p class="note" style="margin:0">${x.califica?"Califica para bajar a nivel 3.":esc(x.motivo||"No califica.")}${x.emprendedor?" Emprendedor: "+esc(x.emprendedor)+".":""}</p>
+    ${x.direccion?`<p class="note" style="margin:0">${esc(x.direccion)}</p>`:""}
+    ${x.correo?`<p class="note" style="margin:0">${esc(x.correo)}</p>`:""}
+    <div class="row">${tel?`<a class="btn" href="tel:+1${esc(tel)}">📞 Llamar</a><a class="btn dark" target="_blank" rel="noopener" href="https://wa.me/1${esc(tel)}">WhatsApp</a><a class="btn ghost" href="sms:+1${esc(tel)}">Mensaje</a>`:`<span class="note">Sin teléfono</span>`}</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:10px"><div class="eyebrow" style="margin-bottom:6px">¿Cómo te fue con la llamada?</div><div class="opts">${Object.entries(INT_R).map(([k,v]) => `<button class="opt" data-hcint="${k}">${v}</button>`).join("")}</div>
+      ${(x.intentos||[]).length?`<div class="note" style="margin-top:6px">${x.intentos.slice().reverse().map(it => `${esc(INT_R[it.r]||it.r)} · ${fmt(it.at,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(it.by))}`).join("<br>")}</div>`:`<div class="note" style="margin-top:6px">Todavía nadie lo ha llamado.</div>`}</div>
+    ${ap?`<div class="banner ${ap.sale?"good":""}">Cita: ${esc(APPT_ST[ap.status]||ap.status)}${ap.sale?" · vendió "+money(ap.amount):""} · ${fmt(ap.when,{weekday:"short",day:"numeric",month:"short"})}</div>`:""}
+    <label class="f">Estado<select class="i" id="hc-st">${Object.entries(JG_ST).map(([k,v]) => `<option value="${k}" ${(x.status||"nuevo")===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    <label class="f">Notas<textarea class="i" id="hc-n">${esc(x.notes||"")}</textarea></label>
+    <label class="f">¿Para quién es la cita?<select class="i" id="hc-para"><option value="">Escoge</option>${gente.map(m => `<option value="${m.id}" ${x.socioId===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select></label>
+    <div class="row"><button class="btn" id="hc-cita">📅 Agendar cita</button><button class="btn ghost" id="hc-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const guardar = async (extra) => {
+      extra = extra || {};
+      const o = {status: extra.status || document.getElementById("hc-st").value, notes:document.getElementById("hc-n").value.trim().slice(0,1000), socioId:document.getElementById("hc-para").value||"", statusAt:Date.now()};
+      if (extra.intentos) o.intentos = extra.intentos;
+      try { await S.db.doc("hcredito/"+id).update(o); Object.assign(S.hcredito[id], {status:o.status, notes:o.notes, socioId:o.socioId, statusAt:o.statusAt}); if (extra.r) (S.hcredito[id].intentos = S.hcredito[id].intentos||[]).push({at:o.statusAt, by:S.uid, r:extra.r}); toast("Guardado"); openCredito(id); }
+      catch(e){ console.log(e); toast("No se pudo guardar."); }
+    };
+    document.querySelectorAll("[data-hcint]").forEach(b => b.onclick = () => guardar({r:b.dataset.hcint, intentos: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, r:b.dataset.hcint}), status: b.dataset.hcint==="ok" ? "llamado" : document.getElementById("hc-st").value}));
+    document.getElementById("hc-save").onclick = () => guardar();
+    document.getElementById("hc-cita").onclick = () => { const para = document.getElementById("hc-para").value; if (!para) return toast("Elige para quién es la cita."); const own = para===S.uid; if (!own) { if (!S.members[para]) return toast("Esa persona ya no está en el equipo."); S.world = para; }
+      const pre = {name:x.nombre, phone: tel.length===10 ? `(${tel.slice(0,3)}) ${tel.slice(3,6)}-${tel.slice(6)}` : tel, notes:"Nivel de crédito Hy Cite. Cuenta "+x.cuenta+". Nivel "+x.nivel+", "+x.pagos+" pagos.", onSaved: aid => S.db.doc("hcredito/"+id).update({status:"cita", apptId:aid, socioId:para, statusAt:Date.now()}).catch(()=>{})};
+      closeModal(); openCitaForm(own ? "" : "Leads", own, pre); };
+  });
+}

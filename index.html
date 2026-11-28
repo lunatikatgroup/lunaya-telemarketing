@@ -195,13 +195,14 @@ if (/[?&]j=/.test(location.search)) { try { new Image().src = 'portada-ad.jpg?v=
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="demo.js?v=202611272237"></script>
-<script src="anuncios.js?v=202611272237"></script>
-<script src="juego.js?v=202611272237"></script>
+<script src="demo.js?v=202611272357"></script>
+<script src="anuncios.js?v=202611272357"></script>
+<script src="credito.js?v=202611272357"></script>
+<script src="juego.js?v=202611272357"></script>
 <script>
 /* ===== Constantes ===== */
 /* ===== Versión: si hay una nueva publicada, se avisa para recargar (así todas ven los mismos números) ===== */
-const APP_VER = "202611272237";
+const APP_VER = "202611272357";
 async function checkVer(){ try { const r = await fetch("version.txt?t="+Date.now(), {cache:"no-store"}); if (!r.ok) return; const v = (await r.text()).trim(); if (v && v !== APP_VER && !document.getElementById("ver-bar")){ const b = document.createElement("div"); b.id = "ver-bar"; b.className = "banner warn"; b.style.cssText = "position:fixed;top:8px;left:8px;right:8px;z-index:99;display:flex;justify-content:space-between;align-items:center;gap:8px"; b.innerHTML = "<span>🔄 Hay una versión nueva de Lunaya.</span><button class='btn small'>Actualizar</button>"; b.querySelector("button").onclick = () => location.replace(location.pathname + "?v=" + v + location.hash); document.body.appendChild(b); } } catch {} }
 setTimeout(checkVer, 3000); setInterval(checkVer, 5*60e3); document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVer(); });
 const TZ = "America/Los_Angeles";
@@ -447,6 +448,7 @@ function subscribeAll(){
   if (S.email) S.unsub.push(S.db.collection("cagenda").where("asignada", "==", S.email).onSnapshot(s => { S.cag = {}; s.docs.forEach(d => S.cag[d.id] = d.data()); render(); }, e => { S.cag = {}; console.log("cagenda", e.code||e); }));
   S.unsub.push(S.db.collection("recordatorios").where("owner", "==", S.uid).onSnapshot(s => { S.recs = {}; s.docs.forEach(d => S.recs[d.id] = d.data()); render(); }, e => console.log("recordatorios", e)));
   if (S.me?.role === "tele" || S.me?.role === "admin" || S.isOwner || esBot()){ S.unsub.push(S.db.collection("presencia").onSnapshot(s => { S.presencia = {}; s.docs.forEach(d => S.presencia[d.id] = d.data()); render(); }, e => console.log("presencia", e))); if (S.me?.role==="tele") setTimeout(marcarPresencia, 1500); }
+  if (S.isOwner || esBot() || (S.me?.role === "tele" && !S.me?.upline)) S.unsub.push(S.db.collection("hcredito").onSnapshot(s => { S.hcredito = {}; s.docs.forEach(d => S.hcredito[d.id] = d.data()); render(); }, e => console.log("hcredito", e.code||e)));
   if (S.me?.role === "tele") S.unsub.push(S.db.collection("drives").onSnapshot(s => { S.drives = {}; s.docs.forEach(d => S.drives[d.id] = d.data()); render(); }, e => console.log(e)));
   else S.unsub.push(S.db.doc("drives/"+S.uid).onSnapshot(s => { if (s.exists) S.drives[S.uid] = s.data(); else delete S.drives[S.uid]; render(); }, e => console.log(e)));
   if (S.me?.role === "socio" && S.me?.tipo === "Socio distribuidor"){
@@ -564,12 +566,12 @@ function veCobranza(){
 function tabsFor(r){
   if (sinTele()) return veCobranza() ? [["cobra","Cobranza"]] : [];
   let tabs = [];
-  if (r==="admin") tabs = [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"],["reclut","Reclutar"]];
+  if (r==="admin") tabs = [["hoy","Resultados"],["registrar","Registrar"],["citas","Citas"],["juego","Leads"],["ranking","Ranking"],["pagos","Pagos"],["equipo","Equipo"],["reclut","Reclutar"]];
   else if ((r==="tele" || r==="socio") && S.me?.asistente && S.me?.soloAsist) tabs = [["cobros","Pagos"],["kag","Agenda"],["ranking","Reportes"]];
   else if (r==="tele" && S.me?.asistente) tabs = [["hoy","Hoy"],["cobros","Cobros"],["registrar","Registrar"],["citas","Citas"],["ranking","Ranking"], ...(S.me?.lider ? [["lider","Mi equipo"]] : [])];
-  else if (r==="socio" && S.me?.asistente && !isDist()) tabs = [["hoy","Hoy"],["cobros","Cobros"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
-  else if (r==="tele") tabs = S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Ruleta"],["ranking","Ranking"]];
-  else if (r==="socio") tabs = isDist() ? [["hoy","Hoy"],["citas","Citas"],["juego","Ruleta"],["grupo","Mi grupo"],["pagos","Pagos"],["ranking","Ranking"]] : [["hoy","Hoy"],["citas","Mis citas"],["juego","Ruleta"],["ranking","Ranking"]];
+  else if (r==="socio" && S.me?.asistente && !isDist()) tabs = [["hoy","Hoy"],["cobros","Cobros"],["citas","Mis citas"],["juego","Leads"],["ranking","Ranking"]];
+  else if (r==="tele") tabs = S.me?.lider ? [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Leads"],["ranking","Ranking"],["lider","Mi equipo"]] : [["hoy","Hoy"],["registrar","Registrar"],["citas","Citas"],["juego","Leads"],["ranking","Ranking"]];
+  else if (r==="socio") tabs = isDist() ? [["hoy","Hoy"],["citas","Citas"],["juego","Leads"],["grupo","Mi grupo"],["pagos","Pagos"],["ranking","Ranking"]] : [["hoy","Hoy"],["citas","Mis citas"],["juego","Leads"],["ranking","Ranking"]];
   if (veCobranza() && !tabs.some(t => t[0]==="cobra")) tabs = tabs.concat([["cobra","Cobranza"]]);
   return tabs;
 }
@@ -1295,7 +1297,7 @@ function bindHeader(){
   const b = document.getElementById("me-btn"); if (b) b.onclick = openProfile; }
 function renderHeader(r){
   const first = (S.me?.name||"").split(" ")[0];
-  const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", cobros:"Cobros a distribuidores", kag:"Agenda de Katerine", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing", juego:"Ruleta y prospectos", cobra:"Cobranza y postventa", reclut:"Reclutamiento"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla.", juego:"Regalos para tus clientes y los prospectos que llegan solos.", cobra:"Cuentas, entregas y pagos.", reclut:"Candidatas del equipo."};
+  const T = {hoy: r==="admin" ? "Resultados del equipo" : (first ? `Hola, ${first}` : "Hoy"), registrar:"Registrar llamadas", citas: r==="socio"?"Mis citas":"Citas", pagos:"Ventas y comisiones", cobros:"Cobros a distribuidores", kag:"Agenda de Katerine", ranking:"Ranking del equipo", equipo:"Equipo", lider:"Mi equipo de telemarketing", juego:"Leads", cobra:"Cobranza y postventa", reclut:"Reclutamiento"};  const Sb = {hoy: r==="admin" ? "Efectividad de cada telemarketer y de cada socio." : r==="tele" ? "Tu actividad y tu efectividad." : "Tus citas, demostraciones y ventas.", registrar:"Toca un botón por cada llamada que hagas. Los contactos se quedan en el Drive del socio.", citas:"Hora de San Diego. Toca una cita para marcar el resultado.", pagos:"Ventas por persona y comisión de cada telemarketer.", equipo:"Accesos, roles, metas y comisiones.", ranking:"Quién va adelante este mes. ¡A ponerse en la pila!", lider:"Efectividad y comisiones de cada telemarketer. Solo tú y Katerine ven esta pantalla.", juego:"Programas de regalos, prospectos y nivel de crédito Hy Cite.", cobra:"Cuentas, entregas y pagos.", reclut:"Candidatas del equipo."};
   if (!S.authUser){ $("#title").textContent = "Bienvenidos"; $("#subtitle").textContent = "El sistema de telemarketing del equipo Lunaya."; $("#who").innerHTML = ""; return; }
   if (r==="nuevo"||r==="pendiente"){ $("#title").textContent = "Te damos la bienvenida a Lunaya"; $("#subtitle").textContent = "Registra tu nombre para entrar."; }
   else { $("#title").textContent = T[S.view] || ""; $("#subtitle").textContent = Sb[S.view] || ""; }
