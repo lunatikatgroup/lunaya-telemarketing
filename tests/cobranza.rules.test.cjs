@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const { initializeTestEnvironment, assertFails, assertSucceeds } = require("@firebase/rules-unit-testing");
-const { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, collectionGroup } = require("firebase/firestore");
+const { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, addDoc, getDocs, collectionGroup, arrayUnion } = require("firebase/firestore");
 
 let env, owner, bot, aris, milady, otra, stranger;
 
@@ -168,6 +168,25 @@ test("el bot anota pagos automáticos y agenda, y no los borra", async () => {
   const ag = await assertSucceeds(addDoc(collection(db(bot), "cagenda"), cita));
   await assertFails(deleteDoc(ag));
   await assertSucceeds(setDoc(doc(db(bot), "cautolink/main"), { url: "https://docs.google.com/spreadsheets/d/abc", by: "bot@example.com", updatedAt: Date.now() }));
+});
+
+test("la lista del portal la ve la telemarketer y no el público", async () => {
+  const fila = {
+    lista: "cumple", mes: "2026-11", cuenta: "1001", nombre: "Ana Ejemplo", tel: "6195550101", tel2: "",
+    saldo: 0, cumple: "11-06", promo: "", detalle: "", estado: "", accion: "", by: "kat", updatedAt: Date.now(),
+    status: "nuevo", notes: "", sigue: "", statusAt: 0, intentos: []
+  };
+  const ref = doc(db(owner), "portallists/cumple_2026-11_1001");
+  await assertSucceeds(setDoc(ref, fila));
+  await assertSucceeds(getDoc(doc(db(aris), "portallists/cumple_2026-11_1001")));
+  await assertFails(getDoc(doc(db(stranger), "portallists/cumple_2026-11_1001")));
+  await assertFails(getDoc(doc(db(bot), "portallists/cumple_2026-11_1001")));
+  await assertFails(setDoc(doc(db(aris), "portallists/cumple_2026-11_1002"), fila));
+  await assertSucceeds(updateDoc(doc(db(aris), "portallists/cumple_2026-11_1001"), {
+    status: "seguimiento", notes: "volver a llamar", sigue: "2026-12-01", statusAt: Date.now(), updatedAt: Date.now(),
+    intentos: arrayUnion({ at: Date.now(), by: "aris", r: "nc" })
+  }));
+  await assertFails(updateDoc(doc(db(aris), "portallists/cumple_2026-11_1001"), { tel: "0000000000" }));
 });
 
 test("el bot crea postventa y no la borra", async () => {
