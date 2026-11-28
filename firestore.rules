@@ -307,6 +307,95 @@ service cloud.firestore {
       allow delete: if isMember() && (resource.data.by == request.auth.uid || resource.data.socioId == request.auth.uid);
     }
 
+    // Filtros y mantenimiento de cartucho (listas del portal de Katerine).
+    // Las importa ella o la cuenta de bots. Las telemarketers del programa anotan
+    // la llamada. No lo ven distribuidores ni otras distribuciones.
+    match /portallists/{id} {
+      function portalImporta() { return isOwnerEmail() || isBot(); }
+      function portalVe() { return isOwnerEmail() || isProgramTele() || isBot(); }
+      function portalBase() {
+        return request.resource.data.lista in ['cumple', 'filtros', 'mant']
+          && request.resource.data.mes is string && request.resource.data.mes.matches('^\\d{4}-\\d{2}$')
+          && request.resource.data.cuenta is string && request.resource.data.cuenta.matches('^[0-9]{4,12}$')
+          && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 120
+          && request.resource.data.tel is string && request.resource.data.tel.size() <= 20
+          && request.resource.data.tel2 is string && request.resource.data.tel2.size() <= 20
+          && request.resource.data.direccion is string && request.resource.data.direccion.size() <= 300
+          && request.resource.data.producto is string && request.resource.data.producto.size() <= 200
+          && request.resource.data.vence is string && request.resource.data.vence.size() <= 12
+          && request.resource.data.saldo is number
+          && request.resource.data.cumple is string && request.resource.data.cumple.size() <= 8
+          && request.resource.data.promo is string && request.resource.data.promo.size() <= 160
+          && request.resource.data.detalle is string && request.resource.data.detalle.size() <= 200
+          && request.resource.data.estado is string && request.resource.data.estado.size() <= 40
+          && request.resource.data.accion is string && request.resource.data.accion.size() <= 12
+          && request.resource.data.by == request.auth.uid
+          && id == request.resource.data.lista + '_' + request.resource.data.mes + '_' + request.resource.data.cuenta;
+      }
+      allow read: if portalVe();
+      allow create: if portalImporta() && portalBase()
+        && request.resource.data.status == 'nuevo'
+        && request.resource.data.notes == ''
+        && request.resource.data.sigue == ''
+        && request.resource.data.intentos.size() == 0;
+      allow update: if portalImporta() && portalBase()
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.notes == resource.data.notes
+        && request.resource.data.sigue == resource.data.sigue
+        && request.resource.data.intentos == resource.data.intentos;
+      allow update: if (isProgramTele() || isOwnerEmail())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'notes', 'intentos', 'sigue', 'statusAt', 'updatedAt'])
+        && request.resource.data.status in ['nuevo', 'llamado', 'seguimiento', 'no_interesa', 'llamo', 'nc', 'no', 'cita', 'msj', 'otro']
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 1000
+        && request.resource.data.sigue is string && request.resource.data.sigue.size() <= 10
+        && request.resource.data.intentos is list && request.resource.data.intentos.size() <= 40;
+      allow delete: if isOwnerEmail();
+    }
+
+    // Nivel de crédito Hy Cite: operación de Katerine. La importa ella o la cuenta
+    // de bots. Las telemarketers del programa anotan la llamada. No es público.
+    match /hcredito/{id} {
+      function credImporta() { return isOwnerEmail() || isBot(); }
+      function credVe() { return isOwnerEmail() || isProgramTele() || isBot(); }
+      function credFicha() {
+        return request.resource.data.cuenta == id
+          && request.resource.data.cuenta.matches('^[0-9]{4,12}$')
+          && request.resource.data.nombre is string && request.resource.data.nombre.size() > 0 && request.resource.data.nombre.size() <= 120
+          && request.resource.data.tel is string && request.resource.data.tel.size() <= 20
+          && request.resource.data.correo is string && request.resource.data.correo.size() <= 120
+          && request.resource.data.direccion is string && request.resource.data.direccion.size() <= 300
+          && request.resource.data.nivel is number && request.resource.data.nivel >= 0 && request.resource.data.nivel <= 12
+          && request.resource.data.pagos is number && request.resource.data.pagos >= 0 && request.resource.data.pagos <= 80
+          && request.resource.data.ultimoPago is string && request.resource.data.ultimoPago.size() <= 12
+          && request.resource.data.saldo is number
+          && request.resource.data.emprendedor is string && request.resource.data.emprendedor.size() <= 80
+          && request.resource.data.califica is bool
+          && request.resource.data.motivo is string && request.resource.data.motivo.size() <= 160
+          && request.resource.data.by == request.auth.uid;
+      }
+      allow read: if credVe();
+      allow create: if credImporta() && credFicha()
+        && request.resource.data.status == 'nuevo'
+        && request.resource.data.notes == ''
+        && request.resource.data.socioId == ''
+        && request.resource.data.apptId == ''
+        && request.resource.data.intentos.size() == 0;
+      allow update: if credImporta() && credFicha()
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.notes == resource.data.notes
+        && request.resource.data.socioId == resource.data.socioId
+        && request.resource.data.apptId == resource.data.apptId
+        && request.resource.data.intentos == resource.data.intentos;
+      allow update: if (isOwnerEmail() || isProgramTele())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusAt', 'notes', 'intentos', 'socioId', 'apptId'])
+        && request.resource.data.status in ['nuevo', 'llamado', 'cita', 'no_interesa']
+        && request.resource.data.notes is string && request.resource.data.notes.size() <= 1000
+        && request.resource.data.socioId is string && request.resource.data.socioId.size() <= 80
+        && request.resource.data.apptId is string && request.resource.data.apptId.size() <= 80
+        && request.resource.data.intentos is list && request.resource.data.intentos.size() <= 40;
+      allow delete: if isOwnerEmail();
+    }
+
     // Prospectos de la ruleta: los ven el socio, quien creó el link, su director o distribuidor
     // y, en el territorio de Dirección, las telemarketers del programa.
     match /leads/{id} {

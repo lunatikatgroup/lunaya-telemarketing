@@ -853,13 +853,33 @@ function kitPlantilla(code, mine){ const t = (S.config?.plantillasAd||{})[code] 
     <div class="row" style="margin-top:10px"><a class="btn ghost" href="${link}&prueba=1" target="_blank" rel="noopener">👀 Probar mi link</a><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
     const cp = async v => { try { await navigator.clipboard.writeText(v); toast("Copiado"); } catch { toast("Mantén presionado para copiar"); } };
     document.getElementById("kt-l").onclick = () => cp(link); document.getElementById("kt-t").onclick = () => cp(txt); }); }
+function veLeadsOp(r){ return !!(S.isOwner || esBot() || (r==="tele" && !S.me?.upline)); }
 function viewJuego(r){
+  const op = veLeadsOp(r);
+  const area = S.f.leadArea || (S.f.credito && op ? "credito" : "");
+  if (op && !area) return viewLeadsAreas();
+  if (area==="cartucho" && op) return viewCartucho();
+  if (area==="credito" && op) return viewCredito();
+  return viewLeadsMeta(r, op);
+}
+function viewLeadsAreas(){
+  const meta = (typeof nuevosLeads==="function" ? nuevosLeads() : 0) || 0;
+  const cart = Object.values(S.portal||{}).filter(x => (x.lista==="filtros" || x.lista==="mant") && (!x.status || x.status==="nuevo")).length;
+  const cred = Object.values(S.hcredito||{}).filter(x => x.califica===true && (!x.status || x.status==="nuevo")).length;
+  const card = (id, color, titulo, nota, n, etiqueta) => `<button class="card" data-leadarea="${id}" style="display:block;width:100%;text-align:left;border-left:6px solid ${color};cursor:pointer"><div class="row" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">${titulo}</h2><p class="note" style="margin:4px 0 0">${nota}</p></div><span class="tag ${n?"tg-warn":"tg-mute"}">${n?n+" "+etiqueta:"Al día"}</span></div></button>`;
+  return `<div class="card"><h2>Leads</h2><p class="note" style="margin-top:-6px">Elige el área. Cada una conserva sus propias llamadas, notas y citas.</p></div>
+    ${card("meta","#be185d","Leads Meta","Ruleta, anuncios de Meta, el 4 en 14 y los demás programas de regalos.", meta, "nuevo(s)")}
+    ${card("cartucho","#0f766e","Cartucho","Filtros del mes y mantenimiento del filtro a los 6 meses.", cart, "sin llamar")}
+    ${card("credito","#1d4ed8","Niveles de crédito","Clientes al día que pueden bajar a nivel 3. Cita, crédito y regalo.", cred, "sin llamar")}`;
+}
+function viewLeadsMeta(r, volver){
   const f = S.f.lead || "nuevo"; const fs = S.f.lsoc || ""; const socs = [...new Set(prospectos().map(([,l]) => l.socioId))];
   const leads = prospectos().filter(([,l]) => (f==="todos" || l.status===f) && (!fs || l.socioId===fs)).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
   const progs = misProgramas(); const mine = Object.entries(S.programs||{}).filter(([,p]) => p.owner===S.uid);
   const links = Object.entries(S.juegos||{}).sort((a,b)=>(b[1].createdAt||0)-(a[1].createdAt||0));
   const porAvisar = links.filter(([c,j]) => j.kind!=="campana" && avanceDe(c).ganados > (j.avisados||0));
-  return `${porAvisar.map(([c,j]) => `<div class="banner good" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🎁 <b>${esc(j.ref)}</b> se ganó su regalo${avanceDe(c).ganados>1?" #"+avanceDe(c).ganados:""} (${avanceDe(c).base} ${avanceDe(c).unidad}). ¡Avísale!</span><button class="btn small" data-avance="${c}">Avisarle</button></div>`).join("")}
+  const volverBtn = volver ? `<div class="row" style="margin-bottom:8px"><button class="btn ghost small" id="la-back">← Áreas</button></div>` : "";
+  return `${volverBtn}${porAvisar.map(([c,j]) => `<div class="banner good" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>🎁 <b>${esc(j.ref)}</b> se ganó su regalo${avanceDe(c).ganados>1?" #"+avanceDe(c).ganados:""} (${avanceDe(c).base} ${avanceDe(c).unidad}). ¡Avísale!</span><button class="btn small" data-avance="${c}">Avisarle</button></div>`).join("")}
     <div class="card"><div class="row"><button class="btn" id="jg-ins">🎁 Inscribir cliente</button><button class="btn dark" id="jg-camp">📣 Campaña por mensaje</button><button class="btn ghost" id="jg-newp">➕ Nuevo programa</button></div>
       ${progs.length?"":`<p class="note" style="margin-bottom:0">Primero crea un programa: los regalos con su foto, la probabilidad de cada uno y la meta de referidos.</p>`}</div>
     ${plantillasCard()}
@@ -884,6 +904,11 @@ function viewJuego(r){
     ${(() => { const cp = Object.entries(S.programs||{}).filter(([,p]) => p.owner!==S.uid && p.activo!==false && S.members[p.owner]?.role==="admin"); return cp.length ? `<div class="card"><h2>Diseña tu propia ruleta</h2><p class="note" style="margin-top:-6px">La ruleta de Lunaya ya está lista para usar: solo toca "Inscribir cliente". Si quieres una a tu gusto, cópiala y cámbiale lo que quieras: colores, textos, regalos, fotos y mensaje. La copia es solo tuya.</p><div class="list">${cp.map(([id,p])=>`<div class="item" style="cursor:default"><div><div class="t">${TI(p.tipo).e} ${esc(p.name)}</div><div class="m">${(p.prizes||[]).map(x=>esc(x.n)).join(" · ")}</div></div><button class="btn small" data-pcopy="${id}">Copiar y diseñar</button></div>`).join("")}</div></div>` : ""; })()}`;
 }
 function bindJuego(){
+  document.querySelectorAll("[data-leadarea]").forEach(b => b.onclick = () => { S.f.leadArea = b.dataset.leadarea; S.f.credito = b.dataset.leadarea==="credito"; render(); });
+  const back = document.getElementById("la-back"); if (back) back.onclick = () => { S.f.leadArea = ""; S.f.credito = false; render(); };
+  if (document.querySelector("[data-leadarea]")) return;
+  if (document.getElementById("p-mes")) return bindCartucho();
+  if (document.querySelector("[data-hc]") || document.getElementById("hc-imp")) return bindCredito();
   document.querySelectorAll("[data-adp]").forEach(b => b.onclick = () => { S.f.adp = b.dataset.adp; render(); });
   document.querySelectorAll("[data-plt]").forEach(b => b.onclick = async () => { const c = b.dataset.plt, j = S.juegos[c] || {}; const on = !!S.config?.plantillasAd?.[c];
     try { await S.db.doc("config/main").set({plantillasAd:{[c]: on ? firebase.firestore.FieldValue.delete() : {nombre:String(j.ref||"Campaña").replace(/^Meta\s*·\s*/,"").slice(0,50), tipo:j.tipo || S.programs?.[j.pid]?.tipo || "ruleta", pid:j.pid, ...(j.pv ? {pv:j.pv} : {}), ...(j.solo ? {solo:j.solo} : {}), at:Date.now()}}}, {merge:true}); toast(on ? "Ya no se comparte" : "Compartida: los distribuidores con permiso la ven lista para usar"); render(); } catch(e){ writeErr(e); } });
@@ -1337,3 +1362,220 @@ function metaExcluir(){ const tel = t => { let d = String(t||"").replace(/\D/g,"
   const url = URL.createObjectURL(new Blob([rows.map(r => r.map(cell).join(",")).join("\n")], {type:"text/csv"}));
   const el = document.createElement("a"); el.href = url; el.download = `excluir-meta-${today()}.csv`; document.body.appendChild(el); el.click(); el.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
   toast(`✅ ${rows.length-1} teléfonos en la lista`); }
+
+function viewCredito(){
+  const f = S.f.cf || (S.isOwner || esBot() ? "todos" : "califica");
+  const all = Object.entries(S.hcredito || {});
+  const importa = S.isOwner || esBot();
+  const rows = all.filter(([,x]) => {
+    if (!importa && x.califica !== true) return false;
+    if (f==="todos") return true;
+    if (f==="no") return x.califica === false;
+    if (f==="nuevos") return (x.status||"nuevo")==="nuevo";
+    return x.califica===true && (x.status||"nuevo")!=="no_interesa";
+  });
+  rows.sort((a,b) => String(a[1].nombre).localeCompare(String(b[1].nombre), "es"));
+  const telFmtP = t => t && String(t).length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"sin teléfono");
+  const item = ([id,x]) => { const ult = (x.intentos||[]).slice(-1)[0]; const ap = x.apptId && S.appts?.[x.apptId];
+    return `<button class="item" data-hc="${esc(id)}" style="display:block"><div class="t">${esc(x.nombre)} <span class="tag ${x.califica?"tg-good":"tg-warn"}">${x.califica?"Califica":"No califica"}</span> <span class="tag ${x.status==="cita"?"tg-good":x.status==="nuevo"||!x.status?"tg-warn":"tg-mute"}">${esc(JG_ST[x.status]||"Nuevo")}</span></div><div class="m">Cuenta ${esc(x.cuenta)} · nivel ${x.nivel} · ${x.pagos} pagos · ${esc(telFmtP(x.tel))}${x.emprendedor?" · "+esc(x.emprendedor):""}</div><div class="m">${(x.intentos||[]).length?`${(x.intentos||[]).length} intento(s) · último ${esc(INT_R[ult.r]||ult.r)} · ${fmt(ult.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(ult.by))}`:"Nadie lo ha llamado"}${ap?" · cita: "+esc(APPT_ST[ap.status]||ap.status)+(ap.sale?" · vendió":""):""}${x.motivo&&!x.califica?" · "+esc(x.motivo):""}</div></button>`; };
+  const chips = [["califica","Califican"],["nuevos","Sin llamar"]].concat(importa?[["no","No califican"],["todos","Todos"]]:[]);
+  return `<div class="card"><div class="row" style="justify-content:space-between"><button class="btn ghost small" id="la-back">← Áreas</button>${importa?`<button class="btn small" id="hc-imp">Importar CSV o JSON</button>`:""}</div>
+    <h2>Niveles de crédito <span class="note">${rows.length}</span></h2>
+    <p class="note">Al día y con los pagos que pide Hy Cite: 7 si está en nivel 9, 6 si está en nivel 4 a 8. La llamada es para agendar la cita, subir el crédito y entregar el regalo.</p>
+    <div class="chips">${chips.map(([k,l]) => `<button class="chip ${f===k?"on":""}" data-cf="${k}">${l}</button>`).join("")}</div></div>
+    <div class="card">${rows.length?`<div class="list">${rows.map(item).join("")}</div>`:`<div class="empty">${importa?"Importa la lista con nombre, cuenta, teléfono, correo, dirección, nivel, pagos, último pago, saldo y emprendedor.":"No hay clientes en este filtro."}</div>`}</div>`;
+}
+function bindCredito(){
+  document.querySelectorAll("[data-cf]").forEach(b => b.onclick = () => { S.f.cf = b.dataset.cf; render(); });
+  document.querySelectorAll("[data-hc]").forEach(b => b.onclick = () => openCredito(b.dataset.hc));
+  const imp = document.getElementById("hc-imp"); if (imp) imp.onclick = () => openModal(`<h3>Importar nivel de crédito</h3><p class="note">Columnas: nombre, cuenta, telefono, correo, direccion, nivel, pagos, ultimo_pago, saldo, emprendedor. Opcional: aldia (si/no). Si el saldo es 0 y no viene aldia, se toma como al día. La misma cuenta se actualiza, no se duplica.</p><textarea class="i" id="hc-txt" style="min-height:160px" placeholder="nombre,cuenta,telefono,correo,direccion,nivel,pagos,ultimo_pago,saldo,emprendedor"></textarea><div class="row"><button class="btn" id="hc-ok">Importar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    document.getElementById("hc-ok").onclick = async () => {
+      const C = window.Credito; if (!C) return;
+      let got; try { got = C.filas(document.getElementById("hc-txt").value); } catch(e) { return toast("No pude leer la tabla."); }
+      if (!got.rows.length) return toast(got.warnings[0] || "No hay filas.");
+      let n = 0;
+      for (let i = 0; i < got.rows.length; i += 400) {
+        const b = S.db.batch();
+        got.rows.slice(i, i+400).forEach(row => {
+          const base = {cuenta:row.cuenta, nombre:row.nombre, tel:row.tel||"", correo:row.correo||"", direccion:row.direccion||"", nivel:row.nivel, pagos:row.pagos, ultimoPago:row.ultimoPago||"", saldo:row.saldo||0, emprendedor:row.emprendedor||"", califica:!!row.califica, motivo:row.motivo||"", by:S.uid, updatedAt:Date.now()};
+          const prev = (S.hcredito||{})[row.cuenta];
+          if (prev) b.set(S.db.doc("hcredito/"+row.cuenta), base, {merge:true});
+          else b.set(S.db.doc("hcredito/"+row.cuenta), Object.assign({status:"nuevo", notes:"", socioId:"", apptId:"", statusAt:0, intentos:[]}, base));
+          n++;
+        });
+        await b.commit();
+      }
+      closeModal(); toast("Listas " + n + " cuentas. " + got.rows.filter(r => r.califica).length + " califican.");
+    };
+  });
+}
+function openCredito(id){
+  const x = (S.hcredito||{})[id]; if (!x) return;
+  const tel = x.tel || "";
+  const ap = x.apptId && S.appts?.[x.apptId];
+  const gente = (role()==="tele" ? sociosPara({...S.me, id:S.uid}) : socios()).filter(m => m.role!=="baja");
+  openModal(`<h3>${esc(x.nombre)}</h3><p class="note" style="margin:0">Cuenta ${esc(x.cuenta)} · nivel ${x.nivel} · ${x.pagos} pagos${x.ultimoPago?" · último pago "+esc(x.ultimoPago):""}${x.saldo?" · saldo $"+x.saldo:""}</p>
+    <p class="note" style="margin:0">${x.califica?"Califica para bajar a nivel 3.":esc(x.motivo||"No califica.")}${x.emprendedor?" Emprendedor: "+esc(x.emprendedor)+".":""}</p>
+    ${x.direccion?`<p class="note" style="margin:0">${esc(x.direccion)}</p>`:""}
+    ${x.correo?`<p class="note" style="margin:0">${esc(x.correo)}</p>`:""}
+    <div class="row">${tel?`<a class="btn" href="tel:+1${esc(tel)}">📞 Llamar</a><a class="btn dark" target="_blank" rel="noopener" href="https://wa.me/1${esc(tel)}">WhatsApp</a><a class="btn ghost" href="sms:+1${esc(tel)}">Mensaje</a>`:`<span class="note">Sin teléfono</span>`}</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:10px"><div class="eyebrow" style="margin-bottom:6px">¿Cómo te fue con la llamada?</div><div class="opts">${Object.entries(INT_R).map(([k,v]) => `<button class="opt" data-hcint="${k}">${v}</button>`).join("")}</div>
+      ${(x.intentos||[]).length?`<div class="note" style="margin-top:6px">${x.intentos.slice().reverse().map(it => `${esc(INT_R[it.r]||it.r)} · ${fmt(it.at,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(it.by))}`).join("<br>")}</div>`:`<div class="note" style="margin-top:6px">Todavía nadie lo ha llamado.</div>`}</div>
+    ${ap?`<div class="banner ${ap.sale?"good":""}">Cita: ${esc(APPT_ST[ap.status]||ap.status)}${ap.sale?" · vendió "+money(ap.amount):""} · ${fmt(ap.when,{weekday:"short",day:"numeric",month:"short"})}</div>`:""}
+    <label class="f">Estado<select class="i" id="hc-st">${Object.entries(JG_ST).map(([k,v]) => `<option value="${k}" ${(x.status||"nuevo")===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    <label class="f">Notas<textarea class="i" id="hc-n">${esc(x.notes||"")}</textarea></label>
+    <label class="f">¿Para quién es la cita?<select class="i" id="hc-para"><option value="">Escoge</option>${gente.map(m => `<option value="${m.id}" ${x.socioId===m.id?"selected":""}>${esc(m.name)}</option>`).join("")}</select></label>
+    <div class="row"><button class="btn" id="hc-cita">📅 Agendar cita</button><button class="btn ghost" id="hc-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const guardar = async (extra) => {
+      extra = extra || {};
+      const o = {status: extra.status || document.getElementById("hc-st").value, notes:document.getElementById("hc-n").value.trim().slice(0,1000), socioId:document.getElementById("hc-para").value||"", statusAt:Date.now()};
+      if (extra.intentos) o.intentos = extra.intentos;
+      try { await S.db.doc("hcredito/"+id).update(o); Object.assign(S.hcredito[id], {status:o.status, notes:o.notes, socioId:o.socioId, statusAt:o.statusAt}); if (extra.r) (S.hcredito[id].intentos = S.hcredito[id].intentos||[]).push({at:o.statusAt, by:S.uid, r:extra.r}); toast("Guardado"); openCredito(id); }
+      catch(e){ console.log(e); toast("No se pudo guardar."); }
+    };
+    document.querySelectorAll("[data-hcint]").forEach(b => b.onclick = () => guardar({r:b.dataset.hcint, intentos: firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, r:b.dataset.hcint}), status: b.dataset.hcint==="ok" ? "llamado" : document.getElementById("hc-st").value}));
+    document.getElementById("hc-save").onclick = () => guardar();
+    document.getElementById("hc-cita").onclick = () => { const para = document.getElementById("hc-para").value; if (!para) return toast("Elige para quién es la cita."); const own = para===S.uid; if (!own) { if (!S.members[para]) return toast("Esa persona ya no está en el equipo."); S.world = para; }
+      const pre = {name:x.nombre, phone: tel.length===10 ? `(${tel.slice(0,3)}) ${tel.slice(3,6)}-${tel.slice(6)}` : tel, notes:"Nivel de crédito Hy Cite. Cuenta "+x.cuenta+". Nivel "+x.nivel+", "+x.pagos+" pagos.", onSaved: aid => S.db.doc("hcredito/"+id).update({status:"cita", apptId:aid, socioId:para, statusAt:Date.now()}).catch(()=>{})};
+      closeModal(); openCitaForm(own ? "" : "Leads", own, pre); };
+  });
+}
+
+const PL_ST = {nuevo:"Sin llamar", llamo:"Se llamó", nc:"No contestó", no:"No quiso cita", cita:"Cita agendada", msj:"Le dejé mensaje", otro:"Otro"};
+function portalFilas(lista){
+  const all = Object.entries(S.portal || {}).filter(([,x]) => x.mes===S.pMes && x.lista===lista);
+  const f = S.pFilt || "todos";
+  const rows = all.filter(([,x]) => f==="todos" ? true : f==="llamar" ? (x.status==="nuevo" || !x.status || (x.sigue && x.sigue <= today())) : f==="seguimiento" ? !!x.sigue : (x.intentos||[]).length);
+  rows.sort((a,b) => String(a[1].vence||a[1].nombre).localeCompare(String(b[1].vence||b[1].nombre), "es"));
+  return rows;
+}
+function portalItem(id, x){
+  const PL = window.PortalListas;
+  const telFmtP = t => t && t.length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"");
+  const ult = (x.intentos||[]).slice(-1)[0];
+  const bits = [telFmtP(x.tel)||"sin teléfono", x.tel2?("trabajo "+telFmtP(x.tel2)):"", x.direccion||"", x.producto||"", x.cumple&&PL?PL.cumpleTxt(x.cumple):"", x.saldo?"saldo $"+x.saldo:"", x.promo||"", x.detalle||"", x.accion?("aviso "+x.accion):"", x.vence?("toca "+x.vence):""].filter(Boolean);
+  const sig = x.sigue ? (x.sigue < today() ? "Seguimiento atrasado " : "Seguimiento ") + x.sigue : "";
+  return `<button class="item" data-pl="${esc(id)}" style="display:block"><div class="t">${esc(x.nombre)} <span class="tag ${(x.status&&x.status!=="nuevo")?"tg-good":"tg-warn"}">${esc(PL_ST[x.status]||"Sin llamar")}</span></div><div class="m">${esc(bits.join(" · "))}</div><div class="m">${ult ? `${esc(PL_ST[ult.r]||ult.r)} · ${fmt(ult.at,{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(ult.by))}` : "Nadie lo ha llamado"}${sig?" · "+esc(sig):""}</div></button>`;
+}
+function viewCartucho(){
+  const PL = window.PortalListas;
+  if (!PL) return `<div class="card empty">Cargando…</div>`;
+  const meses = [...new Set(Object.values(S.portal||{}).map(x => x.mes).filter(Boolean).concat([today().slice(0,7)]))].sort();
+  if (!S.pMes || !meses.includes(S.pMes)) S.pMes = meses[meses.length-1];
+  const filtro = S.pFilt || "todos";
+  const importa = S.isOwner || esBot();
+  const sec = (lista, titulo, nota) => { const rows = portalFilas(lista); return `<div class="card"><h2>${titulo} <span class="note">${rows.length}</span></h2><p class="note" style="margin-top:-6px">${nota}</p>${rows.length?`<div class="list">${rows.map(([id,x]) => portalItem(id,x)).join("")}</div>`:`<div class="empty">Nadie en ${esc(S.pMes)}.</div>`}</div>`; };
+  const cumple = portalFilas("cumple");
+  return `<div class="card"><div class="row" style="justify-content:space-between"><button class="btn ghost small" id="la-back">← Áreas</button></div>
+    <h2>Cartucho</h2>
+    <div class="row"><label class="f">Mes<select class="i" id="p-mes">${meses.map(m => `<option value="${m}" ${m===S.pMes?"selected":""}>${m}</option>`).join("")}</select></label>
+    <label class="f">Ver<select class="i" id="p-fil">${[["todos","Todos"],["llamar","Por llamar"],["seguimiento","Con seguimiento"],["llamados","Ya llamados"]].map(([k,l]) => `<option value="${k}" ${filtro===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+    <p class="note">La llamada guarda el resultado, quién llamó, las notas y la próxima fecha. Igual que en las listas del portal.</p>
+    ${importa?`<div class="row"><label class="btn small">Subir Excel de filtros<input id="p-file" type="file" accept=".xls,.xlsx,.html,text/html,.csv,.json" hidden></label><button class="btn small ghost" id="p-tabla" type="button">Pegar CSV o JSON</button></div><p class="note">La cuenta Bots sube el Excel de CARP (filtros) o pega el mantenimiento: cuenta, nombre, telefono, direccion, producto, fecha. Si el cliente ya estaba, se actualizan sus datos y se conservan las llamadas.</p>`:""}</div>
+    ${sec("filtros","Filtros del mes","Cliente, teléfonos, promoción, avisos que ya mandó Hy Cite y fechas.")}
+    ${sec("mant","Mantenimiento de filtro 6 meses","Fresca Flow, Fresca Pure u otro filtro. Toca a los 6 meses de la compra.")}
+    ${cumple.length?`<div class="card"><h2>Cumpleaños del mes <span class="note">${cumple.length}</span></h2><p class="note" style="margin-top:-6px">No es un cartucho. Quedó de las listas del portal, con el mismo seguimiento.</p><div class="list">${cumple.map(([id,x]) => portalItem(id,x)).join("")}</div></div>`:""}`;
+}
+function bindCartucho(){
+  const mes = document.getElementById("p-mes"); if (mes) mes.onchange = () => { S.pMes = mes.value; render(); };
+  const fil = document.getElementById("p-fil"); if (fil) fil.onchange = () => { S.pFilt = fil.value; render(); };
+  document.querySelectorAll("[data-pl]").forEach(b => b.onclick = () => openPortalCliente(b.dataset.pl));
+  const file = document.getElementById("p-file"); if (file) file.onchange = async () => { const f = file.files && file.files[0]; file.value = ""; if (f) importarPortal(f); };
+  const tab = document.getElementById("p-tabla"); if (tab) tab.onclick = () => openModal(`<h3>Pegar CSV o JSON</h3><p class="note">Mantenimiento: cuenta, nombre, telefono, direccion, producto, fecha (AAAA-MM-DD). Filtros también acepta el Excel del portal (CARP).</p><label class="f">Lista<select class="i" id="p-kind"><option value="mant">Mantenimiento de filtro</option><option value="filtros">Filtros</option></select></label><textarea class="i" id="p-txt" style="min-height:140px" placeholder="cuenta,nombre,telefono,direccion,producto,fecha"></textarea><div class="row"><button class="btn" id="p-ok">Importar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => { document.getElementById("p-ok").onclick = () => importarPortalTexto(document.getElementById("p-kind").value, document.getElementById("p-txt").value); });
+}
+function openPortalCliente(id){
+  const x = (S.portal||{})[id]; if (!x) return;
+  const PL = window.PortalListas;
+  const tel = x.tel || "";
+  const mostrar = t => t && t.length===10 ? `(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}` : (t||"");
+  openModal(`<h3>${esc(x.nombre)}</h3><p class="note" style="margin:0">${x.lista==="mant"?"Mantenimiento":x.lista==="cumple"?"Cumpleaños":"Filtros"} · ${esc(x.mes)} · cuenta ${esc(x.cuenta)}${x.cumple&&PL?" · "+esc(PL.cumpleTxt(x.cumple)):""}${x.saldo?" · saldo $"+esc(x.saldo):""}${x.vence?" · toca el "+esc(x.vence):""}</p>
+    ${x.direccion?`<p class="note" style="margin:0">${esc(x.direccion)}</p>`:""}
+    ${x.producto?`<p class="note" style="margin:0">${esc(x.producto)}</p>`:""}
+    ${x.promo?`<p class="note" style="margin:0">${esc(x.promo)}${x.detalle?" · "+esc(x.detalle):""}${x.accion?" · "+esc(x.accion):""}${x.estado?" · "+esc(x.estado):""}</p>`:""}
+    <div class="row">${tel?`<a class="btn" href="tel:+1${esc(tel)}">📞 Llamar</a><a class="btn dark" target="_blank" rel="noopener" href="https://wa.me/1${esc(tel)}">WhatsApp</a><a class="btn ghost" href="sms:+1${esc(tel)}">Mensaje</a>`:`<span class="note">Sin teléfono de casa${x.tel2?" · trabajo "+esc(mostrar(x.tel2)):""}</span>`}${x.tel2&&tel?`<a class="btn ghost" href="tel:+1${esc(x.tel2)}">Trabajo</a>`:""}</div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:10px"><div class="eyebrow" style="margin-bottom:6px">¿Cómo te fue con la llamada?</div><div class="opts">${Object.entries(PL_ST).map(([k,v]) => `<button class="opt" data-pint="${k}">${v}</button>`).join("")}</div>
+      ${(x.intentos||[]).length?`<div class="note" style="margin-top:6px">${(x.intentos||[]).slice().reverse().map(it => `${esc(PL_ST[it.r]||it.r)} · ${fmt(it.at,{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})} · ${esc(memberName(it.by))}`).join("<br>")}</div>`:`<div class="note" style="margin-top:6px">Todavía nadie lo ha llamado.</div>`}</div>
+    <label class="f">Notas<textarea class="i" id="pl-n">${esc(x.notes||"")}</textarea></label>
+    <label class="f">Próximo seguimiento<input class="i" type="date" id="pl-s" value="${esc(x.sigue||"")}"></label>
+    <label class="f">Resultado<select class="i" id="pl-st">${Object.entries(PL_ST).map(([k,v]) => `<option value="${k}" ${(x.status||"nuevo")===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    <div class="row"><button class="btn" id="pl-save">Guardar</button><button class="btn ghost" data-close>Cerrar</button></div>`, () => {
+    const guardar = async (resultado) => {
+      const sigue = (document.getElementById("pl-s").value||"").slice(0,10);
+      const notes = document.getElementById("pl-n").value.trim().slice(0,1000);
+      let status = document.getElementById("pl-st").value;
+      if (resultado) status = resultado;
+      if (sigue && status==="nuevo") status = "seguimiento";
+      const o = {status, notes, sigue, statusAt:Date.now(), updatedAt:Date.now()};
+      if (resultado) o.intentos = firebase.firestore.FieldValue.arrayUnion({at:Date.now(), by:S.uid, r:resultado});
+      try { await S.db.doc("portallists/"+id).update(o); Object.assign(S.portal[id], {status, notes, sigue, statusAt:o.statusAt}); if (resultado) (S.portal[id].intentos = S.portal[id].intentos || []).push({at:o.statusAt, by:S.uid, r:resultado}); toast("Guardado"); openPortalCliente(id); }
+      catch(e){ console.log(e); toast("No se pudo guardar."); }
+    };
+    document.querySelectorAll("[data-pint]").forEach(b => b.onclick = () => guardar(b.dataset.pint));
+    document.getElementById("pl-save").onclick = () => guardar();
+  });
+}
+async function importarPortal(file){
+  const PL = window.PortalListas; if (!PL) return;
+  const buf = await file.arrayBuffer();
+  const head = new TextDecoder().decode(buf.slice(0, 80)).trim();
+  let aoa;
+  if (head.startsWith("<")) aoa = [...new DOMParser().parseFromString(new TextDecoder().decode(buf), "text/html").querySelectorAll("tr")].map(tr => [...tr.children].map(td => td.textContent.trim()));
+  else {
+    await new Promise((ok, no) => { if (window.XLSX) return ok(); const s = document.createElement("script"); s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"; s.onload = ok; s.onerror = () => no(new Error("xlsx")); document.head.appendChild(s); });
+    const wb = XLSX.read(buf, {type:"array"});
+    aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:""});
+  }
+  const name = String(file.name||"").toLowerCase();
+  if (name.endsWith(".csv") || name.endsWith(".json") || head.startsWith("[") || head.startsWith("{")) { const raw = new TextDecoder().decode(buf); const low = raw.toLowerCase(); const kind = low.includes("birth") || low.includes("cumple") ? "cumple" : (low.includes("description") || low.includes("promo")) ? "filtros" : "mant"; return importarPortalTexto(kind, raw); }
+  const kind = PL.detect(aoa) || "filtros";
+  const parsed = PL.parse(kind, aoa);
+  if (!parsed.rows.length) return toast(parsed.warnings[0] || "No encontré clientes en el archivo.");
+  return guardarPortal(kind, parsed.mes || S.pMes || today().slice(0,7), parsed.rows, parsed.warnings);
+}
+async function importarPortalTexto(kind, text){
+  const PL = window.PortalListas; if (!PL) return;
+  let rows = [], warnings = [], mes = "";
+  try {
+    if (kind === "mant") {
+      const got = PL.parseMantRows(PL.parseTabla(text));
+      rows = got.rows; warnings = got.warnings;
+    } else {
+      const lines = String(text||"").trim().split(/\r?\n/);
+      const sep = (lines[0]||"").includes("\t") ? "\t" : ",";
+      const aoa = lines.filter(Boolean).map(l => l.split(sep));
+      const parsed = PL.parse(kind, aoa);
+      rows = parsed.rows; warnings = parsed.warnings; mes = parsed.mes;
+    }
+  } catch(e) { return toast("No pude leer esa tabla. Revisa los títulos de las columnas."); }
+  if (!rows.length) return toast(warnings[0] || "No encontré clientes.");
+  if (kind === "mant") {
+    const groups = {};
+    rows.forEach(r => { const m = (r.vence||"").slice(0,7); if (!m) return; (groups[m] = groups[m] || []).push(r); });
+    let n = 0;
+    for (const m of Object.keys(groups)) { await guardarPortal("mant", m, groups[m], []); n += groups[m].length; }
+    const primero = Object.keys(groups).sort()[0];
+    if (primero) S.pMes = primero;
+    toast("Listos " + n + " mantenimientos, cada uno en el mes en que cumplen 6 meses.");
+    closeModal(); return;
+  }
+  await guardarPortal(kind, mes || S.pMes || today().slice(0,7), rows, warnings);
+  closeModal();
+}
+async function guardarPortal(kind, mes, rows, warnings){
+  const PL = window.PortalListas;
+  let n = 0;
+  for (let i = 0; i < rows.length; i += 400){
+    const b = S.db.batch();
+    rows.slice(i, i+400).forEach(row => {
+      const id = PL.docId(kind, mes, row.cuenta);
+      const base = {lista:kind, mes, cuenta:row.cuenta, nombre:row.nombre||"Sin nombre", tel:row.tel||"", tel2:row.tel2||"", direccion:(row.direccion||"").slice(0,300), producto:(row.producto||"").slice(0,200), vence:row.vence||"", saldo:+row.saldo||0, cumple:row.cumple||"", promo:(row.promo||"").slice(0,160), detalle:(row.detalle||"").slice(0,200), estado:row.estado||"", accion:row.accion||"", by:S.uid, updatedAt:Date.now()};
+      const prev = (S.portal||{})[id];
+      if (prev) b.set(S.db.doc("portallists/"+id), base, {merge:true});
+      else b.set(S.db.doc("portallists/"+id), Object.assign({status:"nuevo", notes:"", sigue:"", statusAt:0, intentos:[]}, base));
+      n++;
+    });
+    await b.commit();
+  }
+  S.pMes = mes;
+  toast("Listos " + n + " clientes de " + mes + ((warnings||[]).length ? ". " + warnings[0] : ""));
+}
